@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Fastrock" Manufacturer="Fastrock" Version="0.1.0" UpgradeCode="11111111-2222-3333-4444-555555555555">
+    <MajorUpgrade DowngradeErrorMessage="A newer Fastrock version is already installed." />
+    <Feature Id="Main" Title="Fastrock" Level="1">
+      <ComponentGroupRef Id="FastrockAppComponents" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFilesFolder">
+      <Directory Id="INSTALLFOLDER" Name="Fastrock" />
+    </StandardDirectory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="FastrockAppComponents" Directory="INSTALLFOLDER">
+      <Component Id="FastrockExe">
+        <File Source="$(var.FastrockBinaryPath)\fastrock-app.exe" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

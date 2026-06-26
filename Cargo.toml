@@ -1,0 +1,45 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/fastrock-app",
+    "crates/fastrock-ui",
+    "crates/fastrock-core",
+    "crates/fastrock-bedrock",
+    "crates/fastrock-rtk",
+    "crates/fastrock-projects",
+    "crates/fastrock-persistence",
+    "crates/fastrock-mcp",
+    "crates/fastrock-skills",
+    "crates/fastrock-cache",
+    "crates/fastrock-editor",
+    "crates/fastrock-test-support",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+base64 = "0.22"
+crc32fast = "1"
+hmac = "0.12"
+hex = "0.4"
+keyring = "3"
+percent-encoding = "2"
+reqwest = { version = "0.12", default-features = false, features = ["http2", "rustls-tls"] }
+ropey = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+slint = "1"
+slint-build = "1"
+tempfile = "3"
+thiserror = "2"
+time = "0.3"
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+sha2 = "0.10"
+tree-sitter = "0.26"
+tree-sitter-rust = "0.24.2"
+url = "2"

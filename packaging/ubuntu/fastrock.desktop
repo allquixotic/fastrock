@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Fastrock
+Comment=Fast Bedrock-first coding agent
+Exec=fastrock-app
+Icon=fastrock
+Terminal=false
+Categories=Development;IDE;
+StartupWMClass=Fastrock

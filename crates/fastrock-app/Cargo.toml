@@ -1,0 +1,28 @@
+[package]
+name = "fastrock-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+fastrock-bedrock = { path = "../fastrock-bedrock" }
+fastrock-cache = { path = "../fastrock-cache" }
+fastrock-editor = { path = "../fastrock-editor" }
+fastrock-mcp = { path = "../fastrock-mcp" }
+fastrock-persistence = { path = "../fastrock-persistence" }
+fastrock-projects = { path = "../fastrock-projects" }
+fastrock-rtk = { path = "../fastrock-rtk" }
+fastrock-skills = { path = "../fastrock-skills" }
+fastrock-core = { path = "../fastrock-core" }
+fastrock-ui = { path = "../fastrock-ui" }
+serde_json.workspace = true
+slint.workspace = true
+tokio.workspace = true
+
+[build-dependencies]
+slint-build.workspace = true
+
+[dev-dependencies]
+fastrock-test-support = { path = "../fastrock-test-support" }
+tempfile.workspace = true

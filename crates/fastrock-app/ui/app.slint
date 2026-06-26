@@ -1,0 +1,3375 @@
+// Fastrock application shell.
+//
+// Design goals (see SPEC §V17–V21):
+//   * Every control reads as the kind of control it is: action buttons look like
+//     buttons, toggles look like switches, segmented choices show the active
+//     option, and read-only status is visually flat and never hoverable.
+//   * Scrollable regions show a scrollbar thumb so the user can tell what scrolls.
+//   * When a prerequisite is missing (e.g. no model profile), the affected
+//     controls are disabled with a plain-language reason and a call-to-action.
+//   * Hover tooltips appear only after the pointer rests on a control, render in a
+//     single window-level overlay, and never steal focus or flicker (V21).
+//   * Dark-mode only, resizable, Codex-like spacing and hierarchy.
+
+export struct ConversationRowData {
+    conversation-id: string,
+    title: string,
+    folder: string,
+    profile: string,
+    mode: string,
+    status: string,
+    selected: bool,
+}
+
+export struct ProjectFolderRowData {
+    label: string,
+    path: string,
+    target: string,
+    default-profile: string,
+    recent-conversations: string,
+}
+
+export struct SidebarTreeRowData {
+    row-id: string,
+    kind: string,
+    project-folder-id: string,
+    conversation-id: string,
+    title: string,
+    subtitle: string,
+    status: string,
+    depth: int,
+    expanded: bool,
+    selected: bool,
+    tooltip: string,
+    action: string,
+}
+
+export struct TranscriptBlockData {
+    speaker: string,
+    body: string,
+    accent-kind: string,
+}
+
+export struct FileTabRowData {
+    path: string,
+    dirty: bool,
+    selected: bool,
+}
+
+export struct ProfileRowData {
+    profile-id: string,
+    name: string,
+    provider: string,
+    model: string,
+    region: string,
+    enabled: bool,
+    default-profile: bool,
+    selected: bool,
+    validation: string,
+}
+
+export struct EditorLineRowData {
+    line-number: string,
+    text: string,
+}
+
+export struct DiffRowData {
+    line-number: string,
+    before: string,
+    after: string,
+}
+
+export struct McpServerRowData {
+    server-id: string,
+    name: string,
+    scope: string,
+    transport: string,
+    status: string,
+    details: string,
+}
+
+export struct McpToolRowData {
+    server-id: string,
+    tool-name: string,
+    policy: string,
+    discovered: bool,
+    disabled: bool,
+    always-allowed: bool,
+    disable-action: string,
+    allow-action: string,
+}
+
+export struct McpDiscoveryRowData {
+    server-id: string,
+    kind: string,
+    name: string,
+}
+
+export struct SkillRowData {
+    name: string,
+    scope: string,
+    modes: string,
+    status: string,
+}
+
+export struct MemoryRowData {
+    record-id: string,
+    kind: string,
+    scope: string,
+    source: string,
+    status: string,
+    preview: string,
+}
+
+export struct SettingsRowData {
+    name: string,
+    value: string,
+}
+
+// ---------------------------------------------------------------------------
+// Shared palette. One source of truth so every surface and control stays
+// visually consistent.
+// ---------------------------------------------------------------------------
+global Pal {
+    out property <color> app: #0e0f12;
+    out property <color> sidebar: #151619;
+    out property <color> panel: #17191d;
+    out property <color> header: #15171b;
+    out property <color> card: #1d2025;
+    out property <color> card-2: #212530;
+    out property <color> control: #262a31;
+    out property <color> control-hover: #2f343d;
+    out property <color> control-press: #383e49;
+    out property <color> control-off: #1b1d22;
+    out property <color> line: #2a2e35;
+    out property <color> line-strong: #3a3f49;
+    out property <color> track: #0d0e10;
+
+    out property <color> accent: #4b8dff;
+    out property <color> accent-hover: #5e9bff;
+    out property <color> accent-soft: #1c2c47;
+    out property <color> on-accent: #ffffff;
+
+    out property <color> text-hi: #f3f4f6;
+    out property <color> text: #d7dae0;
+    out property <color> text-dim: #99a0ab;
+    out property <color> text-faint: #656c77;
+
+    out property <color> ok: #5fcf86;
+    out property <color> ok-soft: #15301f;
+    out property <color> warn: #e7b552;
+    out property <color> warn-soft: #33280f;
+    out property <color> danger: #ef6c70;
+    out property <color> danger-soft: #341a1c;
+    out property <color> info: #7aa7ff;
+    out property <color> file-accent: #b195ff;
+
+    out property <string> mono: "Menlo";
+}
+
+// ---------------------------------------------------------------------------
+// Hover tooltip system (V21).
+//
+// A single window-level overlay (declared at the bottom of AppWindow) renders
+// whichever tooltip is currently active. Each control embeds a HoverTip that,
+// after the pointer rests for a short delay, publishes its label + anchor into
+// the Tip global. Because the overlay is a plain Rectangle at the window root it
+// is never clipped by panes, never grabs keyboard focus, and never captures the
+// pointer — so tooltips do not flicker while the pointer moves and do not steal
+// focus from the composer the way a focus-grabbing popup would.
+// ---------------------------------------------------------------------------
+global Tip {
+    in-out property <string> text: "";
+    in-out property <length> anchor-x: 0px;
+    in-out property <length> anchor-y: 0px;
+    in-out property <bool> visible: false;
+}
+
+component HoverTip inherits Rectangle {
+    in property <bool> hovered;
+    in property <string> label;
+    in property <length> anchor-x;
+    in property <length> anchor-y;
+
+    width: 0px;
+    height: 0px;
+
+    delay := Timer {
+        interval: 550ms;
+        running: root.hovered && root.label != "";
+        triggered => {
+            Tip.text = root.label;
+            Tip.anchor-x = root.anchor-x;
+            Tip.anchor-y = root.anchor-y;
+            Tip.visible = true;
+        }
+    }
+
+    changed hovered => {
+        if (!self.hovered) {
+            Tip.visible = false;
+        }
+    }
+}
+
+component SectionTitle inherits Text {
+    font-size: 15px;
+    font-weight: 700;
+    color: Pal.text-hi;
+}
+
+component GroupCaption inherits Text {
+    font-size: 11px;
+    font-weight: 600;
+    color: Pal.text-dim;
+    vertical-alignment: center;
+}
+
+// ---------------------------------------------------------------------------
+// Scroll container with a visible thumb so the user can tell it scrolls.
+// Inject scrollable content as the child layout.
+// ---------------------------------------------------------------------------
+component ScrollArea inherits Rectangle {
+    clip: true;
+
+    fl := Flickable {
+        width: 100%;
+        height: 100%;
+        @children
+    }
+
+    // Scrollbar track + thumb, shown only when content overflows.
+    Rectangle {
+        x: parent.width - 8px;
+        y: 3px;
+        width: 5px;
+        height: parent.height - 6px;
+        visible: fl.viewport-height > fl.height + 1px;
+        background: transparent;
+
+        Rectangle {
+            width: 5px;
+            x: 0;
+            background: Pal.line-strong;
+            border-radius: 2.5px;
+            height: max(28px, parent.height * (fl.height / max(fl.viewport-height, 1px)));
+            y: (0px - fl.viewport-y) / max(fl.viewport-height - fl.height, 1px) * (parent.height - self.height);
+        }
+    }
+}
+
+// Small downward/right disclosure triangle for collapsible rows.
+component Disclosure inherits Rectangle {
+    in property <bool> expanded;
+    width: 12px;
+    height: 12px;
+
+    Path {
+        width: 9px;
+        height: 9px;
+        x: 2px;
+        y: 1.5px;
+        viewbox-width: 9;
+        viewbox-height: 9;
+        commands: root.expanded
+            ? "M 0 2 L 9 2 L 4.5 8 Z"
+            : "M 2 0 L 8 4.5 L 2 9 Z";
+        fill: Pal.text-dim;
+    }
+}
+
+// Read-only status badge. Flat, never hoverable unless `interactive`.
+component StatusPill inherits Rectangle {
+    in property <string> label;
+    in property <string> tooltip: label;
+    in property <brush> pill-background: Pal.card-2;
+    in property <brush> pill-text-color: Pal.text;
+    in property <brush> dot-color: Pal.text-faint;
+    in property <bool> show-dot: false;
+    in property <bool> interactive: false;
+    callback activated();
+
+    height: 26px;
+    background: interactive
+        ? (pill-touch.pressed ? Pal.control-press : pill-touch.has-hover ? Pal.control-hover : pill-background)
+        : pill-background;
+    border-radius: 13px;
+    border-width: interactive ? 1px : 0px;
+    border-color: Pal.line-strong;
+
+    HorizontalLayout {
+        padding-left: root.show-dot ? 10px : 12px;
+        padding-right: 12px;
+        spacing: 6px;
+
+        Rectangle {
+            visible: root.show-dot;
+            width: root.show-dot ? 7px : 0px;
+            height: 7px;
+            y: parent.height / 2 - 3.5px;
+            background: dot-color;
+            border-radius: 3.5px;
+        }
+
+        Text {
+            text: label;
+            font-size: 11px;
+            font-weight: 600;
+            color: pill-text-color;
+            vertical-alignment: center;
+        }
+    }
+
+    pill-touch := TouchArea {
+        enabled: root.interactive;
+        mouse-cursor: root.interactive ? MouseCursor.pointer : MouseCursor.default;
+        clicked => {
+            root.activated();
+        }
+    }
+
+    HoverTip {
+        hovered: pill-touch.has-hover;
+        label: root.tooltip;
+        anchor-x: root.absolute-position.x;
+        anchor-y: root.absolute-position.y + root.height;
+    }
+}
+
+// Primary momentary action button. Sizes to its label; disabled state is
+// visually muted and not interactive.
+component ProfileActionButton inherits Rectangle {
+    in property <string> label;
+    in property <string> action;
+    in property <string> tooltip: label;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    callback activated(string);
+
+    height: 30px;
+    horizontal-stretch: 0;
+    background: !root.enabled
+        ? Pal.control-off
+        : root.primary
+            ? (button-touch.pressed ? Pal.accent-hover : button-touch.has-hover ? Pal.accent-hover : Pal.accent)
+            : (button-touch.pressed ? Pal.control-press : button-touch.has-hover ? Pal.control-hover : Pal.control);
+    border-width: 1px;
+    border-color: !root.enabled
+        ? Pal.line
+        : root.primary
+            ? Pal.accent
+            : (button-touch.has-hover ? Pal.line-strong : Pal.line);
+    border-radius: 6px;
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+
+        Text {
+            text: label;
+            font-size: 12px;
+            font-weight: root.primary ? 600 : 400;
+            color: !root.enabled
+                ? Pal.text-faint
+                : root.primary ? Pal.on-accent : Pal.text;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+
+    button-touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: root.enabled ? MouseCursor.pointer : MouseCursor.not-allowed;
+        clicked => {
+            root.activated(root.action);
+        }
+    }
+
+    HoverTip {
+        hovered: button-touch.has-hover;
+        label: root.tooltip;
+        anchor-x: root.absolute-position.x;
+        anchor-y: root.absolute-position.y + root.height;
+    }
+}
+
+// One segment of a mutually-exclusive choice. The active segment is filled so
+// the current selection is always obvious.
+component SegmentButton inherits Rectangle {
+    in property <string> label;
+    in property <string> action;
+    in property <string> tooltip: label;
+    in property <bool> active: false;
+    in property <bool> enabled: true;
+    callback activated(string);
+
+    height: 28px;
+    horizontal-stretch: 1;
+    background: !root.enabled
+        ? Pal.control-off
+        : root.active
+            ? Pal.accent
+            : (seg-touch.pressed ? Pal.control-press : seg-touch.has-hover ? Pal.control-hover : transparent);
+    border-radius: 6px;
+
+    Text {
+        text: label;
+        font-size: 12px;
+        font-weight: root.active ? 600 : 400;
+        color: !root.enabled
+            ? Pal.text-faint
+            : root.active ? Pal.on-accent : Pal.text-dim;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    seg-touch := TouchArea {
+        enabled: root.enabled && !root.active;
+        mouse-cursor: root.enabled ? MouseCursor.pointer : MouseCursor.not-allowed;
+        clicked => {
+            root.activated(root.action);
+        }
+    }
+
+    HoverTip {
+        hovered: seg-touch.has-hover;
+        label: root.tooltip;
+        anchor-x: root.absolute-position.x;
+        anchor-y: root.absolute-position.y + root.height;
+    }
+}
+
+// Track that groups SegmentButtons into a single segmented control.
+component SegmentTrack inherits Rectangle {
+    background: Pal.track;
+    border-width: 1px;
+    border-color: Pal.line;
+    border-radius: 8px;
+}
+
+// Labeled on/off switch for boolean settings.
+component ToggleRow inherits Rectangle {
+    in property <string> label;
+    in property <string> hint;
+    in property <bool> checked;
+    in property <string> action;
+    in property <string> tooltip: label;
+    in property <bool> enabled: true;
+    callback activated(string);
+
+    height: hint == "" ? 44px : 56px;
+    background: toggle-touch.pressed && root.enabled ? Pal.card-2 : Pal.card;
+    border-width: 1px;
+    border-color: Pal.line;
+    border-radius: 8px;
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 10px;
+
+        VerticalLayout {
+            spacing: 2px;
+            vertical-stretch: 1;
+            alignment: center;
+
+            Text {
+                text: root.label;
+                font-size: 13px;
+                color: root.enabled ? Pal.text-hi : Pal.text-faint;
+                vertical-alignment: center;
+            }
+
+            Text {
+                visible: root.hint != "";
+                text: root.hint;
+                font-size: 11px;
+                color: Pal.text-dim;
+                wrap: word-wrap;
+            }
+        }
+
+        Text {
+            text: root.checked ? "On" : "Off";
+            font-size: 11px;
+            font-weight: 600;
+            color: !root.enabled ? Pal.text-faint : root.checked ? Pal.accent : Pal.text-dim;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            width: 42px;
+            height: 24px;
+            y: parent.height / 2 - 12px;
+            background: !root.enabled
+                ? Pal.control-off
+                : root.checked ? Pal.accent : Pal.line-strong;
+            border-radius: 12px;
+
+            Rectangle {
+                width: 18px;
+                height: 18px;
+                x: root.checked ? 21px : 3px;
+                y: 3px;
+                background: root.enabled ? #ffffff : Pal.text-faint;
+                border-radius: 9px;
+                animate x { duration: 110ms; easing: ease-out; }
+            }
+        }
+    }
+
+    toggle-touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: root.enabled ? MouseCursor.pointer : MouseCursor.not-allowed;
+        clicked => {
+            root.activated(root.action);
+        }
+    }
+
+    HoverTip {
+        hovered: toggle-touch.has-hover;
+        label: root.tooltip;
+        anchor-x: root.absolute-position.x;
+        anchor-y: root.absolute-position.y + root.height;
+    }
+}
+
+// Inline notice / call-to-action banner for prerequisites and empty states.
+component NoticeBanner inherits Rectangle {
+    in property <string> title;
+    in property <string> body;
+    in property <string> action-label;
+    in property <string> action;
+    in property <brush> tint: Pal.warn;
+    in property <brush> tint-soft: Pal.warn-soft;
+    callback activated(string);
+
+    background: tint-soft;
+    border-width: 1px;
+    border-color: tint;
+    border-radius: 8px;
+
+    HorizontalLayout {
+        padding: 12px;
+        spacing: 12px;
+
+        Rectangle {
+            width: 3px;
+            background: tint;
+            border-radius: 1.5px;
+        }
+
+        VerticalLayout {
+            spacing: 3px;
+            vertical-stretch: 1;
+            alignment: center;
+
+            Text {
+                text: root.title;
+                font-size: 13px;
+                font-weight: 600;
+                color: Pal.text-hi;
+            }
+
+            Text {
+                visible: root.body != "";
+                text: root.body;
+                font-size: 12px;
+                color: Pal.text-dim;
+                wrap: word-wrap;
+            }
+        }
+
+        ProfileActionButton {
+            visible: root.action-label != "";
+            label: root.action-label;
+            action: root.action;
+            primary: true;
+            tooltip: root.action-label;
+            activated(action) => {
+                root.activated(action);
+            }
+        }
+    }
+}
+
+// Read-only key/value field for the configuration summary. Visually flat so it
+// never reads as a control.
+component SettingsRow inherits Rectangle {
+    in property <string> name;
+    in property <string> value;
+
+    height: 32px;
+
+    HorizontalLayout {
+        padding-left: 2px;
+        padding-right: 2px;
+        spacing: 8px;
+
+        Text {
+            text: name;
+            font-size: 12px;
+            color: Pal.text-dim;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+
+        Text {
+            text: value;
+            font-size: 12px;
+            color: Pal.text;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+    }
+
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Pal.line;
+    }
+}
+
+// Right-pane tab.
+component TabLabel inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected;
+    in property <string> tooltip: label;
+    callback activated(string);
+
+    height: 32px;
+    horizontal-stretch: 1;
+    background: transparent;
+
+    Text {
+        text: label;
+        font-size: 12px;
+        font-weight: selected ? 600 : 400;
+        color: selected ? Pal.text-hi : tab-touch.has-hover ? Pal.text : Pal.text-dim;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    // Active-tab underline indicator.
+    Rectangle {
+        y: parent.height - 2px;
+        height: 2px;
+        width: parent.width;
+        background: selected ? Pal.accent : transparent;
+        border-radius: 1px;
+    }
+
+    tab-touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => {
+            root.activated(root.label);
+        }
+    }
+
+    HoverTip {
+        hovered: tab-touch.has-hover;
+        label: root.tooltip;
+        anchor-x: root.absolute-position.x;
+        anchor-y: root.absolute-position.y + root.height;
+    }
+}
+
+component SidebarTreeRow inherits Rectangle {
+    in property <string> row-id;
+    in property <string> kind;
+    in property <string> project-folder-id;
+    in property <string> conversation-id;
+    in property <string> title;
+    in property <string> subtitle;
+    in property <string> status;
+    in property <int> depth;
+    in property <bool> expanded;
+    in property <bool> selected;
+    in property <string> tooltip;
+    in property <string> action;
+    callback activated(string);
+
+    height: kind == "conversation" ? 54px : 44px;
+    background: selected ? Pal.accent-soft : row-touch.pressed ? Pal.control-press : row-touch.has-hover ? Pal.control : transparent;
+    border-radius: 7px;
+
+    // Selection bar.
+    Rectangle {
+        x: 0;
+        width: 3px;
+        height: parent.height - 12px;
+        y: 6px;
+        background: selected ? Pal.accent : transparent;
+        border-radius: 1.5px;
+    }
+
+    row-touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => {
+            root.activated(root.action);
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: depth == 0 ? 10px : 24px;
+        padding-right: 10px;
+        spacing: 8px;
+
+        Disclosure {
+            visible: kind != "conversation";
+            width: kind == "conversation" ? 0px : 12px;
+            expanded: root.expanded;
+            y: parent.height / 2 - 6px;
+        }
+
+        // Status dot for conversation rows.
+        Rectangle {
+            visible: kind == "conversation";
+            width: kind == "conversation" ? 7px : 0px;
+            height: 7px;
+            y: parent.height / 2 - 3.5px;
+            border-radius: 3.5px;
+            background: status == "Running" ? Pal.ok
+                : status == "Paused" ? Pal.warn
+                : status == "Failed" ? Pal.danger
+                : Pal.text-faint;
+        }
+
+        VerticalLayout {
+            spacing: 2px;
+            vertical-stretch: 1;
+            alignment: center;
+
+            HorizontalLayout {
+                spacing: 8px;
+
+                Text {
+                    text: title;
+                    font-size: kind == "conversation" ? 12px : 13px;
+                    font-weight: kind == "conversation" ? 400 : 600;
+                    color: selected ? Pal.text-hi : Pal.text;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+
+                Rectangle {
+                    horizontal-stretch: 1;
+                }
+
+                Text {
+                    text: status;
+                    font-size: 10px;
+                    color: selected ? Pal.text : Pal.text-dim;
+                    vertical-alignment: center;
+                }
+            }
+
+            Text {
+                visible: subtitle != "";
+                text: subtitle;
+                font-size: 11px;
+                color: Pal.text-dim;
+                overflow: elide;
+            }
+        }
+    }
+
+    HoverTip {
+        hovered: row-touch.has-hover;
+        label: root.tooltip;
+        anchor-x: root.absolute-position.x + 12px;
+        anchor-y: root.absolute-position.y + root.height;
+    }
+}
+
+component SidebarActionButton inherits Rectangle {
+    in property <string> label;
+    in property <string> tooltip: label;
+    in property <bool> primary: false;
+    callback activated();
+
+    height: 34px;
+    background: root.primary
+        ? (action-touch.pressed ? Pal.accent-hover : action-touch.has-hover ? Pal.accent-hover : Pal.accent)
+        : (action-touch.pressed ? Pal.control-press : action-touch.has-hover ? Pal.control : transparent);
+    border-width: root.primary ? 0px : (action-touch.has-hover ? 1px : 0px);
+    border-color: Pal.line;
+    border-radius: 7px;
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+
+        Text {
+            text: label;
+            font-size: 13px;
+            font-weight: root.primary ? 600 : 400;
+            color: root.primary ? Pal.on-accent : Pal.text;
+            vertical-alignment: center;
+        }
+    }
+
+    action-touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => {
+            root.activated();
+        }
+    }
+
+    HoverTip {
+        hovered: action-touch.has-hover;
+        label: root.tooltip;
+        anchor-x: root.absolute-position.x + 8px;
+        anchor-y: root.absolute-position.y + root.height;
+    }
+}
+
+component ComposerMenuRow inherits Rectangle {
+    in property <string> label;
+    in property <string> value;
+    in property <string> tooltip: label;
+    callback activated();
+
+    height: 36px;
+    background: row-touch.pressed ? Pal.control-press : row-touch.has-hover ? Pal.control-hover : transparent;
+    border-radius: 7px;
+
+    row-touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => {
+            root.activated();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+
+        Text {
+            text: label;
+            font-size: 13px;
+            color: Pal.text-hi;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+
+        Text {
+            text: value;
+            font-size: 12px;
+            color: Pal.text-dim;
+            vertical-alignment: center;
+        }
+    }
+
+    HoverTip {
+        hovered: row-touch.has-hover;
+        label: root.tooltip;
+        anchor-x: root.absolute-position.x + 8px;
+        anchor-y: root.absolute-position.y + root.height;
+    }
+}
+
+component PlanToggleRow inherits Rectangle {
+    in property <bool> checked;
+    in property <string> tooltip: "Toggle plan mode";
+    callback toggled();
+
+    height: 40px;
+    background: toggle-touch.pressed ? Pal.control-press : toggle-touch.has-hover ? Pal.control-hover : transparent;
+    border-radius: 7px;
+
+    toggle-touch := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => {
+            root.toggled();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+
+        Text {
+            text: "Plan mode";
+            font-size: 13px;
+            color: Pal.text-hi;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: "read-only";
+            font-size: 11px;
+            color: Pal.text-dim;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+
+        Text {
+            text: root.checked ? "On" : "Off";
+            font-size: 11px;
+            font-weight: 600;
+            color: root.checked ? Pal.accent : Pal.text-dim;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            width: 42px;
+            height: 24px;
+            y: parent.height / 2 - 12px;
+            background: checked ? Pal.accent : Pal.line-strong;
+            border-radius: 12px;
+
+            Rectangle {
+                width: 18px;
+                height: 18px;
+                x: checked ? 21px : 3px;
+                y: 3px;
+                background: #ffffff;
+                border-radius: 9px;
+                animate x { duration: 110ms; easing: ease-out; }
+            }
+        }
+    }
+
+    HoverTip {
+        hovered: toggle-touch.has-hover;
+        label: root.tooltip;
+        anchor-x: root.absolute-position.x + 8px;
+        anchor-y: root.absolute-position.y + root.height;
+    }
+}
+
+component TranscriptBlock inherits Rectangle {
+    in property <string> speaker;
+    in property <string> body;
+    in property <string> accent-kind;
+
+    property <color> accent: accent-kind == "goal" ? Pal.warn
+        : accent-kind == "tool" ? Pal.info
+        : accent-kind == "file" ? Pal.file-accent
+        : accent-kind == "memory" ? #d29922
+        : accent-kind == "status" ? Pal.text-dim
+        : accent-kind == "error" ? Pal.danger
+        : accent-kind == "plan" ? Pal.accent
+        : accent-kind == "user" ? Pal.text-faint
+        : Pal.ok;
+
+    min-height: 72px;
+    background: Pal.card;
+    border-width: 1px;
+    border-color: accent-kind == "error" ? Pal.danger : Pal.line;
+    border-radius: 8px;
+
+    HorizontalLayout {
+        padding: 12px;
+        spacing: 12px;
+
+        Rectangle {
+            width: 3px;
+            background: accent;
+            border-radius: 1.5px;
+        }
+
+        VerticalLayout {
+            spacing: 6px;
+
+            HorizontalLayout {
+                spacing: 8px;
+
+                Rectangle {
+                    width: dot.preferred-width + 16px;
+                    height: 18px;
+                    background: accent.transparentize(0.85);
+                    border-radius: 5px;
+
+                    dot := Text {
+                        text: speaker;
+                        font-size: 10px;
+                        font-weight: 700;
+                        color: accent;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                Rectangle {
+                    horizontal-stretch: 1;
+                }
+            }
+
+            Text {
+                text: body;
+                font-size: 13px;
+                color: Pal.text;
+                wrap: word-wrap;
+            }
+        }
+    }
+}
+
+component FileTabRow inherits Rectangle {
+    in property <string> path;
+    in property <bool> dirty;
+    in property <bool> selected;
+    callback activated(string);
+    callback close-requested(string);
+
+    height: 34px;
+    background: selected ? Pal.accent-soft : tab-touch.has-hover ? Pal.control : transparent;
+    border-width: 1px;
+    border-color: selected ? Pal.accent : transparent;
+    border-radius: 6px;
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 6px;
+        spacing: 8px;
+
+        Rectangle {
+            horizontal-stretch: 1;
+            height: parent.height;
+
+            tab-touch := TouchArea {
+                mouse-cursor: MouseCursor.pointer;
+                clicked => {
+                    root.activated(root.path);
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 6px;
+
+                Rectangle {
+                    width: 7px;
+                    height: 7px;
+                    y: parent.height / 2 - 3.5px;
+                    visible: dirty;
+                    background: Pal.warn;
+                    border-radius: 3.5px;
+                }
+
+                Text {
+                    text: path;
+                    font-size: 12px;
+                    color: selected ? Pal.text-hi : Pal.text;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+        }
+
+        Rectangle {
+            width: 22px;
+            height: 22px;
+            y: parent.height / 2 - 11px;
+            background: close-touch.has-hover ? Pal.control-press : transparent;
+            border-radius: 4px;
+
+            close-touch := TouchArea {
+                mouse-cursor: MouseCursor.pointer;
+                clicked => {
+                    root.close-requested(root.path);
+                }
+            }
+
+            Text {
+                text: "✕";
+                font-size: 11px;
+                color: close-touch.has-hover ? Pal.text-hi : Pal.text-dim;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+component EditorLineRow inherits Rectangle {
+    in property <string> line-number;
+    in property <string> text;
+
+    height: 18px;
+    background: transparent;
+
+    HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 6px;
+        spacing: 10px;
+
+        Text {
+            text: line-number;
+            width: 32px;
+            font-size: 11px;
+            font-family: Pal.mono;
+            color: Pal.text-faint;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: text;
+            font-size: 11px;
+            font-family: Pal.mono;
+            color: Pal.text;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component DiffRow inherits Rectangle {
+    in property <string> line-number;
+    in property <string> before;
+    in property <string> after;
+
+    height: 48px;
+    background: Pal.card;
+    border-radius: 5px;
+
+    VerticalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        spacing: 1px;
+
+        Text {
+            text: "line " + line-number;
+            font-size: 10px;
+            font-family: Pal.mono;
+            color: Pal.text-faint;
+        }
+
+        Text {
+            text: "- " + before;
+            font-size: 11px;
+            font-family: Pal.mono;
+            color: Pal.danger;
+        }
+
+        Text {
+            text: "+ " + after;
+            font-size: 11px;
+            font-family: Pal.mono;
+            color: Pal.ok;
+        }
+    }
+}
+
+component ProfileRow inherits Rectangle {
+    in property <string> profile-id;
+    in property <string> name;
+    in property <string> provider;
+    in property <string> model;
+    in property <string> region;
+    in property <bool> enabled;
+    in property <bool> default-profile;
+    in property <bool> selected;
+    in property <string> validation;
+    callback selected-requested(string);
+    callback toggle-requested(string);
+    callback default-requested(string);
+    callback copy-requested(string);
+    callback delete-requested(string);
+
+    height: 116px;
+    background: selected ? Pal.accent-soft : Pal.card;
+    border-width: 1px;
+    border-color: selected ? Pal.accent : Pal.line;
+    border-radius: 8px;
+
+    VerticalLayout {
+        padding: 10px;
+        spacing: 5px;
+
+        HorizontalLayout {
+            spacing: 8px;
+
+            Text {
+                text: name;
+                font-size: 13px;
+                font-weight: 600;
+                color: Pal.text-hi;
+                vertical-alignment: center;
+            }
+
+            Rectangle {
+                visible: default-profile;
+                width: def-label.preferred-width + 14px;
+                height: 18px;
+                background: Pal.ok-soft;
+                border-radius: 5px;
+
+                def-label := Text {
+                    text: "default";
+                    font-size: 10px;
+                    font-weight: 600;
+                    color: Pal.ok;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            Text {
+                text: !enabled ? "disabled" : validation;
+                font-size: 11px;
+                color: !enabled ? Pal.text-faint
+                    : validation == "valid" ? Pal.ok
+                    : validation == "unsaved" ? Pal.warn
+                    : Pal.text-dim;
+                vertical-alignment: center;
+            }
+        }
+
+        Text {
+            text: provider + " · " + region;
+            font-size: 11px;
+            color: Pal.text-dim;
+        }
+
+        Text {
+            text: model;
+            font-size: 11px;
+            font-family: Pal.mono;
+            color: Pal.text;
+            overflow: elide;
+        }
+
+        HorizontalLayout {
+            height: 30px;
+            spacing: 6px;
+
+            ProfileActionButton {
+                label: "Select";
+                action: root.profile-id;
+                tooltip: "Make this the active profile";
+                activated(profile-id) => {
+                    root.selected-requested(profile-id);
+                }
+            }
+
+            ProfileActionButton {
+                label: enabled ? "Disable" : "Enable";
+                action: root.profile-id;
+                tooltip: enabled ? "Disable this profile" : "Enable this profile";
+                activated(profile-id) => {
+                    root.toggle-requested(profile-id);
+                }
+            }
+
+            ProfileActionButton {
+                label: "Default";
+                action: root.profile-id;
+                tooltip: "Use for new conversations";
+                activated(profile-id) => {
+                    root.default-requested(profile-id);
+                }
+            }
+
+            ProfileActionButton {
+                label: "Duplicate";
+                action: root.profile-id;
+                tooltip: "Duplicate this profile";
+                activated(profile-id) => {
+                    root.copy-requested(profile-id);
+                }
+            }
+
+            ProfileActionButton {
+                label: "Delete";
+                action: root.profile-id;
+                tooltip: "Delete this profile";
+                activated(profile-id) => {
+                    root.delete-requested(profile-id);
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+        }
+    }
+}
+
+component McpServerRow inherits Rectangle {
+    in property <string> server-id;
+    in property <string> name;
+    in property <string> scope;
+    in property <string> transport;
+    in property <string> status;
+    in property <string> details;
+    callback edit-requested(string);
+    callback toggle-requested(string);
+    callback restart-requested(string);
+    callback delete-requested(string);
+
+    height: 96px;
+    background: Pal.card;
+    border-width: 1px;
+    border-color: Pal.line;
+    border-radius: 8px;
+
+    VerticalLayout {
+        padding: 10px;
+        spacing: 5px;
+
+        HorizontalLayout {
+            spacing: 8px;
+
+            Text {
+                text: name;
+                font-size: 13px;
+                font-weight: 600;
+                color: Pal.text-hi;
+                vertical-alignment: center;
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            Rectangle {
+                width: 7px;
+                height: 7px;
+                y: parent.height / 2 - 3.5px;
+                border-radius: 3.5px;
+                background: status == "running" ? Pal.ok : status == "failed" ? Pal.danger : Pal.text-faint;
+            }
+
+            Text {
+                text: status;
+                font-size: 11px;
+                color: status == "running" ? Pal.ok : status == "failed" ? Pal.danger : Pal.text-dim;
+                vertical-alignment: center;
+            }
+        }
+
+        Text {
+            text: scope + " · " + transport + " · " + details;
+            font-size: 11px;
+            color: Pal.text-dim;
+            overflow: elide;
+        }
+
+        HorizontalLayout {
+            height: 30px;
+            spacing: 6px;
+
+            ProfileActionButton {
+                label: "Edit";
+                action: root.server-id;
+                tooltip: "Edit this MCP server";
+                activated(server-id) => {
+                    root.edit-requested(server-id);
+                }
+            }
+
+            ProfileActionButton {
+                label: status == "disabled" ? "Enable" : "Disable";
+                action: root.server-id;
+                tooltip: status == "disabled" ? "Enable this server" : "Disable this server";
+                activated(server-id) => {
+                    root.toggle-requested(server-id);
+                }
+            }
+
+            ProfileActionButton {
+                label: "Restart";
+                action: root.server-id;
+                tooltip: "Restart this server";
+                activated(server-id) => {
+                    root.restart-requested(server-id);
+                }
+            }
+
+            ProfileActionButton {
+                label: "Delete";
+                action: root.server-id;
+                tooltip: "Delete this server";
+                activated(server-id) => {
+                    root.delete-requested(server-id);
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+        }
+    }
+}
+
+component McpToolRow inherits Rectangle {
+    in property <string> server-id;
+    in property <string> tool-name;
+    in property <string> policy;
+    in property <bool> discovered;
+    in property <bool> disabled;
+    in property <bool> always-allowed;
+    in property <string> disable-action;
+    in property <string> allow-action;
+    callback action-requested(string);
+
+    height: 56px;
+    background: Pal.card;
+    border-width: 1px;
+    border-color: Pal.line;
+    border-radius: 8px;
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+
+        VerticalLayout {
+            spacing: 2px;
+            vertical-stretch: 1;
+            alignment: center;
+
+            Text {
+                text: tool-name;
+                font-size: 12px;
+                font-family: Pal.mono;
+                color: disabled ? Pal.text-faint : Pal.text-hi;
+                vertical-alignment: center;
+            }
+
+            Text {
+                text: policy + (discovered ? " · discovered" : " · configured");
+                font-size: 11px;
+                color: disabled ? Pal.danger : always-allowed ? Pal.ok : Pal.text-dim;
+                vertical-alignment: center;
+            }
+        }
+
+        ProfileActionButton {
+            label: disabled ? "Enable" : "Disable";
+            action: root.disable-action;
+            tooltip: disabled ? "Allow this tool" : "Block this tool";
+            activated(action) => {
+                root.action-requested(action);
+            }
+        }
+
+        ProfileActionButton {
+            label: always-allowed ? "Ask" : "Always allow";
+            action: root.allow-action;
+            tooltip: always-allowed ? "Require approval" : "Skip approval for this tool";
+            activated(action) => {
+                root.action-requested(action);
+            }
+        }
+    }
+}
+
+component McpDiscoveryRow inherits Rectangle {
+    in property <string> server-id;
+    in property <string> kind;
+    in property <string> name;
+
+    height: 32px;
+    background: Pal.card;
+    border-radius: 6px;
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+
+        Rectangle {
+            width: 64px;
+            height: 18px;
+            y: parent.height / 2 - 9px;
+            background: Pal.control;
+            border-radius: 5px;
+
+            Text {
+                text: kind;
+                font-size: 10px;
+                font-weight: 600;
+                color: Pal.text-dim;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        Text {
+            text: name;
+            font-size: 11px;
+            font-family: Pal.mono;
+            color: Pal.text;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+}
+
+component MemoryRow inherits Rectangle {
+    in property <string> record-id;
+    in property <string> kind;
+    in property <string> scope;
+    in property <string> source;
+    in property <string> status;
+    in property <string> preview;
+    callback inspect-requested(string);
+    callback toggle-requested(string);
+    callback delete-requested(string);
+
+    height: 98px;
+    background: Pal.card;
+    border-width: 1px;
+    border-color: Pal.line;
+    border-radius: 8px;
+
+    VerticalLayout {
+        padding: 10px;
+        spacing: 5px;
+
+        HorizontalLayout {
+            spacing: 8px;
+
+            Text {
+                text: kind + " · " + scope;
+                font-size: 12px;
+                font-weight: 600;
+                color: Pal.text-hi;
+                vertical-alignment: center;
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            Text {
+                text: status;
+                font-size: 11px;
+                color: status == "enabled" ? Pal.ok : Pal.text-faint;
+                vertical-alignment: center;
+            }
+        }
+
+        Text {
+            text: preview + " · " + source;
+            font-size: 11px;
+            color: Pal.text-dim;
+            overflow: elide;
+        }
+
+        HorizontalLayout {
+            height: 30px;
+            spacing: 6px;
+
+            ProfileActionButton {
+                label: "Open";
+                action: root.record-id;
+                tooltip: "Open this memory record";
+                activated(record-id) => {
+                    root.inspect-requested(record-id);
+                }
+            }
+
+            ProfileActionButton {
+                label: status == "enabled" ? "Disable" : "Enable";
+                action: root.record-id;
+                tooltip: status == "enabled" ? "Disable this record" : "Enable this record";
+                activated(record-id) => {
+                    root.toggle-requested(record-id);
+                }
+            }
+
+            ProfileActionButton {
+                label: "Delete";
+                action: root.record-id;
+                tooltip: "Delete this record";
+                activated(record-id) => {
+                    root.delete-requested(record-id);
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+        }
+    }
+}
+
+component SkillRow inherits Rectangle {
+    in property <string> name;
+    in property <string> scope;
+    in property <string> modes;
+    in property <string> status;
+    callback edit-requested(string);
+    callback mode-requested(string);
+    callback scope-requested(string);
+    callback delete-requested(string);
+
+    height: 88px;
+    background: Pal.card;
+    border-width: 1px;
+    border-color: Pal.line;
+    border-radius: 8px;
+
+    VerticalLayout {
+        padding: 10px;
+        spacing: 5px;
+
+        HorizontalLayout {
+            spacing: 8px;
+
+            Text {
+                text: name;
+                font-size: 13px;
+                font-weight: 600;
+                color: Pal.text-hi;
+                vertical-alignment: center;
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            Text {
+                text: status;
+                font-size: 11px;
+                color: status == "enabled" ? Pal.ok : Pal.text-dim;
+                vertical-alignment: center;
+            }
+        }
+
+        Text {
+            text: scope + " · " + modes;
+            font-size: 11px;
+            color: Pal.text-dim;
+            overflow: elide;
+        }
+
+        HorizontalLayout {
+            height: 30px;
+            spacing: 6px;
+
+            ProfileActionButton {
+                label: "Edit";
+                action: root.name;
+                tooltip: "Edit SKILL.md";
+                activated(name) => {
+                    root.edit-requested(name);
+                }
+            }
+
+            ProfileActionButton {
+                label: "Modes";
+                action: root.name;
+                tooltip: "Set mode restrictions";
+                activated(name) => {
+                    root.mode-requested(name);
+                }
+            }
+
+            ProfileActionButton {
+                label: "Scope";
+                action: root.name;
+                tooltip: "Switch global / project scope";
+                activated(name) => {
+                    root.scope-requested(name);
+                }
+            }
+
+            ProfileActionButton {
+                label: "Delete";
+                action: root.name;
+                tooltip: "Delete this skill";
+                activated(name) => {
+                    root.delete-requested(name);
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+        }
+    }
+}
+
+export component AppWindow inherits Window {
+    in property <string> status-text: "Fastrock runtime ready";
+    in property <string> active-conversation-title: "No conversation";
+    in property <string> active-folder: "No folder";
+    in property <string> active-profile: "No profile";
+    in property <string> active-mode: "Code";
+    in property <string> rtk-status: "checking";
+    in property <string> rtk-detail: "Checking PATH";
+    in property <bool> plan-mode-enabled: false;
+    in property <bool> rtk-enabled: true;
+    in property <bool> prompt-compression-enabled: true;
+    in property <string> prompt-compression-level: "Full";
+    in property <string> send-shortcut: "control-enter";
+    in property <string> send-shortcut-label: "Ctrl+Enter";
+    in-out property <string> compose-message: "";
+    in-out property <string> right-panel: "Files";
+    in-out property <bool> composer-menu-open: false;
+    in property <[SidebarTreeRowData]> sidebar-tree-rows;
+    in property <[ConversationRowData]> conversation-rows;
+    in property <[ProjectFolderRowData]> project-folder-rows;
+    in property <[TranscriptBlockData]> transcript-blocks;
+    in property <[ProfileRowData]> profile-rows;
+    in property <[FileTabRowData]> file-tab-rows;
+    in property <[EditorLineRowData]> editor-line-rows;
+    in property <[DiffRowData]> diff-rows;
+    in property <[McpServerRowData]> mcp-server-rows;
+    in property <[McpToolRowData]> mcp-tool-rows;
+    in property <[McpDiscoveryRowData]> mcp-discovery-rows;
+    in property <[SkillRowData]> skill-rows;
+    in property <[MemoryRowData]> memory-rows;
+    in property <[SettingsRowData]> settings-rows;
+    callback app-action(string);
+
+    // Derived prerequisite state.
+    property <bool> has-profile: root.profile-rows.length > 0;
+    property <bool> can-send: root.compose-message != "" && root.has-profile;
+
+    title: "Fastrock";
+    preferred-width: 1320px;
+    preferred-height: 860px;
+    min-width: 1120px;
+    min-height: 620px;
+    background: Pal.app;
+
+    HorizontalLayout {
+        width: 100%;
+        height: 100%;
+        spacing: 0px;
+
+        // ---------------------------------------------------------------
+        // Left sidebar: project / conversation tree.
+        // ---------------------------------------------------------------
+        Rectangle {
+            width: 264px;
+            background: Pal.sidebar;
+
+            VerticalLayout {
+                padding: 12px;
+                spacing: 10px;
+
+                HorizontalLayout {
+                    height: 32px;
+                    spacing: 8px;
+
+                    Text {
+                        text: "Fastrock";
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: Pal.text-hi;
+                        vertical-alignment: center;
+                    }
+
+                    Rectangle {
+                        horizontal-stretch: 1;
+                    }
+
+                    add-button := Rectangle {
+                        width: 30px;
+                        height: 30px;
+                        background: add-touch.pressed ? Pal.control-press : add-touch.has-hover ? Pal.control-hover : Pal.control;
+                        border-width: 1px;
+                        border-color: Pal.line;
+                        border-radius: 7px;
+
+                        add-touch := TouchArea {
+                            mouse-cursor: MouseCursor.pointer;
+                            clicked => {
+                                root.app-action("conversation-new");
+                            }
+                        }
+
+                        Text {
+                            text: "+";
+                            font-size: 19px;
+                            color: Pal.text-hi;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+
+                        HoverTip {
+                            hovered: add-touch.has-hover;
+                            label: "Create a new chat";
+                            anchor-x: add-button.absolute-position.x - 180px;
+                            anchor-y: add-button.absolute-position.y + add-button.height;
+                        }
+                    }
+                }
+
+                SidebarActionButton {
+                    label: "New chat";
+                    tooltip: "Create a new chat";
+                    primary: true;
+                    activated => {
+                        root.app-action("conversation-new");
+                    }
+                }
+
+                Rectangle {
+                    height: 1px;
+                    background: Pal.line;
+                }
+
+                Text {
+                    text: "Projects";
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: Pal.text-dim;
+                }
+
+                ScrollArea {
+                    vertical-stretch: 1;
+
+                    VerticalLayout {
+                        spacing: 3px;
+
+                        VerticalLayout {
+                            visible: root.sidebar-tree-rows.length == 0;
+                            spacing: 6px;
+                            padding-top: 12px;
+
+                            Text {
+                                text: "No conversations yet";
+                                font-size: 12px;
+                                color: Pal.text-dim;
+                                horizontal-alignment: center;
+                            }
+
+                            Text {
+                                text: "Use New chat to begin.";
+                                font-size: 11px;
+                                color: Pal.text-faint;
+                                horizontal-alignment: center;
+                            }
+                        }
+
+                        for row in root.sidebar-tree-rows: SidebarTreeRow {
+                            row-id: row.row-id;
+                            kind: row.kind;
+                            project-folder-id: row.project-folder-id;
+                            conversation-id: row.conversation-id;
+                            title: row.title;
+                            subtitle: row.subtitle;
+                            status: row.status;
+                            depth: row.depth;
+                            expanded: row.expanded;
+                            selected: row.selected;
+                            tooltip: row.tooltip;
+                            action: row.action;
+                            activated(action) => {
+                                root.app-action(action);
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    height: 1px;
+                    background: Pal.line;
+                }
+
+                SidebarActionButton {
+                    label: "Settings";
+                    tooltip: "Open Fastrock settings";
+                    activated => {
+                        root.right-panel = "Settings";
+                    }
+                }
+
+                Text {
+                    text: root.status-text;
+                    font-size: 11px;
+                    color: Pal.text-faint;
+                    wrap: word-wrap;
+                }
+            }
+        }
+
+        Rectangle {
+            width: 1px;
+            background: Pal.line;
+        }
+
+        // ---------------------------------------------------------------
+        // Center: conversation transcript + composer.
+        // ---------------------------------------------------------------
+        Rectangle {
+            horizontal-stretch: 1;
+            min-width: 430px;
+            background: Pal.panel;
+
+            VerticalLayout {
+                padding: 0px;
+                spacing: 0px;
+
+                // Header.
+                Rectangle {
+                    height: 60px;
+                    background: Pal.header;
+
+                    HorizontalLayout {
+                        padding-left: 20px;
+                        padding-right: 20px;
+                        spacing: 12px;
+
+                        VerticalLayout {
+                            spacing: 3px;
+                            alignment: center;
+
+                            Text {
+                                text: root.active-conversation-title;
+                                font-size: 17px;
+                                font-weight: 600;
+                                color: Pal.text-hi;
+                                overflow: elide;
+                            }
+
+                            Text {
+                                text: root.active-folder + "   ·   " + root.active-profile;
+                                font-size: 12px;
+                                color: Pal.text-dim;
+                                overflow: elide;
+                            }
+                        }
+
+                        Rectangle {
+                            horizontal-stretch: 1;
+                        }
+                    }
+                }
+
+                Rectangle {
+                    height: 1px;
+                    background: Pal.line;
+                }
+
+                VerticalLayout {
+                    padding: 18px;
+                    spacing: 14px;
+
+                    // Prerequisite banner: no model profile yet.
+                    if !root.has-profile: NoticeBanner {
+                        title: "No model profile configured";
+                        body: "Add a Bedrock Mantle or Runtime profile in Settings before sending messages.";
+                        action-label: "Open Settings";
+                        action: "open-settings";
+                        tint: Pal.warn;
+                        tint-soft: Pal.warn-soft;
+                        activated(action) => {
+                            root.right-panel = "Settings";
+                        }
+                    }
+
+                    // Transcript.
+                    ScrollArea {
+                        vertical-stretch: 1;
+
+                        VerticalLayout {
+                            spacing: 12px;
+
+                            VerticalLayout {
+                                visible: root.transcript-blocks.length == 0;
+                                spacing: 8px;
+                                padding-top: 40px;
+
+                                Text {
+                                    text: "Start a conversation";
+                                    font-size: 16px;
+                                    font-weight: 600;
+                                    color: Pal.text;
+                                    horizontal-alignment: center;
+                                }
+
+                                Text {
+                                    text: root.has-profile
+                                        ? "Type a message below to begin."
+                                        : "Configure a model profile first, then type a message below.";
+                                    font-size: 13px;
+                                    color: Pal.text-dim;
+                                    horizontal-alignment: center;
+                                }
+                            }
+
+                            for block in root.transcript-blocks: TranscriptBlock {
+                                speaker: block.speaker;
+                                body: block.body;
+                                accent-kind: block.accent-kind;
+                            }
+                        }
+                    }
+
+                    // Composer options popover.
+                    Rectangle {
+                        visible: root.composer-menu-open;
+                        height: 184px;
+                        background: Pal.card-2;
+                        border-width: 1px;
+                        border-color: Pal.line-strong;
+                        border-radius: 10px;
+                        drop-shadow-blur: 16px;
+                        drop-shadow-color: #00000066;
+                        drop-shadow-offset-y: -2px;
+
+                        VerticalLayout {
+                            padding: 8px;
+                            spacing: 4px;
+
+                            PlanToggleRow {
+                                checked: root.plan-mode-enabled;
+                                tooltip: "Toggle read-only planning mode for the active conversation";
+                                toggled => {
+                                    root.app-action("plan-toggle");
+                                }
+                            }
+
+                            Rectangle {
+                                height: 1px;
+                                background: Pal.line;
+                            }
+
+                            ComposerMenuRow {
+                                label: "Settings";
+                                value: "open";
+                                tooltip: "Open Fastrock settings";
+                                activated => {
+                                    root.right-panel = "Settings";
+                                    root.composer-menu-open = false;
+                                }
+                            }
+
+                            ComposerMenuRow {
+                                label: "MCP servers";
+                                value: "open";
+                                tooltip: "Open MCP server and tool configuration";
+                                activated => {
+                                    root.right-panel = "MCP";
+                                    root.composer-menu-open = false;
+                                }
+                            }
+
+                            ComposerMenuRow {
+                                label: "Skills";
+                                value: "open";
+                                tooltip: "Open Skills configuration";
+                                activated => {
+                                    root.right-panel = "Skills";
+                                    root.composer-menu-open = false;
+                                }
+                            }
+                        }
+                    }
+
+                    // Composer.
+                    Rectangle {
+                        height: 96px;
+                        background: Pal.card;
+                        border-width: 1px;
+                        border-color: message-input.has-focus ? Pal.accent : Pal.line-strong;
+                        border-radius: 12px;
+
+                        VerticalLayout {
+                            padding-left: 12px;
+                            padding-right: 10px;
+                            padding-top: 8px;
+                            padding-bottom: 8px;
+                            spacing: 6px;
+
+                            // Input row.
+                            HorizontalLayout {
+                                spacing: 8px;
+                                vertical-stretch: 1;
+
+                                Rectangle {
+                                    horizontal-stretch: 1;
+                                    clip: true;
+
+                                    Text {
+                                        visible: root.compose-message == "";
+                                        text: root.has-profile ? "Message Fastrock" : "Add a model profile to start messaging";
+                                        x: 2px;
+                                        y: 4px;
+                                        font-size: 13px;
+                                        color: Pal.text-faint;
+                                    }
+
+                                    message-input := TextInput {
+                                        width: parent.width;
+                                        height: parent.height;
+                                        text <=> root.compose-message;
+                                        color: Pal.text-hi;
+                                        selection-background-color: Pal.accent;
+                                        selection-foreground-color: Pal.on-accent;
+                                        font-size: 13px;
+                                        wrap: word-wrap;
+                                        single-line: false;
+                                        key-pressed(event) => {
+                                            if (root.compose-message != "" && event.text == Key.Return &&
+                                                ((root.send-shortcut == "control-enter" && event.modifiers.control) ||
+                                                 (root.send-shortcut == "meta-enter" && event.modifiers.meta) ||
+                                                 (root.send-shortcut == "enter" && !event.modifiers.control && !event.modifiers.meta))) {
+                                                root.app-action("conversation-send:" + root.compose-message);
+                                                root.compose-message = "";
+                                                root.composer-menu-open = false;
+                                                return accept;
+                                            }
+                                            return reject;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Toolbar row: menu, context chips, shortcut hint, send.
+                            HorizontalLayout {
+                                height: 30px;
+                                spacing: 8px;
+
+                                menu-button := Rectangle {
+                                    width: 30px;
+                                    height: 30px;
+                                    background: menu-touch.pressed ? Pal.control-press : menu-touch.has-hover ? Pal.control-hover : Pal.control;
+                                    border-width: 1px;
+                                    border-color: Pal.line;
+                                    border-radius: 7px;
+
+                                    menu-touch := TouchArea {
+                                        mouse-cursor: MouseCursor.pointer;
+                                        clicked => {
+                                            root.composer-menu-open = !root.composer-menu-open;
+                                        }
+                                    }
+
+                                    Text {
+                                        text: "+";
+                                        font-size: 19px;
+                                        color: Pal.text;
+                                        horizontal-alignment: center;
+                                        vertical-alignment: center;
+                                    }
+
+                                    HoverTip {
+                                        hovered: menu-touch.has-hover;
+                                        label: "Plan mode, Settings, MCP, Skills";
+                                        anchor-x: menu-button.absolute-position.x;
+                                        anchor-y: menu-button.absolute-position.y - 48px;
+                                    }
+                                }
+
+                                StatusPill {
+                                    label: root.active-profile;
+                                    tooltip: "Active model profile";
+                                    pill-background: Pal.control;
+                                    pill-text-color: root.has-profile ? Pal.text-dim : Pal.warn;
+                                    interactive: false;
+                                }
+
+                                Rectangle {
+                                    horizontal-stretch: 1;
+                                }
+
+                                Text {
+                                    text: root.send-shortcut-label;
+                                    font-size: 10px;
+                                    color: Pal.text-faint;
+                                    vertical-alignment: center;
+                                }
+
+                                send-button := Rectangle {
+                                    width: 72px;
+                                    height: 30px;
+                                    background: !root.can-send
+                                        ? Pal.control-off
+                                        : (send-touch.pressed ? Pal.accent-hover : send-touch.has-hover ? Pal.accent-hover : Pal.accent);
+                                    border-radius: 8px;
+
+                                    send-touch := TouchArea {
+                                        enabled: root.can-send;
+                                        mouse-cursor: root.can-send ? MouseCursor.pointer : MouseCursor.not-allowed;
+                                        clicked => {
+                                            root.app-action("conversation-send:" + root.compose-message);
+                                            root.compose-message = "";
+                                            root.composer-menu-open = false;
+                                        }
+                                    }
+
+                                    Text {
+                                        text: "Send";
+                                        font-size: 12px;
+                                        font-weight: 600;
+                                        color: root.can-send ? Pal.on-accent : Pal.text-faint;
+                                        horizontal-alignment: center;
+                                        vertical-alignment: center;
+                                    }
+
+                                    HoverTip {
+                                        hovered: send-touch.has-hover;
+                                        label: !root.has-profile
+                                            ? "Add a model profile before sending"
+                                            : root.compose-message == ""
+                                                ? "Type a message to send"
+                                                : "Send message (" + root.send-shortcut-label + ")";
+                                        anchor-x: send-button.absolute-position.x - 180px;
+                                        anchor-y: send-button.absolute-position.y - 48px;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            width: 1px;
+            background: Pal.line;
+        }
+
+        // ---------------------------------------------------------------
+        // Right drawer: Files / Diff / MCP / Skills / Settings.
+        // ---------------------------------------------------------------
+        Rectangle {
+            width: 420px;
+            background: Pal.sidebar;
+
+            VerticalLayout {
+                padding: 14px;
+                spacing: 12px;
+
+                // Tab strip.
+                Rectangle {
+                    height: 36px;
+                    background: Pal.track;
+                    border-width: 1px;
+                    border-color: Pal.line;
+                    border-radius: 9px;
+
+                    HorizontalLayout {
+                        padding: 2px;
+                        spacing: 0px;
+
+                        TabLabel {
+                            label: "Files";
+                            tooltip: "Open file tabs and editor controls";
+                            selected: root.right-panel == "Files";
+                            activated(label) => {
+                                root.right-panel = label;
+                            }
+                        }
+
+                        TabLabel {
+                            label: "Diff";
+                            tooltip: "Show active file diff";
+                            selected: root.right-panel == "Diff";
+                            activated(label) => {
+                                root.right-panel = label;
+                            }
+                        }
+
+                        TabLabel {
+                            label: "MCP";
+                            tooltip: "Configure MCP servers and tools";
+                            selected: root.right-panel == "MCP";
+                            activated(label) => {
+                                root.right-panel = label;
+                            }
+                        }
+
+                        TabLabel {
+                            label: "Skills";
+                            tooltip: "Configure skills";
+                            selected: root.right-panel == "Skills";
+                            activated(label) => {
+                                root.right-panel = label;
+                            }
+                        }
+
+                        TabLabel {
+                            label: "Settings";
+                            tooltip: "Open Fastrock settings";
+                            selected: root.right-panel == "Settings";
+                            activated(label) => {
+                                root.right-panel = label;
+                            }
+                        }
+                    }
+                }
+
+                // Environment summary (hidden while Settings is the active panel).
+                if root.right-panel != "Settings": Rectangle {
+                    height: 72px;
+                    background: Pal.card;
+                    border-width: 1px;
+                    border-color: Pal.line;
+                    border-radius: 9px;
+
+                    VerticalLayout {
+                        padding: 10px;
+                        spacing: 5px;
+
+                        Text {
+                            text: "Environment";
+                            font-size: 11px;
+                            font-weight: 600;
+                            color: Pal.text-dim;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+
+                            Rectangle {
+                                width: 8px;
+                                height: 8px;
+                                y: 3px;
+                                border-radius: 4px;
+                                background: !root.rtk-enabled ? Pal.warn
+                                    : root.rtk-status == "ready" ? Pal.ok
+                                    : root.rtk-status == "missing" ? Pal.danger
+                                    : Pal.warn;
+                            }
+
+                            Text {
+                                text: root.rtk-enabled ? "RTK " + root.rtk-status + " · " + root.rtk-detail : "RTK wrapping disabled in Settings";
+                                font-size: 12px;
+                                color: Pal.text;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+                }
+
+                // -------------------------------------------------------
+                // Files panel.
+                // -------------------------------------------------------
+                if root.right-panel == "Files": Rectangle {
+                    background: Pal.card;
+                    border-width: 1px;
+                    border-color: Pal.line;
+                    border-radius: 9px;
+                    vertical-stretch: 1;
+
+                    VerticalLayout {
+                        padding: 12px;
+                        spacing: 10px;
+
+                        GroupCaption {
+                            text: "Open Tabs";
+                        }
+
+                        VerticalLayout {
+                            spacing: 4px;
+
+                            Text {
+                                visible: root.file-tab-rows.length == 0;
+                                text: "No open files. Open one from a tool result or the project tree.";
+                                font-size: 12px;
+                                color: Pal.text-dim;
+                                wrap: word-wrap;
+                            }
+
+                            for tab in root.file-tab-rows: FileTabRow {
+                                path: tab.path;
+                                dirty: tab.dirty;
+                                selected: tab.selected;
+                                activated(path) => {
+                                    root.app-action("editor-select:" + path);
+                                }
+                                close-requested(path) => {
+                                    root.app-action("editor-close:" + path);
+                                }
+                            }
+                        }
+
+                        GroupCaption {
+                            text: "Active File";
+                        }
+
+                        HorizontalLayout {
+                            height: 30px;
+                            spacing: 6px;
+
+                            ProfileActionButton {
+                                label: "Edit";
+                                action: "editor-append";
+                                tooltip: "Append a line to the active file";
+                                enabled: root.file-tab-rows.length > 0;
+                                activated(action) => {
+                                    root.app-action(action);
+                                }
+                            }
+
+                            ProfileActionButton {
+                                label: "Save";
+                                action: "editor-save";
+                                tooltip: "Save the active file";
+                                enabled: root.file-tab-rows.length > 0;
+                                activated(action) => {
+                                    root.app-action(action);
+                                }
+                            }
+
+                            ProfileActionButton {
+                                label: "Revert";
+                                action: "editor-revert";
+                                tooltip: "Revert unsaved changes";
+                                enabled: root.file-tab-rows.length > 0;
+                                activated(action) => {
+                                    root.app-action(action);
+                                }
+                            }
+
+                            Rectangle {
+                                horizontal-stretch: 1;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            height: 30px;
+                            spacing: 6px;
+
+                            ProfileActionButton {
+                                label: "Undo";
+                                action: "editor-undo";
+                                tooltip: "Undo last edit";
+                                enabled: root.file-tab-rows.length > 0;
+                                activated(action) => {
+                                    root.app-action(action);
+                                }
+                            }
+
+                            ProfileActionButton {
+                                label: "Redo";
+                                action: "editor-redo";
+                                tooltip: "Redo last undo";
+                                enabled: root.file-tab-rows.length > 0;
+                                activated(action) => {
+                                    root.app-action(action);
+                                }
+                            }
+
+                            ProfileActionButton {
+                                label: "Diff";
+                                action: "editor-diff";
+                                tooltip: "Show changes for the active file";
+                                enabled: root.file-tab-rows.length > 0;
+                                activated(action) => {
+                                    root.app-action(action);
+                                }
+                            }
+
+                            ProfileActionButton {
+                                label: "Find";
+                                action: "editor-find:Fastrock";
+                                tooltip: "Find in the active file";
+                                enabled: root.file-tab-rows.length > 0;
+                                activated(action) => {
+                                    root.app-action(action);
+                                }
+                            }
+
+                            ProfileActionButton {
+                                label: "Go to";
+                                action: "editor-goto:1";
+                                tooltip: "Go to a line";
+                                enabled: root.file-tab-rows.length > 0;
+                                activated(action) => {
+                                    root.app-action(action);
+                                }
+                            }
+
+                            Rectangle {
+                                horizontal-stretch: 1;
+                            }
+                        }
+
+                        ScrollArea {
+                            min-height: 328px;
+                            vertical-stretch: 1;
+                            background: Pal.track;
+                            border-width: 1px;
+                            border-color: Pal.line;
+                            border-radius: 7px;
+
+                            VerticalLayout {
+                                padding: 6px;
+                                spacing: 1px;
+
+                                for line in root.editor-line-rows: EditorLineRow {
+                                    line-number: line.line-number;
+                                    text: line.text;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // -------------------------------------------------------
+                // Diff panel.
+                // -------------------------------------------------------
+                if root.right-panel == "Diff": Rectangle {
+                    background: Pal.card;
+                    border-width: 1px;
+                    border-color: Pal.line;
+                    border-radius: 9px;
+                    vertical-stretch: 1;
+
+                    VerticalLayout {
+                        padding: 12px;
+                        spacing: 10px;
+
+                        GroupCaption {
+                            text: "Diff";
+                        }
+
+                        Text {
+                            text: root.diff-rows.length == 0 ? "No file change selected" : "Active file changes";
+                            font-size: 13px;
+                            color: Pal.text-dim;
+                        }
+
+                        ScrollArea {
+                            min-height: 168px;
+                            vertical-stretch: 1;
+
+                            VerticalLayout {
+                                spacing: 4px;
+
+                                for row in root.diff-rows: DiffRow {
+                                    line-number: row.line-number;
+                                    before: row.before;
+                                    after: row.after;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // -------------------------------------------------------
+                // Settings panel (full height, internally scrolled).
+                // -------------------------------------------------------
+                if root.right-panel == "Settings": Rectangle {
+                    background: Pal.card;
+                    border-width: 1px;
+                    border-color: Pal.line;
+                    border-radius: 9px;
+                    vertical-stretch: 1;
+
+                    ScrollArea {
+                        vertical-stretch: 1;
+
+                        VerticalLayout {
+                            padding: 14px;
+                            spacing: 18px;
+
+                            SectionTitle {
+                                text: "Settings";
+                            }
+
+                            // --- Runtime Preferences ---
+                            VerticalLayout {
+                                spacing: 8px;
+
+                                SectionTitle {
+                                    text: "Runtime Preferences";
+                                    font-size: 13px;
+                                }
+
+                                ToggleRow {
+                                    label: "RTK command wrapping";
+                                    hint: root.rtk-enabled
+                                        ? "Detected: RTK " + root.rtk-status + " · " + root.rtk-detail
+                                        : "Disabled — commands run without RTK token compression.";
+                                    checked: root.rtk-enabled;
+                                    action: "settings-toggle-rtk";
+                                    tooltip: "Disable external RTK wrapping for local command fallback";
+                                    activated(action) => {
+                                        root.app-action(action);
+                                    }
+                                }
+
+                                ToggleRow {
+                                    label: "Prompt compression";
+                                    hint: "Compresses model-facing context. Raw transcripts stay full.";
+                                    checked: root.prompt-compression-enabled;
+                                    action: "settings-toggle-prompt-compression";
+                                    tooltip: "Toggle model-facing token compression";
+                                    activated(action) => {
+                                        root.app-action(action);
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 10px;
+
+                                    GroupCaption {
+                                        text: "Compression level";
+                                        width: 130px;
+                                    }
+
+                                    SegmentTrack {
+                                        height: 34px;
+                                        horizontal-stretch: 1;
+
+                                        HorizontalLayout {
+                                            padding: 3px;
+                                            spacing: 3px;
+
+                                            SegmentButton {
+                                                label: "Lite";
+                                                action: "settings-compression-level:lite";
+                                                tooltip: "Light prompt compression";
+                                                active: root.prompt-compression-level == "Lite";
+                                                enabled: root.prompt-compression-enabled;
+                                                activated(action) => {
+                                                    root.app-action(action);
+                                                }
+                                            }
+
+                                            SegmentButton {
+                                                label: "Full";
+                                                action: "settings-compression-level:full";
+                                                tooltip: "Balanced prompt compression";
+                                                active: root.prompt-compression-level == "Full";
+                                                enabled: root.prompt-compression-enabled;
+                                                activated(action) => {
+                                                    root.app-action(action);
+                                                }
+                                            }
+
+                                            SegmentButton {
+                                                label: "Ultra";
+                                                action: "settings-compression-level:ultra";
+                                                tooltip: "Maximum prompt compression";
+                                                active: root.prompt-compression-level == "Ultra";
+                                                enabled: root.prompt-compression-enabled;
+                                                activated(action) => {
+                                                    root.app-action(action);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 10px;
+
+                                    GroupCaption {
+                                        text: "Send shortcut";
+                                        width: 130px;
+                                    }
+
+                                    SegmentTrack {
+                                        height: 34px;
+                                        horizontal-stretch: 1;
+
+                                        HorizontalLayout {
+                                            padding: 3px;
+                                            spacing: 3px;
+
+                                            SegmentButton {
+                                                label: "Ctrl+Enter";
+                                                action: "settings-send-shortcut:control-enter";
+                                                tooltip: "Send with Ctrl+Enter";
+                                                active: root.send-shortcut == "control-enter";
+                                                activated(action) => {
+                                                    root.app-action(action);
+                                                }
+                                            }
+
+                                            SegmentButton {
+                                                label: "Enter";
+                                                action: "settings-send-shortcut:enter";
+                                                tooltip: "Send with Enter";
+                                                active: root.send-shortcut == "enter";
+                                                activated(action) => {
+                                                    root.app-action(action);
+                                                }
+                                            }
+
+                                            SegmentButton {
+                                                label: "Meta+Enter";
+                                                action: "settings-send-shortcut:meta-enter";
+                                                tooltip: "Send with Meta+Enter";
+                                                active: root.send-shortcut == "meta-enter";
+                                                activated(action) => {
+                                                    root.app-action(action);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Rectangle { height: 1px; background: Pal.line; }
+
+                            // --- LLM Profiles ---
+                            VerticalLayout {
+                                spacing: 8px;
+
+                                SectionTitle {
+                                    text: "LLM Profiles";
+                                    font-size: 13px;
+                                }
+
+                                Text {
+                                    visible: !root.has-profile;
+                                    text: "No model profiles yet. Add one to enable conversations.";
+                                    font-size: 12px;
+                                    color: Pal.text-dim;
+                                    wrap: word-wrap;
+                                }
+
+                                HorizontalLayout {
+                                    height: 30px;
+                                    spacing: 6px;
+
+                                    GroupCaption { text: "Add"; width: 56px; }
+
+                                    ProfileActionButton {
+                                        label: "Bedrock Mantle";
+                                        action: "profile-draft-mantle";
+                                        tooltip: "Draft a new Bedrock Mantle profile";
+                                        primary: !root.has-profile;
+                                        activated(action) => {
+                                            root.app-action(action);
+                                        }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Bedrock Runtime";
+                                        action: "profile-draft-runtime";
+                                        tooltip: "Draft a new Bedrock Runtime profile";
+                                        activated(action) => {
+                                            root.app-action(action);
+                                        }
+                                    }
+
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+
+                                HorizontalLayout {
+                                    height: 30px;
+                                    spacing: 6px;
+
+                                    GroupCaption { text: "Selected"; width: 56px; }
+
+                                    ProfileActionButton {
+                                        label: "Save";
+                                        action: "profile-save";
+                                        tooltip: "Save the current draft";
+                                        enabled: root.has-profile;
+                                        activated(action) => {
+                                            root.app-action(action);
+                                        }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Edit";
+                                        action: "profile-edit";
+                                        tooltip: "Edit the selected profile";
+                                        enabled: root.has-profile;
+                                        activated(action) => {
+                                            root.app-action(action);
+                                        }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Duplicate";
+                                        action: "profile-copy";
+                                        tooltip: "Duplicate the selected profile";
+                                        enabled: root.has-profile;
+                                        activated(action) => {
+                                            root.app-action(action);
+                                        }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Delete";
+                                        action: "profile-delete";
+                                        tooltip: "Delete the selected profile";
+                                        enabled: root.has-profile;
+                                        activated(action) => {
+                                            root.app-action(action);
+                                        }
+                                    }
+
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+
+                                HorizontalLayout {
+                                    height: 30px;
+                                    spacing: 6px;
+
+                                    GroupCaption { text: "Probe"; width: 56px; }
+
+                                    ProfileActionButton {
+                                        label: "Discover models";
+                                        action: "profile-discover";
+                                        tooltip: "Discover models for the selected profile";
+                                        enabled: root.has-profile;
+                                        activated(action) => {
+                                            root.app-action(action);
+                                        }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Test connection";
+                                        action: "profile-test";
+                                        tooltip: "Test the selected profile endpoint";
+                                        enabled: root.has-profile;
+                                        activated(action) => {
+                                            root.app-action(action);
+                                        }
+                                    }
+
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+
+                                for profile in root.profile-rows: ProfileRow {
+                                    profile-id: profile.profile-id;
+                                    name: profile.name;
+                                    provider: profile.provider;
+                                    model: profile.model;
+                                    region: profile.region;
+                                    enabled: profile.enabled;
+                                    default-profile: profile.default-profile;
+                                    selected: profile.selected;
+                                    validation: profile.validation;
+                                    selected-requested(profile-id) => {
+                                        root.app-action("profile-select:" + profile-id);
+                                    }
+                                    toggle-requested(profile-id) => {
+                                        root.app-action("profile-toggle:" + profile-id);
+                                    }
+                                    default-requested(profile-id) => {
+                                        root.app-action("profile-default:" + profile-id);
+                                    }
+                                    copy-requested(profile-id) => {
+                                        root.app-action("profile-select:" + profile-id);
+                                        root.app-action("profile-copy");
+                                    }
+                                    delete-requested(profile-id) => {
+                                        root.app-action("profile-select:" + profile-id);
+                                        root.app-action("profile-delete");
+                                    }
+                                }
+                            }
+
+                            Rectangle { height: 1px; background: Pal.line; }
+
+                            // --- Request Tuning (requires a profile) ---
+                            VerticalLayout {
+                                spacing: 8px;
+
+                                SectionTitle {
+                                    text: "Request Tuning";
+                                    font-size: 13px;
+                                }
+
+                                Text {
+                                    visible: !root.has-profile;
+                                    text: "Select a profile to tune its requests.";
+                                    font-size: 12px;
+                                    color: Pal.text-dim;
+                                }
+
+                                HorizontalLayout {
+                                    height: 30px;
+                                    spacing: 6px;
+
+                                    GroupCaption { text: "Max tokens"; width: 96px; }
+
+                                    ProfileActionButton {
+                                        label: "4096";
+                                        action: "profile-tuning-max-4096";
+                                        tooltip: "Cap output at 4096 tokens";
+                                        enabled: root.has-profile;
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Off";
+                                        action: "profile-tuning-max-off";
+                                        tooltip: "No output token cap";
+                                        enabled: root.has-profile;
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+
+                                HorizontalLayout {
+                                    height: 30px;
+                                    spacing: 6px;
+
+                                    GroupCaption { text: "Temperature"; width: 96px; }
+
+                                    ProfileActionButton {
+                                        label: "0.2";
+                                        action: "profile-tuning-temp-02";
+                                        tooltip: "Set temperature to 0.2";
+                                        enabled: root.has-profile;
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Off";
+                                        action: "profile-tuning-temp-off";
+                                        tooltip: "Use provider default temperature";
+                                        enabled: root.has-profile;
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+
+                                HorizontalLayout {
+                                    height: 30px;
+                                    spacing: 6px;
+
+                                    GroupCaption { text: "Top-p"; width: 96px; }
+
+                                    ProfileActionButton {
+                                        label: "0.9";
+                                        action: "profile-tuning-topp-09";
+                                        tooltip: "Set top-p to 0.9";
+                                        enabled: root.has-profile;
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Off";
+                                        action: "profile-tuning-topp-off";
+                                        tooltip: "Use provider default top-p";
+                                        enabled: root.has-profile;
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+
+                                HorizontalLayout {
+                                    height: 30px;
+                                    spacing: 6px;
+
+                                    GroupCaption { text: "Timeout"; width: 96px; }
+
+                                    ProfileActionButton {
+                                        label: "120s";
+                                        action: "profile-tuning-timeout-120s";
+                                        tooltip: "Set request timeout to 120s";
+                                        enabled: root.has-profile;
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Off";
+                                        action: "profile-tuning-timeout-off";
+                                        tooltip: "No request timeout";
+                                        enabled: root.has-profile;
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+
+                                HorizontalLayout {
+                                    height: 30px;
+                                    spacing: 6px;
+
+                                    GroupCaption { text: "Retries"; width: 96px; }
+
+                                    ProfileActionButton {
+                                        label: "2";
+                                        action: "profile-tuning-retry-2";
+                                        tooltip: "Retry up to 2 times";
+                                        enabled: root.has-profile;
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Off";
+                                        action: "profile-tuning-retry-off";
+                                        tooltip: "No automatic retries";
+                                        enabled: root.has-profile;
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+                            }
+
+                            Rectangle { height: 1px; background: Pal.line; }
+
+                            // --- Goal ---
+                            VerticalLayout {
+                                spacing: 8px;
+
+                                SectionTitle {
+                                    text: "Goal";
+                                    font-size: 13px;
+                                }
+
+                                HorizontalLayout {
+                                    height: 30px;
+                                    spacing: 6px;
+
+                                    ProfileActionButton {
+                                        label: "Pause";
+                                        action: "goal-pause";
+                                        tooltip: "Pause the active goal";
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Resume";
+                                        action: "goal-resume";
+                                        tooltip: "Resume the active goal";
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Complete";
+                                        action: "goal-complete";
+                                        tooltip: "Mark the goal complete";
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Clear";
+                                        action: "goal-clear";
+                                        tooltip: "Clear the active goal";
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+                            }
+
+                            Rectangle { height: 1px; background: Pal.line; }
+
+                            // --- Command Policy ---
+                            VerticalLayout {
+                                spacing: 8px;
+
+                                SectionTitle {
+                                    text: "Command Policy";
+                                    font-size: 13px;
+                                }
+
+                                HorizontalLayout {
+                                    height: 30px;
+                                    spacing: 6px;
+
+                                    ProfileActionButton {
+                                        label: "Default";
+                                        action: "command-policy-default";
+                                        tooltip: "Commands run without approval";
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Disabled";
+                                        action: "command-policy-disabled";
+                                        tooltip: "Block all command execution";
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    ProfileActionButton {
+                                        label: "Locked down";
+                                        action: "command-policy-locked";
+                                        tooltip: "Allowlist with strict caps";
+                                        activated(action) => { root.app-action(action); }
+                                    }
+
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+                            }
+
+                            Rectangle { height: 1px; background: Pal.line; }
+
+                            // --- Current configuration (read-only) ---
+                            VerticalLayout {
+                                spacing: 4px;
+
+                                SectionTitle {
+                                    text: "Current configuration";
+                                    font-size: 13px;
+                                }
+
+                                GroupCaption {
+                                    text: "Read-only summary of the active profile and conversation.";
+                                }
+
+                                for setting in root.settings-rows: SettingsRow {
+                                    name: setting.name;
+                                    value: setting.value;
+                                }
+                            }
+
+                            Rectangle { height: 1px; background: Pal.line; }
+
+                            // --- Memory ---
+                            VerticalLayout {
+                                spacing: 8px;
+
+                                SectionTitle {
+                                    text: "Memory";
+                                    font-size: 13px;
+                                }
+
+                                Text {
+                                    visible: root.memory-rows.length == 0;
+                                    text: "No memory records.";
+                                    font-size: 12px;
+                                    color: Pal.text-dim;
+                                }
+
+                                for memory in root.memory-rows: MemoryRow {
+                                    record-id: memory.record-id;
+                                    kind: memory.kind;
+                                    scope: memory.scope;
+                                    source: memory.source;
+                                    status: memory.status;
+                                    preview: memory.preview;
+                                    inspect-requested(record-id) => {
+                                        root.app-action("memory-inspect:" + record-id);
+                                    }
+                                    toggle-requested(record-id) => {
+                                        root.app-action("memory-toggle:" + record-id);
+                                    }
+                                    delete-requested(record-id) => {
+                                        root.app-action("memory-delete:" + record-id);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // -------------------------------------------------------
+                // MCP panel.
+                // -------------------------------------------------------
+                if root.right-panel == "MCP": Rectangle {
+                    background: Pal.card;
+                    border-width: 1px;
+                    border-color: Pal.line;
+                    border-radius: 9px;
+                    vertical-stretch: 1;
+
+                    ScrollArea {
+                        vertical-stretch: 1;
+
+                        VerticalLayout {
+                            padding: 12px;
+                            spacing: 10px;
+
+                            HorizontalLayout {
+                                spacing: 8px;
+
+                                SectionTitle {
+                                    text: "MCP Servers";
+                                    font-size: 13px;
+                                    vertical-alignment: center;
+                                }
+
+                                Rectangle { horizontal-stretch: 1; }
+
+                                ProfileActionButton {
+                                    label: "Add server";
+                                    action: "mcp-add";
+                                    tooltip: "Add an MCP server";
+                                    primary: true;
+                                    activated(action) => {
+                                        root.app-action(action);
+                                    }
+                                }
+                            }
+
+                            Text {
+                                visible: root.mcp-server-rows.length == 0;
+                                text: "No MCP servers configured.";
+                                font-size: 12px;
+                                color: Pal.text-dim;
+                            }
+
+                            for server in root.mcp-server-rows: McpServerRow {
+                                server-id: server.server-id;
+                                name: server.name;
+                                scope: server.scope;
+                                transport: server.transport;
+                                status: server.status;
+                                details: server.details;
+                                edit-requested(server-id) => {
+                                    root.app-action("mcp-edit:" + server-id);
+                                }
+                                toggle-requested(server-id) => {
+                                    root.app-action("mcp-toggle:" + server-id);
+                                }
+                                restart-requested(server-id) => {
+                                    root.app-action("mcp-restart:" + server-id);
+                                }
+                                delete-requested(server-id) => {
+                                    root.app-action("mcp-delete:" + server-id);
+                                }
+                            }
+
+                            GroupCaption {
+                                text: "MCP Tools";
+                            }
+
+                            Text {
+                                visible: root.mcp-tool-rows.length == 0;
+                                text: "No tools discovered yet.";
+                                font-size: 12px;
+                                color: Pal.text-dim;
+                            }
+
+                            for tool in root.mcp-tool-rows: McpToolRow {
+                                server-id: tool.server-id;
+                                tool-name: tool.tool-name;
+                                policy: tool.policy;
+                                discovered: tool.discovered;
+                                disabled: tool.disabled;
+                                always-allowed: tool.always-allowed;
+                                disable-action: tool.disable-action;
+                                allow-action: tool.allow-action;
+                                action-requested(action) => {
+                                    root.app-action(action);
+                                }
+                            }
+
+                            GroupCaption {
+                                text: "MCP Resources";
+                            }
+
+                            Text {
+                                visible: root.mcp-discovery-rows.length == 0;
+                                text: "No resources discovered yet.";
+                                font-size: 12px;
+                                color: Pal.text-dim;
+                            }
+
+                            for item in root.mcp-discovery-rows: McpDiscoveryRow {
+                                server-id: item.server-id;
+                                kind: item.kind;
+                                name: item.name;
+                            }
+                        }
+                    }
+                }
+
+                // -------------------------------------------------------
+                // Skills panel.
+                // -------------------------------------------------------
+                if root.right-panel == "Skills": Rectangle {
+                    background: Pal.card;
+                    border-width: 1px;
+                    border-color: Pal.line;
+                    border-radius: 9px;
+                    vertical-stretch: 1;
+
+                    ScrollArea {
+                        vertical-stretch: 1;
+
+                        VerticalLayout {
+                            padding: 12px;
+                            spacing: 10px;
+
+                            HorizontalLayout {
+                                spacing: 8px;
+
+                                SectionTitle {
+                                    text: "Skills";
+                                    font-size: 13px;
+                                    vertical-alignment: center;
+                                }
+
+                                Rectangle { horizontal-stretch: 1; }
+
+                                ProfileActionButton {
+                                    label: "Create skill";
+                                    action: "skill-create";
+                                    tooltip: "Create a new skill";
+                                    primary: true;
+                                    activated(action) => {
+                                        root.app-action(action);
+                                    }
+                                }
+                            }
+
+                            Text {
+                                visible: root.skill-rows.length == 0;
+                                text: "No skills found.";
+                                font-size: 12px;
+                                color: Pal.text-dim;
+                            }
+
+                            for skill in root.skill-rows: SkillRow {
+                                name: skill.name;
+                                scope: skill.scope;
+                                modes: skill.modes;
+                                status: skill.status;
+                                edit-requested(name) => {
+                                    root.app-action("skill-edit:" + name);
+                                }
+                                mode-requested(name) => {
+                                    root.app-action("skill-mode:" + name);
+                                }
+                                scope-requested(name) => {
+                                    root.app-action("skill-scope:" + name);
+                                }
+                                delete-requested(name) => {
+                                    root.app-action("skill-delete:" + name);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Single window-level tooltip overlay (V21). Plain Rectangle at the window
+    // root: top z-order so it is never clipped, no TouchArea so it never grabs
+    // the pointer, and no focus so it never interrupts the composer.
+    tooltip-overlay := Rectangle {
+        visible: Tip.visible && Tip.text != "";
+        x: min(max(Tip.anchor-x, 8px), root.width - 268px);
+        y: min(max(Tip.anchor-y + 4px, 8px), root.height - 48px);
+        width: 260px;
+        height: 44px;
+        background: #2a2d34;
+        border-width: 1px;
+        border-color: Pal.line-strong;
+        border-radius: 6px;
+        drop-shadow-blur: 12px;
+        drop-shadow-color: #00000099;
+        drop-shadow-offset-y: 3px;
+
+        Text {
+            x: 10px;
+            width: parent.width - 20px;
+            height: 100%;
+            text: Tip.text;
+            font-size: 11px;
+            color: Pal.text-hi;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+    }
+}

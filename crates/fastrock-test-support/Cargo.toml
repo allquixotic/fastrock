@@ -1,0 +1,18 @@
+[package]
+name = "fastrock-test-support"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+fastrock-bedrock = { path = "../fastrock-bedrock" }
+fastrock-mcp = { path = "../fastrock-mcp" }
+fastrock-projects = { path = "../fastrock-projects" }
+fastrock-rtk = { path = "../fastrock-rtk" }
+
+[dev-dependencies]
+crc32fast.workspace = true
+fastrock-core = { path = "../fastrock-core" }
+fastrock-editor = { path = "../fastrock-editor" }
+tokio.workspace = true

@@ -1,0 +1,15 @@
+[package]
+name = "fastrock-projects"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+fastrock-rtk = { path = "../fastrock-rtk" }
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
