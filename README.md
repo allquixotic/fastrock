@@ -149,7 +149,8 @@ helper must accompany the executable.
 
 See [architecture and limits](docs/ARCHITECTURE.md) and
 [validation](docs/VALIDATION.md). Apache-2.0; dependency notices are in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Complete distribution notices
+are also embedded in the signed executable and available through `fastrock --licenses`.
 
 Right-click a document tab to **Pop out into new window** or **Move to another
 window**. Windows share one installed Codex app-server. The source tab closes

@@ -86,6 +86,12 @@ jobs:
         env:
           FASTROCK_WINDOWS_PUBLISHER: ${{ vars.FASTROCK_WINDOWS_PUBLISHER }}
         run: go run dev/package.go -os windows -arch amd64 -version '${{ github.ref_name }}' -phase package
+      - name: Verify packaged Windows updater compatibility
+        env:
+          FASTROCK_WINDOWS_PACKAGE_ARCHIVE: ${{ github.workspace }}/dist/fastrock-windows-amd64.zip
+          FASTROCK_PACKAGE_VERSION: ${{ github.ref_name }}
+          FASTROCK_PACKAGE_TRUSTED_EXECUTABLE: ${{ github.workspace }}/build/release/windows-amd64/fastrock.exe
+        run: go test ./internal/update -run TestV78PackagedWindows -count=1
       - name: Attest signed Windows distribution and executable
         uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
         with:

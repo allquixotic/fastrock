@@ -137,6 +137,11 @@ func main() {
 		if d.IsDir() {
 			return nil
 		}
+		// The installed Windows updater accepts only this one entry. Notices
+		// travel inside the signed executable and are available via --licenses.
+		if *goos == "windows" && path != filepath.Join(root, "fastrock.exe") {
+			return nil
+		}
 		info, e := d.Info()
 		if e != nil {
 			return e

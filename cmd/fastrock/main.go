@@ -12,6 +12,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/allquixotic/fastrock"
 	"github.com/allquixotic/fastrock/internal/buildinfo"
 	"github.com/allquixotic/fastrock/internal/codex"
 	"github.com/allquixotic/fastrock/internal/platform"
@@ -24,6 +25,7 @@ func main() { os.Exit(run()) }
 func run() int {
 	doctor := flag.Bool("doctor", false, "Check installed Codex and its protocol without opening a window")
 	version := flag.Bool("version", false, "Print Fastrock version")
+	licenses := flag.Bool("licenses", false, "Print bundled license notices without opening a window")
 	popout := flag.String("popout", "", "Internal window transfer ticket")
 	applyUpdate := flag.String("apply-update", "", "Internal deferred update job")
 	flag.Parse()
@@ -42,6 +44,10 @@ func run() int {
 	}
 	if *version {
 		fmt.Println("Fastrock " + buildinfo.Version)
+		return 0
+	}
+	if *licenses {
+		fmt.Print(fastrock.LicenseNotices())
 		return 0
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)

@@ -1,11 +1,32 @@
 package update
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestV78PackagedWindowsPublisher(t *testing.T) {
+	archive := os.Getenv("FASTROCK_WINDOWS_PACKAGE_ARCHIVE")
+	trusted := os.Getenv("FASTROCK_PACKAGE_TRUSTED_EXECUTABLE")
+	if archive == "" || trusted == "" {
+		t.Skip("set packaged archive and trusted signed executable paths")
+	}
+	dir := t.TempDir()
+	if err := extract(archive, dir, "windows"); err != nil {
+		t.Fatal(err)
+	}
+	want, err := signedPublisher(trusted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := signedPublisher(filepath.Join(dir, "fastrock.exe"))
+	if err != nil || got != want {
+		t.Fatal(fmt.Errorf("extracted update publisher %q, expected %q: %v", got, want, err))
+	}
+}
 
 func TestV72AuthenticodeIgnoresParentPowerShellModules(t *testing.T) {
 	// A PowerShell 7 parent can put incompatible modules ahead of Windows

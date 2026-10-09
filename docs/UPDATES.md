@@ -43,6 +43,14 @@ C compiler or administrator installation is used. Settings and credentials stay
 in their existing per-user locations. A failed initial install/shortcut operation
 is reported; the downloaded binary remains usable.
 
+Windows update ZIPs contain only `fastrock.exe`, matching the archive contract
+used by installed updaters. Complete license notices are embedded in the signed
+executable; `fastrock.exe --licenses` prints them without opening the GUI or
+starting Codex. macOS bundles also retain their separate license resource files.
+Versions through 0.1.3 accidentally packaged a top-level `licenses/` directory,
+which the updater rejects as unexpected content. Version 0.1.4 fixes the archive
+format, so existing updaters can stage it without loosening archive validation.
+
 Versions before 0.1.3 can hide the managed window during installation relaunch or
 post-update restart. Version 0.1.3 launches the GUI visibly while keeping the
 update helper hidden. If an older managed copy cannot open to update itself,
@@ -75,6 +83,14 @@ both first installation and relaunch into an existing installation, a painted
 window before Codex starts, idle CPU and clean shutdown. It isolates application
 state and restores the user's Start menu shortcut. It also works with an
 executable extracted from a published release; no automation build tag is needed.
+For replacement/restart validation, copy the new executable, a signed previous
+release named `previous-fastrock.exe`, and the local Codex fixture into another
+fresh directory. Run `dev/windows-update.ps1 -Root DIRECTORY -Version vX.Y.Z`.
+It uses the previous release's real updater to wait for shutdown, authenticate
+and replace the executable, restart visibly, and close cleanly. State is isolated
+and the user's Start menu shortcut is restored. CI separately feeds the actual
+Windows ZIP through download, extraction, signed version checks and staging,
+then verifies the extracted publisher before allowing publication.
 
 On a provisioned Mac:
 
