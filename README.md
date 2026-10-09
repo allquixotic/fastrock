@@ -32,7 +32,8 @@ make check         # vet and headless tests, no GUI launched
 
 On Windows, `powershell -ExecutionPolicy Bypass -File dev/build.ps1` produces
 `build/fastrock.exe`. Run it from a terminal whose PATH includes Codex, or arrange
-that PATH for your desktop login. The generated macOS app bundle is unsigned. No GUI tests are run on macOS.
+that PATH for your desktop login. The generated macOS app bundle is unsigned.
+No GUI tests are run on macOS.
 
 ## Codex conversations
 
@@ -49,8 +50,10 @@ provider configuration. Model, reasoning effort and speed selectors use the
 app-server catalog. **GPT-6.1-Sol Ultrafast with AWS Bedrock** is available when the
 installed Codex and its provider advertise that tier. If they do not, Fastrock
 explains the mismatch and keeps other available configurations usable. It never
-silently substitutes a provider or speed. Settings can inspect account/MCP/skills
-and read or edit Codex's own configuration through its API.
+silently substitutes a provider or speed. Settings supports account sign-in, provider setup, MCP/skills/plugins/hooks,
+keyboard bindings, and Codex configuration through its API. Local model discovery
+and downloads use the configured local server; all inference still goes through
+Codex. Restart Codex from Settings to apply provider changes across open windows.
 
 ## Rally
 
@@ -118,3 +121,16 @@ helper must accompany the executable.
 See [architecture and limits](docs/ARCHITECTURE.md) and
 [validation](docs/VALIDATION.md). Apache-2.0; dependency notices are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Right-click a document tab to **Pop out into new window** or **Move to another
+window**. Windows share one installed Codex app-server. The source tab closes
+only after the destination acknowledges its state; drafts and rich formatting
+move with it. Closing the original window leaves other windows running.
+
+Rally boards load pages as the viewport needs them. There is no story-count
+setting. Refresh remains available above board and detail views. The working
+set retains at most 2,048 lightweight cards per view and 24 MiB of cached API
+pages; idle views and transcripts are evicted under memory pressure. Fastrock
+measures aggregate resident memory across its windows separately from Codex.
+
+See [interaction coverage](docs/INTERACTIONS.md) for the source audit and remaining parity work.

@@ -50,9 +50,9 @@ The repeated 1,000-story filter benchmark, on the same Apple M5 Max and Go 1.27.
 
 | Operation | Before | After |
 | --- | --- | --- |
-| Unchanged board filter | 99,731 ns, 104,193 B, 2,001 allocations | 7.6 ns, 0 B, 0 allocations |
-| Unchanged 3,600-character editor snapshot | — | 1,851 ns, 0 B, 0 allocations |
-| Cached font measurement | — | 16.5 ns, 0 B, 0 allocations |
+| Unchanged board filter | 99,731 ns, 104,193 B, 2,001 allocations | 7.9 ns, 0 B, 0 allocations |
+| Unchanged 3,600-character editor snapshot | — | 1,945 ns, 0 B, 0 allocations |
+| Cached font measurement | — | 16.4 ns, 0 B, 0 allocations |
 
 These measure reuse after the first calculation, **not** initial filtering or
 whole-frame rendering. Tests also assert zero allocations when reusing board
@@ -67,3 +67,27 @@ CGO_ENABLED=0 GOTOOLCHAIN=go1.27.2 go test -tags=nucular_headless \
   -run '^$' -bench 'Benchmark(BoardFilter|EditorSnapshot|FontWidthCached)$' \
   -benchmem ./internal/ui
 ```
+
+## Native windows, streaming and responsiveness
+
+`dev/windows-popout.ps1` additionally exercises a 10,000-story fixture:
+128-row demand paging past the 2,048-card resident window, manual refresh,
+server filtering, unsaved formatted story transfer, live chat transfer, unsent
+composer preservation, Codex restart, and survival of both pop-outs after the
+original window closes. One installed app-server serves all windows. The final
+restart/pop-out run completed without failed assertions; 214 draw callbacks,
+maximum 8.88 ms, reported 174 MiB aggregate RSS at the last in-app sample.
+A subsequent post-close sample measured 261.0 MiB RSS and 464.9 MiB private
+committed memory across the three Fastrock processes, excluding Codex and fixtures.
+These are fixture measurements, not a guarantee for arbitrary window counts or data.
+
+Additional headless regression tests cover expiring/acknowledged/cancelled window
+transfers, restart with connected windows, duplicate-page draft isolation, cached
+page ownership and invalidation during in-flight requests, failure backoff,
+UTF-8 file boundaries, secret file contents excluded from session snapshots,
+configuration key quoting/layer origins, approval decisions, MCP schema validation,
+caret-local completion, styled Markdown tables, cross-window chat discovery and
+native soft wrapping, direct rich-text selection and source line/column links.
+Physical Escape, Ctrl+Comma and image paste are also verified. All tests use
+deterministic or local data. Detailed interaction coverage is in
+[INTERACTIONS.md](INTERACTIONS.md).

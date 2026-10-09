@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/csv"
-	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/aarzilli/nucular/rect"
 	"github.com/allquixotic/fastrock/internal/platform"
 	"github.com/allquixotic/fastrock/internal/rally"
+	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
 )
@@ -77,17 +79,13 @@ func (a *App) openURL(target string) {
 	})
 }
 func (a *App) exportChat(c *workspace.Conversation) {
-	var b strings.Builder
-	for _, block := range c.Blocks {
-		fmt.Fprintf(&b, "## %s\n\n%s\n\n", block.Role, block.Text)
-	}
-	data := []byte(b.String())
+	blocks := append([]workspace.Block(nil), c.Blocks...)
 	a.choosePath(true, false, func(path string) {
 		a.work(func() {
-			e := os.WriteFile(path, data, 0600)
+			err := os.WriteFile(path, []byte(transcriptText(blocks)), 0600)
 			a.post(func() {
-				if e != nil {
-					a.report(e)
+				if err != nil {
+					a.report(err)
 				} else {
 					a.toast = "Exported conversation"
 				}
@@ -96,7 +94,7 @@ func (a *App) exportChat(c *workspace.Conversation) {
 	})
 }
 func (a *App) exportRally(v *rallyView) {
-	items := v.filtered()
+	items := append([]rally.Object(nil), v.filtered()...)
 	columns := append([]string{}, v.Columns...)
 	a.choosePath(true, false, func(path string) {
 		a.work(func() {
@@ -157,49 +155,89 @@ func (a *App) downloadAttachment(o rally.Object) {
 func (a *App) shortcuts(w *nucular.Window) {
 	primaryKey := platform.PrimaryModifier()
 	for event := range w.Input().Keyboard.Events() {
-		if event.HandleKey(key.CodeT, primaryKey|key.ModShift) {
-			if a.prefs.Theme == "dark" {
-				a.prefs.Theme = "light"
-			} else {
-				a.prefs.Theme = "dark"
+		if a.approvalKey(event) {
+			continue
+		}
+		if a.recordShortcut != "" && event.HandleKeyAny() {
+			e := event.Key()
+			if e.Code == key.CodeEscape {
+				a.recordShortcut = ""
+				continue
 			}
-			a.theme()
+			if e.Code >= key.CodeLeftControl && e.Code <= key.CodeRightGUI {
+				continue
+			}
+			id := a.recordShortcut
+			a.recordShortcut = ""
+			binding := settings.KeyBinding{Code: int(e.Code), Mods: uint32(e.Modifiers)}
+			apply := func() {
+				if a.prefs.Keymap == nil {
+					a.prefs.Keymap = map[string]settings.KeyBinding{}
+				}
+				a.prefs.Keymap[id] = binding
+				a.savePrefs()
+			}
+			conflict := ""
+			for _, s := range shellActions() {
+				code, mods := s.Code, s.Mods
+				if k, ok := a.prefs.Keymap[s.ID]; ok {
+					code = key.Code(k.Code)
+					mods = key.Modifiers(k.Mods)
+				}
+				if s.ID != id && code == e.Code && mods == e.Modifiers {
+					conflict = s.Title
+					break
+				}
+			}
+			if conflict != "" {
+				a.confirm("Shortcut conflict", "This also runs "+conflict+". Replace that shortcut?", func() {
+					if a.prefs.Keymap == nil {
+						a.prefs.Keymap = map[string]settings.KeyBinding{}
+					}
+					for _, s := range shellActions() {
+						k, ok := a.prefs.Keymap[s.ID]
+						if !ok {
+							k = settings.KeyBinding{Code: int(s.Code), Mods: uint32(s.Mods)}
+						}
+						if s.ID != id && k == binding {
+							a.prefs.Keymap[s.ID] = settings.KeyBinding{}
+						}
+					}
+					apply()
+				})
+			} else {
+				apply()
+			}
 			continue
 		}
-		if event.HandleKey(key.CodeP, primaryKey|key.ModShift) {
-			a.paletteOpen = !a.paletteOpen
-			continue
+		matched := false
+		for _, s := range shellActions() {
+			code, mods := s.Code, s.Mods
+			if k, ok := a.prefs.Keymap[s.ID]; ok {
+				if k.Code == 0 {
+					continue
+				}
+				code = key.Code(k.Code)
+				mods = key.Modifiers(k.Mods)
+			}
+			if event.HandleKey(code, mods) {
+				a.runAction(s.ID)
+				matched = true
+				break
+			}
 		}
-		if event.HandleKey(key.CodeT, primaryKey) {
-			a.state.Open(workspace.New, "New tab", "", "")
-			continue
-		}
-		if event.HandleKey(key.CodeW, primaryKey) {
-			a.state.Close(a.state.Active)
-			continue
-		}
-		if event.HandleKey(key.CodeComma, primaryKey) {
-			a.openSettings()
-			continue
-		}
-		if event.HandleKey(key.CodeEscape, 0) {
-			a.paletteOpen = false
+		if matched {
 			continue
 		}
 		tab := a.state.Current()
 		if tab == nil {
 			continue
 		}
-		if event.HandleKey(key.CodeTab, key.ModControl) {
-			a.nextTab(1)
-			continue
-		}
-		if event.HandleKey(key.CodeTab, key.ModControl|key.ModShift) {
-			a.nextTab(-1)
-			continue
-		}
 		if tab.Kind == workspace.Rally {
 			v := a.rallyViews[tab.ID]
+			if v == nil {
+				continue
+			}
 			if event.HandleKey(key.CodeR, primaryKey) {
 				a.refreshRally(v)
 			}
@@ -207,17 +245,47 @@ func (a *App) shortcuts(w *nucular.Window) {
 				a.saveDetail(v)
 			}
 		}
-		if tab.Kind == workspace.Chat {
-			c := a.state.Chats[tab.Target]
-			v := a.chats[tab.Target]
-			if c != nil && v != nil && v.Editor.Active && a.prefs.EnterSends {
-				if event.HandleKey(key.CodeReturnEnter, 0) {
-					a.send(c, "send")
+		if tab.Kind == workspace.File {
+			v := a.files[tab.ID]
+			if v != nil {
+				if event.HandleKey(key.CodeF, primaryKey) {
+					v.FindOpen = true
 				}
+				if event.HandleKey(key.CodeG, primaryKey) {
+					a.fileFind(v, false)
+				}
+			}
+		}
+		if tab.Kind == workspace.Chat {
+			c, v := a.state.Chats[tab.Target], a.chats[tab.Target]
+			if c != nil && v != nil && v.Editor.Active && len(v.Suggest) > 0 {
+				if event.HandleKey(key.CodeUpArrow, 0) {
+					v.SuggestIndex = max(0, v.SuggestIndex-1)
+					continue
+				}
+				if event.HandleKey(key.CodeDownArrow, 0) {
+					v.SuggestIndex = min(len(v.Suggest)-1, v.SuggestIndex+1)
+					continue
+				}
+				if event.HandleKey(key.CodeTab, 0) {
+					acceptSuggestion(v)
+					continue
+				}
+			}
+			if c != nil && v != nil && v.Editor.Active && event.HandleKey(key.CodeV, primaryKey) {
+				a.pasteComposer(v)
+				continue
+			}
+			if c != nil && v != nil && v.Editor.Active && a.prefs.EnterSends && event.HandleKey(key.CodeReturnEnter, 0) {
+				a.send(c, "send")
+			}
+			if c != nil && v != nil && v.Editor.Active && event.HandleKey(key.CodeReturnEnter, primaryKey) {
+				a.send(c, "send")
 			}
 		}
 	}
 }
+
 func (a *App) nextTab(direction int) {
 	for i, t := range a.state.Tabs {
 		if t.ID == a.state.Active {
@@ -266,4 +334,78 @@ func (a *App) drawPalette() {
 			}
 		}
 	})
+}
+
+func (a *App) openLink(target string) {
+	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
+		a.openURL(target)
+	} else {
+		path, line, column := fileLocation(target)
+		if path == "" {
+			a.toast = "Unsupported link"
+			return
+		}
+		if !filepath.IsAbs(path) {
+			cwd := a.prefs.WorkingDirectory
+			if tab := a.state.Current(); tab != nil {
+				if c := a.state.Chats[tab.Target]; c != nil {
+					cwd = c.Cwd
+				}
+			}
+			path = filepath.Join(cwd, path)
+		}
+		a.openFile(path)
+		if tab := a.state.Current(); tab != nil && line > 0 {
+			if v := a.files[tab.ID]; v != nil {
+				v.PendingLine, v.PendingColumn = line, column
+				a.goToFileLine(v, line, column)
+			}
+		}
+	}
+}
+
+func fileLocation(target string) (string, int, int) {
+	line, column := 0, 1
+	if strings.HasPrefix(target, "file://") {
+		u, err := url.Parse(target)
+		if err != nil {
+			return "", 0, 0
+		}
+		target = u.Path
+		if u.Host != "" {
+			target = "//" + u.Host + target
+		}
+		if len(target) > 3 && target[0] == '/' && target[2] == ':' {
+			target = target[1:]
+		}
+		if u.Fragment != "" {
+			target += "#" + u.Fragment
+		}
+	} else if strings.Contains(target, "://") {
+		return "", 0, 0
+	}
+	if i := strings.LastIndex(target, "#L"); i >= 0 {
+		location := target[i+2:]
+		target = target[:i]
+		if j := strings.IndexByte(location, 'C'); j >= 0 {
+			column, _ = strconv.Atoi(location[j+1:])
+			location = location[:j]
+		}
+		if j := strings.IndexByte(location, '-'); j >= 0 {
+			location = location[:j]
+		}
+		line, _ = strconv.Atoi(location)
+	} else if i := strings.LastIndexByte(target, ':'); i >= 0 {
+		if n, err := strconv.Atoi(target[i+1:]); err == nil && n > 0 {
+			line = n
+			target = target[:i]
+			if j := strings.LastIndexByte(target, ':'); j >= 0 {
+				if n, err := strconv.Atoi(target[j+1:]); err == nil && n > 0 {
+					column, line = line, n
+					target = target[:j]
+				}
+			}
+		}
+	}
+	return target, max(0, line), max(1, column)
 }

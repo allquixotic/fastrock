@@ -6,7 +6,9 @@ under `internal` are separated from the deterministic mock servers in
 No fixture records are loaded by the application.
 
 - `codex`: lifecycle, newline JSON-RPC, request cancellation, events, capability
-  catalog and service tiers. All inference is delegated to `codex app-server`.
+  catalog and service tiers. An authenticated loopback broker multiplexes native
+  windows over one installed `codex app-server`. A server restart keeps window
+  connections and unsent drafts; active turns stop.
 - `rally`: direct WSAPI v2.0 authentication, scopes, pagination, metadata, CRUD and
   attachments. Absolute references must stay on the configured origin and under
   its WSAPI path. Redirects are disabled to keep tokens on that origin. GET retries
@@ -45,12 +47,49 @@ beyond the supplied core WSAPI workflows. Current-scope charts are labeled as
 such. Timelines display planned dates; they are not historical burndown charts.
 
 The Codex shell exposes app-server conversations, approvals and configuration.
-The Settings account/MCP/skills pages inspect the server's results; provider setup
-and CLI sign-in remain in Codex. Local file documents are read-only viewers.
-This is a functional native rewrite, not a pixel-identical rendering of Slint or
-an implementation of every unrelated Codex desktop service.
+Native Settings support account sign-in, Bedrock setup, local model discovery
+and downloads, MCP configuration/OAuth, skills, plugins, hooks, features, memories,
+imports, feedback, sandbox setup, keyboard bindings and version-checked config
+edits. The installed CLI owns accounts and inference configuration. Local files
+are read-only viewers with bounded paging.
+
+The source-based interaction audit and remaining differences are recorded in
+[INTERACTIONS.md](INTERACTIONS.md). Full widget-for-widget parity is not yet
+complete; the audit distinguishes implemented behavior from unfinished details.
 
 Rally writes enforce origin checks and reviewed revisions but cannot provide
 server-side transactional compare-and-swap across artifacts. A concurrent edit
 between the final GET and POST is still possible with WSAPI. Batch results retain
 the number of completed changes and require a fresh review after a failure.
+
+## Window and memory ownership
+
+Each native window uses its own Ebitengine process. A 256-bit environment-only
+secret authenticates the loopback connection. Transfers use expiring tickets:
+reserve, initial snapshot, rendered readiness, final snapshot, destination applied
+acknowledgement, then source removal. Cancellation retains the source document.
+Stable document identities keep separate drafts when both windows show the same
+Rally page. Server notifications carry sequence numbers; approvals route to the
+owning window. The original process hosts services until the last window closes.
+
+Open-chat metadata is published to the broker only when it changes. Cross-window
+messages retain human delivery approval; only bounded matching replies are observed
+by the sender. Mailboxes move with their conversation tab.
+
+Rally queries use 128-record lightweight pages, four concurrent requests per client,
+a 32-page/24 MiB LRU with a 45-second TTL, and a 2,048-card resident window per view.
+Full descriptions load on demand. Filter changes cancel/supersede old requests;
+mutations invalidate the cache, including pre-mutation requests still in flight.
+Active views refresh after 60 seconds, with exponential failure backoff. Manual
+Refresh always remains visible. Inactive pages do not poll.
+
+The UI drains at most 64 posted callbacks or 4 ms per frame. JSON decoding,
+network/filesystem/process work, transcript layout and preference/session writes
+run in workers. CommonMark/GFM is parsed into compact styled runs with native
+links, tables and direct selection; neither HTML nor remote resources execute.
+The transcript layout queue has two workers and 32 slots. RSS is
+sampled every 10 seconds across Fastrock processes. A 384 MiB aggregate pressure
+threshold evicts inactive reconstructible state; a 256 MiB Go soft heap budget is
+shared across windows. Unsaved edits, pending approvals and queues are retained.
+Real files page up to 4 MiB; long transcripts and render caches have separate bounds.
+RSS and private committed memory differ; these targets are not hard process limits.

@@ -208,6 +208,7 @@ func (w *masterWindow) handleEventLocked(ei interface{}) bool {
 }
 
 func (w *masterWindow) updater() {
+	var stopped bool
 	var down bool
 	for {
 		if down {
@@ -219,6 +220,7 @@ func (w *masterWindow) updater() {
 			w.uilock.Lock()
 			defer w.uilock.Unlock()
 			if w.closing {
+				stopped = true
 				return
 			}
 
@@ -270,6 +272,9 @@ func (w *masterWindow) updater() {
 				}
 			}
 		}()
+		if stopped {
+			return
+		}
 	}
 }
 

@@ -110,7 +110,7 @@ func Parse(source string) *Document {
 			newline(f)
 		}
 		switch tag {
-		case "b", "strong":
+		case "b", "strong", "th":
 			f.Style |= Bold
 		case "i", "em":
 			f.Style |= Italic
@@ -466,3 +466,30 @@ var tags = []struct {
 	style Style
 	tag   string
 }{{Bold, "strong"}, {Italic, "em"}, {Underline, "u"}, {Strike, "s"}, {Code, "code"}}
+
+// Saved preserves editor content and formatting without rendering HTML on the
+// UI thread. Undo history stays local; saved drafts carry only the current text.
+type Saved struct {
+	Original string
+	Text     []rune
+	Marks    []Format
+	Changed  bool
+}
+
+func (d *Document) Save() Saved {
+	s := Saved{Original: d.original, Changed: d.changed}
+	if d.changed {
+		s.Text = slices.Clone(d.Text)
+		s.Marks = slices.Clone(d.Marks)
+	}
+	return s
+}
+func Restore(s Saved) *Document {
+	d := Parse(s.Original)
+	if s.Changed && len(s.Text) == len(s.Marks) {
+		d.Text = slices.Clone(s.Text)
+		d.Marks = slices.Clone(s.Marks)
+		d.invalidate()
+	}
+	return d
+}

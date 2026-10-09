@@ -11,7 +11,6 @@ import (
 	"github.com/aarzilli/nucular/font"
 	"github.com/aarzilli/nucular/rect"
 	"github.com/allquixotic/fastrock/internal/richtext"
-	"golang.org/x/image/font/gofont/goitalic"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 )
@@ -123,7 +122,7 @@ func (a *App) richField(w *nucular.Window, name string, r *richEditor, height in
 	r.accent = a.p.Accent
 	if r.fontSize != a.prefs.FontSize {
 		r.fontSize = a.prefs.FontSize
-		r.italic, _ = font.NewFace(goitalic.TTF, r.fontSize)
+		r.italic, _ = font.NewFace(uiItalic, r.fontSize)
 		clear(r.widths)
 	}
 	w.Row(28).Static(max(120, w.LayoutAvailableWidth()-196), 60, 70, 62)

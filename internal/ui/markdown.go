@@ -7,7 +7,7 @@ import (
 	"github.com/aarzilli/nucular"
 )
 
-var markdownLink = regexp.MustCompile(`\[([^\]]+)\]\((https?://[^\s)]+)\)`)
+var markdownLink = regexp.MustCompile(`\[([^\]]+)\]\(([^\s)]+)\)`)
 
 func (a *App) markdown(w *nucular.Window, source string) {
 	inCode := false
@@ -41,7 +41,7 @@ func (a *App) markdown(w *nucular.Window, source string) {
 		for _, m := range markdownLink.FindAllStringSubmatch(line, -1) {
 			w.Row(24).Static(min(width, 500))
 			if w.ButtonText("Open: " + m[1]) {
-				a.openURL(m[2])
+				a.openLink(m[2])
 			}
 		}
 	}

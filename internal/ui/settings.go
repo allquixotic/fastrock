@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"encoding/json"
 	"fmt"
 	"image/color"
 	"strconv"
@@ -13,13 +12,34 @@ import (
 )
 
 type settingsView struct {
+	MCP                         *mcpForm
+	Bedrock                     *bedrockForm
+	ConfigData                  map[string]any
+	ConfigLayer                 int
+	Layers                      []configLayer
+	ConfigContext               *nucular.TextEditor
+	PluginCatalog               bool
+	Local                       *localProviderView
+	Fields                      []configField
+	Search, Raw                 *nucular.TextEditor
+	RawPath, ConfigVersion      string
+	RawHash                     [32]byte
+	Name, Value, Secret, Region *nucular.TextEditor
+	Items                       []settingsItem
+	Selected                    map[string]bool
+	LoginID                     string
+	LoadGeneration              int
+	IncludeLogs                 bool
+
 	Page                                                                string
 	Endpoint, Token, Workspace, Project, ConfigKey, ConfigValue, Output *nucular.TextEditor
 	Busy                                                                bool
 }
 
 func newSettingsView(p settings.Preferences) *settingsView {
-	return &settingsView{Page: "Appearance", Endpoint: textEditor(p.RallyEndpoint, false), Token: &nucular.TextEditor{Flags: nucular.EditSimple, PasswordChar: '●'}, Workspace: textEditor(p.RallyWorkspace, false), Project: textEditor(p.RallyProject, false), ConfigKey: textEditor("", false), ConfigValue: textEditor("", false), Output: textEditor("", true)}
+	secret := textEditor("", false)
+	secret.PasswordChar = '●'
+	return &settingsView{Search: textEditor("", false), Raw: textEditor("", true), Name: textEditor("", false), Value: textEditor("", true), Secret: secret, Region: textEditor("us-east-1", false), Selected: map[string]bool{}, Page: "Appearance", Endpoint: textEditor(p.RallyEndpoint, false), Token: &nucular.TextEditor{Flags: nucular.EditSimple, PasswordChar: '●'}, Workspace: textEditor(p.RallyWorkspace, false), Project: textEditor(p.RallyProject, false), ConfigKey: textEditor("", false), ConfigValue: textEditor("", false), Output: textEditor("", true)}
 }
 func (a *App) drawSettings(w *nucular.Window) {
 	s := a.settingsView
@@ -28,6 +48,12 @@ func (a *App) drawSettings(w *nucular.Window) {
 		a.settingsView = s
 	}
 	title(w, "Settings", a.p)
+	w.Row(28).Static(180)
+	if w.ButtonText("Restart Codex app-server…") {
+		a.confirm("Restart Codex?", "Stop running turns in all Fastrock windows and reload Codex configuration? Unsent drafts stay open.", func() {
+			a.rpc("fastrock/restart", map[string]any{}, nil)
+		})
+	}
 	if a.client == nil {
 		w.Row(30).Static(200)
 		if w.ButtonText("Reconnect Codex") {
@@ -36,7 +62,7 @@ func (a *App) drawSettings(w *nucular.Window) {
 	}
 	w.Row(max(200, w.LayoutAvailableHeight()-10)).Static(170, max(300, w.LayoutAvailableWidth()-180))
 	if nav := w.GroupBegin("settings-nav", nucular.WindowNoHScrollbar); nav != nil {
-		for _, page := range []string{"Appearance", "Rally", "Models", "Codex configuration", "Account", "MCP servers", "Skills", "Keyboard", "About"} {
+		for _, page := range []string{"Appearance", "Rally", "Models", "Codex configuration", "Raw configuration", "Account", "AWS Bedrock", "Local providers", "MCP servers", "Skills", "Plugins", "Hooks", "Features", "Memories", "Import", "Feedback", "Sandbox", "Diagnostics", "Keyboard", "About"} {
 			nav.Row(30).Dynamic(1)
 			if flatRow(nav, page, "", s.Page == page, color.RGBA{}, a.p) {
 				s.Page = page
@@ -72,6 +98,22 @@ func (a *App) drawSettings(w *nucular.Window) {
 			if body.CheckboxText("Enter sends; Shift+Enter inserts a new line", &a.prefs.EnterSends) {
 				a.savePrefs()
 			}
+			muted(body, "Ctrl/Cmd+Enter always sends.", a.p)
+			title(body, "When sending during a running turn", a.p)
+			body.Row(30).Dynamic(2)
+			if button(body, "Queue", a.prefs.BusyInput != "steer", a.p) {
+				a.prefs.BusyInput = "queue"
+				a.savePrefs()
+			}
+			if button(body, "Steer", a.prefs.BusyInput == "steer", a.p) {
+				a.prefs.BusyInput = "steer"
+				a.savePrefs()
+			}
+			body.Row(30).Dynamic(1)
+			if body.CheckboxText("Agent messages between conversations", &a.prefs.AgentMessages) {
+				a.savePrefs()
+			}
+			muted(body, "Applies to conversations started from now on. Deliveries still need your approval.", a.p)
 		case "Rally":
 			a.field(body, "Rally endpoint", s.Endpoint, false)
 			a.field(body, "API token (stored in OS credential store)", s.Token, false)
@@ -134,6 +176,8 @@ func (a *App) drawSettings(w *nucular.Window) {
 				a.savePrefs()
 				a.reloadRally()
 			}
+		case "Local providers":
+			a.drawLocalProviders(body, s)
 		case "Models":
 			muted(body, "The model catalog and provider come from your installed Codex CLI.", a.p)
 			muted(body, "Supported baseline: Codex CLI 0.162.0 or newer.", a.p)
@@ -163,35 +207,13 @@ func (a *App) drawSettings(w *nucular.Window) {
 				}
 			}
 		case "Codex configuration":
-			muted(body, "Edits are sent to Codex's own configuration API and also apply to Codex CLI.", a.p)
-			a.field(body, "Setting path (e.g. model or model_reasoning_effort)", s.ConfigKey, false)
-			a.field(body, "JSON value (strings need quotes)", s.ConfigValue, false)
-			body.Row(30).Static(160, 160)
-			if body.ButtonText("Apply setting") {
-				var value any
-				if e := json.Unmarshal([]byte(text(s.ConfigValue)), &value); e != nil {
-					a.report(e)
-				} else {
-					a.rpc("config/value/write", map[string]any{"keyPath": text(s.ConfigKey), "value": value, "mergeStrategy": "replace"}, func(_ json.RawMessage) {
-						a.toast = "Saved Codex setting"
-						a.loadSettingsPage(s.Page)
-						if a.client != nil {
-							c := a.client
-							cwd := a.prefs.WorkingDirectory
-							a.work(func() { a.loadCatalog(c, cwd) })
-						}
-					})
-				}
-			}
-			if body.ButtonText("Refresh configuration") {
-				a.loadSettingsPage(s.Page)
-			}
-			body.Row(max(120, body.LayoutAvailableHeight()-10)).Dynamic(1)
-			s.Output.Edit(body)
+			a.drawConfiguration(body, s)
+		case "Raw configuration":
+			a.drawRawConfig(body, s)
+
 		case "Keyboard":
-			for _, line := range []string{"Ctrl/Cmd+T — New tab", "Ctrl/Cmd+W — Close tab", "Ctrl/Cmd+, — Settings", "Ctrl/Cmd+Shift+P — Command palette", "Ctrl/Cmd+Shift+T — Toggle dark / light", "Ctrl/Cmd+R — Refresh Rally", "Ctrl/Cmd+S — Save work item", "Ctrl+Tab — Next tab", "Ctrl+Shift+Tab — Previous tab", "Enter — Send or queue", "Shift+Enter — New line", "Escape — Close palette"} {
-				muted(body, line, a.p)
-			}
+			a.keyboardSettings(body)
+
 		case "About":
 			muted(body, "Fastrock 1.0 · Go + nucular", a.p)
 			body.Row(70).Dynamic(1)
@@ -202,45 +224,55 @@ func (a *App) drawSettings(w *nucular.Window) {
 				a.openURL("https://github.com/allquixotic/fastrock")
 			}
 		default:
-			body.Row(30).Static(110)
-			if body.ButtonText("Refresh") {
-				a.loadSettingsPage(s.Page)
-			}
-			body.Row(max(200, body.LayoutAvailableHeight()-10)).Dynamic(1)
-			s.Output.Edit(body)
+			a.drawExtraSettings(body, s)
 		}
 		body.GroupEnd()
 	}
 }
 func (a *App) loadSettingsPage(page string) {
-	methods := map[string]string{"Codex configuration": "config/read", "Account": "account/read", "MCP servers": "mcpServerStatus/list", "Skills": "skills/list"}
+	if page == "Local providers" {
+		a.loadLocalProvider()
+		return
+	}
+	if page == "Raw configuration" {
+		a.loadRawConfig()
+		return
+	}
+	methods := map[string]string{"Codex configuration": "config/read", "Account": "account/read", "MCP servers": "mcpServerStatus/list", "Skills": "skills/list", "Plugins": "plugin/installed", "Hooks": "hooks/list", "Features": "experimentalFeature/list", "Memories": "memory/status", "Import": "externalAgentConfig/detect", "Sandbox": "windowsSandbox/readiness", "Diagnostics": "config/read", "AWS Bedrock": "account/bedrock/discover"}
 	method := methods[page]
+	if page == "Plugins" && a.settingsView.PluginCatalog {
+		method = "plugin/list"
+	}
 	if method == "" {
 		return
 	}
 	params := map[string]any{}
-	if method == "config/read" {
-		params["includeLayers"] = false
-	}
-	if method == "skills/list" {
+	if method == "plugin/list" || method == "plugin/installed" {
 		params["cwds"] = []string{a.prefs.WorkingDirectory}
 	}
-	a.rpc(method, params, func(raw json.RawMessage) {
-		var data any
-		_ = json.Unmarshal(raw, &data)
-		scrub(data)
-		pretty, _ := json.MarshalIndent(data, "", "  ")
-		if a.settingsView != nil {
-			setText(a.settingsView.Output, string(pretty))
+	if method == "config/read" {
+		params["includeLayers"] = true
+		params["cwd"] = a.prefs.WorkingDirectory
+		if c := a.settingsView.ConfigContext; c != nil && text(c) != "" {
+			params["cwd"] = text(c)
 		}
-	})
+	}
+	if method == "skills/list" || method == "hooks/list" || method == "externalAgentConfig/detect" {
+		params["cwds"] = []string{a.prefs.WorkingDirectory}
+	}
+	if method == "externalAgentConfig/detect" {
+		params["includeHome"] = true
+		params["migrationSource"] = text(a.settingsView.Name)
+	}
+	a.loadSettingsData(page, method, params)
 }
+
 func scrub(v any) {
 	switch x := v.(type) {
 	case map[string]any:
 		for k, v := range x {
-			l := strings.ToLower(k)
-			if strings.Contains(l, "token") || strings.Contains(l, "secret") || strings.Contains(l, "password") || strings.Contains(l, "api_key") {
+			l := strings.ReplaceAll(strings.ToLower(k), "_", "")
+			if strings.Contains(l, "token") || strings.Contains(l, "secret") || strings.Contains(l, "password") || strings.Contains(l, "apikey") || strings.Contains(l, "authorization") {
 				x[k] = "[redacted]"
 			} else {
 				scrub(v)

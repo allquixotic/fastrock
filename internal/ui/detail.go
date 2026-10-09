@@ -14,7 +14,6 @@ import (
 	"github.com/aarzilli/nucular/font"
 	"github.com/allquixotic/fastrock/internal/assistant"
 	"github.com/allquixotic/fastrock/internal/rally"
-	"golang.org/x/image/font/gofont/goregular"
 )
 
 type detailView struct {
@@ -74,16 +73,21 @@ func (a *App) openArtifact(v *rallyView, o rally.Object) {
 		full, e := c.Get(ctx, o.String("_ref"))
 		fields, _ := c.Fields(ctx, d.Kind)
 		states, _ := c.All(ctx, "State", rally.Query{})
+		var nd *detailView
+		if e == nil {
+			nd = makeDetail(full, d.Kind, false)
+			mergeSchemaEditors(nd, fields)
+			nd.States = states
+		}
 		a.post(func() {
 			d.Loading = false
 			if e != nil {
 				d.Error = e.Error()
 				return
 			}
-			nd := makeDetail(full, d.Kind, false)
-			mergeSchemaEditors(nd, fields)
-			nd.States = states
-			v.Detail = nd
+			if v.Detail == d {
+				v.Detail = nd
+			}
 		})
 	})
 }
@@ -218,7 +222,7 @@ func (a *App) detailFields(w *nucular.Window, d *detailView) {
 	}
 	if d.titleSize != a.prefs.FontSize {
 		d.titleSize = a.prefs.FontSize
-		d.titleFont, _ = font.NewFace(goregular.TTF, d.titleSize+5)
+		d.titleFont, _ = font.NewFace(uiRegular, d.titleSize+5)
 	}
 	oldFont := w.Master().Style().Font
 	w.Master().Style().Font = d.titleFont

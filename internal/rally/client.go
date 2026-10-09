@@ -23,6 +23,7 @@ const WSAPI = "/slm/webservice/v2.0/"
 func lower(s string) string { return strings.ToLower(s) }
 
 type Client struct {
+	cache *pageCache
 	base  *url.URL
 	token string
 	http  *http.Client
@@ -51,7 +52,7 @@ func New(endpoint, token string, transport http.RoundTripper) (*Client, error) {
 	if transport == nil {
 		transport = http.DefaultTransport
 	}
-	c := &Client{base: u, token: token, http: &http.Client{Timeout: 30 * time.Second, Transport: transport}}
+	c := &Client{cache: newPageCache(), base: u, token: token, http: &http.Client{Timeout: 30 * time.Second, Transport: transport}}
 	c.http.CheckRedirect = func(r *http.Request, via []*http.Request) error {
 		return errors.New("Rally redirects are disabled; configure the final endpoint in Settings")
 	}
@@ -263,6 +264,7 @@ func (c *Client) Update(ctx context.Context, ref, kind string, fields Object) (O
 	return c.mutate(ctx, "POST", ref, k, fields)
 }
 func (c *Client) mutate(ctx context.Context, method, ref, kind string, fields Object) (Object, error) {
+	defer c.PurgeCache()
 	key := path.Base(kind)
 	env, e := c.request(ctx, method, ref, nil, map[string]any{key: fields})
 	if e != nil {

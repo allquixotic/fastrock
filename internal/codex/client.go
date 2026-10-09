@@ -29,11 +29,12 @@ type RPCError struct {
 func (e *RPCError) Error() string { return fmt.Sprintf("Codex: %s (%d)", e.Message, e.Code) }
 
 type Message struct {
-	ID     json.RawMessage `json:"id,omitempty"`
-	Method string          `json:"method,omitempty"`
-	Params json.RawMessage `json:"params,omitempty"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Error  *RPCError       `json:"error,omitempty"`
+	Sequence uint64          `json:"fastrockSequence,omitempty"`
+	ID       json.RawMessage `json:"id,omitempty"`
+	Method   string          `json:"method,omitempty"`
+	Params   json.RawMessage `json:"params,omitempty"`
+	Result   json.RawMessage `json:"result,omitempty"`
+	Error    *RPCError       `json:"error,omitempty"`
 }
 type Client struct {
 	cmd       *exec.Cmd
@@ -171,7 +172,9 @@ func (c *Client) read(output io.Reader) {
 	c.mu.Unlock()
 	_ = c.input.Close()
 	c.cancel()
-	_ = c.cmd.Wait()
+	if c.cmd != nil {
+		_ = c.cmd.Wait()
+	}
 }
 func (c *Client) write(v any) error {
 	b, e := json.Marshal(v)
@@ -225,7 +228,7 @@ func (c *Client) Close() {
 		select {
 		case <-c.done:
 		case <-time.After(3 * time.Second):
-			if c.cmd.Process != nil {
+			if c.cmd != nil && c.cmd.Process != nil {
 				_ = c.cmd.Process.Kill()
 			}
 		}

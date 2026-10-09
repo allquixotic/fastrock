@@ -17,3 +17,17 @@ Apache-2.0 licensed. Their pinned modules include their copyright/license notice
 
 Codex is a separate user-installed application. It is not bundled with Fastrock.
 No Python or Rust code is compiled into Fastrock.
+
+`internal/ui/config_schema.json` is an unmodified Apache-2.0 snapshot from
+`allquixotic/codex`, commit `9c5657db96a6afa5f2a1f3c18885ac9b66983193`,
+`codex-rs/core/config.schema.json` (OpenAI and contributors). It supplies field
+descriptions and defaults without requiring a Rust build. The installed CLI
+remains authoritative for runtime values and validation; newer keys are editable
+even when absent from this snapshot. The Apache license is retained in LICENSE.
+
+The TOML configuration editor uses `github.com/pelletier/go-toml/v2` (MIT).
+Its module includes the license and copyright notice; no C code is required.
+
+Native transcript Markdown uses `github.com/yuin/goldmark` 1.8.2 (MIT,
+Copyright 2019 Yusuke Inuzuka). The pinned module contains its complete license.
+It parses text locally; it does not execute HTML or fetch remote content.

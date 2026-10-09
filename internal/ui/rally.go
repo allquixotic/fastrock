@@ -15,6 +15,20 @@ import (
 )
 
 type rallyView struct {
+	LaneScroll                    map[string]int
+	RestoreLaneScroll             map[string]int
+	Closed                        bool
+	Refreshed                     time.Time
+	RetryAfter                    time.Time
+	Failures                      int
+	cancel                        context.CancelFunc
+	Total, Start, Next            int
+	More, Evicted, ServerFiltered bool
+	AppliedSearch                 string
+	signature, pendingSignature   string
+	searchChanged                 time.Time
+	scrollAdjustment              map[string]int
+
 	Spec                                    rally.PageSpec
 	Mode, Group, Timebox, ViewName          string
 	Query, Search                           *nucular.TextEditor
@@ -76,6 +90,25 @@ func (a *App) rallyQuery(v *rallyView) rally.Query {
 		}
 		q.Expression = rally.And(q.Expression, rally.Eq(kind, v.Timebox))
 	}
+	if search := strings.TrimSpace(text(v.Search)); search != "" {
+		q.Expression = rally.And(q.Expression, "((((Name contains "+rally.Quote(search)+") OR (Description contains "+rally.Quote(search)+")) OR (FormattedID contains "+rally.Quote(search)+")) OR (Owner.Name contains "+rally.Quote(search)+"))")
+	}
+	if v.OnlyBlocked {
+		q.Expression = rally.And(q.Expression, "(Blocked = true)")
+	}
+	if v.OnlyReady {
+		q.Expression = rally.And(q.Expression, "(Ready = true)")
+	}
+	if v.OwnerFilter != "" {
+		if v.OwnerFilter == "Unassigned" {
+			q.Expression = rally.And(q.Expression, "(Owner = null)")
+		} else {
+			q.Expression = rally.And(q.Expression, rally.Eq("Owner.Name", v.OwnerFilter))
+		}
+	}
+	if v.StateFilter != "" {
+		q.Expression = rally.And(q.Expression, rally.Eq(rally.StateField(v.Spec.Kind), v.StateFilter))
+	}
 	if v.Spec.Kind == "Workspace" || v.Spec.Kind == "User" || v.Spec.Kind == "Project" {
 		q.Project = ""
 		q.Order = "Name ASC"
@@ -83,40 +116,51 @@ func (a *App) rallyQuery(v *rallyView) rally.Query {
 	return q
 }
 func (a *App) refreshRally(v *rallyView) {
-	c := a.rallyClient
-	if c == nil {
+	if v == nil || v.Closed {
 		return
 	}
-	q := a.rallyQuery(v)
-	kind := v.Spec.Kind
-	v.Loading = true
-	v.Error = ""
+	if v.cancel != nil {
+		v.cancel()
+	}
+	v.Loading = false
 	v.Generation++
-	generation := v.Generation
-	a.work(func() {
-		ctx, cancel := context.WithTimeout(a.ctx, 60*time.Second)
-		defer cancel()
-		items, e := c.All(ctx, kind, q)
-		a.post(func() {
-			if v.Generation != generation {
-				return
-			}
-			v.Loading = false
-			if e != nil {
-				v.Error = e.Error()
-				return
-			}
-			v.Items = items
-			v.Selected = map[string]bool{}
-			v.Page = 1
-		})
-	})
+	v.Error = ""
+	signature := a.rallySignature(v)
+	start := 1
+	if signature == v.signature {
+		start = max(1, v.Start)
+	}
+	v.signature = signature
+	v.ServerFiltered = true
+	a.requestRallyPage(v, start, true)
 }
+func (a *App) rallySignature(v *rallyView) string {
+	return text(v.Query) + "\x00" + text(v.Search) + "\x00" + v.OwnerFilter + "\x00" + v.StateFilter + fmt.Sprint(v.OnlyBlocked, v.OnlyReady) + v.Sort + fmt.Sprint(v.Descending) + "\x00" + v.Timebox + "\x00" + a.prefs.RallyEndpoint + "\x00" + a.prefs.RallyWorkspace + "\x00" + a.prefs.RallyProject + fmt.Sprint(a.prefs.ProjectParents, a.prefs.ProjectChildren)
+}
+
 func (a *App) drawRally(w *nucular.Window, v *rallyView) {
 	if v == nil {
 		return
 	}
 	a.rallyNav(w, v)
+	if !v.Loading && !v.Refreshed.IsZero() && time.Now().After(v.RetryAfter) && time.Since(v.Refreshed) > 60*time.Second {
+		a.refreshRally(v)
+	}
+	if v.Evicted && !v.Loading {
+		a.refreshRally(v)
+	}
+	signature := a.rallySignature(v)
+	if signature != v.signature {
+		if signature != v.pendingSignature {
+			v.pendingSignature = signature
+			v.searchChanged = time.Now()
+		}
+		if time.Since(v.searchChanged) > 300*time.Millisecond {
+			a.refreshRally(v)
+		} else {
+			a.window.Changed()
+		}
+	}
 	if a.rallyClient == nil {
 		title(w, "Connect to Rally", a.p)
 		w.Row(65).Dynamic(1)
@@ -318,25 +362,26 @@ func (a *App) drawRally(w *nucular.Window, v *rallyView) {
 		}
 		body.GroupEnd()
 	}
-	w.Row(28).Static(170, 120, 120, 70, 70, 120)
-	pages := max(1, (len(items)+v.PageSize-1)/v.PageSize)
-	w.Label(fmt.Sprintf("%d work items", len(items)), "LC")
-	w.Label(fmt.Sprintf("Page %d of %d", v.Page, pages), "LC")
-	sizes := []string{"10", "25", "50", "100"}
-	oldSize := v.PageSize
-	v.PageSize, _ = strconv.Atoi(sizes[w.ComboSimple(sizes, index(sizes, strconv.Itoa(v.PageSize)), 28)])
-	if oldSize != v.PageSize {
-		v.Page = 1
+	w.Row(28).Static(260, 100, 100)
+	w.Label(fmt.Sprintf("%d loaded · %d matching work items", len(items), v.Total), "LC")
+	if v.Mode != "board" {
+		pages := max(1, (len(items)+v.PageSize-1)/v.PageSize)
+		if w.ButtonText("Previous") {
+			if v.Page > 1 {
+				v.Page--
+			} else {
+				a.previousRallyPage(v)
+			}
+		}
+		if w.ButtonText("Next") {
+			if v.Page < pages {
+				v.Page++
+			} else {
+				a.needRallyPage(v)
+			}
+		}
 	}
-	if w.ButtonText("Previous") {
-		v.Page = max(1, v.Page-1)
-	}
-	if w.ButtonText("Next") {
-		v.Page = min(pages, v.Page+1)
-	}
-	if w.ButtonText("Refresh") {
-		a.refreshRally(v)
-	}
+
 }
 func (a *App) rallyNav(w *nucular.Window, v *rallyView) {
 	w.Row(34).Static(170, 90, 90, 58, 58, 58, 70, 82, 70)
@@ -374,11 +419,17 @@ func (a *App) rallyNav(w *nucular.Window, v *rallyView) {
 			}
 		}
 	}
-	w.Row(29).Ratio(.8, .2)
+	w.Row(29).Ratio(.65, .15, .2)
 	w.LabelColored("Fastrock  /  "+v.Spec.Title, "LC", a.p.Muted)
+	if w.ButtonText("Refresh") {
+		a.refreshRally(v)
+	}
 	if button(w, "Ask AI", a.assistant != nil, a.p) {
 		a.openAssistant(v)
 	}
+}
+func searchable(o rally.Object) string {
+	return strings.ToLower(o.ID() + " " + o.String("Name") + " " + o.String("Owner") + " " + plainHTML(o.String("Description")))
 }
 func (v *rallyView) filtered() []rally.Object {
 	var source *rally.Object
@@ -393,7 +444,7 @@ func (v *rallyView) filtered() []rally.Object {
 	if changed {
 		v.filterSearch = make([]string, len(v.Items))
 		for i, o := range v.Items {
-			v.filterSearch[i] = strings.ToLower(o.ID() + " " + o.String("Name") + " " + o.String("Owner") + " " + plainHTML(o.String("Description")))
+			v.filterSearch[i] = searchable(o)
 		}
 		v.filterSource = source
 		v.filterGeneration = v.Generation
@@ -404,6 +455,9 @@ func (v *rallyView) filtered() []rally.Object {
 	v.filterSort = v.Sort
 	v.filterDesc = v.Descending
 	query := strings.ToLower(queryText)
+	if v.ServerFiltered && queryText == v.AppliedSearch {
+		query = ""
+	}
 	out := v.filterCache[:0]
 	for i, o := range v.Items {
 		if query != "" && !strings.Contains(v.filterSearch[i], query) {

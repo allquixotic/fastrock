@@ -67,11 +67,33 @@ func (o Object) Kind() string {
 	return s
 }
 func (o Object) Clone() Object {
-	b, _ := json.Marshal(o)
-	var r Object
-	_ = json.Unmarshal(b, &r)
-	return r
+	out := make(Object, len(o))
+	for k, v := range o {
+		out[k] = cloneValue(v)
+	}
+	return out
 }
+func cloneValue(v any) any {
+	switch x := v.(type) {
+	case Object:
+		return x.Clone()
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, v := range x {
+			out[k] = cloneValue(v)
+		}
+		return out
+	case []any:
+		out := make([]any, len(x))
+		for i, v := range x {
+			out[i] = cloneValue(v)
+		}
+		return out
+	default:
+		return v
+	}
+}
+
 func (o Object) Count(k string) int {
 	if v, ok := o[k].(map[string]any); ok {
 		return int(Object(v).Number("Count"))

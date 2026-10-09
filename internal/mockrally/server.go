@@ -193,37 +193,118 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	write(map[string]any{"QueryResult": map[string]any{"Results": rows, "StartIndex": start, "PageSize": pageSize, "TotalResultCount": total, "Errors": []string{}, "Warnings": []string{}}})
 }
 
-var clause = regexp.MustCompile(`([A-Za-z_.]+)\s*(=|!=|contains)\s*("(?:[^"\\]|\\.)*"|true|false|[0-9]+)`)
+var clause = regexp.MustCompile(`([A-Za-z_.]+)\s*(=|!=|contains)\s*("(?:[^"\\]|\\.)*"|true|false|null|[0-9]+)`)
 
+// The fixture evaluates nested AND/OR queries, including quoted parentheses.
 func matches(o rally.Object, q string) bool {
-	for _, m := range clause.FindAllStringSubmatch(q, -1) {
-		value := m[3]
-		if strings.HasPrefix(value, `"`) {
-			_ = json.Unmarshal([]byte(value), &value)
-		}
-		actual := o.String(m[1])
-		if m[1] == "Blocked" {
-			actual = strconv.FormatBool(o.Bool("Blocked"))
-		}
-		if ref := o.Ref(m[1]); strings.Contains(value, "/") && ref != "" {
-			actual = ref
-		}
-		switch m[2] {
-		case "=":
-			if actual != value {
-				return false
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return true
+	}
+	for strings.HasPrefix(q, "(") && matchingParen(q) == len(q)-1 {
+		q = strings.TrimSpace(q[1 : len(q)-1])
+	}
+	for _, op := range []string{" OR ", " AND "} {
+		if i := booleanSplit(q, op); i >= 0 {
+			if op == " OR " {
+				return matches(o, q[:i]) || matches(o, q[i+len(op):])
 			}
-		case "!=":
-			if actual == value {
-				return false
-			}
-		case "contains":
-			if !strings.Contains(strings.ToLower(actual), strings.ToLower(value)) {
-				return false
+			return matches(o, q[:i]) && matches(o, q[i+len(op):])
+		}
+	}
+	m := clause.FindStringSubmatch(q)
+	if m == nil {
+		return false
+	}
+	value := m[3]
+	if strings.HasPrefix(value, `"`) {
+		_ = json.Unmarshal([]byte(value), &value)
+	}
+	key := m[1]
+	actual := o.String(key)
+	if strings.HasSuffix(key, ".Name") {
+		actual = o.String(strings.TrimSuffix(key, ".Name"))
+	}
+	if value == "null" {
+		actual = o.Ref(key)
+		value = ""
+	}
+	if ref := o.Ref(key); strings.Contains(value, "/") && ref != "" {
+		actual = ref
+	}
+	switch m[2] {
+	case "=":
+		return actual == value
+	case "!=":
+		return actual != value
+	case "contains":
+		return strings.Contains(strings.ToLower(actual), strings.ToLower(value))
+	}
+	return false
+}
+func booleanSplit(q, op string) int {
+	depth := 0
+	quoted, escape := false, false
+	for i := 0; i < len(q); i++ {
+		c := q[i]
+		if escape {
+			escape = false
+			continue
+		}
+		if quoted && c == '\\' {
+			escape = true
+			continue
+		}
+		if c == '"' {
+			quoted = !quoted
+			continue
+		}
+		if quoted {
+			continue
+		}
+		if c == '(' {
+			depth++
+		}
+		if c == ')' {
+			depth--
+		}
+		if depth == 0 && strings.HasPrefix(q[i:], op) {
+			return i
+		}
+	}
+	return -1
+}
+func matchingParen(q string) int {
+	depth := 0
+	quoted, escape := false, false
+	for i := 0; i < len(q); i++ {
+		c := q[i]
+		if escape {
+			escape = false
+			continue
+		}
+		if quoted && c == '\\' {
+			escape = true
+			continue
+		}
+		if c == '"' {
+			quoted = !quoted
+			continue
+		}
+		if quoted {
+			continue
+		}
+		if c == '(' {
+			depth++
+		}
+		if c == ')' {
+			depth--
+			if depth == 0 {
+				return i
 			}
 		}
 	}
-	return true
+	return -1
 }
 func extractLiteral(q string) string {
 	m := clause.FindStringSubmatch(q)
@@ -232,5 +313,20 @@ func extractLiteral(q string) string {
 	}
 	var s string
 	_ = json.Unmarshal([]byte(m[3]), &s)
+	return s
+}
+
+// Large is a deterministic fixture for virtual scrolling and memory stress.
+func Large(stories int) *Server {
+	s := New()
+	base := s.Objects[rally.WSAPI+"hierarchicalrequirement/100"]
+	for i := 20; i < stories; i++ {
+		o := base.Clone()
+		id := 10000 + i
+		ref := rally.WSAPI + "hierarchicalrequirement/" + strconv.Itoa(id)
+		o["_ref"], o["ObjectID"], o["FormattedID"], o["Name"], o["Rank"] = ref, id, fmt.Sprintf("US%d", 20000+i), fmt.Sprintf("Large fixture story %d", i), i
+		o["ScheduleState"] = []string{"Defined", "In-Progress", "Completed", "Accepted"}[i%4]
+		s.Objects[ref] = o
+	}
 	return s
 }

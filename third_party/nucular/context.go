@@ -123,6 +123,17 @@ func (ctx *context) processKeyEvent(e key.Event, textbuffer *bytes.Buffer) {
 	if e.Direction == key.DirRelease {
 		return
 	}
+	if e.Code == key.CodeEscape && e.Modifiers == 0 && len(ctx.Windows) > 1 {
+		top := ctx.Windows[len(ctx.Windows)-1]
+		if top.flags&windowPopup != 0 && top.flags&(windowNonblock|WindowClosable) != 0 {
+			// Input runs between frames. Remove the top menu/closable popup now;
+			// marking close here would be cleared by contextBegin.
+			ctx.Windows[len(ctx.Windows)-1] = nil
+			ctx.Windows = ctx.Windows[:len(ctx.Windows)-1]
+			ctx.Input.activateWindow = ctx.Windows[len(ctx.Windows)-1]
+			return
+		}
+	}
 
 	evinNotext := func() {
 		for i := range ctx.Input.Keyboard.events {

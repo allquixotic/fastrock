@@ -45,6 +45,11 @@ func (v *rallyView) prepareCards() {
 	v.cards = make(map[string]*boardCard, len(v.Items))
 	v.ownerOptions = []string{"All owners"}
 	v.stateOptions = append([]string{"All states"}, rally.States(v.Spec.Kind)...)
+	owners := make(map[string]bool)
+	states := make(map[string]bool)
+	for _, s := range v.stateOptions {
+		states[s] = true
+	}
 	for _, o := range v.Items {
 		owner := fallback(o.String("Owner"), "Unassigned")
 		initials := ""
@@ -59,10 +64,12 @@ func (v *rallyView) prepareCards() {
 		}
 		c := &boardCard{object: o, ref: o.String("_ref"), id: o.ID(), title: o.String("Name"), owner: owner, initials: initials, iteration: fallback(o.String("Iteration"), "Unscheduled"), points: fmt.Sprintf("%g", o.Number("PlanEstimate")), tasks: fmt.Sprintf("%d tasks", o.Count("Tasks")), state: fallback(o.String(rally.StateField(v.Spec.Kind)), rally.States(v.Spec.Kind)[0]), blocked: o.Bool("Blocked"), ready: o.Bool("Ready")}
 		v.cards[c.ref] = c
-		if !contains(v.ownerOptions, c.owner) {
+		if !owners[c.owner] {
+			owners[c.owner] = true
 			v.ownerOptions = append(v.ownerOptions, c.owner)
 		}
-		if !contains(v.stateOptions, c.state) {
+		if !states[c.state] {
+			states[c.state] = true
 			v.stateOptions = append(v.stateOptions, c.state)
 		}
 	}
@@ -77,31 +84,33 @@ func (v *rallyView) prepareBoardLayout(items []rally.Object) {
 	v.boardGrouping = v.Group
 	columns := append([]string(nil), v.stateOptions[1:]...)
 	groups := []string{""}
+	grouped := make(map[string][]*boardCard)
+	for _, o := range items {
+		g := ""
+		if v.Group != "None" {
+			g = fallback(o.String(v.Group), "Unassigned")
+		}
+		grouped[g] = append(grouped[g], v.cards[o.String("_ref")])
+	}
 	if v.Group != "None" {
 		groups = nil
-		for _, o := range items {
-			g := fallback(o.String(v.Group), "Unassigned")
-			if !contains(groups, g) {
-				groups = append(groups, g)
-			}
+		for g := range grouped {
+			groups = append(groups, g)
 		}
 		sort.Strings(groups)
 	}
 	v.boardGroups = make([]boardGroup, len(groups))
 	for gi, g := range groups {
 		bg := boardGroup{name: g, lanes: make([]boardLane, len(columns))}
+		indices := make(map[string]int, len(columns))
 		for ci, c := range columns {
 			bg.lanes[ci] = boardLane{id: "board-" + g + "-" + c, state: c}
+			indices[c] = ci
 		}
-		for _, o := range items {
-			if v.Group != "None" && fallback(o.String(v.Group), "Unassigned") != g {
-				continue
-			}
-			card := v.cards[o.String("_ref")]
-			for ci, c := range columns {
-				if card.state == c {
+		for _, card := range grouped[g] {
+			if card != nil {
+				if ci, ok := indices[card.state]; ok {
 					bg.lanes[ci].cards = append(bg.lanes[ci].cards, card)
-					break
 				}
 			}
 		}
@@ -117,6 +126,12 @@ func (a *App) drawTeamBoard(w *nucular.Window, v *rallyView, items []rally.Objec
 	v.prepareBoardLayout(items)
 	target := ""
 	released := w.Input().Mouse.Released(mouse.ButtonLeft)
+	largestLane := 0
+	for _, g := range v.boardGroups {
+		for _, l := range g.lanes {
+			largestLane = max(largestLane, len(l.cards))
+		}
+	}
 	for _, group := range v.boardGroups {
 		if group.name != "" {
 			title(w, group.name, a.p)
@@ -146,6 +161,10 @@ func (a *App) drawTeamBoard(w *nucular.Window, v *rallyView, items []rally.Objec
 				w.Master().Style().GroupWindow = old
 				continue
 			}
+			if n, ok := v.RestoreLaneScroll[lane.id]; ok {
+				col.Scrollbar.Y = n
+				delete(v.RestoreLaneScroll, lane.id)
+			}
 			bounds := col.Bounds
 			dropTarget := v.cardDragging && w.Input().Mouse.HoveringRect(bounds)
 			if dropTarget {
@@ -162,10 +181,37 @@ func (a *App) drawTeamBoard(w *nucular.Window, v *rallyView, items []rally.Objec
 			if v.ExitAgreements {
 				muted(col, "Review acceptance before advancing", a.p)
 			}
-			for _, c := range lane.cards {
+			// Layout only rows intersecting the viewport plus one overscan row.
+			const stride = 206
+			if delta := v.scrollAdjustment[column]; delta != 0 {
+				col.Scrollbar.Y = max(0, col.Scrollbar.Y-delta)
+				delete(v.scrollAdjustment, column)
+			}
+			first := max(0, col.Scrollbar.Y/stride-1)
+			last := min(len(lane.cards), first+col.Bounds.H/stride+4)
+			first = min(first, len(lane.cards))
+			if first > 0 {
+				col.Row(first*stride - 10).Dynamic(1)
+				col.Spacing(1)
+			}
+			for _, c := range lane.cards[first:last] {
 				col.Row(196).Dynamic(1)
 				a.drawBoardCard(col, v, c)
 			}
+			if last < len(lane.cards) {
+				col.Row((len(lane.cards)-last)*stride - 10).Dynamic(1)
+				col.Spacing(1)
+			}
+			if largestLane < height/stride+2 || col.Input().Mouse.HoveringRect(col.Bounds) && col.Input().Mouse.ScrollDelta < 0 && col.Scrollbar.Y+col.Bounds.H >= len(lane.cards)*stride-2*stride {
+				a.needRallyPage(v)
+			}
+			if col.Scrollbar.Y == 0 && v.Start > 1 && col.Input().Mouse.ScrollDelta > 0 {
+				a.previousRallyPage(v)
+			}
+			if v.LaneScroll == nil {
+				v.LaneScroll = map[string]int{}
+			}
+			v.LaneScroll[lane.id] = col.Scrollbar.Y
 			col.GroupEnd()
 			w.Master().Style().GroupWindow = old
 		}

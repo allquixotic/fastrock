@@ -21,24 +21,32 @@ type SavedView struct {
 	Mode  string `json:"mode,omitempty"`
 }
 
+type KeyBinding struct {
+	Code int    `json:"code"`
+	Mods uint32 `json:"modifiers"`
+}
 type Preferences struct {
-	Theme            string      `json:"theme"`
-	FontSize         int         `json:"fontSize"`
-	Sidebar          bool        `json:"sidebar"`
-	Info             bool        `json:"info"`
-	EnterSends       bool        `json:"enterSends"`
-	RallyEndpoint    string      `json:"rallyEndpoint"`
-	RallyWorkspace   string      `json:"rallyWorkspace,omitempty"`
-	RallyProject     string      `json:"rallyProject,omitempty"`
-	ProjectParents   bool        `json:"projectParents"`
-	ProjectChildren  bool        `json:"projectChildren"`
-	WorkingDirectory string      `json:"workingDirectory,omitempty"`
-	Views            []SavedView `json:"views,omitempty"`
+	RecentFolders    []string              `json:"recentFolders,omitempty"`
+	Keymap           map[string]KeyBinding `json:"keymap,omitempty"`
+	Theme            string                `json:"theme"`
+	FontSize         int                   `json:"fontSize"`
+	Sidebar          bool                  `json:"sidebar"`
+	Info             bool                  `json:"info"`
+	EnterSends       bool                  `json:"enterSends"`
+	BusyInput        string                `json:"busyInput,omitempty"`
+	AgentMessages    bool                  `json:"agentMessages"`
+	RallyEndpoint    string                `json:"rallyEndpoint"`
+	RallyWorkspace   string                `json:"rallyWorkspace,omitempty"`
+	RallyProject     string                `json:"rallyProject,omitempty"`
+	ProjectParents   bool                  `json:"projectParents"`
+	ProjectChildren  bool                  `json:"projectChildren"`
+	WorkingDirectory string                `json:"workingDirectory,omitempty"`
+	Views            []SavedView           `json:"views,omitempty"`
 }
 
 func Defaults() Preferences {
 	cwd, _ := os.Getwd()
-	return Preferences{Theme: "dark", FontSize: 13, Sidebar: true, Info: true, EnterSends: true,
+	return Preferences{Theme: "dark", FontSize: 13, Sidebar: true, Info: true, EnterSends: true, BusyInput: "queue", AgentMessages: true,
 		RallyEndpoint: "https://rally1.rallydev.com", ProjectChildren: true, WorkingDirectory: cwd}
 }
 

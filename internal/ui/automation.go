@@ -68,6 +68,46 @@ func (a *App) startAutomation() {
 				}
 				fail := func(message string) { log += "FAIL: " + message + "\n"; a.exitCode = 1 }
 				switch step.Action {
+				case "restart":
+					a.rpc("fastrock/restart", map[string]any{}, nil)
+				case "assert_draft":
+					if tab := a.state.Current(); tab == nil || a.chats[tab.Target] == nil || text(a.chats[tab.Target].Editor) != step.Value {
+						fail("draft did not survive")
+					}
+				case "popout":
+					if t := a.state.Current(); t != nil {
+						a.popOut(*t)
+					}
+				case "assert_tab_count":
+					n, _ := strconv.Atoi(step.Value)
+					if len(a.state.Tabs) != n {
+						fail(fmt.Sprintf("tab count %d != %d", len(a.state.Tabs), n))
+					}
+				case "action":
+					a.runAction(step.Value)
+				case "draft":
+					if t := a.state.Current(); t != nil {
+						if v := a.chats[t.Target]; v != nil {
+							setText(v.Editor, step.Value)
+						}
+					}
+				case "refresh":
+					if v != nil {
+						a.refreshRally(v)
+					}
+				case "assert_window_bound":
+					if v == nil || len(v.Items) > rallyWindowItems || v.Total != 10000 || v.Start <= 1 {
+						fail("invalid resident board window")
+					}
+				case "load_next":
+					if v != nil {
+						a.needRallyPage(v)
+					}
+				case "assert_memory":
+					limit, _ := strconv.ParseUint(step.Value, 10, 64)
+					if a.memoryBytes > limit<<20 {
+						fail(fmt.Sprintf("memory %d MiB exceeds %d", a.memoryBytes>>20, limit))
+					}
 				case "filter":
 					if v != nil {
 						setText(v.Search, step.Value)
@@ -137,15 +177,18 @@ func (a *App) startAutomation() {
 					a.settingsView.Page = step.Value
 					a.loadSettingsPage(step.Value)
 				case "item":
-					if tab := a.state.Current(); tab != nil {
-						if v := a.rallyViews[tab.ID]; v != nil {
-							for _, o := range v.Items {
-								if o.ID() == step.Value {
-									a.openArtifact(v, o)
-									break
-								}
+					found := false
+					if v != nil {
+						for _, o := range v.Items {
+							if o.ID() == step.Value {
+								a.openArtifact(v, o)
+								found = true
+								break
 							}
 						}
+					}
+					if !found {
+						fail("work item not loaded: " + step.Value)
 					}
 				case "mode":
 					if tab := a.state.Current(); tab != nil {
@@ -193,6 +236,8 @@ func (a *App) startAutomation() {
 						log += "FAIL: Rally assistant did not complete\n"
 						a.exitCode = 1
 					}
+				case "draw_stats":
+					log += fmt.Sprintf("Draw callbacks: %d; max %v; aggregate memory %d MiB\n", a.drawCount, a.drawMax, a.memoryBytes>>20)
 				case "quit":
 					log += "quit\n"
 					_ = os.WriteFile(path+".result", []byte(log), 0600)
@@ -208,6 +253,7 @@ func (a *App) startAutomation() {
 				return
 			}
 			log += fmt.Sprintf("%s %s\n", step.Action, step.Value)
+			_ = os.WriteFile(path+".progress", []byte(log), 0600)
 		}
 		_ = os.WriteFile(path+".result", []byte(log), 0600)
 	})

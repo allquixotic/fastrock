@@ -229,6 +229,9 @@ func (a *App) assistantEvent(m codex.Message, p map[string]any) {
 func (a *App) runDynamicTool(client *codex.Client, m codex.Message) {
 	a.post(func() {
 		p := codex.Decode(m.Params)
+		if a.crossTabTool(m, p) {
+			return
+		}
 		if a.assistant == nil || str(p, "threadId") != a.assistant.ThreadID {
 			a.work(func() { _ = client.Reject(m.ID, "Rally tools are available only in the Rally assistant") })
 			return

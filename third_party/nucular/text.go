@@ -36,6 +36,7 @@ const (
 // the Edit method passing the window to it.
 type TextEditor struct {
 	textSnapshot string
+	wrapRight    int
 	Placeholder  string
 	// PaintText optionally draws formatted text while selection, hit testing and editing stay native.
 	PaintText func(*command.Buffer, rect.Rect, []rune, int, font.Face, color.RGBA, bool)
@@ -123,6 +124,8 @@ const (
 	EditFocusFollowsMouse
 	EditNoContextMenu
 	EditIbeamCursor
+	// EditSoftWrap wraps display rows without inserting newlines into Buffer.
+	EditSoftWrap
 
 	EditSimple = EditAlwaysInsertMode
 	EditField  = EditSelectable | EditClipboard | EditSigEnter
@@ -1027,7 +1030,8 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 			out.FillRect(lblrect, 0, background)
 		}
 		edit.drawchunks = append(edit.drawchunks, drawchunk{lblrect, start + textOffset, index + textOffset})
-		if edit.PaintText != nil && edit.PasswordChar == 0 {
+		if lblrect.Y+lblrect.H < out.Clip.Y || lblrect.Y > out.Clip.Y+out.Clip.H {
+		} else if edit.PaintText != nil && edit.PasswordChar == 0 {
 			edit.PaintText(out, lblrect, text[start:index], start+textOffset, f, foreground, is_selected)
 		} else {
 			widgetText(out, lblrect, getText(start, index), &txt, "LC", f)
@@ -1051,7 +1055,8 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 			out.FillRect(lblrect, 0, background)
 		}
 		edit.drawchunks = append(edit.drawchunks, drawchunk{lblrect, start + textOffset, index + textOffset})
-		if edit.PaintText != nil && edit.PasswordChar == 0 {
+		if lblrect.Y+lblrect.H < out.Clip.Y || lblrect.Y > out.Clip.Y+out.Clip.H {
+		} else if edit.PaintText != nil && edit.PasswordChar == 0 {
 			edit.PaintText(out, lblrect, text[start:index], start+textOffset, f, foreground, is_selected)
 		} else {
 			widgetText(out, lblrect, getText(start, index), &txt, "LC", f)
@@ -1062,7 +1067,35 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 		return lblrect
 	}
 
+	width := pos_x - x_margin
 	for index, glyph := range text {
+		if edit.Flags&EditSoftWrap != 0 && glyph != '\n' && glyph != '\r' {
+			advance := glyphAdvance(f, glyph)
+			if glyph == '\t' {
+				advance = tabsz - width%tabsz
+			}
+			// Start words on the next display row when they fit there.
+			previousSpace := index == 0 && (textOffset == 0 || unicode.IsSpace(edit.Buffer[textOffset-1])) || index > 0 && unicode.IsSpace(text[index-1])
+			wordWidth := advance
+			if previousSpace && !unicode.IsSpace(glyph) {
+				for _, ch := range text[index+1:] {
+					if unicode.IsSpace(ch) {
+						break
+					}
+					wordWidth += glyphAdvance(f, ch)
+					if wordWidth > edit.wrapRight-x_margin {
+						break
+					}
+				}
+			}
+			if width > 0 && (x_margin+width+advance > edit.wrapRight || previousSpace && wordWidth <= edit.wrapRight-x_margin && x_margin+width+wordWidth > edit.wrapRight) {
+				flushLine(index)
+				line_offset += row_height
+				start = index
+				width = 0
+			}
+			width += advance
+		}
 		switch glyph {
 		case '\t':
 			flushTab(index)
@@ -1072,6 +1105,7 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 			line_count++
 			start = index + 1
 			line_offset += row_height
+			width = 0
 
 		case '\r':
 			// do nothing
@@ -1439,6 +1473,10 @@ func (d *drawableTextEditor) Draw(z *nstyle.Style, out *command.Buffer) {
 	}
 
 	area.W -= FontWidth(font, "i")
+	edit.wrapRight = area.X + area.W
+	if edit.Flags&EditSoftWrap != 0 {
+		edit.Scrollbar.X = 0
+	}
 	clip := unify(old_clip, area)
 	out.PushScissor(clip)
 	/* draw text */

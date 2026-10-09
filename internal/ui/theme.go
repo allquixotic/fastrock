@@ -8,7 +8,6 @@ import (
 	"github.com/aarzilli/nucular/font"
 	"github.com/aarzilli/nucular/label"
 	"github.com/aarzilli/nucular/style"
-	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/mobile/event/mouse"
 )
 
@@ -29,7 +28,7 @@ func makeStyle(p palette, size int) *style.Style {
 		ColorProperty: p.Sunken, ColorEdit: p.Sunken, ColorEditCursor: p.Text, ColorCombo: p.Surface, ColorChart: p.Surface, ColorChartColor: p.Accent, ColorChartColorHighlight: p.Success,
 		ColorScrollbar: p.Sunken, ColorScrollbarCursor: p.Border, ColorScrollbarCursorHover: p.Muted, ColorScrollbarCursorActive: p.Accent, ColorTabHeader: p.Surface,
 	}, 1)
-	s.Font, _ = font.NewFace(goregular.TTF, size)
+	s.Font, _ = font.NewFace(uiRegular, size)
 	s.Button.Rounding = 4
 	s.Button.Border = 1
 	s.Button.Padding = image.Pt(10, 4)
@@ -46,7 +45,7 @@ func makeStyle(p palette, size int) *style.Style {
 func textEditor(value string, multiline bool) *nucular.TextEditor {
 	f := nucular.EditField
 	if multiline {
-		f = nucular.EditBox
+		f = nucular.EditBox | nucular.EditSoftWrap | nucular.EditNoHorizontalScroll
 	}
 	return &nucular.TextEditor{Buffer: []rune(value), Flags: f, Maxlen: 2 << 20}
 }

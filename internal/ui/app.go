@@ -7,12 +7,12 @@ import (
 	"errors"
 	"image"
 	"image/color"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/aarzilli/nucular"
+	"github.com/aarzilli/nucular/font"
 	"github.com/aarzilli/nucular/label"
 	"github.com/allquixotic/fastrock/internal/codex"
 	"github.com/allquixotic/fastrock/internal/platform"
@@ -23,6 +23,34 @@ import (
 )
 
 type App struct {
+	italicFace       font.Face
+	openThreads      []codex.OpenThread
+	crossSequence    uint64
+	layoutJobs       chan func()
+	rallyGeneration  int
+	scopeGeneration  int
+	importedSessions []string
+	transferBuffer   map[string][]codex.Message
+	transferPending  bool
+	incomingTicket   string
+	incomingTab      string
+	readyTicket      string
+	mailbox          map[string][]mailMessage
+	replyWaits       []*replyWait
+	crossSends       map[string]int
+	drawMax          time.Duration
+	drawCount        uint64
+	infoViews        map[string]*conversationInfo
+	detached         map[string]bool
+	recordShortcut   string
+	clipboard        string
+	connection       Connection
+	popping          map[string]bool
+	transfers        map[string]string
+	sessionName      string
+	lastMaintenance  time.Time
+	memoryBytes      uint64
+
 	ctx                                               context.Context
 	cancel                                            context.CancelFunc
 	store                                             *settings.Store
@@ -51,10 +79,13 @@ type App struct {
 	paletteSearch                                     *nucular.TextEditor
 	writes                                            chan func()
 	writerDone                                        chan struct{}
+	sessions                                          chan session
+	preferences                                       chan settings.Preferences
 	lastSession                                       string
 	lastCheckpoint                                    time.Time
 	historyCursor                                     map[bool]string
 	connecting                                        bool
+	serverPaused                                      bool
 	dragTab                                           string
 	dragTabX                                          int
 	dragTabMoving                                     bool
@@ -63,71 +94,160 @@ type App struct {
 	sidebarCache                                      sidebarCache
 }
 type approval struct {
-	Message   codex.Message
-	Title     string
-	Questions []question
+	Choices     []approvalChoice
+	Focused     bool
+	Armed       time.Time
+	URL         string
+	Elicitation bool
+	Message     codex.Message
+	Title       string
+	Questions   []question
 }
 type question struct {
 	ID, Header, Text string
 	Options          []string
+	Descriptions     []string
 	Selected         int
 	Editor           *nucular.TextEditor
 	Secret           bool
+	Type             string
+	Required         bool
+	Form             *elicitationField
 }
 type fileView struct {
-	Path   string
-	Editor *nucular.TextEditor
-	Error  string
+	PendingLine, PendingColumn int
+	BasePath                   string
+	PendingPosition            *editorPosition
+	Offset                     int64
+	More                       bool
+	LimitReached               bool
+	SearchGeneration           int
+	Loading                    bool
+	Diff                       []diffFile
+	Find                       *nucular.TextEditor
+	FindOpen, Wrap, Virtual    bool
+	Path                       string
+	Editor                     *nucular.TextEditor
+	Error                      string
 }
 
-func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences) int {
+func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences, connection Connection) int {
+	initUIFonts()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	a := &App{ctx: ctx, cancel: cancel, store: store, prefs: prefs, state: workspace.NewState(), updates: make(chan func(), 512), status: "Starting Codex app-server…", chats: map[string]*chatView{}, rallyViews: map[string]*rallyView{}, files: map[string]*fileView{}, collapsed: map[string]bool{}}
+	a.layoutJobs = make(chan func(), 32)
+	for range 2 {
+		go func() {
+			for {
+				select {
+				case job := <-a.layoutJobs:
+					job()
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+	a.connection = connection
+	a.client = connection.Client
+	a.popping, a.transfers = map[string]bool{}, map[string]string{}
+	a.sessionName = "session.json"
+	if connection.Ticket != "" {
+		a.sessionName = "session-popout-" + connection.Ticket[:min(16, len(connection.Ticket))] + ".json"
+	}
 	a.writes, a.writerDone = make(chan func(), 128), make(chan struct{})
+	a.sessions = make(chan session, 1)
+	a.preferences = make(chan settings.Preferences, 1)
 	go func() {
 		defer close(a.writerDone)
-		for f := range a.writes {
-			f()
+		last := ""
+		for {
+			select {
+			case <-a.ctx.Done():
+				return
+			case snapshot := <-a.sessions:
+				b, _ := json.Marshal(snapshot)
+				if string(b) != last {
+					last = string(b)
+					_ = a.store.WriteJSON(a.sessionName, json.RawMessage(b))
+				}
+			case p := <-a.preferences:
+				if err := a.store.Save(p); err != nil {
+					a.post(func() { a.report(err) })
+				}
+			}
 		}
 	}()
-	a.loadSession()
+
+	if connection.Ticket == "" {
+		a.loadSession()
+	}
 	a.p = colors(prefs.Theme == "light")
+	a.italicFace, _ = font.NewFace(uiItalic, prefs.FontSize)
 	a.sidebarSearch = textEditor("", false)
 	a.sidebarSearch.Placeholder = "Search conversations"
 	a.newFolder = textEditor(prefs.WorkingDirectory, false)
 	a.paletteSearch = textEditor("", false)
-	if len(a.state.Tabs) == 0 {
+	if len(a.state.Tabs) == 0 && connection.Ticket == "" {
 		a.state.Open(workspace.New, "New tab", "", "")
 	}
 	a.window = nucular.NewMasterWindowSize(nucular.WindowNoScrollbar, "Fastrock", platform.WindowSize(), a.draw)
 	a.window.SetStyle(makeStyle(a.p, prefs.FontSize))
-	a.window.OnClose(func() {
-		cancel()
-		close(a.writes)
-		<-a.writerDone
-		a.saveSession()
-		_ = a.store.Save(a.prefs)
-		if a.client != nil {
-			a.client.Close()
-		}
-		// Ebitengine owns the process main loop on desktop platforms.
-		os.Exit(a.exitCode)
-	})
+
 	a.work(func() {
-		client, e := codex.Start(ctx)
-		if e != nil {
-			a.post(func() { a.fatal = e.Error(); a.exitCode = 1 })
-			return
+		client := connection.Client
+		if connection.Ticket != "" {
+			var payload tabTransfer
+			e := client.Call(ctx, "fastrock/claim", map[string]string{"ticket": connection.Ticket}, &payload)
+			if e != nil {
+				a.post(func() { a.fatal = e.Error(); a.exitCode = 1 })
+			} else {
+				a.post(func() {
+					a.incomingTicket = connection.Ticket
+					a.transferPending = true
+					a.installTransfer(payload)
+					if payload.Chat != nil {
+						a.transferBuffer = map[string][]codex.Message{payload.Chat.ID: nil}
+					}
+					a.readyTicket = connection.Ticket
+				})
+			}
+		} else {
+			a.post(a.restoreDocuments)
 		}
-		a.post(func() { a.client = client; a.status = client.Version + " · Connected"; a.restoreDocuments() })
+		a.post(func() { a.status = client.Version + " · Connected" })
 		go a.consume(client)
 		a.loadCatalog(client, prefs.WorkingDirectory)
 		a.loadThreads(client, false)
 	})
 	a.connectRally()
+	a.work(func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-a.ctx.Done():
+				return
+			case <-ticker.C:
+				a.window.Changed()
+			}
+		}
+	})
+	a.work(func() {
+		name := "Fastrock"
+		if connection.Ticket != "" {
+			name = "Pop-out"
+		}
+		_ = a.client.Notify("fastrock/name", map[string]string{"name": name})
+	})
 	a.startAutomation()
 	a.window.Main()
+	cancel()
+	close(a.writes)
+	<-a.writerDone
+	a.saveSession()
+	_ = a.store.Save(a.prefs)
 	if a.client != nil {
 		a.client.Close()
 	}
@@ -195,14 +315,28 @@ func (a *App) loadCatalog(c *codex.Client, cwd string) {
 func (a *App) savePrefs() {
 	p := a.prefs
 	p.Views = append([]settings.SavedView(nil), p.Views...)
-	a.writes <- func() {
-		e := a.store.Save(p)
-		if e != nil {
-			a.post(func() { a.report(e) })
+	p.Keymap = cloneKeys(p.Keymap)
+	p.RecentFolders = append([]string(nil), p.RecentFolders...)
+	if a.client != nil {
+		c := a.client
+		a.work(func() { _ = c.Notify("fastrock/preferences", map[string]any{"data": p}) })
+	}
+	select {
+	case a.preferences <- p:
+	default:
+		select {
+		case <-a.preferences:
+		default:
+		}
+		select {
+		case a.preferences <- p:
+		default:
 		}
 	}
+
 }
 func (a *App) theme() {
+	a.italicFace, _ = font.NewFace(uiItalic, a.prefs.FontSize)
 	if a.prefs.Theme != "light" {
 		a.prefs.Theme = "dark"
 	}
@@ -233,49 +367,51 @@ func (a *App) openFile(path string) {
 	if a.files[id] != nil {
 		return
 	}
-	v := &fileView{Path: path}
+	v := &fileView{Path: path, Find: textEditor("", false), Wrap: true}
 	a.files[id] = v
-	a.work(func() {
-		info, e := os.Stat(path)
-		var b []byte
-		if e == nil {
-			if info.Size() > 4<<20 {
-				e = errors.New("File exceeds the 4 MiB viewer limit")
-			} else {
-				b, e = os.ReadFile(path)
-			}
-		}
-		a.post(func() {
-			if e != nil {
-				v.Error = e.Error()
-			} else {
-				v.Editor = textEditor(string(b), true)
-				v.Editor.Flags |= nucular.EditReadOnly
-			}
-		})
-	})
+	a.loadFilePage(v, false)
 }
 func (a *App) connectRally() {
+	a.rallyGeneration++
+	generation := a.rallyGeneration
 	p := a.prefs
 	a.work(func() {
 		token, e := a.store.Token(p.RallyEndpoint)
 		if e != nil || token == "" {
-			a.post(func() { a.rallyErr = "Connect your Rally endpoint and API token in Settings." })
+			a.post(func() {
+				if a.rallyGeneration != generation {
+					return
+				}
+				a.rallyErr = "Connect your Rally endpoint and API token in Settings."
+			})
 			return
 		}
 		c, e := rally.New(p.RallyEndpoint, token, nil)
 		if e != nil {
-			a.post(func() { a.rallyErr = e.Error() })
+			a.post(func() {
+				if a.rallyGeneration != generation {
+					return
+				}
+				a.rallyErr = e.Error()
+			})
 			return
 		}
 		ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
 		defer cancel()
 		workspaces, e := c.All(ctx, "Workspace", rally.Query{})
 		if e != nil {
-			a.post(func() { a.rallyErr = e.Error() })
+			a.post(func() {
+				if a.rallyGeneration != generation {
+					return
+				}
+				a.rallyErr = e.Error()
+			})
 			return
 		}
 		a.post(func() {
+			if a.rallyGeneration != generation {
+				return
+			}
 			a.rallyClient = c
 			a.rallyErr = ""
 			a.workspaces = workspaces
@@ -295,6 +431,8 @@ func (a *App) loadScope() {
 		return
 	}
 	p := a.prefs
+	a.scopeGeneration++
+	generation := a.scopeGeneration
 	a.work(func() {
 		ctx, cancel := context.WithTimeout(a.ctx, 45*time.Second)
 		defer cancel()
@@ -304,6 +442,9 @@ func (a *App) loadScope() {
 		releases, e3 := c.All(ctx, "Release", q)
 		users, e4 := c.All(ctx, "User", rally.Query{Workspace: p.RallyWorkspace})
 		a.post(func() {
+			if a.scopeGeneration != generation || a.rallyClient != c {
+				return
+			}
 			a.projects = projects
 			a.iterations = iterations
 			a.releases = releases
@@ -318,16 +459,33 @@ func (a *App) loadScope() {
 	})
 }
 func (a *App) draw(w *nucular.Window) {
-	for i := 0; i < 512; i++ {
+	started := time.Now()
+	defer func() {
+		elapsed := time.Since(started)
+		a.drawCount++
+		if elapsed > a.drawMax {
+			a.drawMax = elapsed
+		}
+	}()
+	deadline := time.Now().Add(4 * time.Millisecond)
+	for i := 0; i < 64 && time.Now().Before(deadline); i++ {
 		select {
 		case f := <-a.updates:
 			f()
 		default:
-			i = 512
+			i = 64
 		}
+	}
+	if len(a.updates) > 0 {
+		a.window.Changed()
+	}
+	if a.clipboard != "" {
+		w.SetClipboard(a.clipboard)
+		a.clipboard = ""
 	}
 	a.shortcuts(w)
 	a.checkpoint()
+	a.maintain()
 	if a.fatal != "" {
 		w.Row(100).Dynamic(1)
 		w.Spacing(1)
@@ -340,6 +498,7 @@ func (a *App) draw(w *nucular.Window) {
 		}
 		return
 	}
+	a.drawMenu(w)
 	a.drawTabs(w)
 	if a.toast != "" {
 		w.Row(28).Ratio(.92, .08)
@@ -374,19 +533,27 @@ func (a *App) draw(w *nucular.Window) {
 	}
 	if body := w.GroupBegin("document", nucular.WindowNoScrollbar); body != nil {
 		t := a.state.Current()
-		if t == nil {
+		if a.transferPending || t != nil && a.popping[t.ID] {
+			muted(body, "Moving this tab to its new window…", a.p)
+		} else if t == nil {
 			a.drawNew(body)
 		} else {
 			switch t.Kind {
 			case workspace.New:
 				a.drawNew(body)
 			case workspace.Chat:
+				if a.chats[t.Target] == nil && a.client != nil && !a.serverPaused {
+					a.resumeThread(t.Target)
+				}
 				a.drawChat(body, t.Target)
 			case workspace.Rally:
 				a.drawRally(body, a.rallyViews[t.ID])
 			case workspace.Settings:
 				a.drawSettings(body)
 			case workspace.File:
+				if f := a.files[t.ID]; f != nil && f.Editor == nil && f.Error == "" {
+					a.reloadFile(f)
+				}
 				a.drawFile(body, a.files[t.ID])
 			}
 		}
@@ -403,6 +570,10 @@ func (a *App) draw(w *nucular.Window) {
 	w.LabelColored("Fastrock 1.0 · "+strings.ToUpper(a.prefs.Theme[:1])+a.prefs.Theme[1:], "RC", a.p.Faint)
 	if a.paletteOpen {
 		a.drawPalette()
+	}
+	if ticket := a.readyTicket; ticket != "" {
+		a.readyTicket = ""
+		a.rpc("fastrock/ready", map[string]string{"ticket": ticket}, nil)
 	}
 }
 func (a *App) drawTabs(w *nucular.Window) {
@@ -478,8 +649,17 @@ func (a *App) drawTabs(w *nucular.Window) {
 				moveID, moveBy = a.dragTab, i-from
 			}
 			if b.W > 0 && b.H > 0 {
-				if menu := strip.ContextualOpen(0, image.Pt(180, 100), b, nil); menu != nil {
+				if menu := strip.ContextualOpen(0, image.Pt(220, 490), b, nil); menu != nil {
 					menu.Row(28).Dynamic(1)
+					if menu.MenuItem(label.T("Pop out into new window")) {
+						a.popOut(t)
+					}
+					if menu.MenuItem(label.T("Move to another window…")) {
+						a.moveTab(t)
+					}
+					if t.Kind == workspace.Chat {
+						a.chatTabMenu(menu, t)
+					}
 					if menu.MenuItem(label.T("Close tab")) {
 						closeID = t.ID
 					}
@@ -502,20 +682,25 @@ func (a *App) drawTabs(w *nucular.Window) {
 			a.state.Move(moveID, moveBy)
 			a.state.Active = moveID
 		}
+		var closing []string
 		if keepID != "" {
 			for _, t := range a.state.Tabs {
-				if t.ID == keepID {
-					a.state.Tabs = []workspace.Tab{t}
-					a.state.Active = t.ID
-					break
+				if t.ID != keepID {
+					closing = append(closing, t.ID)
 				}
 			}
+			a.state.Active = keepID
 		} else if keepRight >= 0 {
-			a.state.Tabs = a.state.Tabs[:keepRight+1]
-			a.state.Active = a.state.Tabs[keepRight].ID
+			for _, t := range a.state.Tabs[keepRight+1:] {
+				closing = append(closing, t.ID)
+			}
 		}
+		if len(closing) > 0 {
+			a.closeTabs(closing)
+		}
+
 		if closeID != "" {
-			a.state.Close(closeID)
+			a.closeTab(closeID)
 		}
 		if strip.Input().Mouse.Released(mouse.ButtonLeft) {
 			a.dragTab = ""
@@ -546,6 +731,19 @@ func (a *App) drawNew(w *nucular.Window) {
 	w.Spacing(1)
 	title(w, "What would you like to work on?", a.p)
 	muted(w, "Start a Codex conversation or open a Rally workspace.", a.p)
+	w.Row(30).Dynamic(4)
+	if w.ButtonText("Choose folder…") {
+		a.choosePath(false, true, func(path string) { setText(a.newFolder, path); a.prefs.WorkingDirectory = path; a.savePrefs() })
+	}
+	if w.ButtonText("Folderless chat") {
+		a.newThread("")
+	}
+	if w.ButtonText("Open file…") {
+		a.choosePath(false, false, a.openFile)
+	}
+	if w.ButtonText("Resume chat…") {
+		a.chooseConversation(func(c *workspace.Conversation) { a.resumeThread(c.ID) })
+	}
 	title(w, "Project folder", a.p)
 	w.Row(32).Ratio(.8, .2)
 	a.newFolder.Edit(w)
@@ -567,6 +765,29 @@ func (a *App) drawNew(w *nucular.Window) {
 			a.openSettings()
 		}
 	}
+	w.Row(30).Static(180)
+	if w.ButtonText("Sign in to Codex…") {
+		a.settingsPage("Account")
+	}
+	title(w, "Recent folders", a.p)
+	for _, folder := range a.prefs.RecentFolders {
+		w.Row(30).Dynamic(1)
+		if w.ButtonText(folder) {
+			setText(a.newFolder, folder)
+			a.newThread(folder)
+		}
+		if menu := w.ContextualOpen(0, image.Pt(210, 120), w.LastWidgetBounds, nil); menu != nil {
+			if menu.MenuItem(label.T("Open folder")) {
+				a.openPath(folder, false)
+			}
+			if menu.MenuItem(label.T("Copy path")) {
+				a.copyText(folder)
+			}
+			if menu.MenuItem(label.T("Forget folder")) {
+				a.forgetFolder(folder)
+			}
+		}
+	}
 	title(w, "Recent conversations", a.p)
 	rows := a.state.Sidebar("", false)
 	for _, c := range rows[:min(8, len(rows))] {
@@ -574,21 +795,5 @@ func (a *App) drawNew(w *nucular.Window) {
 		if w.ButtonText(c.Title + "  ·  " + filepath.Base(c.Cwd)) {
 			a.resumeThread(c.ID)
 		}
-	}
-}
-func (a *App) drawFile(w *nucular.Window, v *fileView) {
-	if v == nil {
-		return
-	}
-	title(w, v.Path, a.p)
-	if v.Error != "" {
-		muted(w, v.Error, a.p)
-		return
-	}
-	w.Row(max(200, w.LayoutAvailableHeight()-10)).Dynamic(1)
-	if v.Editor != nil {
-		v.Editor.Edit(w)
-	} else {
-		w.Label("Loading…", "LC")
 	}
 }

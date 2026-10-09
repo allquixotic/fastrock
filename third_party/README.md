@@ -28,3 +28,10 @@ Changes from upstream:
 
 The upstream license and source notices are retained. Ebitengine and purego are
 Apache-2.0; see their pinned modules for copyright and license text.
+
+Additional local changes preserve wrapped editor text/caret/selection without
+inserting newlines, expose asynchronous clipboard text reads, and stop the
+renderer updater when its native window closes (releasing its frame buffers).
+
+Menu and closable-popup Escape handling removes the top popup before the next
+layout pass; regression coverage protects non-closable approval dialogs.
