@@ -7,25 +7,24 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"golang.org/x/mobile/event/mouse"
 )
 
 type rallyModeChoice struct{ Key, Label string }
 
-func (a *App) drawRallyViewLabel(w *nucular.Window, v *rallyView) {
-	w.Row(24).Ratio(.50, .32, .18)
-	w.Spacing(1)
-	w.LabelColored("Saved view", "LC", a.p.Muted)
-	if !v.AIView {
-		w.Spacing(1)
+func (a *App) drawRallyViewLabel(w *desktop.Window, v *rallyView) {
+	b, out := w.Custom(w.CustomState())
+	if out == nil {
 		return
 	}
-	b, out := w.Custom(w.CustomState())
-	if out != nil {
-		out.FillRect(inset(b, 1, 1), 4, a.p.AccentSoft)
-		labelAt(out, inset(b, 8, 0), "AI view", w.Master().Style().Font, a.p.Accent)
+	labelAt(out, inset(b, 4, 0), "Saved view", w.Master().Style().Font, a.p.Muted)
+	if v.AIView {
+		scale := w.Master().Style().Scaling
+		badge := rect.Rect{X: b.X + int(105*scale), Y: b.Y + 2, W: int(80 * scale), H: b.H - 4}
+		out.FillRect(badge, 4, a.p.AccentSoft)
+		labelAt(out, inset(badge, 8, 0), "AI view", w.Master().Style().Font, a.p.Accent)
 	}
 }
 
@@ -45,22 +44,28 @@ func rallyModeChoices(v *rallyView) []rallyModeChoice {
 	return nil
 }
 
-func (a *App) drawRallyModes(w *nucular.Window, v *rallyView) {
+func (a *App) drawRallyModes(w *desktop.Window, v *rallyView) {
 	choices := rallyModeChoices(v)
 	if len(choices) > 0 {
-		w.Row(30).Dynamic(len(choices))
-		for _, choice := range choices {
-			if rallyModeButton(w, choice, v.Mode == choice.Key, a.p) {
-				v.Mode = choice.Key
+		a.rallyRow(w, v, "modes", func(w *desktop.Window) {
+			var captions []string
+			for _, choice := range choices {
+				captions = append(captions, choice.Label)
 			}
-		}
+			compactRallyButtons(w, 26, captions, 44, func(i int) {
+				choice := choices[i]
+				if rallyModeButton(w, choice, v.Mode == choice.Key, a.p) {
+					v.Mode = choice.Key
+				}
+			})
+		})
 	}
 	if v.Mode == "board" || v.Mode == "list" {
-		a.drawBoardDisplayControls(w, v)
+		a.rallyRow(w, v, "density", func(w *desktop.Window) { a.drawBoardDisplayControls(w, v) })
 	}
 }
 
-func rallyModeButton(w *nucular.Window, choice rallyModeChoice, active bool, p palette) bool {
+func rallyModeButton(w *desktop.Window, choice rallyModeChoice, active bool, p palette) bool {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return false
@@ -114,12 +119,12 @@ func rallyGroupChoices(v *rallyView) (keys, labels []string) {
 	return
 }
 
-func (a *App) drawRallyGrouping(w *nucular.Window, v *rallyView) {
+func (a *App) drawRallyGrouping(w *desktop.Window, v *rallyView) {
 	label := "Group By"
 	if v.Mode == "board" {
 		label = "Swimlanes"
 	}
-	w.Row(28).Ratio(.25, .75)
+	w.Row(28).StaticScaled(rallyButtonWidth(w, label, 16), min(int(320*w.Master().Style().Scaling), w.LayoutAvailableWidth()-rallyButtonWidth(w, label, 16)-int(6*w.Master().Style().Scaling)))
 	w.Label(label, "LC")
 	keys, labels := rallyGroupChoices(v)
 	old := index(keys, fallback(v.Group, "None"))
@@ -229,7 +234,7 @@ func rallyFilterCaption(open bool, count int) string {
 	return fmt.Sprintf("%s %d %s", action, count, noun)
 }
 
-func (a *App) drawRallyFilterChips(w *nucular.Window, v *rallyView, filters []rallyActiveFilter) {
+func (a *App) drawRallyFilterChips(w *desktop.Window, v *rallyView, filters []rallyActiveFilter) {
 	style := w.Master().Style()
 	scale := float64(style.Scaling)
 	width := max(1, w.LayoutAvailableWidth())
@@ -238,7 +243,7 @@ func (a *App) drawRallyFilterChips(w *nucular.Window, v *rallyView, filters []ra
 		var widths []int
 		used := 0
 		for i := start; i < len(filters); i++ {
-			n := min(width, nucular.FontWidth(style.Font, filters[i].Label)+int(40*scale))
+			n := min(width, desktop.FontWidth(style.Font, filters[i].Label)+int(40*scale))
 			if len(widths) > 0 && used+spacing+n > width {
 				break
 			}
@@ -256,7 +261,7 @@ func (a *App) drawRallyFilterChips(w *nucular.Window, v *rallyView, filters []ra
 	}
 }
 
-func rallyFilterChip(w *nucular.Window, label string, p palette) bool {
+func rallyFilterChip(w *desktop.Window, label string, p palette) bool {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return false

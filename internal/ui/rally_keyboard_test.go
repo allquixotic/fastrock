@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/allquixotic/fastrock/internal/workspace"
@@ -40,7 +40,7 @@ func keyboardBoard(t *testing.T, n int) (*App, *rallyView) {
 
 func TestV44RallyActionsRespectContextAndRemapping(t *testing.T) {
 	a, v := keyboardBoard(t, 3)
-	h := nucular.NewHeadlessHarness(0, image.Pt(900, 700), a.shortcuts)
+	h := desktop.NewHeadlessHarness(0, image.Pt(900, 700), a.shortcuts)
 	a.window = h.Master()
 	h.Key(key.CodeSlash, 0)
 	h.Frame(false)
@@ -112,7 +112,7 @@ func TestV44FocusedCardOpensAndDirtyEscapeKeepsWork(t *testing.T) {
 	}))
 	t.Cleanup(s.Close)
 	a.rallyClient, _ = rally.New(s.URL, "fixture", nil)
-	h := nucular.NewHeadlessHarness(0, image.Pt(900, 700), a.shortcuts)
+	h := desktop.NewHeadlessHarness(0, image.Pt(900, 700), a.shortcuts)
 	a.window = h.Master()
 	keyboardFrame(h, key.CodeTab, 0)
 	keyboardFrame(h, key.CodeReturnEnter, 0)
@@ -206,7 +206,7 @@ func TestV44KeyboardFocusRevealsVirtualCards(t *testing.T) {
 			v.focusCard = v.Items[24].String("_ref")
 			v.focusCardIndex, v.cardFocusActive, v.revealCard = 24, true, true
 			var commands []command.Command
-			h := nucular.NewHeadlessHarness(0, image.Pt(1100, 700), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(1100, 700), func(w *desktop.Window) {
 				a.drawTeamBoard(w, v, v.filtered())
 				commands = append(commands[:0], w.Commands().Commands...)
 			})
@@ -231,7 +231,7 @@ func TestV44KeyboardFocusRevealsVirtualCards(t *testing.T) {
 }
 
 // PopupOpen installs windows asynchronously under the master lock.
-func keyboardFrame(h *nucular.HeadlessHarness, code key.Code, mods key.Modifiers) {
+func keyboardFrame(h *desktop.HeadlessHarness, code key.Code, mods key.Modifiers) {
 	h.Master().Lock()
 	defer h.Master().Unlock()
 	h.Key(code, mods)
@@ -243,7 +243,7 @@ func TestV44SearchFocusHandsOffToBoard(t *testing.T) {
 	a.rallyClient, _ = rally.New("http://127.0.0.1:1", "fixture", nil)
 	v.signature = a.rallySignature(v)
 	v.pendingSignature = v.signature
-	h := nucular.NewHeadlessHarness(0, image.Pt(1200, 1000), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(1200, 1000), func(w *desktop.Window) {
 		a.shortcuts(w)
 		a.drawRally(w, v)
 	})
@@ -312,7 +312,7 @@ func TestV44KeyboardFocusRevealsGroupedAndHorizontalCards(t *testing.T) {
 			v.focusCard = v.Items[17].String("_ref")
 			v.focusCardIndex, v.cardFocusActive, v.revealCard = 17, true, true
 			var commands []command.Command
-			h := nucular.NewHeadlessHarness(0, image.Pt(500, 700), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(500, 700), func(w *desktop.Window) {
 				a.drawTeamBoard(w, v, v.filtered())
 				commands = append(commands[:0], w.Commands().Commands...)
 			})

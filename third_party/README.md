@@ -1,41 +1,26 @@
-# nucular
+# Desktop dependencies
 
-Source: https://github.com/aarzilli/nucular
-Commit: 58b808aa577248d4d3d0cd7af89ea4a3d0dc5d43
-License: MIT (see nucular/LICENSE).
+Fastrock uses [go-fltk](https://github.com/pwiecz/go-fltk) at commit
+`3e944122e7b1f66db5e3a968e679285930c7e10e`. Its version and checksums are pinned
+in go.mod/go.sum. The module supplies static FLTK archives for Windows amd64 and
+macOS arm64/amd64; the compiler links them into Fastrock. Build helpers verify
+that no FLTK DLL/dylib or Windows GCC runtime is imported by the executable.
+The Go bindings are MIT; FLTK is LGPL-2.0 with static-linking exceptions.
 
-The fork retains nucular's widgets, layout, input, and software rasterizer. The desktop
-presentation adapter in `internal/ebitenscreen` implements the small Shiny `screen`
-interface using Ebitengine **2.10.0**. Windows and macOS now use the same path with
-**Go 1.27.2 and CGO_ENABLED=0**. Gio and its dependencies have been removed. The
-adapter supports software buffers; texture APIs fail explicitly because nucular does
-not use them. Ebitengine is responsible for native windows and GPU presentation.
+The custom controls in `internal/desktop` are derived from
+[aarzilli/nucular](https://github.com/aarzilli/nucular), commit
+`58b808aa577248d4d3d0cd7af89ea4a3d0dc5d43` (MIT). Its original license is retained
+as `internal/desktop/LICENSE`. This is retained code, not an independent rewrite.
+No nucular module is required. Ebitengine and Shiny no longer supply the
+application's window backend.
 
-Changes from upstream:
+FLTK owns standard buttons and plain single-line fields, including their native
+focus, text input, clipboard and undo. Value snapshots and sequenced events join
+these controls to existing application state. Rich editors, transcripts, tabs,
+board cards, popups and other custom controls keep their canvas layout and
+rendering. That code retains the existing soft wrapping, selection, clipboard,
+font caches, damage tracking and regression tests. The `fltk_headless` build tag
+excludes the native driver and CGo for deterministic tests without a display.
 
-- Integrated tab, board and formatting widgets live in the application, without
-  altering nucular's general widget behavior.
-- `TextEditor.Snapshot` caches UTF-8 without allocating on unchanged text;
-  `PaintText` allows formatted runs with native cursor, selection and scrolling.
-  A placeholder field gives empty search/composer editors a visible hint.
-- Parsed TrueType fonts are actually inserted into the existing font cache.
-  A bounded typed width cache avoids interface boxing and linked-list allocations.
-- Pure Go Windows clipboard uses movable global memory and bounded UTF-16 reads;
-  macOS clipboard uses NSPasteboard through purego, without a compiler or subprocess.
-- The `nucular_headless` build tag excludes the desktop driver during unit tests.
-- Wrapped-label height and padding fixes plus `WrapText` retain the previous patch.
-  SIMD tests remain amd64-only, matching their assembly implementation.
-
-The upstream license and source notices are retained. Ebitengine and purego are
-Apache-2.0; see their pinned modules for copyright and license text.
-
-Additional local changes preserve wrapped editor text/caret/selection without
-inserting newlines, expose asynchronous clipboard text reads, and stop the
-renderer updater when its native window closes (releasing its frame buffers).
-
-Menu and closable-popup Escape handling removes the top popup before the next
-layout pass; regression coverage protects non-closable approval dialogs.
-
-A `nucular_headless`-only harness now exercises the complete layout and software
-render path without constructing any native window or starting clipboard services.
-It is used for large-history regressions and viewport performance measurements.
+Purego remains for platform APIs. The embedded Droid and Proggy fonts retain
+their upstream licensing; Go fonts are supplied by golang.org/x/image.

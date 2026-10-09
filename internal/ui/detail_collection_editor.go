@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -245,7 +245,7 @@ func collectionObjectValues(objects []rally.Object) []any {
 	return result
 }
 
-func (a *App) detailReferenceCollection(w *nucular.Window, d *detailView, f rally.Field) {
+func (a *App) detailReferenceCollection(w *desktop.Window, d *detailView, f rally.Field) {
 	title(w, detailCaption(f), a.p)
 	ed := d.Editors[f.Name]
 	if ed == nil {
@@ -280,7 +280,7 @@ func (a *App) detailReferenceCollection(w *nucular.Window, d *detailView, f rall
 	}
 	scale := w.Master().Style().Scaling
 	w.RowScaled(min(len(refs), 4)*int(30*scale) + int(12*scale)).Dynamic(1)
-	if list := w.GroupBegin("selected-"+f.Name, nucular.WindowNoHScrollbar); list != nil {
+	if list := w.GroupBegin("selected-"+f.Name, desktop.WindowNoHScrollbar); list != nil {
 		spacing, stride := list.WindowStyle().Spacing.Y, int(28*scale)+list.WindowStyle().Spacing.Y
 		first, last := sidebarVisible(list.LayoutNextRowY(), list.Bounds.Y, list.Bounds.Y+list.Bounds.H, stride, len(refs))
 		sidebarSkip(list, first, stride, spacing)

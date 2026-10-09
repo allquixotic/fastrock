@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
@@ -212,13 +212,13 @@ func (a *App) sidebarFolders() []sidebarFolder {
 }
 
 // Skip whole offscreen runs in constant time; include a row of overscan. Heights
-// include nucular row spacing, and do not depend on the number of conversations.
+// include row spacing, and do not depend on the number of conversations.
 func sidebarVisible(top, clipTop, clipBottom, stride, count int) (int, int) {
 	first := min(count, max(0, (clipTop-top)/stride-1))
 	last := min(count, max(first, (clipBottom-top)/stride+2))
 	return first, last
 }
-func sidebarSkip(w *nucular.Window, count, stride, spacing int) {
+func sidebarSkip(w *desktop.Window, count, stride, spacing int) {
 	if count > 0 {
 		w.RowScaled(count*stride - spacing).Dynamic(1)
 		w.Spacing(1)

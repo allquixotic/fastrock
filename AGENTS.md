@@ -1,6 +1,7 @@
 # Fastrock
 
-Native Go/nucular app. Windows 11 x64 first; macOS supported.
+Native Go/go-fltk app with custom canvas areas. Statically link FLTK; CGo is allowed.
+Windows 11 x64 first; macOS supported.
 Never launch the GUI or run GUI tests on Sean's Mac. Use Windows.
 Keep Codex external: start the installed `codex app-server` over stdio.
 Inherit Codex configuration; never embed a second inference or agent runtime.

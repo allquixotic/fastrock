@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 func configurationPage(page string) bool {
@@ -32,7 +32,7 @@ func memoryValue(field *configField) bool {
 	return field.Key == "memories.use_memories" || field.Key == "memories.generate_memories"
 }
 
-func (a *App) drawMemorySettings(w *nucular.Window, s *settingsView) {
+func (a *App) drawMemorySettings(w *desktop.Window, s *settingsView) {
 	if s.Busy {
 		muted(w, "Loading memory settings…", a.p)
 		return
@@ -100,7 +100,7 @@ func (a *App) drawMemorySettings(w *nucular.Window, s *settingsView) {
 	}
 }
 
-func (a *App) drawCommonSettings(w *nucular.Window, s *settingsView) {
+func (a *App) drawCommonSettings(w *desktop.Window, s *settingsView) {
 	if s.ConfigContext == nil {
 		s.ConfigContext = textEditor(a.prefs.WorkingDirectory, false)
 	}

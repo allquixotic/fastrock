@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 func extensionPage(page string) bool {
@@ -14,7 +14,7 @@ func extensionPage(page string) bool {
 	}
 	return false
 }
-func (a *App) drawExtensionSettings(w *nucular.Window, s *settingsView) {
+func (a *App) drawExtensionSettings(w *desktop.Window, s *settingsView) {
 	if s.LoadError != "" {
 		a.drawSettingsError(w, s.LoadError)
 	}

@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like "$Root\*" -and ($_.Name -eq 'fastrock.exe' -or $_.Name -like 'mock-*.exe' -or $_.Name -eq 'codex.exe') } | ForEach-Object {Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue}
 Start-Sleep -Milliseconds 1200
 New-Item -ItemType Directory -Force "$Root\fastrock-home","$Root\codex-home" | Out-Null
-Remove-Item "$Root\popout.json.result","$Root\fastrock-home\session*.json" -Force -ErrorAction SilentlyContinue
+Remove-Item "$Root\popout.json.result","$Root\fastrock-home\session*.json*" -Force -ErrorAction SilentlyContinue
 $env:PATH="$Root;"+$env:PATH
 $env:CODEX_HOME="$Root\codex-home"
 $env:FASTROCK_HOME="$Root\fastrock-home"
@@ -23,18 +23,19 @@ stream_max_retries = 0
 '@ | Set-Content "$Root\codex-home\config.toml"
 @{theme='dark';fontSize=13;sidebar=$true;info=$true;enterSends=$true;rallyEndpoint='http://127.0.0.1:18081';workingDirectory=$Root} | ConvertTo-Json | Set-Content "$Root\fastrock-home\settings.json"
 $steps=@(@{action='wait';milliseconds=4000},@{action='rally';value='teamboard'},@{action='wait';milliseconds=1800})
-for($i=0;$i -lt 20;$i++){$steps+=@(@{action='load_next'},@{action='wait';milliseconds=150})}
+for($i=0;$i -lt 20;$i++){$steps+=@(@{action='load_next'},@{action='wait';milliseconds=350})}
 $steps+=@(
- @{action='assert_window_bound'},
+ @{action='assert_window_bound';value='10006'},
  @{action='refresh'},@{action='wait';milliseconds=1000},
- @{action='filter';value='US1001'},@{action='wait';milliseconds=700},
+ @{action='filter';value='US1001'},@{action='wait';milliseconds=1500},
  @{action='item';value='US1001'},@{action='wait';milliseconds=800},
  @{action='description';value='Unsaved pop-out draft'},@{action='format_description'},
  @{action='popout'},@{action='wait';milliseconds=5000},@{action='assert_tab_count';value='1'},
  @{action='new_chat';value=$Root},@{action='wait';milliseconds=2000},
  @{action='send';value='hello'},@{action='wait';milliseconds=1500},@{action='draft';value='Unsent chat draft'},
  @{action='restart'},@{action='wait';milliseconds=4000},@{action='assert_draft';value='Unsent chat draft'},
- @{action='popout'},@{action='wait';milliseconds=7000},@{action='assert_tab_count';value='1'},
+ # The chat replaces the remaining New tab, so transferring it empties the source.
+ @{action='popout'},@{action='wait';milliseconds=7000},@{action='assert_tab_count';value='0'},
  @{action='assert_memory';value='480'},@{action='draw_stats'},@{action='quit'}
 )
 $steps | ConvertTo-Json | Set-Content "$Root\popout.json"

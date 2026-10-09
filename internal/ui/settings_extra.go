@@ -8,8 +8,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"golang.org/x/mobile/event/key"
 )
@@ -105,7 +105,7 @@ func (a *App) login(params map[string]any) {
 		}
 	})
 }
-func (a *App) drawExtraSettings(w *nucular.Window, s *settingsView) {
+func (a *App) drawExtraSettings(w *desktop.Window, s *settingsView) {
 	w.Row(29).Static(100, 100, 130)
 	if w.ButtonText("Refresh") {
 		a.loadSettingsPage(s.Page)
@@ -349,7 +349,7 @@ func (a *App) loadSettingsData(page, method string, params any) {
 		})
 	}, func() { s.Busy = false; s.LoadError = "The background work queue is full. Retry shortly." })
 }
-func (a *App) keyboardSettings(w *nucular.Window) {
+func (a *App) keyboardSettings(w *desktop.Window) {
 	if a.recordShortcut != "" {
 		muted(w, "Press a shortcut for "+a.recordShortcut+" (Esc cancels)", a.p)
 	}

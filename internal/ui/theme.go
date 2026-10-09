@@ -4,9 +4,9 @@ import (
 	"image"
 	"image/color"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/label"
-	"github.com/aarzilli/nucular/style"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/label"
+	"github.com/allquixotic/fastrock/internal/desktop/style"
 )
 
 type palette struct {
@@ -45,29 +45,29 @@ func makeStyle(p palette, size int) *style.Style {
 	s.GroupWindow.Border = 0
 	return s
 }
-func textEditor(value string, multiline bool) *nucular.TextEditor {
-	f := nucular.EditField
+func textEditor(value string, multiline bool) *desktop.TextEditor {
+	f := desktop.EditField
 	if multiline {
-		f = nucular.EditBox | nucular.EditSoftWrap | nucular.EditNoHorizontalScroll
+		f = desktop.EditBox | desktop.EditSoftWrap | desktop.EditNoHorizontalScroll
 	}
-	ed := &nucular.TextEditor{Buffer: []rune(value), Flags: f, Maxlen: 2 << 20}
+	ed := &desktop.TextEditor{Buffer: []rune(value), Flags: f, Maxlen: 2 << 20}
 	ed.TrackChanges()
 	return ed
 }
-func text(ed *nucular.TextEditor) string {
+func text(ed *desktop.TextEditor) string {
 	if ed == nil {
 		return ""
 	}
 	return ed.Snapshot()
 }
-func setText(ed *nucular.TextEditor, value string) {
+func setText(ed *desktop.TextEditor, value string) {
 	ed.SetText(value)
 	ed.Cursor = len(ed.Buffer)
 	ed.SelectStart = ed.Cursor
 	ed.SelectEnd = ed.Cursor
 	ed.Redraw = true
 }
-func button(w *nucular.Window, s string, active bool, p palette) bool {
+func button(w *desktop.Window, s string, active bool, p palette) bool {
 	old := w.Master().Style().Button
 	if active {
 		b := old
@@ -81,7 +81,7 @@ func button(w *nucular.Window, s string, active bool, p palette) bool {
 	w.Master().Style().Button = old
 	return clicked
 }
-func primary(w *nucular.Window, s string, p palette) bool {
+func primary(w *desktop.Window, s string, p palette) bool {
 	old := w.Master().Style().Button
 	b := old
 	b.Normal = style.MakeItemColor(p.Accent)
@@ -96,11 +96,11 @@ func primary(w *nucular.Window, s string, p palette) bool {
 func shade(c color.RGBA, f float64) color.RGBA {
 	return color.RGBA{uint8(float64(c.R) * f), uint8(float64(c.G) * f), uint8(float64(c.B) * f), c.A}
 }
-func dangerButton(w *nucular.Window, s string, p palette) bool {
+func dangerButton(w *desktop.Window, s string, p palette) bool {
 	p.Accent = p.Danger
 	return primary(w, s, p)
 }
-func title(w *nucular.Window, s string, p palette) {
+func title(w *desktop.Window, s string, p palette) {
 	old := w.Master().Style().Font
 	face := typeFace(fontPointSize(old)+7, boldFont)
 	height := titleHeight(w)
@@ -109,26 +109,26 @@ func title(w *nucular.Window, s string, p palette) {
 	w.LabelColored(s, "LC", p.Text)
 	w.Master().Style().Font = old
 }
-func muted(w *nucular.Window, s string, p palette) {
+func muted(w *desktop.Window, s string, p palette) {
 	old := w.Master().Style().Font
 	face := typeFace(fontPointSize(old)-2, regularFont)
 	w.Master().Style().Font = face
-	w.Row(max(22, nucular.FontHeight(face)+6)).Dynamic(1)
+	w.Row(max(22, desktop.FontHeight(face)+6)).Dynamic(1)
 	w.LabelColored(s, label.Align("LC"), p.Muted)
 	w.Master().Style().Font = old
 }
 
-func titleHeight(w *nucular.Window) int {
+func titleHeight(w *desktop.Window) int {
 	face := typeFace(fontPointSize(w.Master().Style().Font)+7, boldFont)
-	return max(28, nucular.FontHeight(face)+8)
+	return max(28, desktop.FontHeight(face)+8)
 }
-func codeEditor(w *nucular.Window, ed *nucular.TextEditor) {
+func codeEditor(w *desktop.Window, ed *desktop.TextEditor) {
 	old := w.Master().Style().Font
 	w.Master().Style().Font = typeFace(fontPointSize(old)-1, monoFont)
 	ed.Edit(w)
 	w.Master().Style().Font = old
 }
-func (a *App) codeField(w *nucular.Window, name string, ed *nucular.TextEditor, multiline bool) {
+func (a *App) codeField(w *desktop.Window, name string, ed *desktop.TextEditor, multiline bool) {
 	title(w, name, a.p)
 	height := 30
 	if multiline {

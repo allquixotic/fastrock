@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 
 IDENTITY = "9A3CFFC04D3472208A62C48E707EA6D4261998A1"
 PROFILE = "AC_NOTARY"
@@ -108,6 +109,17 @@ def main():
             run("xcrun", "stapler", "staple", str(dmg))
         run("xcrun", "stapler", "validate", str(dmg))
         run("spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "--verbose=4", str(dmg))
+        # Verify the distributed app, not just the source bundle used to make
+        # the image. Mount read-only and never launch the GUI during signing.
+        with tempfile.TemporaryDirectory(prefix="fastrock-dmg-") as mount:
+            run("hdiutil", "attach", str(dmg), "-readonly", "-nobrowse", "-mountpoint", mount)
+            try:
+                app = Path(mount) / "Fastrock.app"
+                run("codesign", "--verify", "--deep", "--strict", "-R", "=" + REQUIREMENT, str(app))
+                run("xcrun", "stapler", "validate", str(app))
+                run("spctl", "--assess", "--type", "execute", "--verbose=4", str(app))
+            finally:
+                run("hdiutil", "detach", mount)
 
 
 if __name__ == "__main__":

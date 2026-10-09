@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -29,7 +29,7 @@ func (a *App) openRallySettings() {
 }
 
 // A disabled control still occupies its normal slot and consumes no action.
-func enabledButton(w *nucular.Window, title string, enabled, active bool, p palette) bool {
+func enabledButton(w *desktop.Window, title string, enabled, active bool, p palette) bool {
 	if enabled {
 		return button(w, title, active, p)
 	}

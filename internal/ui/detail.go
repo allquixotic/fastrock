@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/aarzilli/nucular/font"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
 	"math"
 	"net/http"
 	"os"
@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/assistant"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"golang.org/x/mobile/event/key"
 )
@@ -31,7 +31,7 @@ type detailView struct {
 	taskLayout               *detailTaskLayout
 	referencePicker          *referencePicker
 	referenceLabels          map[string]string
-	ownerDefaultEditor       *nucular.TextEditor
+	ownerDefaultEditor       *desktop.TextEditor
 	ownerDefaultRevision     uint64
 	snapshotRevision         uint64
 	cancel                   context.CancelFunc
@@ -49,7 +49,7 @@ type detailView struct {
 	Kind                     string
 	New                      bool
 	Tab                      string
-	Editors                  map[string]*nucular.TextEditor
+	Editors                  map[string]*desktop.TextEditor
 	Rich                     map[string]*richEditor
 	CommentRich              *richEditor
 	Fields                   []rally.Field
@@ -70,7 +70,7 @@ func makeDetail(o rally.Object, kind string, isNew bool) *detailView {
 	if canonical, ok := rally.CanonicalKind(kind); ok {
 		kind = canonical
 	}
-	d := &detailView{Rich: map[string]*richEditor{}, CommentRich: newRichEditor(""), Original: o.Clone(), Kind: kind, New: isNew, Tab: "Details", Editors: map[string]*nucular.TextEditor{}}
+	d := &detailView{Rich: map[string]*richEditor{}, CommentRich: newRichEditor(""), Original: o.Clone(), Kind: kind, New: isNew, Tab: "Details", Editors: map[string]*desktop.TextEditor{}}
 	for _, k := range []string{"Name", "Description", "Notes", "AcceptanceCriteria", "BlockedReason", "PlanEstimate", "Estimate", "ToDo", "Actuals", "Priority", "Severity", "FormattedID", "Owner", "Iteration", "Release", "Project", "Feature", "Parent", "State", "ScheduleState", "Blocked", "Ready", "LastVerdict"} {
 		if k == "AcceptanceCriteria" && kind != "HierarchicalRequirement" {
 			continue
@@ -124,7 +124,7 @@ func (a *App) leaveDetail(v *rallyView, next func()) {
 	if a.window == nil {
 		return
 	}
-	a.window.PopupOpen("Unsaved work item", nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(600, 500), false, func(w *nucular.Window) {
+	a.window.PopupOpen("Unsaved work item", desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(600, 500), false, func(w *desktop.Window) {
 		for event := range w.Input().Keyboard.Events() {
 			if event.HandleKey(key.CodeEscape, 0) {
 				w.Close()
@@ -327,7 +327,7 @@ func (a *App) startNewDetail(v *rallyView, o rally.Object, kind string) {
 	}, func() { d.SchemaLoading = false; d.SchemaError = errWorkQueueFull.Error(); cancel() })
 }
 
-func (a *App) drawDetail(w *nucular.Window, v *rallyView) {
+func (a *App) drawDetail(w *desktop.Window, v *rallyView) {
 	d := v.Detail
 	if d.selection != nil {
 		a.drawSelectionEditor(w, v)
@@ -378,7 +378,7 @@ func (a *App) drawDetail(w *nucular.Window, v *rallyView) {
 		muted(w, "Loading field metadata…", a.p)
 	}
 	w.Row(max(150, w.LayoutAvailableHeight()-8)).Dynamic(1)
-	flags := nucular.WindowNoHScrollbar
+	flags := desktop.WindowNoHScrollbar
 	if d.Tab == "Tasks" {
 		flags = 0 // Keep every task column accessible at narrow widths.
 	}
@@ -391,7 +391,7 @@ func (a *App) drawDetail(w *nucular.Window, v *rallyView) {
 		body.GroupEnd()
 	}
 }
-func (a *App) field(w *nucular.Window, name string, ed *nucular.TextEditor, multiline bool) {
+func (a *App) field(w *desktop.Window, name string, ed *desktop.TextEditor, multiline bool) {
 	if ed == nil {
 		return
 	}
@@ -884,7 +884,7 @@ func (a *App) loadCollectionAt(d *detailView, start int) {
 		})
 	}, func() { d.CollectionLoading = false; d.Error = errWorkQueueFull.Error(); cancel() })
 }
-func (a *App) detailCollection(w *nucular.Window, v *rallyView, d *detailView) {
+func (a *App) detailCollection(w *desktop.Window, v *rallyView, d *detailView) {
 	if d.Tab == "Discussions" {
 		d.CommentRich.ensureEditor()
 		d.CommentRich.editor.Placeholder = "Add a comment..."

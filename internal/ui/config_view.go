@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 func (a *App) prepareConfigFolders() {
@@ -50,7 +50,7 @@ func configOriginLabel(origin string) string {
 	}
 	return origin
 }
-func (a *App) drawConfiguration(w *nucular.Window, s *settingsView) {
+func (a *App) drawConfiguration(w *desktop.Window, s *settingsView) {
 	common := s.Page == "Common"
 	if s.ConfigContext == nil {
 		s.ConfigContext = textEditor(a.prefs.WorkingDirectory, false)
@@ -149,7 +149,7 @@ func (a *App) drawConfiguration(w *nucular.Window, s *settingsView) {
 			w.Spacing(1)
 			continue
 		}
-		if row := w.GroupBegin("config:"+field.Key, nucular.WindowNoScrollbar); row != nil {
+		if row := w.GroupBegin("config:"+field.Key, desktop.WindowNoScrollbar); row != nil {
 			a.drawConfigField(row, s, field, !common && s.ConfigLayer > 0)
 			row.GroupEnd()
 		}
@@ -175,7 +175,7 @@ func (a *App) drawConfiguration(w *nucular.Window, s *settingsView) {
 		}
 	}
 }
-func (a *App) drawConfigField(w *nucular.Window, s *settingsView, f *configField, layerReadOnly bool) {
+func (a *App) drawConfigField(w *desktop.Window, s *settingsView, f *configField, layerReadOnly bool) {
 	origin, locked := configFieldOrigin(s.ConfigData, f)
 	allowed, constrained := a.catalog.Policy.AllowedValues(f.Key)
 	if constrained && (len(allowed) == 0 || f.Key == "model_provider") {

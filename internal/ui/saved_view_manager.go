@@ -11,9 +11,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/label"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/label"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/allquixotic/fastrock/internal/workspace"
@@ -190,7 +190,7 @@ func (a *App) savedViewDialog(before *settings.SavedView, initial settings.Saved
 	if before != nil {
 		titleText = "Edit saved view"
 	}
-	a.window.PopupOpen(titleText, nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(520, 340), false, func(w *nucular.Window) {
+	a.window.PopupOpen(titleText, desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(520, 340), false, func(w *desktop.Window) {
 		w.Row(24).Dynamic(1)
 		w.Label("Personal view · stored in Fastrock preferences", "LC")
 		w.Row(28).Ratio(.3, .7)
@@ -256,7 +256,7 @@ func (a *App) savedViewDialog(before *settings.SavedView, initial settings.Saved
 	})
 }
 
-func (a *App) savedViewMenu(w *nucular.Window, saved settings.SavedView) {
+func (a *App) savedViewMenu(w *desktop.Window, saved settings.SavedView) {
 	if menu := w.Menu(label.T("⋮"), 210, nil); menu != nil {
 		menu.Row(28).Dynamic(1)
 		if menu.MenuItem(label.T("Open")) {
@@ -276,8 +276,8 @@ func (a *App) savedViewMenu(w *nucular.Window, saved settings.SavedView) {
 	}
 }
 
-func (a *App) drawSavedViewActions(w *nucular.Window, v *rallyView) {
-	w.Row(28).Static(145)
+func (a *App) drawSavedViewActions(w *desktop.Window, v *rallyView) {
+	w.Row(26).StaticScaled(rallyButtonWidth(w, "View actions", 24))
 	if menu := w.Menu(label.T("View actions"), 230, nil); menu != nil {
 		menu.Row(28).Dynamic(1)
 		if menu.MenuItem(label.T("Add new view…")) {
@@ -380,7 +380,7 @@ func (a *App) prepareSavedViewManager(v *rallyView) *savedViewManager {
 	return m
 }
 
-func (a *App) drawSavedViewManager(w *nucular.Window, v *rallyView) {
+func (a *App) drawSavedViewManager(w *desktop.Window, v *rallyView) {
 	title(w, "Custom Views", a.p)
 	muted(w, "Manage your personal Rally views. Open a view to edit its filters and fields.", a.p)
 	w.Row(30).Ratio(.65, .35)
@@ -404,9 +404,9 @@ func (a *App) drawSavedViewManager(w *nucular.Window, v *rallyView) {
 		muted(w, "No saved views match. Add a view or change the search.", a.p)
 	}
 	w.RowScaled(max(80, w.LayoutAvailableHeight())).Dynamic(1)
-	if body := w.GroupBegin("saved-view-list", nucular.WindowNoHScrollbar); body != nil {
+	if body := w.GroupBegin("saved-view-list", desktop.WindowNoHScrollbar); body != nil {
 		scale := w.Master().Style().Scaling
-		height, gap := max(int(62*scale), 2*(nucular.FontHeight(w.Master().Style().Font)+int(8*scale))), body.WindowStyle().Spacing.Y
+		height, gap := max(int(62*scale), 2*(desktop.FontHeight(w.Master().Style().Font)+int(8*scale))), body.WindowStyle().Spacing.Y
 		first, last := sidebarVisible(body.LayoutNextRowY(), body.Bounds.Y, body.Bounds.Y+body.Bounds.H, height+gap, len(m.rows))
 		sidebarSkip(body, first, height+gap, gap)
 		for _, saved := range m.rows[first:last] {

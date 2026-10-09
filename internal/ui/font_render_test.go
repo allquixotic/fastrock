@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -6,15 +6,15 @@ import (
 	"image"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 )
 
 func TestV29TypographyRolesRestoreBodyFont(t *testing.T) {
 	p := colors(false)
 	ed := textEditor("literal code", true)
 	seen := map[string]int{}
-	h := nucular.NewHeadlessHarness(0, image.Pt(700, 500), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(700, 500), func(w *desktop.Window) {
 		title(w, "Heading", p)
 		muted(w, "Caption", p)
 		w.Row(30).Dynamic(1)

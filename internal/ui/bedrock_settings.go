@@ -6,8 +6,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 type bedrockForm struct {
@@ -15,10 +15,10 @@ type bedrockForm struct {
 	Busy                                             bool
 	Feedback                                         settingFeedback
 	Endpoint, Method                                 int
-	Profile, Region, AccessID, Secret, APIKey, Token *nucular.TextEditor
+	Profile, Region, AccessID, Secret, APIKey, Token *desktop.TextEditor
 }
 
-func (a *App) bedrockSettings(w *nucular.Window, s *settingsView) {
+func (a *App) bedrockSettings(w *desktop.Window, s *settingsView) {
 	if s.Bedrock == nil {
 		s.Bedrock = &bedrockForm{Profile: textEditor("", false), Region: textEditor("us-east-1", false), AccessID: textEditor("", false), Secret: textEditor("", false), APIKey: textEditor("", false), Token: textEditor("", false)}
 		s.Bedrock.Secret.PasswordChar = '●'

@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -249,7 +249,7 @@ func TestV35InfoSectionsShareStateAndHideEmpty(t *testing.T) {
 	a.state.Chats[c.ID] = c
 	a.state.Open(workspace.Chat, c.Title, c.ID, "")
 	a.infoViews = map[string]*conversationInfo{c.ID: {Loaded: true, TerminalsAvailable: true}}
-	h := nucular.NewHeadlessHarness(0, image.Pt(420, 1400), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(420, 1400), func(w *desktop.Window) {
 		a.drawInfo(w)
 		for _, cmd := range w.Commands().Commands {
 			if cmd.Kind == command.TextCmd {

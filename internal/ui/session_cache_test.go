@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 

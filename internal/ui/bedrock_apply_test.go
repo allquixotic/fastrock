@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -8,8 +8,8 @@ import (
 	"image"
 	"testing"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 func TestV71BedrockApplyClearsSameProviderModel(t *testing.T) {
@@ -17,7 +17,7 @@ func TestV71BedrockApplyClearsSameProviderModel(t *testing.T) {
 		for _, method := range []int{0, 1, 2, 3} {
 			t.Run(fmt.Sprintf("endpoint%d/method%d", endpoint, method), func(t *testing.T) {
 				a := settingsFixture(t)
-				h := nucular.NewHeadlessHarness(0, image.Pt(800, 600), func(*nucular.Window) {})
+				h := desktop.NewHeadlessHarness(0, image.Pt(800, 600), func(*desktop.Window) {})
 				a.window = h.Master()
 				if err := a.client.Call(a.ctx, "fixture/allowBedrock", nil, nil); err != nil {
 					t.Fatal(err)

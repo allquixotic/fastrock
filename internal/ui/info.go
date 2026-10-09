@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -25,7 +25,7 @@ type conversationInfo struct {
 	Stopping                                                          map[string]bool
 }
 
-func (a *App) extraInfo(w *nucular.Window, c *workspace.Conversation) {
+func (a *App) extraInfo(w *desktop.Window, c *workspace.Conversation) {
 	if a.infoViews == nil {
 		a.infoViews = map[string]*conversationInfo{}
 	}

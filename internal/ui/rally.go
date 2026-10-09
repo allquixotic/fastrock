@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 )
@@ -62,7 +62,7 @@ type rallyView struct {
 	Spec                                     rally.PageSpec
 	Mode, Group, Timebox, ViewName           string
 	TimeboxName, ReleaseTimebox, ReleaseName string
-	Query, Search                            *nucular.TextEditor
+	Query, Search                            *desktop.TextEditor
 	Items                                    []rally.Object
 	Loading                                  bool
 	Error                                    string
@@ -149,7 +149,7 @@ func newRallyView(s rally.PageSpec) *rallyView {
 		v.Search.Placeholder = "Search display name or username"
 	}
 	v.Query.Placeholder = "Advanced WSAPI query"
-	v.Query.Flags |= nucular.EditSigEnter
+	v.Query.Flags |= desktop.EditSigEnter
 	v.CardFields = []string{"Owner", "Iteration", "Tasks", "PlanEstimate"}
 	if s.ID == "iterationstatus" {
 		v.CurrentIteration, v.Widgets = true, true
@@ -305,7 +305,7 @@ func (a *App) rallySignature(v *rallyView) string {
 	return v.Group + "\x00" + v.QueryApplied + "\x00" + v.structuredFilterSignature() + "\x00" + text(v.Search) + "\x00" + v.OwnerFilter + "\x00" + v.StateFilter + fmt.Sprint(v.OnlyBlocked, v.OnlyReady, v.CurrentIteration) + v.Sort + fmt.Sprint(v.Descending) + "\x00" + v.Timebox + "\x00" + v.TimeboxName + "\x00" + v.ReleaseTimebox + "\x00" + v.ReleaseName + "\x00" + strings.Join(v.Columns, ",") + "\x00" + a.prefs.RallyEndpoint + "\x00" + a.prefs.RallyWorkspace + "\x00" + a.prefs.RallyProject + fmt.Sprint(a.prefs.ProjectParents, a.prefs.ProjectChildren) + "\x00" + a.rallyUser.String("_ref")
 }
 
-func (a *App) drawRally(w *nucular.Window, v *rallyView) {
+func (a *App) drawRally(w *desktop.Window, v *rallyView) {
 	if v == nil {
 		return
 	}
@@ -323,26 +323,29 @@ func (a *App) drawRally(w *nucular.Window, v *rallyView) {
 		panel := min(int(420*scale), width*38/100)
 		w.RowScaled(height).StaticScaled(width-panel-w.Master().Style().GroupWindow.Spacing.X, panel)
 	}
-	if main := w.GroupBegin("rally-main", nucular.WindowNoHScrollbar); main != nil {
+	if main := w.GroupBegin("rally-main", desktop.WindowNoHScrollbar); main != nil {
 		a.drawRallyContent(main, v)
 		main.GroupEnd()
 	}
 	if stacked {
 		w.RowScaled(max(120, w.LayoutAvailableHeight())).Dynamic(1)
 	}
-	if panel := w.GroupBegin("rally-assistant-panel", nucular.WindowNoHScrollbar); panel != nil {
+	if panel := w.GroupBegin("rally-assistant-panel", desktop.WindowNoHScrollbar); panel != nil {
 		a.drawAssistant(panel)
 		panel.GroupEnd()
 	}
 }
 
-func (a *App) drawRallyContent(w *nucular.Window, v *rallyView) {
+func (a *App) drawRallyContent(w *desktop.Window, v *rallyView) {
 	if v == nil {
 		return
 	}
 	if v.Spec.ID == "customviews" {
 		a.drawSavedViewManager(w, v)
 		return
+	}
+	if v.focusSearch && a.rallyRowHidden("search") {
+		a.setRallyRowHidden("search", false)
 	}
 	a.rallyNav(w, v)
 	if !v.Loading && !v.Refreshed.IsZero() && time.Now().After(v.RetryAfter) && (v.RefreshAt.IsZero() && time.Since(v.Refreshed) > 60*time.Second || !v.RefreshAt.IsZero() && time.Now().After(v.RefreshAt)) && (v.Detail == nil || !v.Detail.dirty()) {
@@ -399,138 +402,200 @@ func (a *App) drawRallyContent(w *nucular.Window, v *rallyView) {
 		return
 	}
 	a.drawInlineStatus(w, v)
-	a.drawRallyViewLabel(w, v)
-	w.Row(32).Ratio(.50, .32, .18)
-	w.Label(v.Spec.Title, "LC")
-	saved := []string{"Standard View"}
-	for _, view := range a.prefs.Views {
-		if view.Page == v.Spec.ID {
-			saved = append(saved, view.Name)
+	a.rallyRow(w, v, "saved-view", func(w *desktop.Window) {
+		labelWidth := 110
+		if v.AIView {
+			labelWidth = 210
 		}
-	}
-	vi := index(saved, v.ViewName)
-	nv := w.ComboSimple(saved, vi, 28)
-	if nv != vi {
-		v.ViewName = saved[nv]
-		if nv == 0 {
-			v.applySavedView(settings.SavedView{})
+		scale := w.Master().Style().Scaling
+		labelPixels, savePixels := int(float64(labelWidth)*scale), rallyButtonWidth(w, "Save view", 20)
+		available := w.LayoutAvailableWidth()
+		narrow := available < labelPixels+savePixels+int(130*scale)
+		if narrow {
+			w.Row(22).Dynamic(1)
 		} else {
-			for _, sv := range a.prefs.Views {
-				if sv.Name == v.ViewName && sv.Page == v.Spec.ID {
-					v.applySavedView(sv)
-					break
-				}
+			w.Row(28).StaticScaled(labelPixels, min(int(320*scale), available-labelPixels-savePixels-int(12*scale)), savePixels)
+		}
+		a.drawRallyViewLabel(w, v)
+		if narrow {
+			w.Row(28).StaticScaled(0, savePixels)
+		}
+		saved := []string{"Standard View"}
+		for _, view := range a.prefs.Views {
+			if view.Page == v.Spec.ID {
+				saved = append(saved, view.Name)
 			}
 		}
-		a.refreshRally(v)
-	}
-	if w.ButtonText("Save view") {
-		a.inputDialog("Save a private view", v.ViewName, func(name string) {
-			name = strings.TrimSpace(name)
-			if name == "" || name == "Standard View" {
-				a.toast = "Choose a name other than Standard View"
-				return
-			}
-			sv := v.savedView(name)
-			if before := a.findSavedView(v.Spec.ID, name); before != nil {
-				a.confirm("Save over existing view?", "Replace the saved settings for "+name+"?", func() { a.storeSavedView(v, sv, before) })
+		vi := index(saved, v.ViewName)
+		nv := w.ComboSimple(saved, vi, 28)
+		if nv != vi {
+			v.ViewName = saved[nv]
+			if nv == 0 {
+				v.applySavedView(settings.SavedView{})
 			} else {
-				a.storeSavedView(v, sv, nil)
-			}
-		})
-	}
-	a.drawTimeboxSelectors(w, v)
-	a.drawSavedViewActions(w, v)
-	a.drawRallyModes(w, v)
-	if saved := a.findSavedView(v.Spec.ID, v.ViewName); saved != nil {
-		w.Row(28).Static(160, 110, 85, 100)
-		dirty := !savedViewEqual(v.savedView(v.ViewName), *saved)
-		if dirty {
-			w.Label("Unsaved view changes", "LC")
-		} else {
-			w.Label("Saved view", "LC")
-		}
-		if w.ButtonText("Save changes") {
-			a.storeSavedView(v, v.savedView(v.ViewName), saved)
-		}
-		if w.ButtonText("Revert") {
-			v.applySavedView(*saved)
-			a.refreshRally(v)
-		}
-		if w.ButtonText("Delete view") {
-			a.deleteSavedViewDialog(*saved)
-		}
-	}
-	filters := a.activeRallyFilters(v)
-	w.Row(30).Ratio(.37, .16, .23, .12, .12)
-	if v.focusSearch {
-		w.Master().ActivateEditor(w, v.Search)
-		v.focusSearch = false
-	}
-	v.Search.Edit(w)
-	if v.Search.Active || v.Query.Active {
-		v.cardFocusActive = false
-	}
-	if primary(w, "+ Add New", a.p) {
-		a.newArtifact(v)
-	}
-	if button(w, rallyFilterCaption(v.Filters, len(filters)), v.Filters, a.p) {
-		v.Filters = !v.Filters
-	}
-	if w.ButtonText("Show Fields") {
-		v.ShowFields = !v.ShowFields
-	}
-	if w.ButtonText("Export CSV") {
-		a.exportRally(v)
-	}
-	a.drawRallyGrouping(w, v)
-	a.drawRallyFilterChips(w, v, filters)
-	if v.Filters {
-		v.prepareCards()
-		w.Row(28).Static(100, 100, 200, 180)
-		w.CheckboxText("Blocked", &v.OnlyBlocked)
-		w.CheckboxText("Ready", &v.OnlyReady)
-		if a.scopeChoices == nil || a.scopeChoices["OwnerFilter"] == nil {
-			a.picker("OwnerFilter", append([]rally.Object{{"_ref": "Unassigned", "Name": "Unassigned"}}, a.users...))
-		}
-		owners, ownerRefs, selectedOwner := a.scopeChoices["OwnerFilter"].options("All owners", v.OwnerFilter)
-		if n := w.ComboSimple(owners, selectedOwner, 28); n != selectedOwner {
-			v.OwnerFilter = ownerRefs[n]
-		}
-		states := v.stateOptions
-		if n := w.ComboSimple(states, index(states, fallback(v.StateFilter, "All states")), 28); n == 0 {
-			v.StateFilter = ""
-		} else {
-			v.StateFilter = states[n]
-		}
-		a.drawRallyFilterBuilder(w, v)
-		a.drawRallyAdvancedQuery(w, v)
-	}
-	if v.ShowFields {
-		if v.Mode == "board" {
-			w.Row(28).Dynamic(4)
-			for _, name := range []string{"Owner", "Iteration", "Tasks", "PlanEstimate"} {
-				on := contains(v.CardFields, name)
-				if w.CheckboxText(rallyFieldLabel(v, name), &on) {
-					if on {
-						v.CardFields = append(v.CardFields, name)
-					} else {
-						v.CardFields = remove(v.CardFields, name)
+				for _, sv := range a.prefs.Views {
+					if sv.Name == v.ViewName && sv.Page == v.Spec.ID {
+						v.applySavedView(sv)
+						break
 					}
 				}
 			}
+			a.refreshRally(v)
 		}
-		w.Row(28).Dynamic(6)
-		for _, name := range rallyColumnOptions(v) {
-			on := contains(v.Columns, name)
-			if w.CheckboxText(rallyFieldLabel(v, name), &on) {
-				if on {
-					v.Columns = append(v.Columns, name)
+		if w.ButtonText("Save view") {
+			a.inputDialog("Save a private view", v.ViewName, func(name string) {
+				name = strings.TrimSpace(name)
+				if name == "" || name == "Standard View" {
+					a.toast = "Choose a name other than Standard View"
+					return
+				}
+				sv := v.savedView(name)
+				if before := a.findSavedView(v.Spec.ID, name); before != nil {
+					a.confirm("Save over existing view?", "Replace the saved settings for "+name+"?", func() { a.storeSavedView(v, sv, before) })
 				} else {
-					v.Columns = remove(v.Columns, name)
+					a.storeSavedView(v, sv, nil)
+				}
+			})
+		}
+	})
+	if rallyTimeboxesSupported(v) {
+		a.rallyRow(w, v, "timeboxes", func(w *desktop.Window) { a.drawTimeboxSelectors(w, v) })
+	}
+	a.rallyRow(w, v, "view-actions", func(w *desktop.Window) { a.drawSavedViewActions(w, v) })
+	a.drawRallyModes(w, v)
+	if saved := a.findSavedView(v.Spec.ID, v.ViewName); saved != nil {
+		a.rallyRow(w, v, "saved-changes", func(w *desktop.Window) {
+			w.Row(28).Static(160, 110, 85, 100)
+			dirty := !savedViewEqual(v.savedView(v.ViewName), *saved)
+			if dirty {
+				w.Label("Unsaved view changes", "LC")
+			} else {
+				w.Label("Saved view", "LC")
+			}
+			if w.ButtonText("Save changes") {
+				a.storeSavedView(v, v.savedView(v.ViewName), saved)
+			}
+			if w.ButtonText("Revert") {
+				v.applySavedView(*saved)
+				a.refreshRally(v)
+			}
+			if w.ButtonText("Delete view") {
+				a.deleteSavedViewDialog(*saved)
+			}
+		})
+	}
+	filters := a.activeRallyFilters(v)
+	a.rallyRow(w, v, "search", func(w *desktop.Window) {
+		captions := []string{"+ Add New", rallyFilterCaption(v.Filters, len(filters)), "Show Fields", "Export CSV"}
+		widths := []int{0}
+		used := 0
+		for _, caption := range captions {
+			n := rallyButtonWidth(w, caption, 20)
+			widths = append(widths, n)
+			used += n + 5
+		}
+		narrow := w.LayoutAvailableWidth()-used < 140
+		if narrow {
+			w.Row(28).Dynamic(1)
+		} else {
+			w.Row(28).StaticScaled(widths...)
+		}
+		if v.focusSearch {
+			w.Master().ActivateEditor(w, v.Search)
+			v.focusSearch = false
+		}
+		v.Search.Edit(w)
+		if v.Search.Active || v.Query.Active {
+			v.cardFocusActive = false
+		}
+		draw := func(i int) {
+			switch i {
+			case 0:
+				if primary(w, captions[i], a.p) {
+					a.newArtifact(v)
+				}
+			case 1:
+				if button(w, captions[i], v.Filters, a.p) {
+					v.Filters = !v.Filters
+					if v.Filters && a.rallyRowHidden("filters") {
+						a.setRallyRowHidden("filters", false)
+					}
+				}
+			case 2:
+				if w.ButtonText(captions[i]) {
+					v.ShowFields = !v.ShowFields
+					if v.ShowFields && a.rallyRowHidden("fields") {
+						a.setRallyRowHidden("fields", false)
+					}
+				}
+			case 3:
+				if w.ButtonText(captions[i]) {
+					a.exportRally(v)
 				}
 			}
 		}
+		if narrow {
+			compactRallyButtons(w, 28, captions, 20, draw)
+		} else {
+			for i := range captions {
+				draw(i)
+			}
+		}
+	})
+	a.rallyRow(w, v, "swimlanes", func(w *desktop.Window) { a.drawRallyGrouping(w, v) })
+	if len(filters) > 0 {
+		a.rallyRow(w, v, "filter-chips", func(w *desktop.Window) { a.drawRallyFilterChips(w, v, filters) })
+	}
+	if v.Filters {
+		a.rallyRow(w, v, "filters", func(w *desktop.Window) {
+			v.prepareCards()
+			w.Row(28).Static(100, 100, 200, 180)
+			w.CheckboxText("Blocked", &v.OnlyBlocked)
+			w.CheckboxText("Ready", &v.OnlyReady)
+			if a.scopeChoices == nil || a.scopeChoices["OwnerFilter"] == nil {
+				a.picker("OwnerFilter", append([]rally.Object{{"_ref": "Unassigned", "Name": "Unassigned"}}, a.users...))
+			}
+			owners, ownerRefs, selectedOwner := a.scopeChoices["OwnerFilter"].options("All owners", v.OwnerFilter)
+			if n := w.ComboSimple(owners, selectedOwner, 28); n != selectedOwner {
+				v.OwnerFilter = ownerRefs[n]
+			}
+			states := v.stateOptions
+			if n := w.ComboSimple(states, index(states, fallback(v.StateFilter, "All states")), 28); n == 0 {
+				v.StateFilter = ""
+			} else {
+				v.StateFilter = states[n]
+			}
+			a.drawRallyFilterBuilder(w, v)
+			a.drawRallyAdvancedQuery(w, v)
+		})
+	}
+	if v.ShowFields {
+		a.rallyRow(w, v, "fields", func(w *desktop.Window) {
+			if v.Mode == "board" {
+				w.Row(28).Dynamic(4)
+				for _, name := range []string{"Owner", "Iteration", "Tasks", "PlanEstimate"} {
+					on := contains(v.CardFields, name)
+					if w.CheckboxText(rallyFieldLabel(v, name), &on) {
+						if on {
+							v.CardFields = append(v.CardFields, name)
+						} else {
+							v.CardFields = remove(v.CardFields, name)
+						}
+					}
+				}
+			}
+			w.Row(28).Dynamic(6)
+			for _, name := range rallyColumnOptions(v) {
+				on := contains(v.Columns, name)
+				if w.CheckboxText(rallyFieldLabel(v, name), &on) {
+					if on {
+						v.Columns = append(v.Columns, name)
+					} else {
+						v.Columns = remove(v.Columns, name)
+					}
+				}
+			}
+		})
 	}
 	items := v.filtered()
 	if v.CurrentIteration && v.Timebox == "" {
@@ -571,17 +636,23 @@ func (a *App) drawRallyContent(w *nucular.Window, v *rallyView) {
 		}
 	}
 	if v.Mode == "board" {
-		w.Row(26).Dynamic(1)
-		w.CheckboxText("Show Widgets", &v.Widgets)
-		if v.Widgets {
-			if v.Spec.ID == "iterationstatus" {
-				muted(w, "Iteration summary · loaded work items", a.p)
+		a.rallyRow(w, v, "widgets", func(w *desktop.Window) {
+			w.Row(26).Dynamic(1)
+			w.CheckboxText("Show Widgets", &v.Widgets)
+			if v.Widgets {
+				if v.Spec.ID == "iterationstatus" {
+					muted(w, "Iteration summary · loaded work items", a.p)
+				}
+				a.metrics(w, items, v.Spec.Kind)
 			}
-			a.metrics(w, items, v.Spec.Kind)
-		}
+		})
 	}
-	h := max(150, w.LayoutAvailableHeight()-38)
-	w.Row(h).Dynamic(1)
+	footer := 0
+	if !a.rallyRowHidden("summary") {
+		footer = int(31 * w.Master().Style().Scaling)
+	}
+	h := max(150, w.LayoutAvailableHeight()-footer)
+	w.RowScaled(h).Dynamic(1)
 	if body := w.GroupBegin("rally-content-"+v.Spec.ID, 0); body != nil {
 		switch v.Mode {
 		case "board":
@@ -597,79 +668,88 @@ func (a *App) drawRallyContent(w *nucular.Window, v *rallyView) {
 		}
 		body.GroupEnd()
 	}
-	w.Row(28).Static(260, 130, 100, 100)
-	w.Label(fmt.Sprintf("%d loaded · %d matching work items", len(items), v.Total), "LC")
-	if v.Mode != "board" {
-		pages := max(1, (v.Total+v.PageSize-1)/v.PageSize)
-		w.Label(fmt.Sprintf("Page %d of %d", v.Page, pages), "LC")
-		if w.ButtonText("Previous") && !v.Loading && v.Page > 1 {
-			a.rallyTablePage(v, v.Page-1)
+	a.rallyRow(w, v, "summary", func(w *desktop.Window) {
+		w.Row(28).Static(260, 130, 100, 100)
+		w.Label(fmt.Sprintf("%d loaded · %d matching work items", len(items), v.Total), "LC")
+		if v.Mode != "board" {
+			pages := max(1, (v.Total+v.PageSize-1)/v.PageSize)
+			w.Label(fmt.Sprintf("Page %d of %d", v.Page, pages), "LC")
+			if w.ButtonText("Previous") && !v.Loading && v.Page > 1 {
+				a.rallyTablePage(v, v.Page-1)
+			}
+			if w.ButtonText("Next") && !v.Loading && v.Page < pages {
+				a.rallyTablePage(v, v.Page+1)
+			}
 		}
-		if w.ButtonText("Next") && !v.Loading && v.Page < pages {
-			a.rallyTablePage(v, v.Page+1)
-		}
-	}
+	})
 
 }
-func (a *App) rallyNav(w *nucular.Window, v *rallyView) {
-	w.Row(54).Dynamic(6)
-	for _, group := range []string{"Home", "Plan", "Track", "Quality", "Portfolio", "Reports"} {
-		clicked := rallySection(w, group, v.Spec.Group == group, a.navigationFace, a.p)
-		if clicked {
-			if group == v.Spec.Group {
-				continue
-			}
-			page := ""
-			for _, p := range rally.Pages {
-				if p.Group == group {
-					page = p.ID
-					break
+func (a *App) rallyNav(w *desktop.Window, v *rallyView) {
+	a.drawRallyRowRestore(w, v)
+	a.rallyRow(w, v, "sections", func(w *desktop.Window) {
+		groups := []string{"Home", "Plan", "Track", "Quality", "Portfolio", "Reports"}
+		compactRallyButtons(w, 25, groups, 20, func(i int) {
+			group := groups[i]
+			if button(w, group, v.Spec.Group == group, a.p) && group != v.Spec.Group {
+				page := ""
+				for _, p := range rally.Pages {
+					if p.Group == group {
+						page = p.ID
+						break
+					}
 				}
+				if group == "Track" {
+					page = "teamboard"
+				}
+				a.openRally(page)
 			}
-			if group == "Track" {
-				page = "teamboard"
+		})
+	})
+	a.rallyRow(w, v, "pages", func(w *desktop.Window) {
+		var pages []rally.PageSpec
+		var labels []string
+		for _, p := range rally.Pages {
+			if p.Group == v.Spec.Group {
+				pages = append(pages, p)
+				labels = append(labels, p.Title)
 			}
-			a.openRally(page)
 		}
-	}
-	pages := 0
-	for _, p := range rally.Pages {
-		if p.Group == v.Spec.Group {
-			pages++
+		compactRallyButtons(w, 25, labels, 20, func(i int) {
+			if button(w, labels[i], pages[i].ID == v.Spec.ID, a.p) {
+				a.openRally(pages[i].ID)
+			}
+		})
+	})
+	a.rallyRow(w, v, "project", func(w *desktop.Window) {
+		w.Row(28).Static(210, 100, 100)
+		projects, refs, old := a.picker("Project", a.projects).options("All teams", a.prefs.RallyProject)
+		next := w.ComboSimple(projects, old, 28)
+		if next != old {
+			a.prefs.RallyProject = refs[next]
+			a.savePrefs()
+			a.loadScope()
+			a.reloadRally()
 		}
-	}
-	w.Row(32).Dynamic(pages)
-	for _, p := range rally.Pages {
-		if p.Group == v.Spec.Group && sectionTab(w, p.Title, p.ID == v.Spec.ID, a.p) {
-			a.openRally(p.ID)
+		parentsChanged := w.CheckboxText("↑ Parents", &a.prefs.ProjectParents)
+		childrenChanged := w.CheckboxText("↓ Children", &a.prefs.ProjectChildren)
+		if parentsChanged || childrenChanged {
+			a.savePrefs()
+			a.loadScope()
+			a.reloadRally()
 		}
-	}
-	w.Row(32).Static(210, 100, 100)
-	projects, refs, old := a.picker("Project", a.projects).options("All teams", a.prefs.RallyProject)
-	next := w.ComboSimple(projects, old, 28)
-	if next != old {
-		a.prefs.RallyProject = refs[next]
-		a.savePrefs()
-		a.loadScope()
-		a.reloadRally()
-	}
-	parentsChanged := w.CheckboxText("↑ Parents", &a.prefs.ProjectParents)
-	childrenChanged := w.CheckboxText("↓ Children", &a.prefs.ProjectChildren)
-	if parentsChanged || childrenChanged {
-		a.savePrefs()
-		a.loadScope()
-		a.reloadRally()
-	}
-	w.Row(29).Ratio(.65, .15, .2)
-	w.LabelColored("Fastrock  /  "+v.Spec.Title, "LC", a.p.Muted)
-	_, canRefresh, _ := rallyRefreshState(v)
-	if enabledButton(w, "Refresh", a.rallyClient != nil && canRefresh, false, a.p) {
-		a.refreshRally(v)
-	}
-	if enabledButton(w, "Ask AI", a.rallyClient != nil && a.client != nil, a.assistant != nil && a.assistant.Visible && a.assistant.View == v, a.p) {
-		a.openAssistant(v)
-	}
-	a.drawRallyFreshness(w, v)
+	})
+	a.rallyRow(w, v, "page", func(w *desktop.Window) {
+		w.Row(26).StaticScaled(0, rallyButtonWidth(w, "Refresh", 20), rallyButtonWidth(w, "Ask AI", 20))
+		w.LabelColored(v.Spec.Group+"  /  "+v.Spec.Title, "LC", a.p.Muted)
+		_, canRefresh, _ := rallyRefreshState(v)
+		if enabledButton(w, "Refresh", a.rallyClient != nil && canRefresh, false, a.p) {
+			a.refreshRally(v)
+		}
+		if enabledButton(w, "Ask AI", a.rallyClient != nil && a.client != nil, a.assistant != nil && a.assistant.Visible && a.assistant.View == v, a.p) {
+			a.openAssistant(v)
+		}
+	})
+	a.rallyRow(w, v, "freshness", func(w *desktop.Window) { a.drawRallyFreshness(w, v) })
 }
 func searchable(o rally.Object) string {
 	return strings.ToLower(o.ID() + " " + o.String("Name") + " " + o.String("DisplayName") + " " + o.String("UserName") + " " + o.String("Owner") + " " + plainHTML(o.String("Description")))
@@ -756,7 +836,7 @@ func (v *rallyView) filtered() []rally.Object {
 	v.filterValid = true
 	return out
 }
-func (a *App) table(w *nucular.Window, v *rallyView, items []rally.Object) {
+func (a *App) table(w *desktop.Window, v *rallyView, items []rally.Object) {
 	columns := v.Columns
 	ratios := []float64{.04}
 	for _, k := range columns {
@@ -839,7 +919,7 @@ func (a *App) table(w *nucular.Window, v *rallyView, items []rally.Object) {
 			padding = max(1, int(4*scale))
 			height = int(28 * scale)
 		}
-		height = max(height, nucular.FontHeight(face)+2*padding)
+		height = max(height, desktop.FontHeight(face)+2*padding)
 		links := make([]*tableLinkLayout, len(columns))
 		for i, k := range columns {
 			if k == "Name" || k == "FormattedID" || k == "ObjectID" {
@@ -901,10 +981,10 @@ func (a *App) table(w *nucular.Window, v *rallyView, items []rally.Object) {
 		muted(w, "No work items match the current scope and filters.", a.p)
 	}
 }
-func (a *App) board(w *nucular.Window, v *rallyView, items []rally.Object) {
+func (a *App) board(w *desktop.Window, v *rallyView, items []rally.Object) {
 	a.drawTeamBoard(w, v, items)
 }
-func (a *App) metrics(w *nucular.Window, items []rally.Object, kind string) {
+func (a *App) metrics(w *desktop.Window, items []rally.Object, kind string) {
 	counts := map[string]int{}
 	points := 0.0
 	blocked := 0
@@ -920,7 +1000,7 @@ func (a *App) metrics(w *nucular.Window, items []rally.Object, kind string) {
 		w.LabelWrap(s)
 	}
 }
-func (a *App) charts(w *nucular.Window, v *rallyView, items []rally.Object) {
+func (a *App) charts(w *desktop.Window, v *rallyView, items []rally.Object) {
 	a.metrics(w, items, v.Spec.Kind)
 	title(w, "Work by state", a.p)
 	counts := map[string]int{}
@@ -961,7 +1041,7 @@ func (a *App) charts(w *nucular.Window, v *rallyView, items []rally.Object) {
 	}
 	muted(w, "Partial totals: calculated only from the loaded work items.", a.p)
 }
-func (a *App) planning(w *nucular.Window, v *rallyView, items []rally.Object) {
+func (a *App) planning(w *desktop.Window, v *rallyView, items []rally.Object) {
 	summary := v.preparePlanning(items)
 	w.Row(64).Dynamic(4)
 	for _, s := range []string{fmt.Sprintf("%d\nWork items", len(items)), fmt.Sprintf("%g\nPlan estimate", summary.points), fmt.Sprintf("%d\nAccepted", summary.accepted), fmt.Sprintf("%d\nBlocked", summary.blocked)} {
@@ -985,7 +1065,7 @@ func (a *App) planning(w *nucular.Window, v *rallyView, items []rally.Object) {
 	title(w, "Planning backlog", a.p)
 	a.table(w, v, items)
 }
-func (a *App) timeline(w *nucular.Window, v *rallyView, items []rally.Object) {
+func (a *App) timeline(w *desktop.Window, v *rallyView, items []rally.Object) {
 	title(w, "Feature timeline", a.p)
 	spacing := w.Master().Style().GroupWindow.Spacing.Y
 	height := int(34 * w.Master().Style().Scaling)

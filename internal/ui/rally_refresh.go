@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 func rallyRefreshState(v *rallyView) (busy, enabled bool, updated time.Time) {
@@ -40,7 +40,7 @@ func refreshAge(updated, now time.Time) string {
 	return fmt.Sprintf("Updated %d d ago", seconds/86400)
 }
 
-func (a *App) drawRallyFreshness(w *nucular.Window, v *rallyView) {
+func (a *App) drawRallyFreshness(w *desktop.Window, v *rallyView) {
 	busy, _, updated := rallyRefreshState(v)
 	label := refreshAge(updated, time.Now())
 	if v.Detail != nil && v.Detail.New {

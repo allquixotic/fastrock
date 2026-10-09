@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 type mcpForm struct {
@@ -14,8 +14,8 @@ type mcpForm struct {
 	Open, Busy                 bool
 	Error                      string
 	Transport                  int
-	Name, Command, URL, Bearer *nucular.TextEditor
-	Args                       []*nucular.TextEditor
+	Name, Command, URL, Bearer *desktop.TextEditor
+	Args                       []*desktop.TextEditor
 	Env, Headers               []settingPair
 }
 
@@ -66,7 +66,7 @@ func mcpConfig(f *mcpForm) (map[string]any, error) {
 	}
 	return value, nil
 }
-func (a *App) drawMCPSettings(w *nucular.Window, s *settingsView) {
+func (a *App) drawMCPSettings(w *desktop.Window, s *settingsView) {
 	if s.MCP == nil {
 		s.MCP = newMCPForm()
 	}

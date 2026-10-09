@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -219,7 +219,7 @@ func terminalStopMessage(rows []backgroundTerminal) string {
 	}
 	return b.String()
 }
-func (a *App) drawTerminals(w *nucular.Window, c *workspace.Conversation, v *conversationInfo) {
+func (a *App) drawTerminals(w *desktop.Window, c *workspace.Conversation, v *conversationInfo) {
 	if len(v.Terminals) > 0 && time.Since(v.TerminalUpdated) > 5*time.Second && !v.TerminalsLoading {
 		a.loadTerminals(c, v)
 	}

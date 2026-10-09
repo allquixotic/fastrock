@@ -8,10 +8,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/label"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/label"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/platform"
 	"github.com/allquixotic/fastrock/internal/richtext"
 	"github.com/allquixotic/fastrock/internal/workspace"
@@ -117,7 +117,7 @@ func borrowLayoutFace(size int, mono bool) (font.Face, func()) {
 	}
 	return typeFace(size, variant), func() {}
 }
-func (a *App) transcriptSelectionKeys(w *nucular.Window, v *chatView) {
+func (a *App) transcriptSelectionKeys(w *desktop.Window, v *chatView) {
 	s := &v.RichSelection
 	for event := range w.Input().Keyboard.Events() {
 		if event.HandleKey(key.CodeC, platform.PrimaryModifier()) {
@@ -149,7 +149,7 @@ func prepareMarkdownTranscript(source string, width, size int, directives bool) 
 func prepareDocumentTranscript(doc *richtext.Document, source string, width, size int) *transcriptLayout {
 	f, release := borrowTranscriptFace(size)
 	defer release()
-	lineHeight := nucular.FontHeight(f) + 7
+	lineHeight := desktop.FontHeight(f) + 7
 	l := &transcriptLayout{Text: source, Width: width, Size: size}
 	// The formatted document is temporary. Cache compact runs rather than a
 	// per-rune format array in every transcript layout.
@@ -251,7 +251,7 @@ func prepareDocumentTranscript(doc *richtext.Document, source string, width, siz
 	return l
 }
 
-func (a *App) drawTranscriptLine(w *nucular.Window, v *chatView, id string, layout *transcriptLayout, line transcriptLine) bool {
+func (a *App) drawTranscriptLine(w *desktop.Window, v *chatView, id string, layout *transcriptLayout, line transcriptLine) bool {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return false
@@ -391,7 +391,7 @@ func (a *App) transcriptLayout(v *chatView, b workspace.Block, width int) *trans
 	}
 	return placeholder
 }
-func (a *App) transcriptMenu(w *nucular.Window, c *workspace.Conversation, v *chatView, b workspace.Block) {
+func (a *App) transcriptMenu(w *desktop.Window, c *workspace.Conversation, v *chatView, b workspace.Block) {
 	if menu := w.ContextualOpen(0, image.Pt(230, 250), w.LastWidgetBounds, nil); menu != nil {
 		value := b.Text
 		if selection := v.RichSelection.text(b.ID); selection != "" {
@@ -409,7 +409,7 @@ func (a *App) transcriptMenu(w *nucular.Window, c *workspace.Conversation, v *ch
 		if menu.MenuItem(label.T("Select message text")) {
 			v.SelectID = b.ID
 			v.Selection = textEditor(b.Text, true)
-			v.Selection.Flags |= nucular.EditReadOnly
+			v.Selection.Flags |= desktop.EditReadOnly
 		}
 		if menu.MenuItem(label.T("Copy message / selection")) {
 			a.copyText(value)
@@ -444,7 +444,7 @@ func prepareLiteralTranscript(source string, width, size int) *transcriptLayout 
 	defer release()
 	plain := strings.ReplaceAll(source, "\t", "    ")
 	l := &transcriptLayout{Text: source, Plain: plain, Width: width, Size: size}
-	height := nucular.FontHeight(f) + 7
+	height := desktop.FontHeight(f) + 7
 	start := 0
 	appendLine := func(end int) {
 		run := transcriptRun{Text: plain[start:end], Start: start, X: 4, Face: f, Format: richtext.Format{Style: richtext.Code}}

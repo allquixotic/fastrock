@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -33,7 +33,7 @@ func TestV25DiffDrawBoundsAndRetainsSelection(t *testing.T) {
 	}
 	a := &App{p: colors(false)}
 	scroll := 0
-	h := nucular.NewHeadlessHarness(0, image.Pt(900, 600), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(900, 600), func(w *desktop.Window) {
 		v.DiffScroll = image.Pt(0, scroll)
 		v.DiffRestoreScroll = true
 		a.drawDiff(w, v)
@@ -79,9 +79,9 @@ func TestV25CollectionDrawUsesActualRowHeights(t *testing.T) {
 				}
 				scroll, extent := 0, 0
 				v := newRallyView(rally.FindPage("teamboard"))
-				h := nucular.NewHeadlessHarness(0, image.Pt(900, 650), func(w *nucular.Window) {
+				h := desktop.NewHeadlessHarness(0, image.Pt(900, 650), func(w *desktop.Window) {
 					w.RowScaled(600).Dynamic(1)
-					if body := w.GroupBegin("collection", nucular.WindowNoHScrollbar); body != nil {
+					if body := w.GroupBegin("collection", desktop.WindowNoHScrollbar); body != nil {
 						body.Scrollbar.Y = scroll
 						if tab == "Revisions" && d.collectionLayout == nil {
 							style := body.Master().Style()
@@ -100,7 +100,7 @@ func TestV25CollectionDrawUsesActualRowHeights(t *testing.T) {
 				h.Master().SetStyle(style)
 				stride := int(33*scale) + style.GroupWindow.Spacing.Y
 				if tab == "Revisions" {
-					stride = max(int(34*scale), nucular.FontHeight(style.Font)+19) + style.GroupWindow.Spacing.Y
+					stride = max(int(34*scale), desktop.FontHeight(style.Font)+19) + style.GroupWindow.Spacing.Y
 				}
 				for _, pos := range []int{0, stride * 5000, stride * 9995} {
 					scroll = pos

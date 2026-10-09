@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 type threadPageState struct {
@@ -45,7 +45,7 @@ func (a *App) requestThreads(archived bool, cursor string) {
 	})
 }
 
-func (a *App) sidebarPaging(w *nucular.Window) {
+func (a *App) sidebarPaging(w *desktop.Window) {
 	nearEnd := w.LayoutNextRowY() <= w.Bounds.Y+w.Bounds.H+int(120*w.Master().Style().Scaling)
 	if text(a.sidebarSearch) != "" {
 		s := &a.threadSearch

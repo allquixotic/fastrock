@@ -9,10 +9,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/label"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/label"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/platform"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
@@ -152,7 +152,7 @@ func (v *fileView) nextDiffAnchor(fileOnly, back bool) {
 		v.jumpDiff(targetFile, targetRow)
 	}
 }
-func (a *App) drawDiff(w *nucular.Window, v *fileView) {
+func (a *App) drawDiff(w *desktop.Window, v *fileView) {
 	columns := 4
 	if v.BasePath != "" {
 		columns++
@@ -221,7 +221,7 @@ func (a *App) drawDiff(w *nucular.Window, v *fileView) {
 		}
 		spacing := body.WindowStyle().Spacing.Y
 		scale := w.Master().Style().Scaling
-		layout := v.prepareDiffLayout(scale, spacing, nucular.FontHeight(face)+int(6*scale))
+		layout := v.prepareDiffLayout(scale, spacing, desktop.FontHeight(face)+int(6*scale))
 		if v.DiffRestoreScroll {
 			body.Scrollbar = v.DiffScroll
 			v.DiffRestoreScroll = false
@@ -239,7 +239,7 @@ func (a *App) drawDiff(w *nucular.Window, v *fileView) {
 		last := sort.Search(len(v.Diff), func(i int) bool { return top+layout.offsets[i] > body.Bounds.Y+body.Bounds.H })
 		last = min(len(v.Diff), last+1)
 		skipDiffPixels(body, layout.offsets[first], spacing)
-		cell := max(1, nucular.FontWidth(face, "M"))
+		cell := max(1, desktop.FontWidth(face, "M"))
 		width := max(body.LayoutAvailableWidth(), (v.DiffColumns+18)*cell)
 		for i := first; i < last; i++ {
 			f := &v.Diff[i]
@@ -293,7 +293,7 @@ func (a *App) drawDiff(w *nucular.Window, v *fileView) {
 		body.GroupEnd()
 	}
 }
-func skipDiffPixels(w *nucular.Window, pixels, spacing int) {
+func skipDiffPixels(w *desktop.Window, pixels, spacing int) {
 	if pixels > 0 {
 		w.RowScaled(pixels - spacing).Dynamic(1)
 		w.Spacing(1)
@@ -325,7 +325,7 @@ func diffByteColumn(source string, l *diffLine, at int) int {
 	}
 	return col
 }
-func (a *App) drawDiffLine(w *nucular.Window, v *fileView, f *diffFile, l *diffLine, face font.Face, cell int) {
+func (a *App) drawDiffLine(w *desktop.Window, v *fileView, f *diffFile, l *diffLine, face font.Face, cell int) {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return
@@ -408,7 +408,7 @@ func blendDiff(bg, fg color.RGBA) color.RGBA {
 	return color.RGBA{uint8((int(bg.R)*3 + int(fg.R)) / 4), uint8((int(bg.G)*3 + int(fg.G)) / 4), uint8((int(bg.B)*3 + int(fg.B)) / 4), 255}
 }
 
-func (a *App) diffStatusBadge(w *nucular.Window, f *diffFile) {
+func (a *App) diffStatusBadge(w *desktop.Window, f *diffFile) {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return
@@ -430,7 +430,7 @@ func (a *App) diffStatusBadge(w *nucular.Window, f *diffFile) {
 	font := w.Master().Style().Font
 	b.Y += 3
 	b.H = max(1, b.H-6)
-	b.W = min(b.W, nucular.FontWidth(font, text)+12)
+	b.W = min(b.W, desktop.FontWidth(font, text)+12)
 	out.FillRect(b, 4, bg)
 	b.X += 6
 	b.W = max(0, b.W-12)
@@ -439,7 +439,7 @@ func (a *App) diffStatusBadge(w *nucular.Window, f *diffFile) {
 		w.Tooltip(text)
 	}
 }
-func (a *App) diffCountLabel(w *nucular.Window, f *diffFile) {
+func (a *App) diffCountLabel(w *desktop.Window, f *diffFile) {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return

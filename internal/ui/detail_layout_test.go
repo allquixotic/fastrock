@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -73,7 +73,7 @@ func TestV57DetailRichLayoutAtEveryScale(t *testing.T) {
 				a := presetApp(t)
 				d := makeDetail(rally.Object{"Name": "Story", "Description": "<p>Body</p>", "c_Inline": "<p>Inline body</p>"}, "HierarchicalRequirement", false)
 				mergeSchemaEditors(d, []rally.Field{{Name: "c_Inline", DisplayName: "Inline custom", AttributeType: "TEXT"}})
-				h := nucular.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(2200*scale)), func(w *nucular.Window) { a.detailFields(w, d) })
+				h := desktop.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(2200*scale)), func(w *desktop.Window) { a.detailFields(w, d) })
 				style := makeStyle(a.p, 13)
 				style.Scale(scale)
 				h.Master().SetStyle(style)
@@ -102,7 +102,7 @@ func TestV57CompactRichControlsStayVisible(t *testing.T) {
 	for _, scale := range []float64{1, 1.5, 2} {
 		a := presetApp(t)
 		r := newRichEditor("<p>Text</p>")
-		h := nucular.NewHeadlessHarness(0, image.Pt(int(360*scale), int(700*scale)), func(w *nucular.Window) { a.richField(w, "Description", r, 360) })
+		h := desktop.NewHeadlessHarness(0, image.Pt(int(360*scale), int(700*scale)), func(w *desktop.Window) { a.richField(w, "Description", r, 360) })
 		style := makeStyle(a.p, 13)
 		style.Scale(scale)
 		h.Master().SetStyle(style)

@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -7,7 +7,7 @@ import (
 	"image"
 	"testing"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -24,7 +24,7 @@ func TestV22PlanningAndTimelineDrawVisibleRowsOnly(t *testing.T) {
 	for _, mode := range []string{"planning", "timeline"} {
 		t.Run(mode, func(t *testing.T) {
 			offset := 0
-			h := nucular.NewHeadlessHarness(0, image.Pt(900, 600), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(900, 600), func(w *desktop.Window) {
 				w.Scrollbar.Y = offset
 				if mode == "planning" {
 					a.planning(w, v, items)

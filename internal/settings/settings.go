@@ -65,6 +65,8 @@ type Preferences struct {
 	StatusBar        bool                  `json:"statusBar"`
 	Sidebar          bool                  `json:"sidebar"`
 	Info             bool                  `json:"info"`
+	RallyNavHidden   bool                  `json:"rallyNavHidden"`
+	RallyHiddenRows  []string              `json:"rallyHiddenRows"`
 	EnterSends       bool                  `json:"enterSends"`
 	BusyInput        string                `json:"busyInput,omitempty"`
 	AgentMessages    bool                  `json:"agentMessages"`
@@ -157,6 +159,7 @@ func Normalize(p Preferences) (Preferences, error) {
 		p.RallyDisplay = p.RallyDisplay.Copy()
 	}
 	p.Views = append([]SavedView(nil), p.Views...)
+	p.RallyHiddenRows = append([]string(nil), p.RallyHiddenRows...)
 	for i := range p.Views {
 		if p.Views[i].Display != nil {
 			p.Views[i].Display = p.Views[i].Display.Copy()

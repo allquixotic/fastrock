@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"golang.org/x/mobile/event/key"
 )
@@ -68,7 +68,7 @@ type referencePicker struct {
 	selected        func(rally.Object)
 	detail          *detailView
 	field           rally.Field
-	editor          *nucular.TextEditor
+	editor          *desktop.TextEditor
 	editorRevision  uint64
 	client          *rally.Client
 	workspace       string
@@ -77,7 +77,7 @@ type referencePicker struct {
 	children        bool
 	kinds           []string
 	kind            int
-	search          *nucular.TextEditor
+	search          *desktop.TextEditor
 	appliedSearch   string
 	items           []rally.Object
 	start, total    int
@@ -99,7 +99,7 @@ func (p *referencePicker) close() {
 	p.items = nil
 }
 
-func (a *App) detailReference(w *nucular.Window, d *detailView, f rally.Field) {
+func (a *App) detailReference(w *desktop.Window, d *detailView, f rally.Field) {
 	title(w, detailCaption(f), a.p)
 	value := text(d.Editors[f.Name])
 	label := "None"
@@ -146,7 +146,7 @@ func (a *App) openReferencePicker(d *detailView, f rally.Field) *referencePicker
 	d.referencePicker = p
 	a.searchReferences(p, 1)
 	if a.window != nil {
-		a.window.PopupOpen("Choose "+detailCaption(f), nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(650, 650), false, func(w *nucular.Window) { a.drawReferencePicker(w, p) })
+		a.window.PopupOpen("Choose "+detailCaption(f), desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(650, 650), false, func(w *desktop.Window) { a.drawReferencePicker(w, p) })
 	}
 	return p
 }
@@ -276,7 +276,7 @@ func referenceLabel(o rally.Object) string {
 	return name
 }
 
-func (a *App) drawReferencePicker(w *nucular.Window, p *referencePicker) {
+func (a *App) drawReferencePicker(w *desktop.Window, p *referencePicker) {
 	w.OnClose(p.close)
 	if p.closed {
 		w.Close()
@@ -315,7 +315,7 @@ func (a *App) drawReferencePicker(w *nucular.Window, p *referencePicker) {
 		w.LabelWrap(p.err)
 	}
 	w.RowScaled(max(120, w.LayoutAvailableHeight()-100)).Dynamic(1)
-	if body := w.GroupBegin("reference-choices", nucular.WindowNoHScrollbar); body != nil {
+	if body := w.GroupBegin("reference-choices", desktop.WindowNoHScrollbar); body != nil {
 		for _, o := range p.items {
 			body.Row(32).Dynamic(1)
 			if body.ButtonText(referenceLabel(o)) && a.selectReference(p, o) {

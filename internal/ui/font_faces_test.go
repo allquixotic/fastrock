@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/richtext"
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/gofont/goregular"
@@ -23,7 +23,7 @@ func TestV29FontVariantsAndSizes(t *testing.T) {
 		if face != typeFace(13, v) || fontPointSize(face) != 13 {
 			t.Fatal("font cache/size", v)
 		}
-		if v >= monoFont && nucular.FontWidth(face, "iiii") != nucular.FontWidth(face, "WWWW") {
+		if v >= monoFont && desktop.FontWidth(face, "iiii") != desktop.FontWidth(face, "WWWW") {
 			t.Fatal("non-monospace code font", v)
 		}
 	}
@@ -57,7 +57,7 @@ func TestV29TranscriptMeasuresDrawnFaces(t *testing.T) {
 			italic = italic || run.Face == typeFace(13, italicFont)
 			code = code || run.Face == typeFace(12, monoFont)
 			heading = heading || run.Face == typeFace(20, boldFont)
-			if run.Width != nucular.FontWidth(run.Face, run.Text) || run.X < right || line.Height < nucular.FontHeight(run.Face) {
+			if run.Width != desktop.FontWidth(run.Face, run.Text) || run.X < right || line.Height < desktop.FontHeight(run.Face) {
 				t.Fatal("measured and painted geometry differ", run)
 			}
 			if run.X+run.Width > 130 {
@@ -107,7 +107,7 @@ func TestV29RichUsesRealFacesAndMeasurement(t *testing.T) {
 		if cmd.X != 10+width {
 			t.Fatal("run position drift", cmd.X, width)
 		}
-		width += nucular.FontWidth(cmd.Text.Face, cmd.Text.String)
+		width += desktop.FontWidth(cmd.Text.Face, cmd.Text.String)
 	}
 	if r.measure(r.doc.Text, 0, typeFace(13, regularFont)) != width || !seen["Bold"] || !seen["code"] {
 		t.Fatal("native geometry differs from painted runs")

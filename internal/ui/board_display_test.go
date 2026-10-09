@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"golang.org/x/mobile/event/mouse"
@@ -165,7 +165,7 @@ func TestV67BoardCardPresentation(t *testing.T) {
 	card := v.cards[v.Items[0].String("_ref")]
 	for _, density := range []string{"Comfortable", "Compact"} {
 		v.Display.Density = density
-		h := nucular.NewHeadlessHarness(0, image.Pt(400, 600), func(w *nucular.Window) {
+		h := desktop.NewHeadlessHarness(0, image.Pt(400, 600), func(w *desktop.Window) {
 			m := boardMetrics(density, 1, w.Master().Style().Font)
 			w.RowScaled(m.Height).Static(250)
 			a.drawBoardCard(w, v, card)
@@ -177,7 +177,7 @@ func TestV67BoardCardPresentation(t *testing.T) {
 			t.Fatal("title not truncated", density, card.lines)
 		}
 		for _, line := range card.lines {
-			if nucular.FontWidth(card.face, line) > card.width {
+			if desktop.FontWidth(card.face, line) > card.width {
 				t.Fatal("title overflow")
 			}
 		}
@@ -203,7 +203,7 @@ func TestV67BoardDensityGeometryAndFocus(t *testing.T) {
 				a, v := keyboardBoard(t, 200)
 				v.focusCard, v.cardFocusActive, v.revealCard = v.Items[50].String("_ref"), true, true
 				var cmds []command.Command
-				h := nucular.NewHeadlessHarness(0, image.Pt(int(900*scale), int(700*scale)), func(w *nucular.Window) {
+				h := desktop.NewHeadlessHarness(0, image.Pt(int(900*scale), int(700*scale)), func(w *desktop.Window) {
 					a.drawTeamBoard(w, v, v.filtered())
 					cmds = append(cmds[:0], w.Commands().Commands...)
 				})
@@ -251,7 +251,7 @@ func TestV67BoardSettingsControls(t *testing.T) {
 	a, v := keyboardBoard(t, 3)
 	var click image.Point
 	var clicking bool
-	h := nucular.NewHeadlessHarness(0, image.Pt(700, 500), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(700, 500), func(w *desktop.Window) {
 		m := &w.Input().Mouse
 		m.Pos, m.Buttons[mouse.ButtonLeft].ClickedPos = click, click
 		m.Buttons[mouse.ButtonLeft].Clicked = clicking
@@ -311,7 +311,7 @@ func TestV67ListDensity(t *testing.T) {
 	heights := map[string]int{}
 	for _, density := range []string{"Comfortable", "Compact"} {
 		v.Display.Density = density
-		h := nucular.NewHeadlessHarness(0, image.Pt(600, 400), func(w *nucular.Window) {
+		h := desktop.NewHeadlessHarness(0, image.Pt(600, 400), func(w *desktop.Window) {
 			a.drawRallyModes(w, v)
 			a.table(w, v, v.Items)
 		})
@@ -348,7 +348,7 @@ func TestV67BoardSettingsFitScales(t *testing.T) {
 			t.Run(fmt.Sprintf("%g/%d", scale, width), func(t *testing.T) {
 				a, v := keyboardBoard(t, 1)
 				v.beginBoardSettings()
-				h := nucular.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(600*scale)), func(w *nucular.Window) { a.drawBoardDisplayControls(w, v) })
+				h := desktop.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(600*scale)), func(w *desktop.Window) { a.drawBoardDisplayControls(w, v) })
 				style := makeStyle(a.p, 13)
 				style.Scale(scale)
 				h.Master().SetStyle(style)

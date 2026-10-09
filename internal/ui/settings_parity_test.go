@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/settings"
 )
 
@@ -305,7 +305,7 @@ func TestV31AccountAndErrorRendering(t *testing.T) {
 	a := &App{p: colors(false), prefs: settings.Defaults(), accountLoaded: true, accountData: map[string]any{"account": map[string]any{"type": "chatgpt", "email": "fixture@example.test", "planType": "team"}}}
 	s := newSettingsView(a.prefs)
 	var text []string
-	h := nucular.NewHeadlessHarness(0, image.Pt(850, 900), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(850, 900), func(w *desktop.Window) {
 		a.drawAccount(w, s)
 		a.drawSettingsError(w, "inline fixture failure")
 		for _, c := range w.Commands().Commands {

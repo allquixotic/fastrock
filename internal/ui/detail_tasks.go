@@ -7,8 +7,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/font"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -28,7 +28,7 @@ type detailTaskLayout struct {
 	Offsets             []int
 }
 
-func (d *detailView) taskTableLayout(w *nucular.Window, items []rally.Object) *detailTaskLayout {
+func (d *detailView) taskTableLayout(w *desktop.Window, items []rally.Object) *detailTaskLayout {
 	var source *rally.Object
 	if len(items) > 0 {
 		source = &items[0]
@@ -61,7 +61,7 @@ func (d *detailView) taskTableLayout(w *nucular.Window, items []rally.Object) *d
 	return l
 }
 
-func (a *App) drawDetailTasks(w *nucular.Window, v *rallyView, d *detailView, items []rally.Object) {
+func (a *App) drawDetailTasks(w *desktop.Window, v *rallyView, d *detailView, items []rally.Object) {
 	l := d.taskTableLayout(w, items)
 	w.Row(30).StaticScaled(l.Widths...)
 	for _, heading := range []string{"ID", "Name", "State", "Estimate", "To Do", "Actuals", "Owner", ""} {

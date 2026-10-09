@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 )
 
 func fixtureData(t *testing.T, source string) map[string]any {
@@ -80,7 +80,7 @@ func TestV32MCPConfiguredRowsAndStructuredForm(t *testing.T) {
 	f := newMCPForm()
 	setText(f.Name, "literal.dot")
 	setText(f.Command, `C:\tools\server.exe`)
-	f.Args = []*nucular.TextEditor{textEditor(`C:\data dir\`, false), textEditor("", false), textEditor("a\"b", false)}
+	f.Args = []*desktop.TextEditor{textEditor(`C:\data dir\`, false), textEditor("", false), textEditor("a\"b", false)}
 	f.Env = []settingPair{newSettingPair("PATH", `C:\tools`), newSettingPair("MODE", "a=b c")}
 	config, err := mcpConfig(f)
 	if err != nil {
@@ -234,7 +234,7 @@ func TestV32ExtensionStatusRendering(t *testing.T) {
 	a.catalog.PolicyLoaded = true
 	s.Items = settingsItems("Features", fixtureData(t, `{"data":[{"name":"test","displayName":"Feature test","stage":"beta","enabled":true,"defaultEnabled":false}]}`))
 	var texts []string
-	h := nucular.NewHeadlessHarness(0, image.Pt(850, 700), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(850, 700), func(w *desktop.Window) {
 		a.drawExtensionSettings(w, s)
 		for _, c := range w.Commands().Commands {
 			if c.Kind == command.TextCmd {

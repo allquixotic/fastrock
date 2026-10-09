@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"golang.org/x/mobile/event/mouse"
 )
@@ -31,7 +31,7 @@ func TestV56TableLinksWrapAndOpen(t *testing.T) {
 				{"_ref": s.URL + rally.WSAPI + "hierarchicalrequirement/43", "FormattedID": "US43", "Name": "Second row"},
 			}
 			var click image.Point
-			h := nucular.NewHeadlessHarness(0, image.Pt(int(500*scale), int(650*scale)), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(int(500*scale), int(650*scale)), func(w *desktop.Window) {
 				if click != (image.Point{}) {
 					m := &w.Input().Mouse
 					m.Pos = click
@@ -90,7 +90,7 @@ func TestV56TableLinkCacheReflowsAndDropsOldPage(t *testing.T) {
 	v := newRallyView(rally.FindPage("userstories"))
 	v.Columns = []string{"Name"}
 	v.Items = []rally.Object{{"Name": "A long enough title to reflow across narrow columns"}, {"Name": "Second"}}
-	h := nucular.NewHeadlessHarness(0, image.Pt(700, 400), func(w *nucular.Window) { a.table(w, v, v.Items) })
+	h := desktop.NewHeadlessHarness(0, image.Pt(700, 400), func(w *desktop.Window) { a.table(w, v, v.Items) })
 	h.Master().SetStyle(makeStyle(a.p, 13))
 	h.Frame(false)
 	firstWidth := v.tableLinks[0].width

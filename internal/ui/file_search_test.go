@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/platform"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	xfont "golang.org/x/image/font"
@@ -140,7 +140,7 @@ func TestV52FileFindKeyboard(t *testing.T) {
 	v.Find.Active = true
 	id := a.state.Open(workspace.File, "File", "memory", "")
 	a.files = map[string]*fileView{id: v}
-	h := nucular.NewHeadlessHarness(0, image.Pt(800, 550), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(800, 550), func(w *desktop.Window) {
 		a.shortcuts(w)
 		a.drawFile(w, v)
 	})
@@ -172,7 +172,7 @@ func TestV52FileDecorationsGeometry(t *testing.T) {
 	for _, scale := range []float64{1, 1.5, 2} {
 		a, v := fileSearchFixture(t, "alpha alpha\n\tbeta\n\nalpha\n", "alpha")
 		v.Editor.SelectStart, v.Editor.SelectEnd, v.Editor.Cursor = 0, 0, 0
-		h := nucular.NewHeadlessHarness(0, image.Pt(int(800*scale), int(500*scale)), func(w *nucular.Window) {
+		h := desktop.NewHeadlessHarness(0, image.Pt(int(800*scale), int(500*scale)), func(w *desktop.Window) {
 			a.drawFile(w, v)
 		})
 		style := makeStyle(a.p, 13)
@@ -232,7 +232,7 @@ func TestV52FileHighlightsBounded(t *testing.T) {
 func TestV52FileTabHighlights(t *testing.T) {
 	a, v := fileSearchFixture(t, "a\tb \tc", "\t")
 	v.Editor.SelectStart, v.Editor.SelectEnd, v.Editor.Cursor = 0, 0, 0
-	h := nucular.NewHeadlessHarness(0, image.Pt(800, 500), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(800, 500), func(w *desktop.Window) {
 		a.drawFile(w, v)
 	})
 	h.Master().SetStyle(makeStyle(a.p, 13))

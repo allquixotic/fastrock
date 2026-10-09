@@ -1,11 +1,11 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
 import (
 	"context"
 	"fmt"
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/allquixotic/fastrock/internal/workspace"
@@ -24,7 +24,7 @@ func largeSidebar(n int) *App {
 }
 func TestV13SidebarVirtualizationAndInvalidation(t *testing.T) {
 	a := largeSidebar(100000)
-	h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(280, 900), a.drawSidebar)
+	h := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(280, 900), a.drawSidebar)
 	a.window = h.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
 	waitSidebar(t, a)
@@ -75,7 +75,7 @@ func BenchmarkV13SidebarToggleAndRender(b *testing.B) {
 	for _, n := range []int{100, 100000} {
 		b.Run(fmt.Sprint(n), func(b *testing.B) {
 			a := largeSidebar(n)
-			h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(280, 900), a.drawSidebar)
+			h := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(280, 900), a.drawSidebar)
 			a.window = h.Master()
 			a.window.SetStyle(makeStyle(a.p, 13))
 			waitSidebar(b, a)
@@ -109,7 +109,7 @@ func BenchmarkV13SidebarVisibilityFullWindow(b *testing.B) {
 	a.state.Open(workspace.Rally, "Team Board", "", "teamboard")
 	a.rallyViews = map[string]*rallyView{a.state.Active: newRallyView(rally.FindPage("teamboard"))}
 	a.rallyErr = "Connect Rally in Settings"
-	h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(1360, 800), a.draw)
+	h := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(1360, 800), a.draw)
 	a.window = h.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
 	waitSidebar(b, a)
@@ -131,7 +131,7 @@ func TestV14StatusCloseFitsWindow(t *testing.T) {
 	a.state.Open(workspace.Rally, "Board", "", "teamboard")
 	a.rallyViews = map[string]*rallyView{a.state.Active: newRallyView(rally.FindPage("teamboard"))}
 	var x, y, width, height int
-	h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(1360, 800), func(w *nucular.Window) { a.draw(w); r := w.LastWidgetBounds; x, y, width, height = r.X, r.Y, r.W, r.H })
+	h := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(1360, 800), func(w *desktop.Window) { a.draw(w); r := w.LastWidgetBounds; x, y, width, height = r.X, r.Y, r.W, r.H })
 	a.window = h.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
 	waitSidebar(t, a)
@@ -147,7 +147,7 @@ func TestV13ManyProjectsStillVirtualize(t *testing.T) {
 	for id, c := range a.state.Chats {
 		c.Cwd = "/project-" + id
 	}
-	h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(280, 900), a.drawSidebar)
+	h := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(280, 900), a.drawSidebar)
 	a.window = h.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
 	waitSidebar(t, a)
@@ -172,7 +172,7 @@ func TestV21LargeHistoryInfoAndPickerDrawAreBounded(t *testing.T) {
 	}
 	a.infoViews = map[string]*conversationInfo{"0": {Loaded: true, GoalUnsupported: true}}
 	a.infoCollapsed = map[string]bool{"terminals": true}
-	info := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(360, 900), func(w *nucular.Window) { a.extraInfo(w, a.state.Chats["0"]) })
+	info := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(360, 900), func(w *desktop.Window) { a.extraInfo(w, a.state.Chats["0"]) })
 	a.window = info.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
 	waitSidebar(t, a)
@@ -185,7 +185,7 @@ func TestV21LargeHistoryInfoAndPickerDrawAreBounded(t *testing.T) {
 	}
 	p := &conversationPicker{rows: rows, root: a.sidebarCache.root, requested: true, ready: true, generation: 1}
 	ed := textEditor("", false)
-	picker := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(600, 500), func(w *nucular.Window) { a.drawConversationPicker(w, p, ed, func(*workspace.Conversation) {}) })
+	picker := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(600, 500), func(w *desktop.Window) { a.drawConversationPicker(w, p, ed, func(*workspace.Conversation) {}) })
 	picker.Master().SetStyle(makeStyle(a.p, 13))
 	if n := picker.Frame(true); n > 300 {
 		t.Fatalf("picker rendered %d commands for 100,000 chats", n)
@@ -199,7 +199,7 @@ func BenchmarkV21LargeHistoryInfo(b *testing.B) {
 	}
 	a.infoViews = map[string]*conversationInfo{"0": {Loaded: true, GoalUnsupported: true}}
 	a.infoCollapsed = map[string]bool{"terminals": true}
-	info := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(360, 900), func(w *nucular.Window) { a.extraInfo(w, a.state.Chats["0"]) })
+	info := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(360, 900), func(w *desktop.Window) { a.extraInfo(w, a.state.Chats["0"]) })
 	a.window = info.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
 	waitSidebar(b, a)

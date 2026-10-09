@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 type approvalContent struct {
@@ -478,11 +478,11 @@ func codexJSON(raw json.RawMessage) map[string]any {
 	_ = json.Unmarshal(raw, &m)
 	return m
 }
-func approvalCodeEditor(r *approval) *nucular.TextEditor {
+func approvalCodeEditor(r *approval) *desktop.TextEditor {
 	if r.CodeEditor == nil {
 		r.CodeEditor = textEditor(r.Content.Code, true)
-		r.CodeEditor.Flags |= nucular.EditReadOnly
-		r.CodeEditor.Flags &^= nucular.EditSoftWrap | nucular.EditNoHorizontalScroll
+		r.CodeEditor.Flags |= desktop.EditReadOnly
+		r.CodeEditor.Flags &^= desktop.EditSoftWrap | desktop.EditNoHorizontalScroll
 	}
 	return r.CodeEditor
 }

@@ -7,10 +7,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"golang.org/x/mobile/event/mouse"
 )
 
@@ -18,7 +18,7 @@ func inset(r rect.Rect, x, y int) rect.Rect {
 	return rect.Rect{X: r.X + x, Y: r.Y + y, W: max(0, r.W-2*x), H: max(0, r.H-2*y)}
 }
 
-func tooltipButton(w *nucular.Window, caption, tip string) bool {
+func tooltipButton(w *desktop.Window, caption, tip string) bool {
 	b := w.WidgetBounds()
 	clicked := w.ButtonText(caption)
 	if w.Input().Mouse.HoveringRect(b) {
@@ -27,7 +27,7 @@ func tooltipButton(w *nucular.Window, caption, tip string) bool {
 	return clicked
 }
 
-func detailStatusButton(w *nucular.Window, caption string, active bool, tone color.RGBA, p palette) bool {
+func detailStatusButton(w *desktop.Window, caption string, active bool, tone color.RGBA, p palette) bool {
 	if active {
 		p.Accent = tone
 		return primary(w, caption, p)
@@ -35,16 +35,16 @@ func detailStatusButton(w *nucular.Window, caption string, active bool, tone col
 	return w.ButtonText(caption)
 }
 func labelAt(out *command.Buffer, r rect.Rect, s string, f font.Face, c color.RGBA) {
-	r.Y += (r.H - nucular.FontHeight(f)) / 2
-	r.H = nucular.FontHeight(f) + 2
+	r.Y += (r.H - desktop.FontHeight(f)) / 2
+	r.H = desktop.FontHeight(f) + 2
 	out.DrawText(r, ellipsize(s, f, r.W), f, c)
 }
 func ellipsize(s string, f font.Face, width int) string {
-	if nucular.FontWidth(f, s) <= width {
+	if desktop.FontWidth(f, s) <= width {
 		return s
 	}
 	suffix := "…"
-	width -= nucular.FontWidth(f, suffix)
+	width -= desktop.FontWidth(f, suffix)
 	lo, hi := 0, len(s)
 	for lo < hi {
 		mid := (lo + hi + 1) / 2
@@ -54,7 +54,7 @@ func ellipsize(s string, f font.Face, width int) string {
 		if mid > hi {
 			mid = hi
 		}
-		if nucular.FontWidth(f, s[:mid]) <= width {
+		if desktop.FontWidth(f, s[:mid]) <= width {
 			lo = mid
 		} else {
 			hi = mid - 1
@@ -82,7 +82,7 @@ func closeGlyph(out *command.Buffer, r rect.Rect, c color.RGBA) {
 	out.StrokeLine(image.Pt(x-3, y-3), image.Pt(x+3, y+3), 1, c)
 	out.StrokeLine(image.Pt(x+3, y-3), image.Pt(x-3, y+3), 1, c)
 }
-func iconButton(w *nucular.Window, icon string, active bool, p palette) bool {
+func iconButton(w *desktop.Window, icon string, active bool, p palette) bool {
 	b, o := w.Custom(w.CustomState())
 	if o == nil {
 		return false
@@ -113,6 +113,13 @@ func iconButton(w *nucular.Window, icon string, active bool, p palette) bool {
 		x, y := b.X+b.W/2, b.Y+b.H/2
 		o.StrokeLine(image.Pt(x-4, y), image.Pt(x+4, y), 1, c)
 		o.StrokeLine(image.Pt(x, y-4), image.Pt(x, y+4), 1, c)
+	case "tab-left", "tab-right":
+		x, y, direction := b.X+b.W/2, b.Y+b.H/2, 1
+		if icon == "tab-left" {
+			direction = -1
+		}
+		o.StrokeLine(image.Pt(x-2*direction, y-4), image.Pt(x+2*direction, y), 1, c)
+		o.StrokeLine(image.Pt(x+2*direction, y), image.Pt(x-2*direction, y+4), 1, c)
 	default:
 		labelAt(o, inset(b, 5, 0), icon, w.Master().Style().Font, c)
 	}
@@ -124,7 +131,7 @@ func iconButton(w *nucular.Window, icon string, active bool, p palette) bool {
 	}
 	return in.Mouse.Clicked(mouse.ButtonLeft, b)
 }
-func flatRow(w *nucular.Window, title, detail string, selected bool, dot color.RGBA, p palette) bool {
+func flatRow(w *desktop.Window, title, detail string, selected bool, dot color.RGBA, p palette) bool {
 	return flatStatusRow(w, title, detail, selected, statusDot{Color: dot}, 12, p)
 }
 func drawStatusDot(out *command.Buffer, bounds rect.Rect, dot statusDot) {
@@ -145,7 +152,7 @@ func drawStatusDot(out *command.Buffer, bounds rect.Rect, dot statusDot) {
 		out.FillCircle(bounds, dot.Color)
 	}
 }
-func flatStatusRow(w *nucular.Window, title, detail string, selected bool, dot statusDot, indent int, p palette) bool {
+func flatStatusRow(w *desktop.Window, title, detail string, selected bool, dot statusDot, indent int, p palette) bool {
 	b, o := w.Custom(w.CustomState())
 	if o == nil {
 		return false
@@ -170,7 +177,7 @@ func flatStatusRow(w *nucular.Window, title, detail string, selected bool, dot s
 	}
 	detailWidth := 0
 	if detail != "" {
-		detailWidth = min(b.W/3, nucular.FontWidth(face, detail)+12)
+		detailWidth = min(b.W/3, desktop.FontWidth(face, detail)+12)
 		labelAt(o, rect.Rect{X: b.X + b.W - detailWidth - 8, Y: b.Y, W: detailWidth, H: b.H}, detail, face, p.Faint)
 	}
 	labelAt(o, rect.Rect{X: x, Y: b.Y, W: b.W - (x - b.X) - 10 - detailWidth, H: b.H}, title, face, fg)
@@ -185,7 +192,7 @@ type tabRects struct{ Body, Title, Close, Dot rect.Rect }
 func tabLayout(b rect.Rect) tabRects {
 	return tabRects{Body: b, Title: rect.Rect{X: b.X + 23, Y: b.Y, W: max(0, b.W-49), H: b.H}, Close: rect.Rect{X: b.X + b.W - 24, Y: b.Y + (b.H-20)/2, W: 20, H: 20}, Dot: rect.Rect{X: b.X + 9, Y: b.Y + b.H/2 - 4, W: 8, H: 8}}
 }
-func documentTab(w *nucular.Window, title string, active, dragged bool, dot statusDot, p palette) (activate, close bool, b rect.Rect) {
+func documentTab(w *desktop.Window, title string, active, dragged bool, dot statusDot, p palette) (activate, close bool, b rect.Rect) {
 	b, o := w.Custom(w.CustomState())
 	if o == nil {
 		return false, false, b
@@ -216,28 +223,7 @@ func documentTab(w *nucular.Window, title string, active, dragged bool, dot stat
 	return
 }
 
-func sectionTab(w *nucular.Window, title string, active bool, p palette) bool {
-	b, out := w.Custom(w.CustomState())
-	if out == nil {
-		return false
-	}
-	in := w.Input()
-	if in.Mouse.HoveringRect(b) {
-		out.FillRect(b, 3, p.Hover)
-	}
-	fg := p.Muted
-	if active {
-		fg = p.Text
-	}
-	labelAt(out, inset(b, 12, 0), title, w.Master().Style().Font, fg)
-	out.FillRect(rect.Rect{X: b.X, Y: b.Y + b.H - 1, W: b.W, H: 1}, 0, p.Border)
-	if active {
-		out.FillRect(rect.Rect{X: b.X + 8, Y: b.Y + b.H - 2, W: b.W - 16, H: 2}, 0, p.Accent)
-	}
-	return in.Mouse.Clicked(mouse.ButtonLeft, b)
-}
-
-func formatButton(w *nucular.Window, label, tip string, active bool, p palette) bool {
+func formatButton(w *desktop.Window, label, tip string, active bool, p palette) bool {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return false
@@ -260,7 +246,7 @@ func formatButton(w *nucular.Window, label, tip string, active bool, p palette) 
 		out.StrokeLine(image.Pt(x-5*sign, y), image.Pt(x-sign, y+4), 1, p.Muted)
 	} else {
 		r := b
-		r.X += (b.W - nucular.FontWidth(f, label)) / 2
+		r.X += (b.W - desktop.FontWidth(f, label)) / 2
 		labelAt(out, r, label, f, p.Muted)
 	}
 	if in.Mouse.HoveringRect(b) {
@@ -269,7 +255,7 @@ func formatButton(w *nucular.Window, label, tip string, active bool, p palette) 
 	return in.Mouse.Clicked(mouse.ButtonLeft, b)
 }
 
-func folderRow(w *nucular.Window, title string, expanded bool, p palette) bool {
+func folderRow(w *desktop.Window, title string, expanded bool, p palette) bool {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return false
@@ -292,22 +278,5 @@ func folderRow(w *nucular.Window, title string, expanded bool, p palette) bool {
 		out.StrokeLine(image.Pt(x+2, y), image.Pt(x-1, y+3), 1, p.Muted)
 	}
 	labelAt(out, rect.Rect{X: b.X + 26, Y: b.Y, W: b.W - 32, H: b.H}, title, w.Master().Style().Font, p.Muted)
-	return in.Mouse.Clicked(mouse.ButtonLeft, b)
-}
-func rallySection(w *nucular.Window, title string, active bool, face font.Face, p palette) bool {
-	b, out := w.Custom(w.CustomState())
-	if out == nil {
-		return false
-	}
-	in := w.Input()
-	fg := p.Muted
-	if active {
-		out.FillRect(inset(b, 3, 3), 6, p.Selected)
-		fg = p.Accent
-	} else if in.Mouse.HoveringRect(b) {
-		out.FillRect(inset(b, 3, 3), 6, p.Hover)
-	}
-	width := nucular.FontWidth(face, title)
-	labelAt(out, rect.Rect{X: b.X + (b.W-width)/2, Y: b.Y, W: width + 2, H: b.H}, title, face, fg)
 	return in.Mouse.Clicked(mouse.ButtonLeft, b)
 }

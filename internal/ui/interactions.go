@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/label"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/label"
 	"github.com/allquixotic/fastrock/internal/platform"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
@@ -93,7 +93,7 @@ var chatActions = []struct{ ID, Title string }{
 	{"rename", "Rename…"}, {"fork", "Fork conversation"}, {"side", "Side chat…"}, {"worktree", "Continue in worktree…"}, {"recap", "Recap conversation"}, {"compact", "Compact context"}, {"review", "Review changes…"}, {"init", "Create AGENTS.md"}, {"export", "Export Markdown…"}, {"view-text", "View as text"}, {"copy-id", "Copy thread ID"}, {"archive", "Archive"},
 }
 
-func (a *App) chatTabMenu(w *nucular.Window, t workspace.Tab) {
+func (a *App) chatTabMenu(w *desktop.Window, t workspace.Tab) {
 	for _, item := range chatActions {
 		if w.MenuItem(label.T(item.Title)) {
 			a.chatAction(t.Target, item.ID)
@@ -198,7 +198,7 @@ func (a *App) openText(title, content string) {
 	a.files[id] = v
 	a.work(func() {
 		e := textEditor(cut(content, maxFileBytes), true)
-		e.Flags |= nucular.EditReadOnly
+		e.Flags |= desktop.EditReadOnly
 		a.post(func() {
 			if a.files[id] == v {
 				v.Editor = e
@@ -207,7 +207,7 @@ func (a *App) openText(title, content string) {
 		})
 	})
 }
-func (a *App) sidebarContext(w *nucular.Window, c *workspace.Conversation) {
+func (a *App) sidebarContext(w *desktop.Window, c *workspace.Conversation) {
 	if menu := w.ContextualOpen(0, image.Pt(230, 220), w.LastWidgetBounds, nil); menu != nil {
 		menu.Row(28).Dynamic(1)
 		if menu.MenuItem(label.T("Open")) {
@@ -240,7 +240,7 @@ func (a *App) sidebarContext(w *nucular.Window, c *workspace.Conversation) {
 		}
 	}
 }
-func (a *App) folderContext(w *nucular.Window, path string) {
+func (a *App) folderContext(w *desktop.Window, path string) {
 	if menu := w.ContextualOpen(0, image.Pt(220, 120), w.LastWidgetBounds, nil); menu != nil {
 		if menu.MenuItem(label.T("New conversation")) {
 			a.newThread(path)

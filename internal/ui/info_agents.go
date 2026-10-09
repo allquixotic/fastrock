@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -119,7 +119,7 @@ func updateAgents(c *workspace.Conversation, it map[string]any) {
 		upsertAgent(c, workspace.Agent{ID: str(it, "agentThreadId"), Path: str(it, "agentPath"), Status: status})
 	}
 }
-func (a *App) drawAgents(w *nucular.Window, c *workspace.Conversation, depth int, seen map[string]bool) {
+func (a *App) drawAgents(w *desktop.Window, c *workspace.Conversation, depth int, seen map[string]bool) {
 	if depth >= 4 || seen[c.ID] {
 		return
 	}

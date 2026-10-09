@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -19,7 +19,7 @@ func TestV26DiffSingleLargeFileHasBoundedRows(t *testing.T) {
 	v := &fileView{Diff: files, DiffSource: raw, DiffColumns: 600000}
 	a := &App{p: colors(false)}
 	scroll := image.Point{}
-	h := nucular.NewHeadlessHarness(0, image.Pt(1000, 650), func(w *nucular.Window) { v.DiffScroll = scroll; v.DiffRestoreScroll = true; a.drawDiff(w, v) })
+	h := desktop.NewHeadlessHarness(0, image.Pt(1000, 650), func(w *desktop.Window) { v.DiffScroll = scroll; v.DiffRestoreScroll = true; a.drawDiff(w, v) })
 	h.Master().SetStyle(makeStyle(a.p, 13))
 	for _, at := range []image.Point{{}, {Y: 1000000}, {X: 1800000, Y: 99995 * 23}} {
 		scroll = at

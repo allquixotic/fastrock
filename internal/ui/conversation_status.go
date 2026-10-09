@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -87,21 +87,21 @@ func conversationAge(updated int64, now time.Time) string {
 	return "now"
 }
 
-func (a *App) drawTabOverflow(w *nucular.Window) bool {
+func (a *App) drawTabOverflow(w *desktop.Window) bool {
 	scale := w.Master().Style().Scaling
 	row, spacing := int(30*scale), w.Master().Style().GroupWindow.Spacing.Y
 	stride := row + spacing
 	height := min(int(400*scale), max(row, w.LayoutAvailableHeight()), len(a.state.Tabs)*stride+int(12*scale))
 	w.RowScaled(height).Dynamic(1)
 	selected := false
-	if group := w.GroupBegin("tab-overflow", nucular.WindowNoHScrollbar); group != nil {
+	if group := w.GroupBegin("tab-overflow", desktop.WindowNoHScrollbar); group != nil {
 		selected = a.drawTabOverflowList(group)
 		group.GroupEnd()
 	}
 	return selected
 }
 
-func (a *App) drawTabOverflowList(group *nucular.Window) bool {
+func (a *App) drawTabOverflowList(group *desktop.Window) bool {
 	row := int(30 * group.Master().Style().Scaling)
 	spacing := group.Master().Style().GroupWindow.Spacing.Y
 	stride := row + spacing

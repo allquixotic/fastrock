@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
 )
@@ -154,7 +154,7 @@ func TestV41EmptyDecisionsOfferNoFallback(t *testing.T) {
 	a.state.Open(workspace.Chat, "C", "c", "")
 	a.serverRequest(codex.Message{Method: "item/commandExecution/requestApproval", ID: json.RawMessage(`"empty"`), Origin: a.client}, map[string]any{"threadId": "c", "command": "echo test", "availableDecisions": []any{}})
 	var labels []string
-	h := nucular.NewHeadlessHarness(0, image.Pt(500, 700), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(500, 700), func(w *desktop.Window) {
 		a.drawApprovalFor(w, "c")
 		for _, c := range w.Commands().Commands {
 			if c.Kind == command.TextCmd {
@@ -213,7 +213,7 @@ func TestV41ApprovalCardGeometryAndLiteralCode(t *testing.T) {
 				a.approvals = []approval{r}
 				var commands []command.Command
 				reserved := 0
-				h := nucular.NewHeadlessHarness(0, image.Pt(width, 1600), func(w *nucular.Window) {
+				h := desktop.NewHeadlessHarness(0, image.Pt(width, 1600), func(w *desktop.Window) {
 					reserved = a.approvalHeight(w, "c")
 					a.drawApprovalFor(w, "c")
 					commands = append([]command.Command(nil), w.Commands().Commands...)
@@ -240,7 +240,7 @@ func TestV41ApprovalCardGeometryAndLiteralCode(t *testing.T) {
 					t.Fatal("card exceeds reserved height", lastY, reserved)
 				}
 				editor := a.approvals[0].CodeEditor
-				if editor == nil || editor.Flags&nucular.EditReadOnly == 0 || text(editor) != `$ echo "# literal *text*"` {
+				if editor == nil || editor.Flags&desktop.EditReadOnly == 0 || text(editor) != `$ echo "# literal *text*"` {
 					t.Fatal("code is not a selectable literal", editor)
 				}
 				if !reflect.DeepEqual(r.Params, a.approvals[0].Params) {
@@ -257,7 +257,7 @@ func TestV41CodeSelectionDoesNotAnswerApproval(t *testing.T) {
 	a.state.Open(workspace.Chat, "C", "c", "")
 	a.approvals = []approval{{ThreadID: "c", Focused: true, CodeEditor: textEditor("code", true), Choices: approvalChoices("item/commandExecution/requestApproval", nil)}}
 	a.approvals[0].CodeEditor.Active = true
-	h := nucular.NewHeadlessHarness(0, image.Pt(500, 400), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(500, 400), func(w *desktop.Window) {
 		for event := range w.Input().Keyboard.Events() {
 			a.approvalKey(event)
 		}
@@ -286,7 +286,7 @@ func TestV41ApprovalFitsChatControlsAtDisplayScales(t *testing.T) {
 			a.approvals = []approval{r}
 			var labels []command.Command
 			size := image.Pt(int(960*scale), int(850*scale))
-			h := nucular.NewHeadlessHarness(0, size, func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, size, func(w *desktop.Window) {
 				a.drawChat(w, c.ID)
 				labels = append([]command.Command(nil), w.Commands().Commands...)
 			})

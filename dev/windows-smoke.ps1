@@ -1,9 +1,11 @@
-param([string]$Root = $PSScriptRoot, [string]$Binary = 'fastrock.exe')
+param([string]$Root = $PSScriptRoot, [string]$Binary = 'fastrock.exe', [switch]$Layout, [switch]$Rows)
 $ErrorActionPreference = 'Stop'
+Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public static class SmokeCursor { [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y); }'
+[SmokeCursor]::SetCursorPos(1800, 900) | Out-Null
 Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like "$Root\*" -and ($_.Name -like 'fastrock*.exe' -or $_.Name -like 'mock-*.exe') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Start-Sleep -Milliseconds 1200
 Remove-Item "$Root\smoke.json.result", "$Root\0*.png" -Force -ErrorAction SilentlyContinue
-if (Test-Path "$Root\fastrock-home\session.json") { Remove-Item "$Root\fastrock-home\session.json" -Force }
+Remove-Item "$Root\fastrock-home\session*.json*" -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$Root\codex-home", "$Root\fastrock-home" | Out-Null
 $env:PATH = "$Root;" + $env:PATH
 $env:CODEX_HOME = "$Root\codex-home"
@@ -37,6 +39,10 @@ $steps = @(
     @{action='theme'; value='light'},
     @{action='wait'; milliseconds=500},
     @{action='snapshot'; path="$Root\02-board-light.png"},
+    @{action='rally_navigation'; value='hidden'},
+    @{action='wait'; milliseconds=500},
+    @{action='snapshot'; path="$Root\02-board-collapsed.png"},
+    @{action='rally_navigation'; value='shown'},
     @{action='theme'; value='dark'},
     @{action='item'; value='US1001'},
     @{action='wait'; milliseconds=1500},
@@ -68,11 +74,58 @@ $steps = @(
     @{action='wait'; milliseconds=7000},
     @{action='assert_assistant'; value='blocked stories'},
     @{action='snapshot'; path="$Root\05-assistant.png"},
+    @{action='action'; value='new-tab'},
+    @{action='wait'; milliseconds=500},
+    @{action='snapshot'; path="$Root\06-new-tab.png"},
     @{action='wait'; milliseconds=1000},
     @{action='quit'}
 )
 $steps | ConvertTo-Json | Set-Content "$Root\smoke.json"
+if ($Layout) {
+    Remove-Item "$Root\layout-*.ready", "$Root\layout-*.done" -Force -ErrorAction SilentlyContinue
+    $steps = @(@{action='wait'; milliseconds=3500}, @{action='rally'; value='teamboard'}, @{action='rally_navigation'; value='shown'}, @{action='wait'; milliseconds=2000})
+    foreach ($check in @(@('hide', 'assert_rally_row', 'hidden'), @('show', 'assert_rally_row', 'shown'))) {
+        $steps += @(@{action='signal'; path="$Root\layout-$($check[0]).ready"}, @{action='wait_file'; path="$Root\layout-$($check[0]).done"}, @{action='wait'; milliseconds=1200}, @{action=$check[1]; value='sections'; path=$check[2]})
+    }
+    foreach ($page in @('backlog','userstories','teamplan','workviews','iterationstatus','tasks','defects','testcases','portfolioitemstreegrid','timeline','reports')) {
+        $steps += @{action='rally'; value=$page}
+    }
+    $steps += @(@{action='action'; value='new-tab'}, @{action='wait'; milliseconds=300}, @{action='rally'; value='teamboard'}, @{action='wait'; milliseconds=800}, @{action='assert_tab_scroll'; value='start'})
+    foreach ($check in @(@('right', 'middle'), @('last', 'end'), @('left', 'middle'), @('first', 'start'))) {
+        $steps += @(@{action='signal'; path="$Root\layout-$($check[0]).ready"}, @{action='wait_file'; path="$Root\layout-$($check[0]).done"}, @{action='wait'; milliseconds=1200}, @{action='assert_tab_scroll'; value=$check[1]})
+        $steps += @{action='snapshot'; path="$Root\07-tabs-$($check[0]).png"}
+    }
+    $steps += @{action='quit'}
+    $steps | ConvertTo-Json | Set-Content "$Root\smoke.json"
+}
+if ($Rows) {
+    $steps = @(
+        @{action='wait'; milliseconds=3500},
+        @{action='rally'; value='teamboard'},
+        @{action='wait'; milliseconds=2000},
+        @{action='theme'; value='light'},
+        @{action='wait'; milliseconds=600},
+        @{action='snapshot'; path="$Root\08-rows-expanded.png"},
+        @{action='rally_rows'; value='sections,pages,project,freshness,saved-view,timeboxes,view-actions,modes,density,search'},
+        @{action='wait'; milliseconds=600},
+        @{action='snapshot'; path="$Root\09-rows-subset.png"},
+        @{action='rally_rows'; value='all'},
+        @{action='wait'; milliseconds=600},
+        @{action='snapshot'; path="$Root\10-rows-hidden.png"},
+        @{action='theme'; value='dark'},
+        @{action='wait'; milliseconds=600},
+        @{action='snapshot'; path="$Root\11-rows-hidden-dark.png"},
+        @{action='rally_rows'; value=''},
+        @{action='wait'; milliseconds=600},
+        @{action='snapshot'; path="$Root\12-rows-restored.png"},
+        @{action='quit'}
+    )
+    $steps | ConvertTo-Json | Set-Content "$Root\smoke.json"
+}
 $env:FASTROCK_AUTOMATION = "$Root\smoke.json"
 Start-Process "$Root\mock-rally.exe" -WindowStyle Hidden -RedirectStandardOutput "$Root\rally.log" -RedirectStandardError "$Root\rally.err" -PassThru | Select-Object Id,ProcessName
 Start-Process "$Root\mock-model.exe" -WindowStyle Hidden -RedirectStandardOutput "$Root\model.log" -RedirectStandardError "$Root\model.err" -PassThru | Select-Object Id,ProcessName
 Start-Process "$Root\$Binary" -WorkingDirectory $Root -RedirectStandardOutput "$Root\ui.log" -RedirectStandardError "$Root\ui.err" -PassThru | Select-Object Id,ProcessName
+if ($Layout) {
+    Start-Process 'C:\Users\SeanMcNamara\dev\tools\ahk\AutoHotkey64.exe' -ArgumentList "`"$Root\windows-layout-input.ahk`"" -PassThru | Select-Object Id,ProcessName
+}

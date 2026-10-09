@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -20,7 +20,7 @@ type configField struct {
 	Search    string
 	Key, Kind string
 	Value     any
-	Editor    *nucular.TextEditor
+	Editor    *desktop.TextEditor
 	Baseline  string
 	Protected bool
 }
@@ -238,7 +238,7 @@ func (a *App) saveRawConfig() {
 		s.RawFeedback = settingFeedback{Failed: true, Message: errWorkQueueFull.Error()}
 	})
 }
-func (a *App) drawRawConfig(w *nucular.Window, s *settingsView) {
+func (a *App) drawRawConfig(w *desktop.Window, s *settingsView) {
 	w.Row(30).Static(100, 100)
 	if !s.Busy && w.ButtonText("Save") {
 		a.saveRawConfig()

@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 )
 
 func TestTabCloseIsInsideTabWithoutOverlappingTitle(t *testing.T) {

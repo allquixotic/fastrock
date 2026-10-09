@@ -9,11 +9,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/label"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/label"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/richtext"
 	"golang.org/x/mobile/event/mouse"
@@ -93,7 +93,7 @@ func prepareDetailCollection(l *detailCollectionLayout, items []rally.Object) {
 	}
 }
 
-func (a *App) collectionTextLayout(w *nucular.Window, d *detailView, items []rally.Object) *detailCollectionLayout {
+func (a *App) collectionTextLayout(w *desktop.Window, d *detailView, items []rally.Object) *detailCollectionLayout {
 	var source *rally.Object
 	if len(items) > 0 {
 		source = &items[0]
@@ -125,13 +125,13 @@ func (a *App) collectionTextLayout(w *nucular.Window, d *detailView, items []ral
 	return nil
 }
 
-func collectionSkip(w *nucular.Window, height, spacing int) {
+func collectionSkip(w *desktop.Window, height, spacing int) {
 	if height > 0 {
 		w.RowScaled(max(1, height-spacing)).Dynamic(1)
 		w.Spacing(1)
 	}
 }
-func (a *App) drawCollectionText(w *nucular.Window, v *rallyView, d *detailView, items []rally.Object) {
+func (a *App) drawCollectionText(w *desktop.Window, v *rallyView, d *detailView, items []rally.Object) {
 	if len(items) == 0 {
 		return
 	}
@@ -162,7 +162,7 @@ func (a *App) drawCollectionText(w *nucular.Window, v *rallyView, d *detailView,
 	collectionSkip(w, l.Offsets[len(l.Rows)]-l.Offsets[last], l.Spacing)
 }
 
-func (a *App) drawCollectionRow(w *nucular.Window, out *command.Buffer, b rect.Rect, v *rallyView, d *detailView, item rally.Object, row detailCollectionRow, scale float64) {
+func (a *App) drawCollectionRow(w *desktop.Window, out *command.Buffer, b rect.Rect, v *rallyView, d *detailView, item rally.Object, row detailCollectionRow, scale float64) {
 	pad := int(8 * scale)
 	textBox := inset(b, pad, pad)
 	if d.Tab == "Discussions" {
@@ -223,7 +223,7 @@ func (a *App) drawCollectionRow(w *nucular.Window, out *command.Buffer, b rect.R
 	}
 }
 
-func (a *App) paintCollectionText(w *nucular.Window, out *command.Buffer, b rect.Rect, l *transcriptLayout) {
+func (a *App) paintCollectionText(w *desktop.Window, out *command.Buffer, b rect.Rect, l *transcriptLayout) {
 	clip := out.Clip
 	first := sort.Search(len(l.Lines), func(i int) bool { return b.Y+l.LineOffsets[i]+l.Lines[i].Height > clip.Y })
 	for i := first; i < len(l.Lines) && b.Y+l.LineOffsets[i] < clip.Y+clip.H; i++ {

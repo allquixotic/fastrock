@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"unicode"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"golang.org/x/image/math/fixed"
 	"golang.org/x/mobile/event/key"
 )
@@ -23,7 +23,7 @@ type fileAnalysis struct {
 }
 
 type fileSearch struct {
-	editor     *nucular.TextEditor
+	editor     *desktop.TextEditor
 	revision   uint64
 	query      string
 	generation uint64
@@ -273,7 +273,7 @@ func (a *App) decorateFile(v *fileView, scale float64, face font.Face) {
 		s.paint = nil
 		return
 	}
-	ed.GutterWidth = nucular.FontWidth(face, strconv.Itoa(len(r.lines))) + int(14*scale)
+	ed.GutterWidth = desktop.FontWidth(face, strconv.Itoa(len(r.lines))) + int(14*scale)
 	if s.paint == r && s.palette == a.p && s.paintScale == scale && s.paintOpen == v.FindOpen {
 		return
 	}
@@ -285,7 +285,7 @@ func (a *App) decorateFile(v *fileView, scale float64, face font.Face) {
 			return
 		}
 		value := strconv.Itoa(line + 1)
-		width := nucular.FontWidth(f, value)
+		width := desktop.FontWidth(f, value)
 		b.X, b.W = b.X+b.W-width-int(7*scale), width
 		out.DrawText(b, value, f, p.Muted)
 	}
@@ -367,7 +367,7 @@ func paintFileMatches(out *command.Buffer, b rect.Rect, runes []rune, start int,
 	flush()
 }
 
-func (a *App) fileSearchKey(v *fileView, event *nucular.KeyboardEvent, primary key.Modifiers) {
+func (a *App) fileSearchKey(v *fileView, event *desktop.KeyboardEvent, primary key.Modifiers) {
 	if event.HandleKey(key.CodeF, primary) {
 		v.FindOpen, v.FocusFind = true, true
 	}

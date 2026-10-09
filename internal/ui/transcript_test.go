@@ -2,7 +2,7 @@ package ui
 
 import (
 	"encoding/json"
-	"github.com/aarzilli/nucular/font"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
 	"github.com/allquixotic/fastrock/internal/richtext"
 	"strings"
 	"testing"

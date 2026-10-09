@@ -3,7 +3,7 @@ package ui
 import (
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
 )
@@ -175,7 +175,7 @@ func validateActionShortcut(id string, code key.Code, mods key.Modifiers) string
 
 // Revealing a focus target uses actual pixel geometry. It works for both the
 // outer grouped board and inner card lane, including scaled row heights.
-func revealBoardRange(w *nucular.Window, top, bottom int) bool {
+func revealBoardRange(w *desktop.Window, top, bottom int) bool {
 	clip := w.Commands().Clip
 	viewTop := max(w.Bounds.Y, clip.Y)
 	viewBottom := min(w.Bounds.Y+w.Bounds.H, clip.Y+clip.H)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 func reviewTarget(kind int, value string) (map[string]any, error) {
@@ -33,7 +33,7 @@ func (a *App) reviewDialog(thread string) {
 	kind := 0
 	value := textEditor("", false)
 	errText := ""
-	a.window.PopupOpen("Review changes", nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(570, 250), false, func(w *nucular.Window) {
+	a.window.PopupOpen("Review changes", desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(570, 250), false, func(w *desktop.Window) {
 		w.Row(30).Dynamic(1)
 		kind = w.ComboSimple([]string{"Uncommitted changes", "Base branch", "Commit", "Custom instructions"}, kind, 28)
 		if kind > 0 {

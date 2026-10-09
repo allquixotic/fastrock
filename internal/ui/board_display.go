@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/font"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
 	"github.com/allquixotic/fastrock/internal/settings"
 )
 
 type boardDisplayDraft struct {
 	ColorBy  string
-	WIP, Age *nucular.TextEditor
+	WIP, Age *desktop.TextEditor
 	Error    string
 }
 type boardDisplayDraftState struct{ ColorBy, WIP, Age, Error string }
@@ -71,37 +71,30 @@ func (a *App) applyBoardSettings(v *rallyView) bool {
 	v.DisplayDraft = nil
 	return true
 }
-func (a *App) drawBoardDisplayControls(w *nucular.Window, v *rallyView) {
-	scale := w.Master().Style().Scaling
-	width := w.LayoutAvailableWidth()
-	narrow := width < int(400*scale)
+func (a *App) drawBoardDisplayControls(w *desktop.Window, v *rallyView) {
 	board := v.Mode == "board"
-	if !board {
-		w.Row(28).Dynamic(2)
-	} else if narrow {
-		w.Row(28).Dynamic(2)
-	} else {
-		w.Row(28).Static(120, 120, 130)
+	captions := []string{"Comfortable", "Compact"}
+	if board {
+		captions = append(captions, "Page settings")
 	}
-	for _, density := range []string{"Comfortable", "Compact"} {
-		if button(w, density, v.Display.Density == density, a.p) && v.Display.Density != density {
-			d := v.Display
-			d.Density = density
-			a.setBoardDisplay(v, d)
+	compactRallyButtons(w, 26, captions, 20, func(i int) {
+		if i < 2 {
+			density := captions[i]
+			if button(w, density, v.Display.Density == density, a.p) && v.Display.Density != density {
+				d := v.Display
+				d.Density = density
+				a.setBoardDisplay(v, d)
+			}
+		} else if button(w, "Page settings", v.DisplayDraft != nil, a.p) {
+			if v.DisplayDraft == nil {
+				v.beginBoardSettings()
+			} else {
+				v.DisplayDraft = nil
+			}
 		}
-	}
+	})
 	if !board {
 		return
-	}
-	if narrow {
-		w.Row(28).Dynamic(1)
-	}
-	if button(w, "Page settings", v.DisplayDraft != nil, a.p) {
-		if v.DisplayDraft == nil {
-			v.beginBoardSettings()
-		} else {
-			v.DisplayDraft = nil
-		}
 	}
 	d := v.DisplayDraft
 	if d == nil {
@@ -136,7 +129,7 @@ type boardCardMetrics struct {
 
 func boardMetrics(density string, scale float64, face font.Face) boardCardMetrics {
 	s := func(n int) int { return max(1, int(math.Round(float64(n)*scale))) }
-	m := boardCardMetrics{Padding: s(12), Gap: s(10), Line: max(s(18), nucular.FontHeight(face)), TitleLines: 3}
+	m := boardCardMetrics{Padding: s(12), Gap: s(10), Line: max(s(18), desktop.FontHeight(face)), TitleLines: 3}
 	between, titleGap := s(4), s(10)
 	if density == "Compact" {
 		m.Padding, m.Gap, m.TitleLines, between, titleGap = s(8), s(7), 2, s(2), s(6)
@@ -235,13 +228,13 @@ func boardAge(updated time.Time, threshold int, now time.Time) (int, bool) {
 }
 func ellipsizeBoardTitle(face font.Face, line string, width int) string {
 	runes := []rune(strings.TrimSpace(line))
-	if nucular.FontWidth(face, "…") > width {
+	if desktop.FontWidth(face, "…") > width {
 		return ""
 	}
 	lo, hi := 0, len(runes)
 	for lo < hi {
 		mid := (lo + hi + 1) / 2
-		if nucular.FontWidth(face, string(runes[:mid])+"…") <= width {
+		if desktop.FontWidth(face, string(runes[:mid])+"…") <= width {
 			lo = mid
 		} else {
 			hi = mid - 1

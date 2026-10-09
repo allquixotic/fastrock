@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
@@ -76,10 +76,10 @@ func BenchmarkEditorSnapshot(b *testing.B) {
 
 func BenchmarkFontWidthCached(b *testing.B) {
 	f := makeStyle(colors(false), 13).Font
-	nucular.FontWidth(f, "Searchable story with an owner")
+	desktop.FontWidth(f, "Searchable story with an owner")
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		_ = nucular.FontWidth(f, "Searchable story with an owner")
+		_ = desktop.FontWidth(f, "Searchable story with an owner")
 	}
 }

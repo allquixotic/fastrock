@@ -2,8 +2,8 @@ package ui
 
 import (
 	"fmt"
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/assistant"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"sort"
 	"strings"
 )
@@ -17,7 +17,7 @@ func (s *assistantView) transcriptText() string {
 	}
 	return b.String()
 }
-func (a *App) drawAssistantHistory(w *nucular.Window, s *assistantView) {
+func (a *App) drawAssistantHistory(w *desktop.Window, s *assistantView) {
 	if s.Layout == nil {
 		s.Layout = newChatView()
 	}

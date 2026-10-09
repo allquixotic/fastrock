@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
 )
@@ -91,7 +91,7 @@ func TestV38MCPEscapeCancelsAndSessionChoiceReplies(t *testing.T) {
 				t.Fatal(a.approvals)
 			}
 			a.approvals[0].Armed = time.Time{}
-			h := nucular.NewHeadlessHarness(0, image.Pt(500, 700), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(500, 700), func(w *desktop.Window) {
 				for event := range w.Input().Keyboard.Events() {
 					a.approvalKey(event)
 				}
@@ -135,7 +135,7 @@ func TestV38MCPApprovalCardUsesMetadata(t *testing.T) {
 	p := map[string]any{"threadId": c.ID, "mode": "form", "serverName": "Docs", "_meta": map[string]any{"codex_approval_kind": "mcp_tool_call", "tool_name": "search", "persist": []any{"session", "always"}}}
 	a.serverRequest(codex.Message{ID: json.RawMessage(`"card"`), Method: "mcpServer/elicitation/request", Origin: a.client}, p)
 	var labels []string
-	h := nucular.NewHeadlessHarness(0, image.Pt(600, 1000), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(600, 1000), func(w *desktop.Window) {
 		a.drawApprovalFor(w, c.ID)
 		for _, cmd := range w.Commands().Commands {
 			if cmd.Kind == command.TextCmd {

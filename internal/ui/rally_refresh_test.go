@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
@@ -133,7 +133,7 @@ func TestV70RallyFreshnessRendering(t *testing.T) {
 			v := newRallyView(rally.FindPage("teamboard"))
 			v.Loading = true
 			v.Refreshed = time.Now().Add(-10 * time.Second)
-			h := nucular.NewHeadlessHarness(0, image.Pt(int(500*scale), int(120*scale)), func(w *nucular.Window) { a.drawRallyFreshness(w, v) })
+			h := desktop.NewHeadlessHarness(0, image.Pt(int(500*scale), int(120*scale)), func(w *desktop.Window) { a.drawRallyFreshness(w, v) })
 			style := makeStyle(a.p, 13)
 			style.Scale(scale)
 			h.Master().SetStyle(style)

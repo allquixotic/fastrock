@@ -5,17 +5,17 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/richtext"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
 type editorVersion struct {
-	editor   *nucular.TextEditor
+	editor   *desktop.TextEditor
 	revision uint64
 }
 
-func versionOf(e *nucular.TextEditor) editorVersion {
+func versionOf(e *desktop.TextEditor) editorVersion {
 	if e == nil {
 		return editorVersion{}
 	}

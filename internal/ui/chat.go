@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -25,7 +25,7 @@ type chatView struct {
 	LoadError                   string
 	RichSelection               transcriptSelection
 	SelectID                    string
-	Selection                   *nucular.TextEditor
+	Selection                   *desktop.TextEditor
 	Suggest                     []string
 	SuggestQuery                string
 	SuggestGeneration           uint64
@@ -36,7 +36,7 @@ type chatView struct {
 	Scroll                      int
 	RestoreScroll               bool
 
-	Editor         *nucular.TextEditor
+	Editor         *desktop.TextEditor
 	Attachments    []string
 	EditQueue      string
 	QueuePage      int
@@ -259,7 +259,7 @@ func (a *App) resumeThread(id string) {
 	})
 
 }
-func (a *App) drawSidebar(w *nucular.Window) {
+func (a *App) drawSidebar(w *desktop.Window) {
 	w.Row(28).Ratio(.72, .28)
 	w.LabelColored("CONVERSATIONS", "LC", a.p.Muted)
 	if iconButton(w, "plus", false, a.p) {
@@ -834,7 +834,7 @@ func (a *App) upsertItem(c *workspace.Conversation, it map[string]any) {
 	c.Append(b.ID, b.Kind, b.Role, b.Text)
 	c.FinishBlock(b.ID)
 }
-func (a *App) drawChat(w *nucular.Window, id string) {
+func (a *App) drawChat(w *desktop.Window, id string) {
 	c := a.state.Chats[id]
 	v := a.chats[id]
 	if v != nil && v.LoadError != "" {
@@ -903,7 +903,7 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 	}
 	h := max(120, int(float64(remaining-approvalHeight)/scale)-114-composer-queueHeight)
 	w.Row(h).Dynamic(1)
-	if tr := w.GroupBegin("transcript-"+id, nucular.WindowNoHScrollbar); tr != nil {
+	if tr := w.GroupBegin("transcript-"+id, desktop.WindowNoHScrollbar); tr != nil {
 		if v.RestoreScroll {
 			tr.Scrollbar.Y = v.Scroll
 			v.RestoreScroll = false
@@ -1188,7 +1188,7 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 		}
 	}
 }
-func (a *App) drawInfo(w *nucular.Window) {
+func (a *App) drawInfo(w *desktop.Window) {
 	tab := a.state.Current()
 	if tab == nil {
 		return

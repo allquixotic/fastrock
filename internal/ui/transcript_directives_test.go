@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -11,7 +11,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/richtext"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/mouse"
@@ -176,7 +176,7 @@ func TestV65CitationClickUsesOwningDirectory(t *testing.T) {
 			layout := prepareTranscript("source.go:3", 900, 13)
 			layout.Cwd = root
 			var click image.Point
-			h := nucular.NewHeadlessHarness(0, image.Pt(900, 300), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(900, 300), func(w *desktop.Window) {
 				if click != (image.Point{}) {
 					m := &w.Input().Mouse
 					m.Pos, m.Buttons[mouse.ButtonLeft].ClickedPos = click, click

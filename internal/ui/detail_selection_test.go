@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/mouse"
@@ -184,7 +184,7 @@ func TestV62SelectionControlsAtDisplayScales(t *testing.T) {
 		t.Run(fmt.Sprint(scale), func(t *testing.T) {
 			a, v, d := selectionFixture(t, "https://rally.test")
 			var click image.Point
-			h := nucular.NewHeadlessHarness(0, image.Pt(int(850*scale), int(760*scale)), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(int(850*scale), int(760*scale)), func(w *desktop.Window) {
 				if click != (image.Point{}) {
 					m := &w.Input().Mouse
 					m.Pos = click
@@ -396,7 +396,7 @@ func TestV62SelectionPreviewIsBoundedAndFullText(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, scale := range []float64{1, 1.25, 1.5, 2} {
-		h := nucular.NewHeadlessHarness(0, image.Pt(int(850*scale), int(760*scale)), func(w *nucular.Window) { a.drawDetail(w, v) })
+		h := desktop.NewHeadlessHarness(0, image.Pt(int(850*scale), int(760*scale)), func(w *desktop.Window) { a.drawDetail(w, v) })
 		style := makeStyle(a.p, 13)
 		style.Scale(scale)
 		h.Master().SetStyle(style)

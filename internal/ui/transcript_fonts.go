@@ -3,7 +3,7 @@ package ui
 import (
 	"unicode"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/richtext"
 	"golang.org/x/image/math/fixed"
 )
@@ -13,7 +13,7 @@ import (
 func wrapTranscriptCell(doc *richtext.Document, start, end, width, size int) []transcriptLine {
 	var rows []transcriptLine
 	appendRow := func(from, to int) {
-		row := transcriptLine{Height: nucular.FontHeight(typeFace(size, regularFont)) + 7}
+		row := transcriptLine{Height: desktop.FontHeight(typeFace(size, regularFont)) + 7}
 		x := 4
 		for i := from; i < to; {
 			format, next := doc.RunAt(i)
@@ -23,7 +23,7 @@ func wrapTranscriptCell(doc *richtext.Document, start, end, width, size int) []t
 			measureTranscriptRun(&run, face)
 			run.Width = run.Advances[len(run.Advances)-1]
 			row.Runs = append(row.Runs, run)
-			row.Height = max(row.Height, nucular.FontHeight(face)+7)
+			row.Height = max(row.Height, desktop.FontHeight(face)+7)
 			x += run.Width
 			i = j
 		}

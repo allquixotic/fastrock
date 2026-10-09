@@ -3,7 +3,7 @@ package ui
 import (
 	"sync"
 
-	"github.com/aarzilli/nucular/font"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
 	"github.com/allquixotic/fastrock/internal/richtext"
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/gofont/gobolditalic"
@@ -56,7 +56,7 @@ func fontData(v fontVariant) []byte {
 	}
 }
 
-// Face access is synchronized by nucular. A finite size/variant key space
+// Face access is synchronized by desktop. A finite size/variant key space
 // shares glyph caches across drawing and background measurement.
 func typeFace(size int, variant fontVariant) font.Face {
 	key := fontKey{max(4, min(72, size)), variant}

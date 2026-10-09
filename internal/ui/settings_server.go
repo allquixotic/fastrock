@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 func (a *App) settingsServerMessage() (string, bool) {
@@ -21,7 +21,7 @@ func (a *App) settingsServerMessage() (string, bool) {
 	return "", false
 }
 
-func (a *App) drawSettingsServer(w *nucular.Window) {
+func (a *App) drawSettingsServer(w *desktop.Window) {
 	if message, failed := a.settingsServerMessage(); message != "" {
 		if failed {
 			a.drawSettingsError(w, message)

@@ -1,4 +1,4 @@
-// Package ui ports the Codex GUI shell to native nucular widgets.
+// Package ui presents the Codex GUI shell with FLTK and custom canvas controls.
 package ui
 
 import (
@@ -15,11 +15,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/label"
-	"github.com/aarzilli/nucular/rect"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/label"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/platform"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
@@ -93,7 +93,7 @@ type App struct {
 	cancel                                            context.CancelFunc
 	store                                             *settings.Store
 	prefs                                             settings.Preferences
-	window                                            nucular.MasterWindow
+	window                                            desktop.MasterWindow
 	p                                                 palette
 	state                                             *workspace.State
 	client                                            *codex.Client
@@ -105,7 +105,7 @@ type App struct {
 	chats                                             map[string]*chatView
 	rallyViews                                        map[string]*rallyView
 	files                                             map[string]*fileView
-	sidebarSearch, newFolder                          *nucular.TextEditor
+	sidebarSearch, newFolder                          *desktop.TextEditor
 	archived                                          bool
 	collapsed                                         map[string]bool
 	settingsView                                      *settingsView
@@ -122,7 +122,7 @@ type App struct {
 	workspaces, projects, iterations, releases, users []rally.Object
 	rallyErr                                          string
 	paletteOpen                                       bool
-	paletteSearch                                     *nucular.TextEditor
+	paletteSearch                                     *desktop.TextEditor
 	writerDone                                        chan struct{}
 	persistenceError                                  string
 	sessionBlocked                                    bool
@@ -163,12 +163,18 @@ type App struct {
 	dragTabMoving                                     bool
 	tabWidths                                         []int
 	visibleTab                                        string
+	tabScroll, tabScrollMax, tabStep, tabViewport     int
+	tabLayoutRevision                                 uint64
+	tabScrollDirection                                int
+	tabScrollClicked                                  time.Time
+	newRecentFolders, newRecentChats                  bool
+	rallyRowHeights                                   map[string]int
 	sidebarCache                                      sidebarCache
 }
 type approval struct {
 	Delivery       *codex.DeliveryRequest
 	Content        approvalContent
-	CodeEditor     *nucular.TextEditor
+	CodeEditor     *desktop.TextEditor
 	HeightLimit    int
 	Details        string
 	FormError      string
@@ -193,7 +199,7 @@ type question struct {
 	Options          []string
 	Descriptions     []string
 	Selected         int
-	Editor           *nucular.TextEditor
+	Editor           *desktop.TextEditor
 	Secret           bool
 	Type             string
 	Required         bool
@@ -232,10 +238,10 @@ type fileView struct {
 	DiffSelection              diffSelection
 	DiffJump                   bool
 	DiffJumpFile, DiffJumpRow  int
-	Find                       *nucular.TextEditor
+	Find                       *desktop.TextEditor
 	FindOpen, Wrap, Virtual    bool
 	Path                       string
-	Editor                     *nucular.TextEditor
+	Editor                     *desktop.TextEditor
 	Error                      string
 }
 
@@ -302,7 +308,7 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences,
 	if len(a.state.Tabs) == 0 && connection.Ticket == "" {
 		a.state.Open(workspace.New, "New tab", "", "")
 	}
-	a.window = nucular.NewMasterWindowSize(nucular.WindowNoScrollbar, "Fastrock", platform.WindowSize(), a.draw)
+	a.window = desktop.NewMasterWindowSize(desktop.WindowNoScrollbar, "Fastrock", platform.WindowSize(), a.draw)
 	if clipboard, ok := a.window.(interface{ OnClipboardError(func(error)) }); ok {
 		clipboard.OnClipboardError(a.report)
 	}
@@ -527,6 +533,7 @@ func (a *App) savePrefs() {
 	p.Views = append([]settings.SavedView(nil), p.Views...)
 	p.Keymap = cloneKeys(p.Keymap)
 	p.RecentFolders = append([]string(nil), p.RecentFolders...)
+	p.RallyHiddenRows = append([]string(nil), p.RallyHiddenRows...)
 	write := preferenceWrite{Patch: settings.Diff(a.preferencesQueued, p), Snapshot: p, Client: a.client}
 	a.preferencesQueued = p
 	if len(write.Patch) == 0 {
@@ -782,7 +789,7 @@ func (a *App) loadScope() {
 		}
 	})
 }
-func (a *App) draw(w *nucular.Window) {
+func (a *App) draw(w *desktop.Window) {
 	defer a.scheduleTimeUpdate()
 	defer a.drawNotices(w)
 	a.clientBounds = image.Rect(w.Bounds.X, w.Bounds.Y, w.Bounds.X+w.Bounds.W, w.Bounds.Y+w.Bounds.H)
@@ -878,7 +885,8 @@ func (a *App) draw(w *nucular.Window) {
 		side = 255
 	}
 	info := 0
-	if a.prefs.Info && a.state.Current() != nil && a.state.Current().Kind == workspace.Chat {
+	wantInfo := a.prefs.Info && a.state.Current() != nil && a.state.Current().Kind == workspace.Chat
+	if wantInfo {
 		info = 255
 	}
 	available := w.LayoutAvailableWidth()
@@ -888,13 +896,13 @@ func (a *App) draw(w *nucular.Window) {
 	if available-side-info < 360 && side > 0 {
 		side = 0
 	}
-	if side == 0 && a.prefs.Sidebar || info == 0 && a.prefs.Info {
+	if side == 0 && a.prefs.Sidebar || info == 0 && wantInfo {
 		w.Row(28).Static(120, 120)
-		if w.ButtonText("Conversations") {
-			a.window.PopupOpen("Conversations", nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(340, 600), false, a.drawSidebar)
+		if side == 0 && a.prefs.Sidebar && w.ButtonText("Conversations") {
+			a.window.PopupOpen("Conversations", desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(340, 600), false, a.drawSidebar)
 		}
-		if w.ButtonText("Information") {
-			a.window.PopupOpen("Information", nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(340, 600), false, a.drawInfo)
+		if info == 0 && wantInfo && w.ButtonText("Information") {
+			a.window.PopupOpen("Information", desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(340, 600), false, a.drawInfo)
 		}
 		h = max(120, w.LayoutAvailableHeight()-footerHeight)
 	}
@@ -908,14 +916,19 @@ func (a *App) draw(w *nucular.Window) {
 	}
 	w.Row(h).Static(widths...)
 	if side > 0 {
-		if sw := w.GroupBegin("conversation-sidebar", nucular.WindowNoHScrollbar); sw != nil {
+		if sw := w.GroupBegin("conversation-sidebar", desktop.WindowNoHScrollbar); sw != nil {
 			a.drawSidebar(sw)
 			sw.GroupEnd()
 		}
 	}
-	flags := nucular.WindowNoScrollbar
+	flags := desktop.WindowNoScrollbar
 	if t := a.state.Current(); t == nil || t.Kind == workspace.New {
-		flags = nucular.WindowNoHScrollbar
+		flags = desktop.WindowNoHScrollbar
+	}
+	groupStyle := w.Master().Style().GroupWindow
+	if t := a.state.Current(); t != nil && t.Kind == workspace.Rally {
+		w.Master().Style().GroupWindow.Padding.Y = int(2 * w.Master().Style().Scaling)
+		w.Master().Style().GroupWindow.Spacing.Y = int(3 * w.Master().Style().Scaling)
 	}
 	if body := w.GroupBegin("document", flags); body != nil {
 		t := a.state.Current()
@@ -945,8 +958,9 @@ func (a *App) draw(w *nucular.Window) {
 		}
 		body.GroupEnd()
 	}
+	w.Master().Style().GroupWindow = groupStyle
 	if info > 0 {
-		if iw := w.GroupBegin("conversation-info", nucular.WindowNoHScrollbar); iw != nil {
+		if iw := w.GroupBegin("conversation-info", desktop.WindowNoHScrollbar); iw != nil {
 			a.drawInfo(iw)
 			iw.GroupEnd()
 		}
@@ -967,19 +981,37 @@ func (a *App) draw(w *nucular.Window) {
 		a.rpc("fastrock/ready", map[string]string{"ticket": ticket}, nil)
 	}
 }
-func (a *App) drawTabs(w *nucular.Window) {
-	settingsWidth := nucular.FontWidth(w.Master().Style().Font, "Settings") + 20
-	w.Row(38).Static(36, max(100, w.LayoutAvailableWidth()-126-settingsWidth), 30, 30, 30, settingsWidth)
+func (a *App) drawTabs(w *desktop.Window) {
+	scale := w.Master().Style().Scaling
+	px := func(n int) int { return int(float64(n) * scale) }
+	settingsWidth := desktop.FontWidth(w.Master().Style().Font, "Settings") + px(20)
+	stripWidth := max(px(100), w.LayoutAvailableWidth()-px(126)-settingsWidth)
+	overflow := len(a.state.Tabs)*px(160) > stripWidth
+	widths := []int{px(36)}
+	if overflow {
+		stripWidth = max(px(44), stripWidth-px(56))
+		widths = append(widths, px(28))
+	}
+	widths = append(widths, stripWidth)
+	if overflow {
+		widths = append(widths, px(28))
+	}
+	widths = append(widths, px(30), px(30), px(30), settingsWidth)
+	w.Row(38).StaticScaled(widths...)
 	if iconButton(w, "sidebar", a.prefs.Sidebar, a.p) {
 		a.prefs.Sidebar = !a.prefs.Sidebar
 		a.savePrefs()
 	}
+	if overflow {
+		a.tabScrollButton(w, -1)
+	}
 	oldGroup := w.Master().Style().GroupWindow
 	w.Master().Style().GroupWindow.Padding = image.Pt(0, 2)
 	w.Master().Style().GroupWindow.Spacing = image.Pt(0, 0)
-	if strip := w.GroupBegin("tabs", nucular.WindowNoScrollbar); strip != nil {
+	if strip := w.GroupBegin("tabs", desktop.WindowNoScrollbar); strip != nil {
 		count := len(a.state.Tabs)
-		width := min(240, max(84, strip.LayoutAvailableWidth()/max(1, count)))
+		viewport := strip.LayoutAvailableWidth()
+		width := min(px(240), max(px(160), viewport/max(1, count)))
 		if cap(a.tabWidths) < count {
 			a.tabWidths = make([]int, count)
 		} else {
@@ -988,26 +1020,22 @@ func (a *App) drawTabs(w *nucular.Window) {
 		for i := range a.tabWidths {
 			a.tabWidths[i] = width
 		}
-		maxScroll := max(0, count*width-strip.LayoutAvailableWidth())
+		a.tabStep, a.tabScrollMax = width, max(0, count*width-viewport)
 		if in := strip.Input(); in.Mouse.HoveringRect(strip.Bounds) && (in.Mouse.ScrollDelta != 0 || in.Mouse.ScrollDeltaX != 0) {
-			strip.Scrollbar.X = min(maxScroll, max(0, strip.Scrollbar.X+int(in.Mouse.ScrollDeltaX-in.Mouse.ScrollDelta)*60))
+			a.tabScroll += int(in.Mouse.ScrollDeltaX-in.Mouse.ScrollDelta) * px(60)
 		}
-		if a.visibleTab != a.state.Active {
+		if a.visibleTab != a.state.Active || a.tabViewport != viewport || a.tabLayoutRevision != a.state.TabRevision {
 			for i, t := range a.state.Tabs {
 				if t.ID == a.state.Active {
-					left, right := i*width, (i+1)*width
-					if left < strip.Scrollbar.X {
-						strip.Scrollbar.X = left
-					}
-					if right > strip.Scrollbar.X+strip.LayoutAvailableWidth() {
-						strip.Scrollbar.X = right - strip.LayoutAvailableWidth()
-					}
+					a.tabScroll = revealTab(a.tabScroll, i, width, viewport)
 				}
 			}
 			a.visibleTab = a.state.Active
+			a.tabViewport, a.tabLayoutRevision = viewport, a.state.TabRevision
 		}
-		strip.Scrollbar.X = min(maxScroll, max(0, strip.Scrollbar.X))
-		strip.Row(34).Static(a.tabWidths...)
+		a.tabScroll = min(a.tabScrollMax, max(0, a.tabScroll))
+		strip.Scrollbar.X = a.tabScroll
+		strip.Row(34).StaticScaled(a.tabWidths...)
 		closeID, keepID, moveID := "", "", ""
 		keepRight, moveBy := -1, 0
 		in := strip.Input()
@@ -1078,6 +1106,7 @@ func (a *App) drawTabs(w *nucular.Window) {
 		if moveID != "" {
 			a.state.Move(moveID, moveBy)
 			a.state.Active = moveID
+			a.visibleTab = ""
 		}
 		var closing []string
 		if keepID != "" {
@@ -1106,10 +1135,17 @@ func (a *App) drawTabs(w *nucular.Window) {
 		strip.GroupEnd()
 	}
 	w.Master().Style().GroupWindow = oldGroup
-	if menu := w.Menu(label.T("▾"), 300, nil); menu != nil {
+	if overflow {
+		a.tabScrollButton(w, 1)
+	}
+	menuBounds := w.WidgetBounds()
+	if menu := w.Menu(label.S(label.SymbolChevronDown), 300, nil); menu != nil {
 		if a.drawTabOverflow(menu) {
 			menu.Close()
 		}
+	}
+	if w.Input().Mouse.HoveringRect(menuBounds) {
+		w.Tooltip("All tabs")
 	}
 	if iconButton(w, "plus", false, a.p) {
 		a.state.OpenNew()
@@ -1128,56 +1164,50 @@ func absInt(n int) int {
 	}
 	return n
 }
-func (a *App) drawNew(w *nucular.Window) {
+func (a *App) drawNew(w *desktop.Window) {
 	scale := w.Master().Style().Scaling
-	width := min(int(600*scale), max(1, w.LayoutAvailableWidth()-int(48*scale)))
+	width := min(int(560*scale), max(1, w.LayoutAvailableWidth()-int(32*scale)))
 	height := max(1, w.LayoutAvailableHeight())
 	w.RowScaled(height).SpaceBegin(1)
 	w.LayoutSpacePushScaled(rect.Rect{X: (w.LayoutAvailableWidth() - width) / 2, W: width, H: height})
-	if body := w.GroupBegin("start-page", nucular.WindowNoHScrollbar); body != nil {
+	if body := w.GroupBegin("start-page", desktop.WindowNoHScrollbar); body != nil {
 		a.drawNewContents(body)
 		body.GroupEnd()
 	}
 }
 
-func (a *App) drawNewContents(w *nucular.Window) {
+func (a *App) drawNewContents(w *desktop.Window) {
 	scale := w.Master().Style().Scaling
-	w.RowScaled(max(int(24*scale), (w.LayoutAvailableHeight()-int(560*scale))/3)).Dynamic(1)
+	w.RowScaled(max(int(16*scale), min(int(64*scale), w.LayoutAvailableHeight()/8))).Dynamic(1)
 	w.Spacing(1)
 	title(w, "Start a new thread", a.p)
-	caption := "Choose a folder or start a conversation without a project folder."
-	face := w.Master().Style().Font
-	w.RowScaled(len(nucular.WrapText(face, caption, max(1, w.LayoutAvailableWidth())))*(nucular.FontHeight(face)+2) + 8).Dynamic(1)
-	previous := w.Master().Style().Text.Color
-	w.Master().Style().Text.Color = a.p.Muted
-	w.LabelWrap(caption)
-	w.Master().Style().Text.Color = previous
-	columns := 4
-	if w.LayoutAvailableWidth() < int(500*scale) {
-		columns = 2
-	}
-	w.Row(30).Dynamic(columns)
+	muted(w, "Choose a project folder, or start without one.", a.p)
+	w.Row(32).StaticScaled(0, int(124*scale))
+	a.newFolder.Placeholder = "Project folder"
+	a.newFolder.Edit(w)
 	if w.ButtonText("Choose folder…") {
 		a.choosePath(false, true, func(path string) { setText(a.newFolder, path); a.prefs.WorkingDirectory = path; a.savePrefs() })
 	}
-	if w.ButtonText("Folderless chat") {
+	w.Row(32).Dynamic(2)
+	if primary(w, "New conversation", a.p) {
+		a.newThread(text(a.newFolder))
+	}
+	if w.ButtonText("Without folder") {
 		a.newThread("")
 	}
+	w.Row(28).Dynamic(2)
 	if w.ButtonText("Open file…") {
 		a.choosePath(false, false, a.openFile)
 	}
 	if w.ButtonText("Resume chat…") {
 		a.chooseConversation(func(c *workspace.Conversation) { a.resumeThread(c.ID) })
 	}
-	title(w, "Project folder", a.p)
-	w.Row(32).Dynamic(1)
-	a.newFolder.Edit(w)
-	w.Row(32).Dynamic(1)
-	if primary(w, "New conversation", a.p) {
-		a.newThread(text(a.newFolder))
+	muted(w, "Rally", a.p)
+	columns := 4
+	if w.LayoutAvailableWidth() < int(500*scale) {
+		columns = 2
 	}
-	title(w, "Rally workspace", a.p)
-	w.Row(34).Dynamic(columns)
+	w.Row(28).Dynamic(columns)
 	for _, id := range []string{"teamboard", "backlog", "portfolioitemstreegrid", "reports"} {
 		p := rally.FindPage(id)
 		if w.ButtonText(p.Title) {
@@ -1186,42 +1216,56 @@ func (a *App) drawNewContents(w *nucular.Window) {
 	}
 	if a.rallyErr != "" {
 		muted(w, a.rallyErr, a.p)
-		w.Row(30).Static(180)
+		w.Row(28).Static(180)
 		if w.ButtonText("Configure Rally") {
 			a.openSettings()
 		}
 	}
 	if a.accountLoaded && accountNeedsLogin(a.accountData) {
-		w.Row(30).Static(180)
+		w.Row(28).Static(180)
 		if w.ButtonText("Sign in to Codex…") {
 			a.settingsPage("Account")
 		}
 	}
-	title(w, "Recent folders", a.p)
-	for _, folder := range a.prefs.RecentFolders {
-		w.Row(30).Dynamic(1)
-		if w.ButtonText(folder) {
-			setText(a.newFolder, folder)
-			a.newThread(folder)
+	if len(a.prefs.RecentFolders) > 0 {
+		w.Row(28).Dynamic(1)
+		if folderRow(w, "Recent folders", a.newRecentFolders, a.p) {
+			a.newRecentFolders = !a.newRecentFolders
 		}
-		if menu := w.ContextualOpen(0, image.Pt(210, 120), w.LastWidgetBounds, nil); menu != nil {
-			if menu.MenuItem(label.T("Open folder")) {
-				a.openPath(folder, false)
-			}
-			if menu.MenuItem(label.T("Copy path")) {
-				a.copyText(folder)
-			}
-			if menu.MenuItem(label.T("Forget folder")) {
-				a.forgetFolder(folder)
+		if a.newRecentFolders {
+			for _, folder := range a.prefs.RecentFolders {
+				w.Row(28).Dynamic(1)
+				if w.ButtonText(folder) {
+					setText(a.newFolder, folder)
+					a.newThread(folder)
+				}
+				if menu := w.ContextualOpen(0, image.Pt(210, 120), w.LastWidgetBounds, nil); menu != nil {
+					if menu.MenuItem(label.T("Open folder")) {
+						a.openPath(folder, false)
+					}
+					if menu.MenuItem(label.T("Copy path")) {
+						a.copyText(folder)
+					}
+					if menu.MenuItem(label.T("Forget folder")) {
+						a.forgetFolder(folder)
+					}
+				}
 			}
 		}
 	}
-	title(w, "Recent conversations", a.p)
 	rows := a.recentConversations()
-	for _, c := range rows[:min(8, len(rows))] {
-		w.Row(32).Dynamic(1)
-		if w.ButtonText(c.Title + "  ·  " + filepath.Base(c.Cwd)) {
-			a.resumeThread(c.ID)
+	if len(rows) > 0 {
+		w.Row(28).Dynamic(1)
+		if folderRow(w, "Recent conversations", a.newRecentChats, a.p) {
+			a.newRecentChats = !a.newRecentChats
+		}
+		if a.newRecentChats {
+			for _, c := range rows[:min(8, len(rows))] {
+				w.Row(28).Dynamic(1)
+				if w.ButtonText(c.Title + "  ·  " + filepath.Base(c.Cwd)) {
+					a.resumeThread(c.ID)
+				}
+			}
 		}
 	}
 }

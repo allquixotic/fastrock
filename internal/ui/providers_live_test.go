@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 )
 
 func TestV36LocalVersionGate(t *testing.T) {
@@ -192,7 +192,7 @@ func TestV36LocalCardsAndContextualActions(t *testing.T) {
 	views[0].ActiveModel = "model"
 	views[1].Checked = true
 	var labels []string
-	h := nucular.NewHeadlessHarness(0, image.Pt(800, 1600), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(800, 1600), func(w *desktop.Window) {
 		a.drawLocalProviders(w, a.settingsView)
 		for _, c := range w.Commands().Commands {
 			if c.Kind == command.TextCmd {

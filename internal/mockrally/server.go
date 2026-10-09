@@ -169,7 +169,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		for _, o := range s.Objects {
-			if strings.EqualFold(o.Kind(), tail) && matches(o, r.URL.Query().Get("query")) {
+			kindMatches := strings.EqualFold(o.Kind(), tail)
+			if tail == "artifact" {
+				for _, kind := range strings.Split(r.URL.Query().Get("types"), ",") {
+					kindMatches = kindMatches || strings.EqualFold(o.Kind(), strings.TrimSpace(kind))
+				}
+			}
+			if kindMatches && matches(o, r.URL.Query().Get("query")) {
 				if workspace := r.URL.Query().Get("workspace"); workspace != "" && o.Ref("Workspace") != "" && o.Ref("Workspace") != workspace {
 					continue
 				}

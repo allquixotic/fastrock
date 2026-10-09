@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -25,7 +25,7 @@ func TestV59TaskTableColumnsAndWrappedNames(t *testing.T) {
 		d.Items = []rally.Object{{"FormattedID": "TA12", "Name": strings.Repeat("A long task name ", 10), "State": "In-Progress", "Estimate": 4, "ToDo": 2, "Actuals": 1, "Owner": map[string]any{"DisplayName": "Task owner"}}}
 		v := newRallyView(rally.FindPage("teamboard"))
 		v.Detail = d
-		h := nucular.NewHeadlessHarness(0, image.Pt(int(1200*scale), int(700*scale)), func(w *nucular.Window) { a.detailCollection(w, v, d) })
+		h := desktop.NewHeadlessHarness(0, image.Pt(int(1200*scale), int(700*scale)), func(w *desktop.Window) { a.detailCollection(w, v, d) })
 		style := makeStyle(a.p, 13)
 		style.Scale(scale)
 		h.Master().SetStyle(style)
@@ -126,7 +126,7 @@ func TestV59TaskTableHorizontalScroll(t *testing.T) {
 		v := newRallyView(rally.FindPage("teamboard"))
 		v.Detail = d
 		scroll := 0
-		h := nucular.NewHeadlessHarness(0, image.Pt(int(550*scale), int(500*scale)), func(w *nucular.Window) {
+		h := desktop.NewHeadlessHarness(0, image.Pt(int(550*scale), int(500*scale)), func(w *desktop.Window) {
 			w.Row(420).Dynamic(1)
 			if body := w.GroupBegin("task-table", 0); body != nil {
 				body.Scrollbar.X = scroll

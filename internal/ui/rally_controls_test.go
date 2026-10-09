@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"golang.org/x/mobile/event/mouse"
@@ -52,7 +52,7 @@ func TestV46GroupHeadersCountLoadedItems(t *testing.T) {
 	v.PageSize = 2
 	v.Page = 3 // Group continuation starts on this page.
 	items := v.filtered()
-	h := nucular.NewHeadlessHarness(0, image.Pt(900, 600), func(w *nucular.Window) { a.table(w, v, items) })
+	h := desktop.NewHeadlessHarness(0, image.Pt(900, 600), func(w *desktop.Window) { a.table(w, v, items) })
 	h.Master().SetStyle(makeStyle(a.p, 13))
 	h.Frame(false)
 	h.Frame(true)
@@ -172,7 +172,7 @@ func TestV46RallyControlsFitDisplayScales(t *testing.T) {
 				v.Mode = "list"
 				var click bool
 				var pos image.Point
-				h := nucular.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(600*scale)), func(w *nucular.Window) {
+				h := desktop.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(600*scale)), func(w *desktop.Window) {
 					m := &w.Input().Mouse
 					m.Pos = pos
 					m.Buttons[mouse.ButtonLeft].Clicked, m.Buttons[mouse.ButtonLeft].Down = click, false

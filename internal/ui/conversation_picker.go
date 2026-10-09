@@ -3,7 +3,7 @@ package ui
 import (
 	"context"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -81,12 +81,12 @@ func (a *App) chooseConversation(pick func(*workspace.Conversation)) {
 	ed := textEditor("", false)
 	ed.Placeholder = "Search conversations"
 	p := &conversationPicker{}
-	a.window.PopupOpen("Choose conversation", nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(600, 500), false, func(w *nucular.Window) {
+	a.window.PopupOpen("Choose conversation", desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(600, 500), false, func(w *desktop.Window) {
 		a.drawConversationPicker(w, p, ed, pick)
 	})
 }
 
-func (a *App) drawConversationPicker(w *nucular.Window, p *conversationPicker, ed *nucular.TextEditor, pick func(*workspace.Conversation)) {
+func (a *App) drawConversationPicker(w *desktop.Window, p *conversationPicker, ed *desktop.TextEditor, pick func(*workspace.Conversation)) {
 	w.OnClose(p.close)
 	w.Row(30).Dynamic(1)
 	ed.Edit(w)

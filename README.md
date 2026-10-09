@@ -1,6 +1,6 @@
 # Fastrock
 
-A native Go/nucular desktop workspace for Codex conversations and Rally work.
+A native Go/go-fltk desktop workspace for Codex conversations and Rally work.
 Windows 11 x64 is the primary target; macOS builds use the same application code.
 Dark mode is the default. System, light and dark themes and font size are in Settings.
 The status bar starts hidden; restore it from View and close it with its × icon.
@@ -20,13 +20,20 @@ both the version and app-server initialization. It does not download, bundle,
 compile, or replace Codex. A missing/obsolete/incompatible CLI produces a startup
 error with an Exit button. `fastrock --doctor` checks the CLI without opening a GUI.
 
-Use **Go 1.27.2**. Both Windows and macOS build with **`CGO_ENABLED=0`**;
-no C compiler, Xcode toolchain, Rust compiler, or embedded browser is required.
-Our nucular fork retains its native widgets and software renderer, presented
-through Ebitengine 2.10's pure Go desktop driver. See [the fork notes](third_party/README.md).
+Use **Go 1.27.2** and **`CGO_ENABLED=1`**. macOS needs the Xcode command-line
+tools; Windows needs MinGW-w64 GCC/G++ on PATH. `go-fltk` supplies pinned static
+FLTK archives, linked into the main executable. No FLTK DLL/dylib, Rust compiler,
+or embedded browser is required. Windows builds also link the compiler runtimes
+statically. `dev/check-linkage.go` checks the final executable's imports.
+
+Standard buttons and plain text fields use FLTK widgets. The transcript, rich/code
+editors, tabs, boards, menus and other custom areas retain the existing layout and
+canvas rendering. See [the UI and dependency notes](third_party/README.md).
+For Windows cross-builds on macOS, install MinGW-w64 (`brew install mingw-w64`);
+`WINDOWS_CC` and `WINDOWS_CXX` can override the compiler paths.
 
 ```sh
-make windows       # build/fastrock.exe, Windows x64 cross-build
+make windows       # build/fastrock.exe, needs MinGW-w64 GCC/G++
 make mac           # build/Fastrock.app on macOS
 make check         # vet and headless tests, no GUI launched
 ```

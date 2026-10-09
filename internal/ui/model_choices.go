@@ -1,11 +1,11 @@
 package ui
 
 import (
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 // An absent catalog value remains an explicit choice until the user changes it.
-func picker(w *nucular.Window, current *string, values, labels []string, empty string, locked bool) {
+func picker(w *desktop.Window, current *string, values, labels []string, empty string, locked bool) {
 	values = append([]string{""}, values...)
 	labels = append([]string{empty}, labels...)
 	selected := 0
@@ -25,7 +25,7 @@ func picker(w *nucular.Window, current *string, values, labels []string, empty s
 		*current = values[next]
 	}
 }
-func (a *App) modelPickers(w *nucular.Window, model, effort, tier *string, locked bool) {
+func (a *App) modelPickers(w *desktop.Window, model, effort, tier *string, locked bool) {
 	var values, labels []string
 	for _, m := range a.catalog.Models {
 		if m.Hidden && m.Model != *model {

@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
 )
@@ -165,7 +165,7 @@ func TestApprovalKeyboardFocusAndDecisions(t *testing.T) {
 	a.chats[c.ID] = newChatView()
 	choices := approvalChoices("item/permissions/requestApproval", map[string]any{})
 	a.approvals = []approval{{ThreadID: c.ID, Message: codex.Message{ID: json.RawMessage("7"), Origin: a.client}, Choices: choices}}
-	h := nucular.NewHeadlessHarness(0, image.Pt(500, 300), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(500, 300), func(w *desktop.Window) {
 		for event := range w.Input().Keyboard.Events() {
 			a.approvalKey(event)
 		}

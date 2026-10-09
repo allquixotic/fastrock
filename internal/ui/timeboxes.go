@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -210,7 +210,7 @@ func (p *timeboxChoices) options(ref, name string, relative, current bool) ([]st
 	return missing, len(missing) - 1, offset
 }
 
-func (a *App) drawTimeboxSelector(w *nucular.Window, v *rallyView, kind string) {
+func (a *App) drawTimeboxSelector(w *desktop.Window, v *rallyView, kind string) {
 	p := a.getTimeboxChoices(kind)
 	ref, name := v.Timebox, v.TimeboxName
 	if kind == "Release" {
@@ -234,8 +234,17 @@ func (a *App) drawTimeboxSelector(w *nucular.Window, v *rallyView, kind string) 
 	a.refreshRally(v)
 }
 
-func (a *App) drawTimeboxSelectors(w *nucular.Window, v *rallyView) {
+func (a *App) drawTimeboxSelectors(w *desktop.Window, v *rallyView) {
 	if !rallyTimeboxesSupported(v) {
+		return
+	}
+	scale := w.Master().Style().Scaling
+	if w.LayoutAvailableWidth() >= int(700*scale) {
+		w.Row(28).StaticScaled(int(82*scale), 0, int(158*scale), 0)
+		w.LabelColored("Iteration", "LC", a.p.Muted)
+		a.drawTimeboxSelector(w, v, "Iteration")
+		w.LabelColored("FY Quarter / Release", "LC", a.p.Muted)
+		a.drawTimeboxSelector(w, v, "Release")
 		return
 	}
 	w.Row(22).Dynamic(2)

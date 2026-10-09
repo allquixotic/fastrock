@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -6,12 +6,69 @@ import (
 	"image"
 	"reflect"
 	"testing"
+	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/mouse"
 )
+
+func TestTabOverflowWidthAndSelection(t *testing.T) {
+	for _, scale := range []float64{1, 1.5, 2} {
+		a := transferFixture()
+		a.p = colors(false)
+		for range 12 {
+			a.state.Open(workspace.New, "A long document title", "", "")
+		}
+		h := desktop.NewHeadlessHarness(0, image.Pt(int(900*scale), int(200*scale)), a.drawTabs)
+		style := makeStyle(a.p, 13)
+		style.Scale(scale)
+		h.Master().SetStyle(style)
+		a.window = h.Master()
+		h.Frame(false)
+		h.Frame(false)
+		for _, width := range a.tabWidths {
+			if width < int(160*scale) {
+				t.Fatal("tab shrank below readable width", scale, width)
+			}
+		}
+		if a.tabScrollMax <= 0 || a.tabScroll != a.tabScrollMax {
+			t.Fatal("newly selected last tab is hidden", scale, a.tabScroll, a.tabScrollMax)
+		}
+		a.state.Active = a.state.Tabs[0].ID
+		h.Frame(false)
+		if a.tabScroll != 0 {
+			t.Fatal("first selected tab is hidden", a.tabScroll)
+		}
+		a.scrollTabs(1, time.Now())
+		h.Frame(false)
+		if a.tabScroll != a.tabStep {
+			t.Fatal("manual scroll snapped back to selection", a.tabScroll, a.tabStep)
+		}
+	}
+}
+
+func TestTabScrollSingleAndDoubleClick(t *testing.T) {
+	a := &App{tabStep: 160, tabScrollMax: 1400}
+	now := time.Now()
+	a.scrollTabs(1, now)
+	if a.tabScroll != 160 {
+		t.Fatal("single click should scroll one tab", a.tabScroll)
+	}
+	a.scrollTabs(1, now.Add(150*time.Millisecond))
+	if a.tabScroll != 1400 {
+		t.Fatal("double click should reach the end", a.tabScroll)
+	}
+	a.scrollTabs(-1, now.Add(200*time.Millisecond))
+	if a.tabScroll != 1240 {
+		t.Fatal("opposite arrow should start a new click sequence", a.tabScroll)
+	}
+	a.scrollTabs(-1, now.Add(350*time.Millisecond))
+	if a.tabScroll != 0 {
+		t.Fatal("double click should reach the beginning", a.tabScroll)
+	}
+}
 
 func TestV43TabInsertionBoundaries(t *testing.T) {
 	for _, tc := range []struct {
@@ -45,7 +102,7 @@ func TestV43TabDragDrawAndDrop(t *testing.T) {
 	var pos, origin image.Point
 	var down, clicked bool
 	var commands []command.Command
-	h := nucular.NewHeadlessHarness(0, image.Pt(900, 200), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(900, 200), func(w *desktop.Window) {
 		m := &w.Input().Mouse
 		m.Pos = pos
 		m.Buttons[mouse.ButtonLeft].Down = down

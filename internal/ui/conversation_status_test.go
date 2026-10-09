@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -113,7 +113,7 @@ func TestV48StatusRowGeometry(t *testing.T) {
 			p := colors(false)
 			var row image.Rectangle
 			var commands []command.Command
-			h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(int(320*scale), int(130*scale)), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(int(320*scale), int(130*scale)), func(w *desktop.Window) {
 				w.Row(28).Dynamic(1)
 				flatStatusRow(w, "Visible conversation", "5mo", true, statusDot{Color: p.BorderStrong, Hollow: true}, 22, p)
 				r := w.LastWidgetBounds
@@ -154,9 +154,9 @@ func TestV48TabOverflowVirtualization(t *testing.T) {
 				a.state.Chats[id] = &workspace.Conversation{ID: id}
 			}
 			scroll := 0
-			h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(int(340*scale), int(460*scale)), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(int(340*scale), int(460*scale)), func(w *desktop.Window) {
 				w.Row(400).Dynamic(1)
-				if g := w.GroupBegin("overflow-list", nucular.WindowNoHScrollbar); g != nil {
+				if g := w.GroupBegin("overflow-list", desktop.WindowNoHScrollbar); g != nil {
 					g.Scrollbar.Y = scroll
 					a.drawTabOverflowList(g)
 					g.GroupEnd()

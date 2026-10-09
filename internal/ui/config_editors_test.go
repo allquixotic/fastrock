@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -135,7 +135,7 @@ func TestV33SearchContextAndInlineHelp(t *testing.T) {
 	s.Fields = []configField{{Key: "notify", Kind: "words", Editor: textEditor("notify done", false), Search: "notify", Spec: &configSpec{Description: "Run a command when a turn finishes."}}}
 	render := func() string {
 		var texts []string
-		h := nucular.NewHeadlessHarness(0, image.Pt(950, 950), func(w *nucular.Window) {
+		h := desktop.NewHeadlessHarness(0, image.Pt(950, 950), func(w *desktop.Window) {
 			a.drawConfiguration(w, s)
 			for _, c := range w.Commands().Commands {
 				if c.Kind == command.TextCmd {

@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"golang.org/x/mobile/event/mouse"
@@ -202,7 +202,7 @@ func TestV69TimeboxControls(t *testing.T) {
 			v := newRallyView(rally.FindPage("teamboard"))
 			v.TimeboxName = "Sprint 1"
 			v.ReleaseName = "Q4"
-			h := nucular.NewHeadlessHarness(0, image.Pt(int(760*scale), int(250*scale)), func(w *nucular.Window) { a.drawTimeboxSelectors(w, v) })
+			h := desktop.NewHeadlessHarness(0, image.Pt(int(760*scale), int(250*scale)), func(w *desktop.Window) { a.drawTimeboxSelectors(w, v) })
 			style := makeStyle(a.p, 13)
 			style.Scale(scale)
 			h.Master().SetStyle(style)
@@ -242,7 +242,7 @@ func TestV69TimeboxControlSelection(t *testing.T) {
 			v := newRallyView(rally.FindPage("iterationstatus"))
 			var click image.Point
 			var clicking bool
-			h := nucular.NewHeadlessHarness(0, image.Pt(int(760*scale), int(500*scale)), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(int(760*scale), int(500*scale)), func(w *desktop.Window) {
 				m := &w.Master().Input().Mouse
 				m.Pos, m.Buttons[mouse.ButtonLeft].ClickedPos = click, click
 				m.Buttons[mouse.ButtonLeft].Clicked = clicking

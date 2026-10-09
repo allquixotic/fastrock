@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -81,7 +81,7 @@ func goalParams(thread, objective, budget string, create bool) (map[string]any, 
 	return p, nil
 }
 
-func (a *App) drawGoal(w *nucular.Window, c *workspace.Conversation, v *conversationInfo) {
+func (a *App) drawGoal(w *desktop.Window, c *workspace.Conversation, v *conversationInfo) {
 	if v.GoalUnsupported || !v.GoalAvailable && !v.GoalLoading && v.GoalNote == "" {
 		return
 	}
@@ -155,7 +155,7 @@ func (a *App) goalDialog(c *workspace.Conversation, v *conversationInfo) {
 	}
 	limit := textEditor(budget, false)
 	note := ""
-	a.window.PopupOpen("Conversation goal", nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(570, 370), false, func(w *nucular.Window) {
+	a.window.PopupOpen("Conversation goal", desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(570, 370), false, func(w *desktop.Window) {
 		a.field(w, "Objective", objective, true)
 		a.field(w, "Token budget (empty = no limit)", limit, false)
 		if note != "" {

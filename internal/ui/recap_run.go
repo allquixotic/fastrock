@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -106,7 +106,7 @@ func (a *App) cancelRecaps() {
 	}
 }
 
-func (a *App) drawRecapStatus(w *nucular.Window, c *workspace.Conversation) {
+func (a *App) drawRecapStatus(w *desktop.Window, c *workspace.Conversation) {
 	if a.recaps[c.ID] == nil {
 		return
 	}

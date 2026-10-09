@@ -1,3 +1,5 @@
+//go:build fltk_headless
+
 package ui
 
 import (
@@ -11,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
@@ -165,7 +167,7 @@ func TestV4BoardSkipsOffscreenGroups(t *testing.T) {
 	}
 	v.prepareCards()
 	v.prepareBoardLayout(v.Items)
-	h := nucular.NewHeadlessHarness(nucular.WindowNoHScrollbar, image.Pt(1200, 800), func(w *nucular.Window) { a.drawTeamBoard(w, v, v.Items) })
+	h := desktop.NewHeadlessHarness(desktop.WindowNoHScrollbar, image.Pt(1200, 800), func(w *desktop.Window) { a.drawTeamBoard(w, v, v.Items) })
 	a.window = h.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
 	if n := h.Frame(true); n > 1000 {

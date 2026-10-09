@@ -4,12 +4,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 var markdownLink = regexp.MustCompile(`\[([^\]]+)\]\(([^\s)]+)\)`)
 
-func (a *App) markdown(w *nucular.Window, source string) {
+func (a *App) markdown(w *desktop.Window, source string) {
 	inCode := false
 	for _, line := range strings.Split(source, "\n") {
 		if strings.HasPrefix(line, "```") {
@@ -40,8 +40,8 @@ func (a *App) markdown(w *nucular.Window, source string) {
 			face = typeFace(fontPointSize(old)-1, monoFont)
 		}
 		w.Master().Style().Font = face
-		rows := len(nucular.WrapText(face, line, width-8))
-		w.Row(max(28, rows*nucular.FontHeight(face)+8)).Dynamic(1)
+		rows := len(desktop.WrapText(face, line, width-8))
+		w.Row(max(28, rows*desktop.FontHeight(face)+8)).Dynamic(1)
 		w.LabelWrapColored(line, color)
 		w.Master().Style().Font = old
 		for _, m := range markdownLink.FindAllStringSubmatch(line, -1) {

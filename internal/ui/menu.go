@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/label"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/label"
 	"path/filepath"
 )
 
@@ -16,7 +16,7 @@ var applicationMenus = []struct {
 	{"Help", []struct{ ID, Title string }{{"about", "About Fastrock"}, {"updates", "Check for updates…"}, {"keyboard", "Keyboard shortcuts"}, {"feedback", "Send feedback…"}, {"open-logs", "Open log folder"}, {"docs", "Codex documentation"}}},
 }
 
-func (a *App) drawMenu(w *nucular.Window) {
+func (a *App) drawMenu(w *desktop.Window) {
 	w.MenubarBegin()
 	w.Row(23).Static(42, 44, 58, 44)
 	for _, group := range applicationMenus {

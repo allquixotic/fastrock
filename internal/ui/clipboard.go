@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/platform"
 )
 
@@ -13,7 +13,7 @@ func (a *App) pasteComposer(v *chatView) {
 		if err == nil && len(data) > 0 {
 			path, err = storeClipboardImage(a.store.Dir, data)
 		} else if err == nil {
-			value, err = nucular.ReadClipboardTextResult()
+			value, err = desktop.ReadClipboardTextResult()
 		}
 		a.post(func() {
 			if err != nil {

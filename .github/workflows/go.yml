@@ -7,7 +7,7 @@ jobs:
     runs-on: macos-latest
     env:
       GOTOOLCHAIN: go1.27.2
-      CGO_ENABLED: '0'
+      CGO_ENABLED: '1'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
@@ -18,8 +18,8 @@ jobs:
       - run: go -C dev/tools mod tidy -diff
       # x/tools is pinned in this module for Go 1.27 export-format support.
       - run: go -C dev/tools install honnef.co/go/tools/cmd/staticcheck golang.org/x/vuln/cmd/govulncheck
-      - run: staticcheck -tags=nucular_headless ./...
-      - run: govulncheck -tags=nucular_headless ./...
+      - run: staticcheck -tags=fltk_headless ./...
+      - run: govulncheck -tags=fltk_headless ./...
       - run: govulncheck ./...
   race:
     runs-on: macos-latest
@@ -31,28 +31,38 @@ jobs:
         with:
           go-version: '1.27.2'
           cache: true
-      - run: go test -race -tags=nucular_headless ./...
+      - run: go test -race -tags=fltk_headless ./...
   check:
     strategy:
       matrix:
         os: [windows-latest, macos-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
     env:
-      CGO_ENABLED: '0'
+      CGO_ENABLED: '1'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.27.2'
           cache: true
-      - run: go vet -tags=nucular_headless ./...
-      - run: go test -tags=nucular_headless ./...
-      - run: go test -tags=nucular_headless ./...
-        working-directory: third_party/nucular
+      - run: go vet -tags=fltk_headless ./...
+      - run: go test -tags=fltk_headless ./...
       - if: runner.os == 'Windows'
-        run: go build -trimpath -ldflags="-H=windowsgui -s -w" -o fastrock.exe ./cmd/fastrock
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
+        with:
+          msystem: UCRT64
+          install: mingw-w64-ucrt-x86_64-gcc
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: '"C:\msys64\ucrt64\bin" >> $env:GITHUB_PATH'
+      - if: runner.os == 'Windows'
+        run: go build -trimpath -ldflags='-H=windowsgui -s -w -extldflags "-static -static-libgcc -static-libstdc++"' -o fastrock.exe ./cmd/fastrock
+      - if: runner.os == 'Windows'
+        run: go run dev/check-linkage.go fastrock.exe
       - if: runner.os == 'macOS'
         run: go build -trimpath -o fastrock ./cmd/fastrock
+      - if: runner.os == 'macOS'
+        run: go run dev/check-linkage.go fastrock
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: fastrock-${{ matrix.os }}

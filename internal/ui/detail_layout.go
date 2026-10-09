@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -105,7 +105,7 @@ func detailPaneWidths(width int, scale float64, gap int) (content, properties in
 	return content, properties, content < int(360*scale)
 }
 
-func (a *App) detailFields(w *nucular.Window, d *detailView) {
+func (a *App) detailFields(w *desktop.Window, d *detailView) {
 	structured := d.Kind == "HierarchicalRequirement" || d.Kind == "Task" || d.Kind == "Defect" || strings.HasPrefix(strings.ToLower(d.Kind), "portfolioitem")
 	if d.Tab == "More fields" || !structured {
 		if len(d.Fields) == 0 {
@@ -142,17 +142,17 @@ func (a *App) detailFields(w *nucular.Window, d *detailView) {
 		return
 	}
 	w.RowScaled(max(int(420*scale), w.LayoutAvailableHeight()-int(6*scale))).StaticScaled(content, properties)
-	if body := w.GroupBegin("artifact-content", nucular.WindowNoHScrollbar); body != nil {
+	if body := w.GroupBegin("artifact-content", desktop.WindowNoHScrollbar); body != nil {
 		a.detailRichContent(body, d)
 		body.GroupEnd()
 	}
-	if sidebar := w.GroupBegin("artifact-properties", nucular.WindowNoHScrollbar); sidebar != nil {
+	if sidebar := w.GroupBegin("artifact-properties", desktop.WindowNoHScrollbar); sidebar != nil {
 		a.detailMetadata(sidebar, d)
 		sidebar.GroupEnd()
 	}
 }
 
-func (a *App) detailRichContent(w *nucular.Window, d *detailView) {
+func (a *App) detailRichContent(w *desktop.Window, d *detailView) {
 	for _, f := range d.richFields() {
 		height := 240
 		if f.Name == "Description" {
@@ -162,7 +162,7 @@ func (a *App) detailRichContent(w *nucular.Window, d *detailView) {
 	}
 }
 
-func (a *App) detailMetadata(w *nucular.Window, d *detailView) {
+func (a *App) detailMetadata(w *desktop.Window, d *detailView) {
 	statusDrawn := false
 	for _, f := range d.propertyFields() {
 		a.detailProperty(w, d, f)
@@ -176,7 +176,7 @@ func (a *App) detailMetadata(w *nucular.Window, d *detailView) {
 	}
 }
 
-func (a *App) detailStatus(w *nucular.Window, d *detailView) {
+func (a *App) detailStatus(w *desktop.Window, d *detailView) {
 	w.Row(28).Dynamic(2)
 	for _, choice := range []struct{ key, label string }{{"Blocked", "⬟ Blocked"}, {"Ready", "✔ Ready"}} {
 		value := text(d.Editors[choice.key]) == "true"
@@ -194,7 +194,7 @@ func (a *App) detailStatus(w *nucular.Window, d *detailView) {
 	}
 }
 
-func (a *App) detailProperty(w *nucular.Window, d *detailView, f rally.Field) {
+func (a *App) detailProperty(w *desktop.Window, d *detailView, f rally.Field) {
 	caption := detailCaption(f)
 	if editableCollection(f) {
 		a.detailReferenceCollection(w, d, f)

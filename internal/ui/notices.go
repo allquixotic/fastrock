@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"golang.org/x/mobile/event/mouse"
 	"time"
 )
@@ -60,7 +60,7 @@ type noticeLayout struct {
 	lines          []string
 }
 
-func (a *App) noticeLayouts(w *nucular.Window) []noticeLayout {
+func (a *App) noticeLayouts(w *desktop.Window) []noticeLayout {
 	width := min(680, max(160, w.Bounds.W-32))
 	y := w.Bounds.Y + w.Bounds.H - 14
 	layouts := make([]noticeLayout, 0, len(a.notices))
@@ -69,7 +69,7 @@ func (a *App) noticeLayouts(w *nucular.Window) []noticeLayout {
 		if time.Now().After(n.Until) {
 			continue
 		}
-		lines := nucular.WrapText(w.Master().Style().Font, n.Text, width-32)
+		lines := desktop.WrapText(w.Master().Style().Font, n.Text, width-32)
 		if len(lines) > 4 {
 			lines = append(lines[:3], "…")
 		}
@@ -88,7 +88,7 @@ func (a *App) noticeLayouts(w *nucular.Window) []noticeLayout {
 
 // Handle overlays before document controls, so Undo cannot also click the card
 // or toolbar underneath it. The focused modal still owns its pointer events.
-func (a *App) handleNoticeInput(w *nucular.Window) {
+func (a *App) handleNoticeInput(w *desktop.Window) {
 	in := w.Input()
 	var activate func()
 	for _, layout := range a.noticeLayouts(w) {
@@ -116,7 +116,7 @@ func (a *App) handleNoticeInput(w *nucular.Window) {
 
 // Notices overlay the bottom edge without moving the document or stealing
 // editor focus. Persistent actionable failures also remain at their source.
-func (a *App) drawNotices(w *nucular.Window) {
+func (a *App) drawNotices(w *desktop.Window) {
 	out := w.Commands()
 	old := out.Clip
 	out.PushScissor(w.Bounds)

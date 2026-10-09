@@ -13,13 +13,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 type localProviderView struct {
 	Provider, Status, Version                           string
-	Endpoint, PullName                                  *nucular.TextEditor
+	Endpoint, PullName                                  *desktop.TextEditor
 	Models                                              []string
 	Generation, PullGeneration, Page                    int
 	Busy, Failed, Running, Checked, Compatible, Pulling bool
@@ -215,12 +215,12 @@ func (a *App) useLocalModel(v *localProviderView, model string) {
 		a.settingsFormCall("provider", "config/batchWrite", map[string]any{"edits": edits, "reloadUserConfig": true}, func(json.RawMessage) { a.restartServer() })
 	})
 }
-func (a *App) drawLocalProviders(w *nucular.Window, s *settingsView) {
+func (a *App) drawLocalProviders(w *desktop.Window, s *settingsView) {
 	for _, v := range a.localProviders(s) {
 		a.drawLocalProvider(w, v)
 	}
 }
-func (a *App) drawLocalProvider(w *nucular.Window, v *localProviderView) {
+func (a *App) drawLocalProvider(w *desktop.Window, v *localProviderView) {
 	status := "Not checked"
 	if v.Busy {
 		status = "Checking…"

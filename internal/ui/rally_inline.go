@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/label"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/label"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -60,7 +60,7 @@ func (a *App) startInline(v *rallyView, o rally.Object, name string, value *stri
 		if name == "Blocked" {
 			a.saveDetail(v)
 		} else {
-			d.Editors[name].Flags |= nucular.EditSigEnter
+			d.Editors[name].Flags |= desktop.EditSigEnter
 			d.Editors[name].Active = true
 		}
 	}
@@ -126,7 +126,7 @@ func (a *App) finishInline(v *rallyView, d *detailView) {
 	}
 }
 
-func (a *App) drawInlineStatus(w *nucular.Window, v *rallyView) {
+func (a *App) drawInlineStatus(w *desktop.Window, v *rallyView) {
 	d := v.Detail
 	if d == nil || d.inlineField == "" {
 		return
@@ -158,7 +158,7 @@ func (a *App) drawInlineStatus(w *nucular.Window, v *rallyView) {
 	a.drawDetailRecovery(w, v, d)
 }
 
-func (a *App) drawInlineCell(w *nucular.Window, v *rallyView, o rally.Object, name string) bool {
+func (a *App) drawInlineCell(w *desktop.Window, v *rallyView, o rally.Object, name string) bool {
 	if name != "PlanEstimate" && name != "Blocked" {
 		return false
 	}
@@ -170,7 +170,7 @@ func (a *App) drawInlineCell(w *nucular.Window, v *rallyView, o rally.Object, na
 		if name == "PlanEstimate" {
 			if !enabled {
 				w.Label(text(d.Editors[name]), "LC")
-			} else if d.Editors[name].Edit(w)&nucular.EditCommitted != 0 {
+			} else if d.Editors[name].Edit(w)&desktop.EditCommitted != 0 {
 				a.saveDetail(v)
 			}
 		} else {
@@ -216,7 +216,7 @@ func artifactWebURL(endpoint, kind string, o rally.Object) string {
 	return strings.TrimRight(endpoint, "/") + "/#/detail/" + strings.ToLower(kind) + "/" + url.PathEscape(o.String("ObjectID"))
 }
 
-func (a *App) tableRowMenu(w *nucular.Window, v *rallyView, o rally.Object) {
+func (a *App) tableRowMenu(w *desktop.Window, v *rallyView, o rally.Object) {
 	if menu := w.Menu(label.T("⋮"), 220, nil); menu != nil {
 		menu.Row(28).Dynamic(1)
 		if menu.MenuItem(label.T("Open work item")) {

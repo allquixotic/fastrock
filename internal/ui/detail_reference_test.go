@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/mouse"
@@ -186,7 +186,7 @@ func TestV58ReferenceControlsShowLabelsAndOpenPicker(t *testing.T) {
 	f := rally.Field{Name: "Feature", DisplayName: "Parent feature", AttributeType: "OBJECT"}
 	mergeSchemaEditors(d, []rally.Field{f})
 	var click image.Point
-	h := nucular.NewHeadlessHarness(0, image.Pt(600, 500), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(600, 500), func(w *desktop.Window) {
 		if click != (image.Point{}) {
 			m := &w.Input().Mouse
 			m.Pos = click

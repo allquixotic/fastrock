@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -74,7 +74,7 @@ func prepareConfigField(f *configField) {
 		setText(f.Editor, displayCommand(words))
 	case f.Spec != nil && f.Spec.Type == "object" || object(f.Value) != nil:
 		f.Kind = "toml"
-		f.Editor.Flags = nucular.EditBox | nucular.EditSoftWrap | nucular.EditNoHorizontalScroll
+		f.Editor.Flags = desktop.EditBox | desktop.EditSoftWrap | desktop.EditNoHorizontalScroll
 		setText(f.Editor, configTableText(f.Key, f.Value))
 	}
 	f.Protected = hasRedacted(f.Value)

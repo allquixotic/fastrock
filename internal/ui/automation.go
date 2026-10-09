@@ -45,6 +45,30 @@ func (a *App) startAutomation() {
 		}
 		log := ""
 		for _, step := range steps {
+			if step.Action == "signal" {
+				if err := os.WriteFile(step.Path, nil, 0600); err != nil {
+					log += "FAIL: " + err.Error() + "\n"
+				}
+				continue
+			}
+			if step.Action == "wait_file" {
+				deadline := time.Now().Add(15 * time.Second)
+				for {
+					if _, err := os.Stat(step.Path); err == nil {
+						break
+					}
+					if time.Now().After(deadline) {
+						log += "FAIL: input driver timed out: " + step.Path + "\n"
+						break
+					}
+					select {
+					case <-a.ctx.Done():
+						return
+					case <-time.After(25 * time.Millisecond):
+					}
+				}
+				continue
+			}
 			if step.Action == "wait" {
 				timer := time.NewTimer(time.Duration(step.Milliseconds) * time.Millisecond)
 				select {
@@ -70,6 +94,32 @@ func (a *App) startAutomation() {
 				}
 				fail := func(message string) { log += "FAIL: " + message + "\n"; a.exitCode = 1 }
 				switch step.Action {
+				case "rally_navigation":
+					a.setRallyRowHidden("sections", step.Value == "hidden")
+					a.setRallyRowHidden("pages", step.Value == "hidden")
+				case "assert_rally_navigation":
+					if a.rallyRowHidden("sections") != (step.Value == "hidden") || a.rallyRowHidden("pages") != (step.Value == "hidden") {
+						fail("unexpected Rally navigation visibility")
+					}
+				case "rally_rows":
+					a.prefs.RallyHiddenRows, a.prefs.RallyNavHidden = nil, false
+					if step.Value == "all" && v != nil {
+						for _, row := range a.rallyRows(v) {
+							a.setRallyRowHidden(row.ID, true)
+						}
+					} else if step.Value != "" {
+						for _, id := range strings.Split(step.Value, ",") {
+							a.setRallyRowHidden(id, true)
+						}
+					}
+				case "assert_rally_row":
+					if a.rallyRowHidden(step.Value) != (step.Path == "hidden") {
+						fail("unexpected visibility for " + step.Value)
+					}
+				case "assert_tab_scroll":
+					if a.tabScrollMax <= 0 || step.Value == "start" && a.tabScroll != 0 || step.Value == "end" && a.tabScroll != a.tabScrollMax || step.Value == "middle" && (a.tabScroll <= 0 || a.tabScroll >= a.tabScrollMax) {
+						fail(fmt.Sprintf("unexpected tab scroll: %d / %d", a.tabScroll, a.tabScrollMax))
+					}
 				case "restart":
 					a.rpc("fastrock/restart", map[string]any{}, nil)
 				case "assert_draft":
@@ -98,8 +148,14 @@ func (a *App) startAutomation() {
 						a.refreshRally(v)
 					}
 				case "assert_window_bound":
-					if v == nil || len(v.Items) > rallyWindowItems || v.Total != 10000 || v.Start <= 1 {
-						fail("invalid resident board window")
+					expected := 10000
+					if step.Value != "" {
+						expected, _ = strconv.Atoi(step.Value)
+					}
+					if v == nil {
+						fail("no Rally view for resident window assertion")
+					} else if len(v.Items) > rallyWindowItems || v.Total != expected || v.Start <= 1 {
+						fail(fmt.Sprintf("invalid resident board window: items=%d total=%d start=%d loading=%v error=%q", len(v.Items), v.Total, v.Start, v.Loading, v.Error))
 					}
 				case "load_next":
 					if v != nil {

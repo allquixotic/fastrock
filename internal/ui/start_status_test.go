@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/mouse"
@@ -20,8 +20,9 @@ func TestV53StartPageCenteredScrolling(t *testing.T) {
 		for _, width := range []int{360, 1000} {
 			a := &App{ctx: context.Background(), state: workspace.NewState(), p: colors(false), newFolder: textEditor("", false)}
 			a.prefs.RecentFolders = []string{"/first-folder", "/second-folder", "/third-folder", "/last-folder"}
+			a.newRecentFolders = true
 			scroll := false
-			h := nucular.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(360*scale)), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(360*scale)), func(w *desktop.Window) {
 				w.Input().Mouse.Pos = image.Pt(int(float64(width)*scale/2), int(180*scale))
 				if scroll {
 					w.Input().Mouse.ScrollDelta = -10000
@@ -71,7 +72,7 @@ func TestV53DetailStatusButtons(t *testing.T) {
 	a.prefs.FontSize = 13
 	d := makeDetail(rally.Object{"Name": "Story", "Blocked": true, "Ready": true, "BlockedReason": "Waiting"}, "HierarchicalRequirement", false)
 	var click image.Point
-	h := nucular.NewHeadlessHarness(0, image.Pt(800, 1100), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(800, 1100), func(w *desktop.Window) {
 		if click != (image.Point{}) {
 			m := &w.Input().Mouse
 			m.Pos = click

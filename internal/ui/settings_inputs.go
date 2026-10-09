@@ -5,16 +5,16 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
-type settingPair struct{ Key, Value *nucular.TextEditor }
+type settingPair struct{ Key, Value *desktop.TextEditor }
 
 func newSettingPair(key, value string) settingPair {
 	return settingPair{textEditor(key, false), textEditor(value, false)}
 }
 
-func (a *App) drawStringList(w *nucular.Window, titleText string, values *[]*nucular.TextEditor) {
+func (a *App) drawStringList(w *desktop.Window, titleText string, values *[]*desktop.TextEditor) {
 	title(w, titleText, a.p)
 	remove := -1
 	for i, editor := range *values {
@@ -32,7 +32,7 @@ func (a *App) drawStringList(w *nucular.Window, titleText string, values *[]*nuc
 		*values = append(*values, textEditor("", false))
 	}
 }
-func (a *App) drawSettingPairs(w *nucular.Window, titleText string, values *[]settingPair) {
+func (a *App) drawSettingPairs(w *desktop.Window, titleText string, values *[]settingPair) {
 	title(w, titleText, a.p)
 	remove := -1
 	for i, pair := range *values {

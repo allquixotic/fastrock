@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -14,8 +14,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/mouse"
@@ -195,7 +195,7 @@ func TestV61ColorAndCollectionControlsAtDisplayScales(t *testing.T) {
 		tagField := rally.Field{Name: "Tags", AttributeType: "COLLECTION"}
 		mergeSchemaEditors(d, []rally.Field{colorField, tagField})
 		var click image.Point
-		h := nucular.NewHeadlessHarness(0, image.Pt(int(340*scale), int(600*scale)), func(w *nucular.Window) {
+		h := desktop.NewHeadlessHarness(0, image.Pt(int(340*scale), int(600*scale)), func(w *desktop.Window) {
 			if click != (image.Point{}) {
 				m := &w.Input().Mouse
 				m.Pos = click

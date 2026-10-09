@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/allquixotic/fastrock/internal/workspace"
@@ -121,7 +121,7 @@ func TestV68SavedViewManagerProjection(t *testing.T) {
 	a.prepareSavedViewManager(v)
 	drain(t, a, func() bool { return !v.SavedViewManager.loading })
 	rows := v.SavedViewManager.rows
-	h := nucular.NewHeadlessHarness(0, image.Pt(800, 650), func(w *nucular.Window) { a.drawSavedViewManager(w, v) })
+	h := desktop.NewHeadlessHarness(0, image.Pt(800, 650), func(w *desktop.Window) { a.drawSavedViewManager(w, v) })
 	h.Master().SetStyle(makeStyle(a.p, 13))
 	h.Frame(false)
 	visible := 0
@@ -163,7 +163,7 @@ func TestV68CustomViewsOfflineAndOpen(t *testing.T) {
 	a.refreshRally(v)
 	a.refreshRallyItems(v)
 	a.requestRallyPage(v, 1, true)
-	h := nucular.NewHeadlessHarness(0, image.Pt(800, 600), func(w *nucular.Window) { a.drawRallyContent(w, v) })
+	h := desktop.NewHeadlessHarness(0, image.Pt(800, 600), func(w *desktop.Window) { a.drawRallyContent(w, v) })
 	h.Master().SetStyle(makeStyle(a.p, 13))
 	a.window = h.Master()
 	h.Frame(false)
@@ -220,7 +220,7 @@ func TestV68SavedViewControls(t *testing.T) {
 	}
 	v.ViewName = "Mine"
 	var click image.Point
-	h := nucular.NewHeadlessHarness(0, image.Pt(800, 600), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(800, 600), func(w *desktop.Window) {
 		if click != (image.Point{}) {
 			m := &w.Input().Mouse
 			m.Pos, m.Buttons[mouse.ButtonLeft].ClickedPos = click, click
@@ -271,7 +271,7 @@ func TestV68SavedViewDialogCopiesConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	var click image.Point
-	h := nucular.NewHeadlessHarness(0, image.Pt(850, 700), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(850, 700), func(w *desktop.Window) {
 		if click != (image.Point{}) {
 			m := &w.Master().Input().Mouse
 			m.Pos, m.Buttons[mouse.ButtonLeft].ClickedPos = click, click

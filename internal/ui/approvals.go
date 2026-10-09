@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
 )
@@ -148,14 +148,14 @@ func (a *App) serverRequest(m codex.Message, p map[string]any) {
 	a.approvals = append(a.approvals, r)
 	a.fetchApprovalDiff(r)
 }
-func (a *App) drawApproval(w *nucular.Window) {
+func (a *App) drawApproval(w *desktop.Window) {
 	t := a.state.Current()
 	if t == nil {
 		return
 	}
 	a.drawApprovalFor(w, t.Target)
 }
-func (a *App) drawApprovalFor(w *nucular.Window, thread string) {
+func (a *App) drawApprovalFor(w *desktop.Window, thread string) {
 	if len(a.approvals) == 0 {
 		return
 	}
@@ -182,7 +182,7 @@ func (a *App) openApprovalDetails(r *approval) {
 	b, _ := json.MarshalIndent(copied, "", "  ")
 	a.openText("Approval details", string(b))
 }
-func (a *App) drawApprovalActions(w *nucular.Window, r *approval) {
+func (a *App) drawApprovalActions(w *desktop.Window, r *approval) {
 	if r.URL != "" {
 		w.Row(28).Dynamic(2)
 		if w.ButtonText("Open authorization page") {
@@ -492,7 +492,7 @@ func (a *App) activateApproval() bool {
 	}
 	return a.activeApprovalFor(t.Target)
 }
-func (a *App) approvalKey(event *nucular.KeyboardEvent) bool {
+func (a *App) approvalKey(event *desktop.KeyboardEvent) bool {
 	if len(a.approvals) == 0 || !a.activateApproval() {
 		return false
 	}

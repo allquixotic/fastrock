@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 func describeAccount(data map[string]any, provider string) (title, detail string, facts []accountFact) {
@@ -39,13 +39,13 @@ func describeAccount(data map[string]any, provider string) (title, detail string
 	}
 }
 
-func (a *App) drawAccountCard(w *nucular.Window, id, heading, detail string, facts []accountFact) {
+func (a *App) drawAccountCard(w *desktop.Window, id, heading, detail string, facts []accountFact) {
 	height := titleHeight(w) + 20 + len(facts)*30
 	if detail != "" {
 		height += 50
 	}
 	w.Row(height).Dynamic(1)
-	if card := w.GroupBegin(id, nucular.WindowBorder|nucular.WindowNoScrollbar); card != nil {
+	if card := w.GroupBegin(id, desktop.WindowBorder|desktop.WindowNoScrollbar); card != nil {
 		title(card, heading, a.p)
 		if detail != "" {
 			card.Row(42).Dynamic(1)
@@ -60,7 +60,7 @@ func (a *App) drawAccountCard(w *nucular.Window, id, heading, detail string, fac
 	}
 }
 
-func (a *App) drawAccount(w *nucular.Window, s *settingsView) {
+func (a *App) drawAccount(w *desktop.Window, s *settingsView) {
 	heading, detail, facts := describeAccount(a.accountData, str(a.catalog.Config, "model_provider"))
 	if !a.accountLoaded {
 		heading, detail, facts = "Account unavailable", "Refresh to read your account from Codex.", nil
@@ -178,7 +178,7 @@ func (a *App) cancelAccountLogin(s *settingsView) {
 	}, func(err error) { s.LoginError = err.Error() })
 }
 
-func (a *App) drawSettingsError(w *nucular.Window, text string) {
+func (a *App) drawSettingsError(w *desktop.Window, text string) {
 	style := w.Master().Style()
 	old := style.Text.Color
 	style.Text.Color = a.p.Danger

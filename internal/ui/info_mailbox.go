@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -36,7 +36,7 @@ func (a *App) mailPeer(c *workspace.Conversation, m mailMessage) (string, string
 	}
 	return direction, peer, name
 }
-func (a *App) drawMailbox(w *nucular.Window, c *workspace.Conversation) {
+func (a *App) drawMailbox(w *desktop.Window, c *workspace.Conversation) {
 	messages := a.mailbox[c.ID]
 	for i := len(messages) - 1; i >= 0; i-- {
 		m := messages[i]

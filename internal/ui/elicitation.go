@@ -10,7 +10,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 // The app-server's MCP schema is a closed set of primitives and string enums.
@@ -80,7 +80,7 @@ func elicitationQuestion(name string, schema map[string]any, required bool) ques
 	return q
 }
 
-func (a *App) drawQuestion(w *nucular.Window, q *question) {
+func (a *App) drawQuestion(w *desktop.Window, q *question) {
 	header := q.Header
 	if q.Required {
 		header += " *"
@@ -95,7 +95,7 @@ func (a *App) drawQuestion(w *nucular.Window, q *question) {
 		muted(w, header, a.p)
 	}
 	if q.Text != "" {
-		lines := nucular.WrapText(w.Master().Style().Font, q.Text, max(80, w.LayoutAvailableWidth()-16))
+		lines := desktop.WrapText(w.Master().Style().Font, q.Text, max(80, w.LayoutAvailableWidth()-16))
 		w.Row(min(180, max(28, len(lines)*(a.prefs.FontSize+7)))).Dynamic(1)
 		w.LabelWrap(q.Text)
 	}
@@ -114,7 +114,7 @@ func (a *App) drawQuestion(w *nucular.Window, q *question) {
 				q.Error = ""
 			}
 			if i < len(q.Descriptions) && q.Descriptions[i] != "" {
-				lines := nucular.WrapText(w.Master().Style().Font, q.Descriptions[i], max(80, w.LayoutAvailableWidth()-16))
+				lines := desktop.WrapText(w.Master().Style().Font, q.Descriptions[i], max(80, w.LayoutAvailableWidth()-16))
 				w.Row(min(120, max(28, len(lines)*(a.prefs.FontSize+7)))).Dynamic(1)
 				w.LabelWrap(q.Descriptions[i])
 			}

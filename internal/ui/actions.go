@@ -11,8 +11,8 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/platform"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
@@ -23,7 +23,7 @@ import (
 
 func (a *App) inputDialog(title, value string, accept func(string)) {
 	ed := textEditor(value, false)
-	a.window.PopupOpen(title, nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(520, 165), false, func(w *nucular.Window) {
+	a.window.PopupOpen(title, desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(520, 165), false, func(w *desktop.Window) {
 		w.Row(34).Dynamic(1)
 		ed.Edit(w)
 		w.Row(30).Dynamic(2)
@@ -44,7 +44,7 @@ func (a *App) inputDialog(title, value string, accept func(string)) {
 	})
 }
 func (a *App) confirm(title, message string, accept func()) {
-	a.window.PopupOpen(title, nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(520, 210), false, func(w *nucular.Window) {
+	a.window.PopupOpen(title, desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(520, 210), false, func(w *desktop.Window) {
 		w.Row(max(55, w.LayoutAvailableHeight()-42)).Dynamic(1)
 		w.LabelWrap(message)
 		w.Row(30).Dynamic(2)
@@ -114,7 +114,7 @@ func (a *App) downloadAttachment(o rally.Object) {
 		})
 	})
 }
-func (a *App) shortcuts(w *nucular.Window) {
+func (a *App) shortcuts(w *desktop.Window) {
 	primaryKey := platform.PrimaryModifier()
 	if v := a.currentRally(); v != nil && w.Input().Mouse.Pressed(mouse.ButtonLeft) {
 		v.cardFocusActive = false
@@ -308,7 +308,7 @@ func (a *App) nextTab(direction int) {
 }
 func (a *App) drawPalette() {
 	a.paletteOpen = false
-	a.window.PopupOpen("Command palette", nucular.WindowTitle|nucular.WindowMovable|nucular.WindowClosable, rect.Rect{X: 330, Y: 130, W: 660, H: 520}, true, func(w *nucular.Window) {
+	a.window.PopupOpen("Command palette", desktop.WindowTitle|desktop.WindowMovable|desktop.WindowClosable, rect.Rect{X: 330, Y: 130, W: 660, H: 520}, true, func(w *desktop.Window) {
 		for event := range w.Input().Keyboard.Events() {
 			if event.HandleKey(key.CodeEscape, 0) {
 				w.Close()

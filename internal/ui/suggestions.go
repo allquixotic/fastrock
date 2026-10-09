@@ -6,7 +6,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -21,7 +21,7 @@ type skillList struct{ Data []struct{ Skills []skillRef } }
 
 // Scan only the token before the caret, so completions also work in the middle
 // of a draft and don't replace surrounding text.
-func completionToken(e *nucular.TextEditor) (string, int, int) {
+func completionToken(e *desktop.TextEditor) (string, int, int) {
 	end := min(e.Cursor, len(e.Buffer))
 	start := end
 	for start > 0 && !unicode.IsSpace(e.Buffer[start-1]) {
@@ -56,7 +56,7 @@ func acceptSuggestion(v *chatView) {
 	v.Suggest = nil
 	v.SuggestQuery = ""
 }
-func (a *App) suggestions(w *nucular.Window, c *workspace.Conversation, v *chatView) {
+func (a *App) suggestions(w *desktop.Window, c *workspace.Conversation, v *chatView) {
 	query, _, _ := completionToken(v.Editor)
 	if !v.Editor.Active {
 		query = ""

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -72,7 +72,7 @@ func conversationSummary(c *workspace.Conversation) [][2]string {
 
 // Section state belongs to the panel, so changing conversations keeps the same
 // disclosure choices. Callers omit genuinely empty optional sections.
-func (a *App) infoSection(w *nucular.Window, key, name, summary string) bool {
+func (a *App) infoSection(w *desktop.Window, key, name, summary string) bool {
 	if a.infoCollapsed == nil {
 		a.infoCollapsed = map[string]bool{}
 	}
@@ -86,7 +86,7 @@ func (a *App) infoSection(w *nucular.Window, key, name, summary string) bool {
 	return !a.infoCollapsed[key]
 }
 
-func (a *App) drawInfoSummary(w *nucular.Window, c *workspace.Conversation) {
+func (a *App) drawInfoSummary(w *desktop.Window, c *workspace.Conversation) {
 	if !a.infoSection(w, "session", "Session", agentStatusLabel(c.Status)) {
 		return
 	}

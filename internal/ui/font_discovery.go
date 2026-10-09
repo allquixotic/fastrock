@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular/font"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
 	"golang.org/x/image/font/sfnt"
 )
 

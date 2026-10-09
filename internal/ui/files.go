@@ -17,8 +17,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -90,18 +90,18 @@ func (a *App) ensureFileEditor(v *fileView) {
 	}, func() { v.Loading = false })
 }
 
-func loadedFileEditor(value string) *nucular.TextEditor {
+func loadedFileEditor(value string) *desktop.TextEditor {
 	editor := textEditor(value, true)
 	editor.Maxlen = maxFileBytes + 1
-	editor.Flags |= nucular.EditReadOnly
+	editor.Flags |= desktop.EditReadOnly
 	return editor
 }
 
-func (v *fileView) installEditor(editor *nucular.TextEditor) {
+func (v *fileView) installEditor(editor *desktop.TextEditor) {
 	v.resetFileSearch()
 	v.Editor = editor
 	if !v.Wrap {
-		editor.Flags &^= nucular.EditNoHorizontalScroll | nucular.EditSoftWrap
+		editor.Flags &^= desktop.EditNoHorizontalScroll | desktop.EditSoftWrap
 	}
 	if v.PendingPosition != nil {
 		v.PendingPosition.apply(editor)
@@ -193,7 +193,7 @@ func (a *App) loadFilePage(v *fileView, more bool) {
 	}
 	a.work(func() {
 		page, err := readFilePage(path, offset, previous, expected, lossy)
-		var editor *nucular.TextEditor
+		var editor *desktop.TextEditor
 		if err == nil {
 			editor = loadedFileEditor(page.value)
 		}
@@ -345,7 +345,7 @@ func findText(value, query string, start int, back bool) (int, int) {
 	}
 	return at, at + len(needle)
 }
-func (a *App) drawFile(w *nucular.Window, v *fileView) {
+func (a *App) drawFile(w *desktop.Window, v *fileView) {
 	if v == nil {
 		return
 	}
@@ -364,9 +364,9 @@ func (a *App) drawFile(w *nucular.Window, v *fileView) {
 	}
 	if w.CheckboxText("Wrap", &v.Wrap) && v.Editor != nil {
 		if v.Wrap {
-			v.Editor.Flags |= nucular.EditNoHorizontalScroll | nucular.EditSoftWrap
+			v.Editor.Flags |= desktop.EditNoHorizontalScroll | desktop.EditSoftWrap
 		} else {
-			v.Editor.Flags &^= nucular.EditNoHorizontalScroll | nucular.EditSoftWrap
+			v.Editor.Flags &^= desktop.EditNoHorizontalScroll | desktop.EditSoftWrap
 		}
 	}
 	if !v.Virtual {

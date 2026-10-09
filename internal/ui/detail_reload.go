@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -149,7 +149,7 @@ func (a *App) reloadDetail(v *rallyView) {
 	}, func() { cancel(); d.Saving = false; d.Error = errWorkQueueFull.Error() })
 }
 
-func (a *App) drawDetailRecovery(w *nucular.Window, v *rallyView, d *detailView) {
+func (a *App) drawDetailRecovery(w *desktop.Window, v *rallyView, d *detailView) {
 	if d.Conflict {
 		w.Row(30).Static(160)
 		if enabledButton(w, "Reload item", !d.Saving && !d.Pending, false, a.p) {
@@ -161,7 +161,7 @@ func (a *App) drawDetailRecovery(w *nucular.Window, v *rallyView, d *detailView)
 	}
 	muted(w, "These fields changed here and in Rally. Choose which value to keep before saving.", a.p)
 	w.Row(210).Dynamic(1)
-	if body := w.GroupBegin("changed-rally-fields", nucular.WindowNoHScrollbar); body != nil {
+	if body := w.GroupBegin("changed-rally-fields", desktop.WindowNoHScrollbar); body != nil {
 		for _, change := range slices.Clone(d.fieldConflicts) {
 			field, _ := d.schemaField(change.Name)
 			title(body, detailCaption(field), a.p)

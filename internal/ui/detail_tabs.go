@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"golang.org/x/mobile/event/mouse"
 )
@@ -79,7 +79,7 @@ func (d *detailView) tabLabel(tab detailTab) string {
 	return tab.Label + " (?)"
 }
 
-func (a *App) drawDetailTabs(w *nucular.Window, d *detailView) {
+func (a *App) drawDetailTabs(w *desktop.Window, d *detailView) {
 	tabs := detailTabs(d)
 	if !slices.ContainsFunc(tabs, func(tab detailTab) bool { return tab.Key == d.Tab }) {
 		d.Tab = "Details"
@@ -90,7 +90,7 @@ func (a *App) drawDetailTabs(w *nucular.Window, d *detailView) {
 		var widths []int
 		used := 0
 		for i := first; i < len(tabs); i++ {
-			width := min(available, nucular.FontWidth(w.Master().Style().Font, d.tabLabel(tabs[i]))+int(40*scale))
+			width := min(available, desktop.FontWidth(w.Master().Style().Font, d.tabLabel(tabs[i]))+int(40*scale))
 			if len(widths) > 0 && used+width+int(6*scale) > available {
 				break
 			}
@@ -111,7 +111,7 @@ func (a *App) drawDetailTabs(w *nucular.Window, d *detailView) {
 	}
 }
 
-func detailTabButton(w *nucular.Window, text, key string, active bool, p palette) bool {
+func detailTabButton(w *desktop.Window, text, key string, active bool, p palette) bool {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return false

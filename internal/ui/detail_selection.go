@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 )
 
@@ -479,7 +479,7 @@ func selectionValueLabel(d *detailView, name string, o rally.Object) string {
 	return fallback(value, "None")
 }
 
-func (a *App) drawSelectionEditor(w *nucular.Window, v *rallyView) {
+func (a *App) drawSelectionEditor(w *desktop.Window, v *rallyView) {
 	d, s := v.Detail, v.Detail.selection
 	title(w, fmt.Sprintf("Edit selected · %d work items", len(s.Targets)), a.p)
 	w.Row(32).Dynamic(3)
@@ -511,7 +511,7 @@ func (a *App) drawSelectionEditor(w *nucular.Window, v *rallyView) {
 		a.reloadSelection(v)
 	}
 	w.RowScaled(max(80, w.LayoutAvailableHeight()-8)).Dynamic(1)
-	if body := w.GroupBegin("selection-editor", nucular.WindowNoHScrollbar); body != nil {
+	if body := w.GroupBegin("selection-editor", desktop.WindowNoHScrollbar); body != nil {
 		if !d.Saving && !d.Loading && !s.Attempted {
 			fields := d.selectionFields()
 			if len(fields) == 0 {

@@ -4,7 +4,7 @@ import (
 	"image/color"
 	"runtime"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 type settingsGroup struct {
@@ -27,7 +27,7 @@ func settingsNavigation(goos string) []settingsGroup {
 	}
 }
 
-func (a *App) drawSettingsNavigation(w *nucular.Window, s *settingsView) {
+func (a *App) drawSettingsNavigation(w *desktop.Window, s *settingsView) {
 	for _, group := range settingsNavigation(runtime.GOOS) {
 		muted(w, group.Title, a.p)
 		for _, page := range group.Pages {

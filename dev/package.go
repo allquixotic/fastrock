@@ -56,6 +56,9 @@ func main() {
 	if *arch != "amd64" && *arch != "arm64" {
 		panic("unsupported architecture")
 	}
+	if *goos == "windows" && *arch != "amd64" {
+		panic("the pinned go-fltk Windows archives support amd64")
+	}
 	root := filepath.Join("build", "release", *goos+"-"+*arch)
 	if *phase != "package" {
 		must(os.RemoveAll(root))
@@ -64,7 +67,7 @@ func main() {
 		exe := filepath.Join(root, "fastrock.exe")
 		ld := "-s -w -X github.com/allquixotic/fastrock/internal/buildinfo.ReleaseStamp=FastrockRelease[" + v + "]"
 		if *goos == "windows" {
-			ld += " -H=windowsgui"
+			ld += " -H=windowsgui -extldflags \"-static -static-libgcc -static-libstdc++\""
 		} else if *goos == "darwin" {
 			exe = filepath.Join(root, "Fastrock.app", "Contents", "MacOS", "fastrock")
 			must(os.MkdirAll(filepath.Dir(exe), 0755))
@@ -75,8 +78,33 @@ func main() {
 		} else {
 			panic("unsupported release OS")
 		}
-		env := append(os.Environ(), "CGO_ENABLED=0", "GOOS="+*goos, "GOARCH="+*arch)
+		env := append(os.Environ(), "CGO_ENABLED=1", "GOOS="+*goos, "GOARCH="+*arch)
+		if *goos == "windows" && runtime.GOOS != "windows" {
+			cc, cxx := os.Getenv("WINDOWS_CC"), os.Getenv("WINDOWS_CXX")
+			if cc == "" {
+				cc = "x86_64-w64-mingw32-gcc"
+			}
+			if cxx == "" {
+				cxx = "x86_64-w64-mingw32-g++"
+			}
+			env = append(env, "CC="+cc, "CXX="+cxx)
+		}
 		run(env, "go", "build", "-trimpath", "-ldflags", ld, "-o", exe, "./cmd/fastrock")
+		run(os.Environ(), "go", "run", "dev/check-linkage.go", exe)
+		licenseDir := filepath.Join(root, "licenses")
+		if *goos == "darwin" {
+			licenseDir = filepath.Join(root, "Fastrock.app", "Contents", "Resources", "licenses")
+		}
+		must(os.MkdirAll(licenseDir, 0755))
+		for _, source := range []string{"LICENSE", "THIRD_PARTY_NOTICES.md", "third_party/FLTK.LICENSE", "third_party/go-fltk.LICENSE", "internal/desktop/LICENSE"} {
+			name := filepath.Base(source)
+			if source == "internal/desktop/LICENSE" {
+				name = "nucular.LICENSE"
+			}
+			data, err := os.ReadFile(source)
+			must(err)
+			must(os.WriteFile(filepath.Join(licenseDir, name), data, 0644))
+		}
 	}
 	if *phase == "build" {
 		return

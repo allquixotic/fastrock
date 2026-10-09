@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
 
@@ -70,7 +70,7 @@ func TestV39QuestionAndFormPresentation(t *testing.T) {
 	count.Error = "enter a value of at least 1"
 	boolean := elicitationQuestion("ready", codex.Decode([]byte(`{"type":"boolean","title":"Ready","description":"Confirm you are ready to proceed."}`)), true)
 	var labels []command.Command
-	h := nucular.NewHeadlessHarness(0, image.Pt(700, 1000), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(700, 1000), func(w *desktop.Window) {
 		a.drawQuestion(w, q)
 		a.drawQuestion(w, &count)
 		a.drawQuestion(w, &boolean)
@@ -110,7 +110,7 @@ func TestV39RequestBadgeCountsOnlyOwningConversation(t *testing.T) {
 		a.serverRequest(codex.Message{ID: json.RawMessage(string(rune('1' + i))), Method: "item/tool/requestUserInput", Origin: a.client}, map[string]any{"threadId": thread})
 	}
 	var labels []string
-	h := nucular.NewHeadlessHarness(0, image.Pt(700, 800), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(700, 800), func(w *desktop.Window) {
 		a.drawApprovalFor(w, "parent")
 		labels = nil
 		for _, cmd := range w.Commands().Commands {

@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -14,8 +14,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/mouse"
@@ -128,7 +128,7 @@ func TestV63InlineTransfer(t *testing.T) {
 		t.Fatal(err)
 	}
 	d := b.rallyViews[b.state.Active].Detail
-	if d == nil || d.inlineField != "PlanEstimate" || d.inlineScope != v.Detail.inlineScope || !d.dirty() || text(d.Editors["PlanEstimate"]) != "17" || d.Editors["PlanEstimate"].Flags&nucular.EditSigEnter == 0 {
+	if d == nil || d.inlineField != "PlanEstimate" || d.inlineScope != v.Detail.inlineScope || !d.dirty() || text(d.Editors["PlanEstimate"]) != "17" || d.Editors["PlanEstimate"].Flags&desktop.EditSigEnter == 0 {
 		t.Fatal("inline draft not transferred")
 	}
 }
@@ -139,7 +139,7 @@ func TestV63TableControlsAtDisplayScales(t *testing.T) {
 			a, v, _ := inlineFixture(t, "https://rally.test")
 			v.Columns = []string{"Rank", "Name", "PlanEstimate", "Blocked"}
 			var click image.Point
-			h := nucular.NewHeadlessHarness(0, image.Pt(int(800*scale), int(550*scale)), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(int(800*scale), int(550*scale)), func(w *desktop.Window) {
 				if click != (image.Point{}) {
 					m := &w.Input().Mouse
 					m.Pos = click

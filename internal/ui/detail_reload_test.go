@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 )
@@ -170,7 +170,7 @@ func TestV60ConflictChoicesPersistAndRender(t *testing.T) {
 		t.Fatal("transfer lost pending review")
 	}
 	for _, scale := range []float64{1, 1.5, 2} {
-		h := nucular.NewHeadlessHarness(0, image.Pt(int(800*scale), int(600*scale)), func(w *nucular.Window) { a.drawDetailRecovery(w, v, d) })
+		h := desktop.NewHeadlessHarness(0, image.Pt(int(800*scale), int(600*scale)), func(w *desktop.Window) { a.drawDetailRecovery(w, v, d) })
 		style := makeStyle(a.p, 13)
 		style.Scale(scale)
 		h.Master().SetStyle(style)

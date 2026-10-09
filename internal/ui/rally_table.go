@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"golang.org/x/mobile/event/mouse"
 )
 
@@ -21,10 +21,10 @@ func (l *tableLinkLayout) prepare(value string, width int, face font.Face) {
 		return
 	}
 	l.value, l.width, l.face = value, width, face
-	l.lines = nucular.WrapText(face, value, width)
+	l.lines = desktop.WrapText(face, value, width)
 }
 
-func tableLink(w *nucular.Window, l *tableLinkLayout, padding int, p palette) bool {
+func tableLink(w *desktop.Window, l *tableLinkLayout, padding int, p palette) bool {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return false

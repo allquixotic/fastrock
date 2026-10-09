@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -14,8 +14,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 )
@@ -170,7 +170,7 @@ func TestV66MetadataIntersectionAndCardTypes(t *testing.T) {
 		t.Fatal("defect lost own workflow")
 	}
 	for _, scale := range []float64{1, 1.5, 2} {
-		h := nucular.NewHeadlessHarness(0, image.Pt(int(1100*scale), int(1150*scale)), func(w *nucular.Window) { a.drawTeamBoard(w, v, v.Items) })
+		h := desktop.NewHeadlessHarness(0, image.Pt(int(1100*scale), int(1150*scale)), func(w *desktop.Window) { a.drawTeamBoard(w, v, v.Items) })
 		style := makeStyle(a.p, 13)
 		style.Scale(scale)
 		h.Master().SetStyle(style)

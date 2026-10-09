@@ -18,7 +18,7 @@ No fixture records are loaded by the application.
 - `settings`: atomic JSON preferences/session writes and the OS credential vault.
 - `platform`: file/folder dialogs, URL opening and Windows screenshot capture.
 - `richtext`: Unicode documents with coalesced format spans, changed-range undo/redo and compact saved drafts. One history budget covers every editor in the process and is divided by the reported window count. Weak owners and explicit disposal release old history; the original HTML needs only a fixed-size content fingerprint for exact restoration after undo or manual reversion.
-- `ui`: nucular presentation. Reads, writes and urgent control operations use separate
+- `ui`: application presentation using the hybrid FLTK desktop layer. Reads, writes and urgent control operations use separate
   bounded queues and post results to the UI owner. Layout has its own bounded queue.
 
 The shell keeps the Codex GUI's top document strip, conversation sidebar, chat
@@ -26,11 +26,24 @@ workspace, details panel and Settings navigation. Rally uses a separate native
 navigation/toolbar within its document. The layouts share theme tokens and fonts. Narrow windows move side panels into reachable popups; exact reference geometry and native mixed-DPI behavior remain open.
 The original browser app is a design reference, not an embedded runtime.
 
-The vendored nucular software renderer presents RGBA frames through a small
-Ebitengine 2.10 adapter. Changed commands invalidate their old/new bounds, including scissor changes; the software renderer clips work and the adapter uploads only damaged pixels. Raster, staging and GPU surfaces use reusable capacity buckets and shrink after large size reductions. Rounded-corner/ellipse masks are bounded by 16 entries and 1 MiB per window. Native input coalesces adjacent pointer/paint events and preserves fractional wheel deltas and ordered key/button transitions. Frames are uploaded only when
-changed, and idle windows use event-driven presentation. Both desktop
-platforms compile without CGo. File dialogs, clipboard and screenshots use system
-APIs directly; macOS file selection retains the system AppleScript dialog.
+`internal/desktop` is the hybrid widget layer. Native FLTK buttons and plain
+single-line fields are reconciled from value-only control snapshots; text edits
+return through the ordered event queue with sequence numbers and an expected
+base value, so delayed input cannot overwrite a restored draft. Custom controls,
+formatted editors and the transcript use the preserved MIT-licensed layout and
+software renderer derived from nucular. There is no nucular module dependency.
+
+`internal/desktop/internal/fltkdriver` owns go-fltk windows on the main OS thread.
+Layout, rasterization and application work remain on their existing owners.
+Native callbacks exchange events with those owners instead of touching app state.
+FLTK applies monitor scaling to logical coordinates. A coalescing awake callback
+presents changed frames and reconciles native controls; unchanged controls are
+reused. Custom raster surfaces retain the existing capacity and damage caches.
+Both desktop platforms use CGo and link the pinned FLTK archives statically.
+Windows also links GCC/libstdc++ statically; macOS uses system C++ frameworks.
+Headless tests (`-tags=fltk_headless`) do not initialize FLTK or any display.
+File dialogs, clipboard and screenshots continue to use their existing system
+APIs; macOS file selection retains the system AppleScript dialog.
 
 The board caches projections, search text, group/column membership and wrapped card
 titles. Changes to the data generation, filter, grouping, sort or width invalidate the
@@ -76,7 +89,7 @@ the number of completed changes and require a fresh review after a failure.
 
 ## Window and memory ownership
 
-Each native window uses its own Ebitengine process. A 256-bit environment-only
+Each native window uses its own FLTK process. A 256-bit environment-only
 secret authenticates the loopback connection. Transfers use expiring tickets:
 reserve, initial snapshot, rendered readiness, final snapshot, destination applied
 acknowledgement, then source removal. Cancellation resolves atomically against
@@ -150,10 +163,12 @@ RSS and private committed memory differ; these targets are not hard process limi
 
 ## Review validation boundary
 
-The review remediation is covered by local headless regression tests, race tests,
-vet and pure-Go cross-builds. New Windows native interaction, multi-window stress,
-DPI, accessibility and input-to-present measurements have not been run for this
-patch. Earlier fixture results must not be treated as evidence for these changes.
+The earlier review remediation is covered by local headless regression tests,
+race tests and vet. The FLTK port additionally has native Windows input and
+application smoke validation, plus static FLTK builds for Windows and both Mac
+architectures; see [VALIDATION.md](VALIDATION.md). Exhaustive DPI, accessibility
+and input-to-present measurements remain open. Earlier fixture results must not
+be treated as evidence for untested changes.
 Native updater trust is described in [UPDATES.md](UPDATES.md); signing a local test
 package does not provision the GitHub release environment.
 

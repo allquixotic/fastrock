@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"golang.org/x/mobile/event/mouse"
 )
@@ -297,7 +297,7 @@ func TestV45BoardDropAndUndoNotice(t *testing.T) {
 	var pos, origin image.Point
 	var down, clicked bool
 	var commands []command.Command
-	h := nucular.NewHeadlessHarness(0, image.Pt(1200, 1400), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(1200, 1400), func(w *desktop.Window) {
 		in := &w.Input().Mouse
 		in.Pos = pos
 		in.Buttons[mouse.ButtonLeft].Down = down
@@ -343,7 +343,7 @@ func TestV45BoardDropAndUndoNotice(t *testing.T) {
 	n.p, n.prefs.FontSize = colors(false), 13
 	var button rect.Rect
 	click := false
-	h = nucular.NewHeadlessHarness(0, image.Pt(600, 400), func(w *nucular.Window) {
+	h = desktop.NewHeadlessHarness(0, image.Pt(600, 400), func(w *desktop.Window) {
 		layouts := n.noticeLayouts(w)
 		if len(layouts) > 0 {
 			button = layouts[0].button
@@ -377,7 +377,7 @@ func TestV45PendingMarkerRemainsVisibleOnBlockedCards(t *testing.T) {
 	c := v.cards[v.Items[0].String("_ref")]
 	v.PendingCards = map[string]bool{c.ref: true}
 	var labels []string
-	h := nucular.NewHeadlessHarness(0, image.Pt(500, 300), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(500, 300), func(w *desktop.Window) {
 		w.Row(196).Dynamic(1)
 		a.drawBoardCard(w, v, c)
 		for _, cmd := range w.Commands().Commands {

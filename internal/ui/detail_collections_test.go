@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/richtext"
 )
@@ -42,7 +42,7 @@ func TestV47CollectionSwitchKeepsResultsScoped(t *testing.T) {
 	d.Tab = "Defects"
 	a.loadCollection(d)
 	drain(t, a, func() bool { return !d.CollectionLoading })
-	h := nucular.NewHeadlessHarness(0, image.Pt(900, 600), func(w *nucular.Window) { a.detailCollection(w, v, d) })
+	h := desktop.NewHeadlessHarness(0, image.Pt(900, 600), func(w *desktop.Window) { a.detailCollection(w, v, d) })
 	h.Master().SetStyle(makeStyle(a.p, 13))
 	h.Frame(false)
 	for _, c := range h.Commands() {
@@ -110,7 +110,7 @@ func TestV47DetailTabsFollowSchemaAndCounts(t *testing.T) {
 	for _, scale := range []float64{1, 1.5, 2} {
 		t.Run(fmt.Sprint(scale), func(t *testing.T) {
 			a := &App{p: colors(false)}
-			h := nucular.NewHeadlessHarness(0, image.Pt(int(380*scale), 450), func(w *nucular.Window) { a.drawDetailTabs(w, d) })
+			h := desktop.NewHeadlessHarness(0, image.Pt(int(380*scale), 450), func(w *desktop.Window) { a.drawDetailTabs(w, d) })
 			style := makeStyle(a.p, 13)
 			style.Scale(scale)
 			h.Master().SetStyle(style)
@@ -162,9 +162,9 @@ func TestV47CollectionTextLayoutAndVirtualBounds(t *testing.T) {
 				style.Scale(scale)
 				var layout *detailCollectionLayout
 				offset, extent := 0, 0
-				h := nucular.NewHeadlessHarness(0, image.Pt(900, 600), func(w *nucular.Window) {
+				h := desktop.NewHeadlessHarness(0, image.Pt(900, 600), func(w *desktop.Window) {
 					w.RowScaled(580).Dynamic(1)
-					if body := w.GroupBegin("posts", nucular.WindowNoHScrollbar); body != nil {
+					if body := w.GroupBegin("posts", desktop.WindowNoHScrollbar); body != nil {
 						body.Scrollbar.Y = offset
 						if layout == nil {
 							layout = &detailCollectionLayout{Source: &d.Items[0], Length: len(d.Items), Width: body.LayoutAvailableWidth(), Size: fontPointSize(style.Font), Scale: scale, Spacing: style.GroupWindow.Spacing.Y, Tab: tab, Face: style.Font}
@@ -228,7 +228,7 @@ func TestV47CollectionLayoutIgnoresStaleResults(t *testing.T) {
 	v.Detail = d
 	d.Tab = "Revisions"
 	d.Items = []rally.Object{{"Text": "old"}}
-	h := nucular.NewHeadlessHarness(0, image.Pt(900, 600), func(w *nucular.Window) { a.collectionTextLayout(w, d, d.Items) })
+	h := desktop.NewHeadlessHarness(0, image.Pt(900, 600), func(w *desktop.Window) { a.collectionTextLayout(w, d, d.Items) })
 	h.Master().SetStyle(makeStyle(a.p, 13))
 	h.Frame(false)
 	d.collectionGeneration++

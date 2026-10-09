@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
 )
@@ -138,7 +138,7 @@ func TestV42DeliveryCardTargetsRecipientAndShowsPermissions(t *testing.T) {
 		t.Fatal(a.approvals)
 	}
 	var labels []string
-	h := nucular.NewHeadlessHarness(0, image.Pt(800, 1000), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(800, 1000), func(w *desktop.Window) {
 		if a.approvalHeight(w, "a") != 0 {
 			t.Fatal("sender received the target card")
 		}
@@ -158,7 +158,7 @@ func TestV42DeliveryCardTargetsRecipientAndShowsPermissions(t *testing.T) {
 			t.Fatal(want, all)
 		}
 	}
-	if e := a.approvals[0].CodeEditor; e == nil || e.Flags&nucular.EditReadOnly == 0 {
+	if e := a.approvals[0].CodeEditor; e == nil || e.Flags&desktop.EditReadOnly == 0 {
 		t.Fatal("delivery message is not a selectable literal")
 	}
 	d.Revision = 2
@@ -183,7 +183,7 @@ func TestV42DeliveryEscapeAndResolution(t *testing.T) {
 	a.approvals = []approval{deliveryApproval(d, a.client)}
 	a.approvals[0].Armed = time.Time{}
 	a.approvals[0].Focused = true
-	h := nucular.NewHeadlessHarness(0, image.Pt(700, 700), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(700, 700), func(w *desktop.Window) {
 		for event := range w.Input().Keyboard.Events() {
 			a.approvalKey(event)
 		}

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/assistant"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
@@ -22,7 +22,7 @@ type assistantView struct {
 	Preview                                       []string
 	Selected                                      []bool
 	Outcomes                                      []string
-	Editor                                        *nucular.TextEditor
+	Editor                                        *desktop.TextEditor
 	Busy, Visible                                 bool
 	PlanApplied                                   bool
 	PlanScope                                     rally.Query
@@ -59,7 +59,7 @@ func (a *App) openAssistant(v *rallyView) {
 		a.window.Changed()
 	}
 }
-func (a *App) drawAssistant(w *nucular.Window) {
+func (a *App) drawAssistant(w *desktop.Window) {
 	s := a.assistant
 	if s == nil {
 		return
@@ -96,7 +96,7 @@ func (a *App) drawAssistant(w *nucular.Window) {
 	}
 	h := max(int(60*scale), w.LayoutAvailableHeight()-reserved)
 	w.RowScaled(h).Dynamic(1)
-	if body := w.GroupBegin("rally-assistant-transcript", nucular.WindowNoHScrollbar); body != nil {
+	if body := w.GroupBegin("rally-assistant-transcript", desktop.WindowNoHScrollbar); body != nil {
 		if len(s.History.Blocks) == 0 {
 			muted(body, "Try: Show blocked stories, group by owner, and explain the risks.", a.p)
 		} else {
@@ -107,7 +107,7 @@ func (a *App) drawAssistant(w *nucular.Window) {
 	if s.Plan != nil {
 		title(w, s.Plan.Summary, a.p)
 		w.Row(140).Dynamic(1)
-		if preview := w.GroupBegin("change-preview", nucular.WindowNoHScrollbar); preview != nil {
+		if preview := w.GroupBegin("change-preview", desktop.WindowNoHScrollbar); preview != nil {
 			for i, line := range s.Preview {
 				preview.Row(26).Dynamic(1)
 				if i < len(s.Selected) && !s.Busy && !s.PlanApplied {
@@ -115,7 +115,7 @@ func (a *App) drawAssistant(w *nucular.Window) {
 				} else {
 					preview.Label(fmt.Sprintf("Change %d · %s", i+1, s.Outcomes[i]), "LC")
 				}
-				lines := nucular.WrapText(preview.Master().Style().Font, line, max(100, preview.LayoutAvailableWidth()-16))
+				lines := desktop.WrapText(preview.Master().Style().Font, line, max(100, preview.LayoutAvailableWidth()-16))
 				preview.Row(min(240, max(44, len(lines)*(a.prefs.FontSize+7)))).Dynamic(1)
 				preview.LabelWrap(line)
 				preview.Row(26).Static(150)

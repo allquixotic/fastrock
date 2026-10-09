@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -16,8 +16,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/mouse"
@@ -39,7 +39,7 @@ func TestV49HistoryViewLifecycle(t *testing.T) {
 	if !v.Loaded || v.Error != "" || !strings.Contains(v.fileText(), "first page") || !strings.Contains(v.fileText(), "second page") || len(a.chats) != 0 {
 		t.Fatal("unopened history not loaded", v.Error, v.fileText())
 	}
-	if v.Editor.Flags&nucular.EditReadOnly == 0 {
+	if v.Editor.Flags&desktop.EditReadOnly == 0 {
 		t.Fatal("history editor is writable")
 	}
 	failed := &workspace.Conversation{ID: "fail-history", Title: "Failed history"}
@@ -160,7 +160,7 @@ func TestV49DisabledRallyControls(t *testing.T) {
 	var commands []command.Command
 	var target image.Point
 	click := false
-	h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(900, 500), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(desktop.WindowNoScrollbar, image.Pt(900, 500), func(w *desktop.Window) {
 		if click {
 			m := &w.Input().Mouse
 			m.Pos = target

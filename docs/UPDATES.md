@@ -51,7 +51,7 @@ request elevation. Quit all Fastrock windows to apply a ready update.
 ## Publishing
 
 Tagging a tested commit `vX.Y.Z` triggers `.github/workflows/release.yml`. It builds
-Windows amd64 and macOS arm64/amd64 with Go 1.27.2 and `CGO_ENABLED=0`, runs headless
+Windows amd64 and macOS arm64/amd64 with Go 1.27.2 and `CGO_ENABLED=1`, statically linking FLTK, runs headless
 tests, and publishes:
 
 - `fastrock-windows-amd64.zip`
@@ -89,7 +89,11 @@ check the expected identity during packaging. Configure the Azure federated
 credential for this repository's protected environment before releasing. No
 credentials, runner registration, or Azure permissions are provisioned by a
 normal build. CI refuses to publish if signing or verification fails. All action
-versions are pinned and the final archives receive build provenance attestations.
+versions are pinned. Public repositories receive build provenance attestations;
+private repositories can enable them with `FASTROCK_ATTESTATIONS=true` when their
+GitHub Enterprise Cloud plan supports them. Native signature verification is
+mandatory in either case. The final DMG is mounted read-only to verify the
+contained app signature, notarization ticket, and Gatekeeper assessment.
 
 For a Windows cross-build, use `-phase build`; sign the resulting executable on
 Windows, then use `-phase package` there to verify and archive it. `-unsigned` is

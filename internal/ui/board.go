@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/rect"
-	"github.com/aarzilli/nucular/style"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
+	"github.com/allquixotic/fastrock/internal/desktop/style"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"golang.org/x/mobile/event/mouse"
@@ -163,7 +163,7 @@ func (v *rallyView) prepareBoardLayout(items []rally.Object) {
 		v.currentBoardFocus(v.boardFocusEntries())
 	}
 }
-func (a *App) drawTeamBoard(w *nucular.Window, v *rallyView, items []rally.Object) {
+func (a *App) drawTeamBoard(w *desktop.Window, v *rallyView, items []rally.Object) {
 	v.prepareCards()
 	v.prepareBoardLayout(items)
 	scale := w.Master().Style().Scaling
@@ -237,7 +237,7 @@ func (a *App) drawTeamBoard(w *nucular.Window, v *rallyView, items []rally.Objec
 				}
 			}
 			if v.CollapsedLanes[column] {
-				if compact := w.GroupBegin(lane.id+"-collapsed", nucular.WindowNoScrollbar); compact != nil {
+				if compact := w.GroupBegin(lane.id+"-collapsed", desktop.WindowNoScrollbar); compact != nil {
 					compact.Row(30).Dynamic(1)
 					if compact.ButtonText("›") {
 						v.CollapsedLanes[column] = false
@@ -258,7 +258,7 @@ func (a *App) drawTeamBoard(w *nucular.Window, v *rallyView, items []rally.Objec
 			gs.Padding = image.Pt(m.Padding, m.Padding)
 			gs.Spacing = image.Pt(m.Gap, m.Gap)
 			w.Master().Style().GroupWindow = gs
-			col := w.GroupBegin(lane.id, nucular.WindowNoHScrollbar)
+			col := w.GroupBegin(lane.id, desktop.WindowNoHScrollbar)
 			if col == nil {
 				w.Master().Style().GroupWindow = old
 				continue
@@ -359,7 +359,7 @@ func (a *App) drawTeamBoard(w *nucular.Window, v *rallyView, items []rally.Objec
 		v.dragCard = ""
 	}
 }
-func (a *App) drawBoardCard(w *nucular.Window, v *rallyView, c *boardCard) {
+func (a *App) drawBoardCard(w *desktop.Window, v *rallyView, c *boardCard) {
 	b, out := w.Custom(w.CustomState())
 	if out == nil {
 		return
@@ -402,7 +402,7 @@ func (a *App) drawBoardCard(w *nucular.Window, v *rallyView, c *boardCard) {
 	labelRight := check.X - sz(6)
 	if aged {
 		label := fmt.Sprintf("%dd", age)
-		ageWidth := nucular.FontWidth(face, label) + sz(8)
+		ageWidth := desktop.FontWidth(face, label) + sz(8)
 		r := rect.Rect{X: labelRight - ageWidth, Y: y, W: ageWidth, H: m.Header}
 		out.FillRect(r, uint16(sz(3)), a.p.WarningSoft)
 		labelAt(out, inset(r, sz(4), 0), label, face, a.p.Warning)
@@ -423,7 +423,7 @@ func (a *App) drawBoardCard(w *nucular.Window, v *rallyView, c *boardCard) {
 	y = b.Y + m.TitleY
 	if c.width != width || c.face != face || c.titleLines != m.TitleLines {
 		c.width, c.face, c.titleLines = width, face, m.TitleLines
-		c.lines = nucular.WrapText(face, c.title, width)
+		c.lines = desktop.WrapText(face, c.title, width)
 		if len(c.lines) > m.TitleLines {
 			c.lines = c.lines[:m.TitleLines]
 			c.lines[m.TitleLines-1] = ellipsizeBoardTitle(face, c.lines[m.TitleLines-1], width)

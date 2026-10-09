@@ -8,10 +8,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/richtext"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
@@ -20,9 +20,9 @@ import (
 type richEditor struct {
 	presentation                   richPresentation
 	editorRevision, sourceRevision uint64
-	changes                        []nucular.TextChange
+	changes                        []desktop.TextChange
 	doc                            *richtext.Document
-	editor, source                 *nucular.TextEditor
+	editor, source                 *desktop.TextEditor
 	mode                           string
 	content                        string
 	offsets                        []int
@@ -75,10 +75,10 @@ func (r *richEditor) cache() {
 	}
 	r.offsets = append(r.offsets, len(r.content))
 	if r.editor != nil && r.fontSize > 0 {
-		r.editor.MinRowHeight = nucular.FontHeight(typeFace(r.fontSize, regularFont))
+		r.editor.MinRowHeight = desktop.FontHeight(typeFace(r.fontSize, regularFont))
 		for i := 0; i < len(r.doc.Text); {
 			format, next := r.doc.RunAt(i)
-			r.editor.MinRowHeight = max(r.editor.MinRowHeight, nucular.FontHeight(drawFace(r.fontSize, format)))
+			r.editor.MinRowHeight = max(r.editor.MinRowHeight, desktop.FontHeight(drawFace(r.fontSize, format)))
 			i = next
 		}
 	}
@@ -155,7 +155,7 @@ func (r *richEditor) sync() {
 	}
 }
 
-func (r *richEditor) changed(edit nucular.TextChange) {
+func (r *richEditor) changed(edit desktop.TextChange) {
 	// Keyboard text arrives rune by rune; merge an adjacent typing burst before
 	// updating the rich document so its unchanged tail moves only once.
 	if n := len(r.changes); n > 0 && edit.Removed == 0 {
@@ -185,7 +185,7 @@ func (r *richEditor) undo(redo bool) {
 		r.cache()
 	}
 }
-func (a *App) richField(w *nucular.Window, name string, r *richEditor, height int) {
+func (a *App) richField(w *desktop.Window, name string, r *richEditor, height int) {
 	if name == "AcceptanceCriteria" {
 		name = "Acceptance criteria"
 	}
@@ -210,7 +210,7 @@ func (a *App) richField(w *nucular.Window, name string, r *richEditor, height in
 	modeWidths := []int{}
 	remaining := w.LayoutAvailableWidth() - 3*w.WindowStyle().Spacing.X
 	for _, mode := range []string{"Edit", "Preview", "HTML"} {
-		width := nucular.FontWidth(w.Master().Style().Font, mode) + int(24*scale)
+		width := desktop.FontWidth(w.Master().Style().Font, mode) + int(24*scale)
 		modeWidths = append(modeWidths, width)
 		remaining -= width
 	}
@@ -313,9 +313,9 @@ func (a *App) richField(w *nucular.Window, name string, r *richEditor, height in
 	es.Padding.Y = 12
 	w.Master().Style().Edit = es
 	if r.mode == "Preview" {
-		r.editor.Flags |= nucular.EditReadOnly
+		r.editor.Flags |= desktop.EditReadOnly
 	} else {
-		r.editor.Flags &^= nucular.EditReadOnly
+		r.editor.Flags &^= desktop.EditReadOnly
 	}
 	w.Row(height).Dynamic(1)
 	r.links = r.links[:0]
@@ -404,7 +404,7 @@ func (r *richEditor) paint(out *command.Buffer, b rect.Rect, text []rune, start 
 		k := [2]int{i, j}
 		width, ok := r.widths[k]
 		if !ok {
-			width = nucular.FontWidth(r.face(f), s)
+			width = desktop.FontWidth(r.face(f), s)
 			r.widths[k] = width
 		}
 		q := b
@@ -451,7 +451,7 @@ func (r *richEditor) measure(text []rune, start int, base font.Face) int {
 	for i := start; i < end; {
 		format, next := r.doc.RunAt(i)
 		j := min(end, next)
-		width += nucular.FontWidth(r.face(format), r.content[r.offsets[i]:r.offsets[j]])
+		width += desktop.FontWidth(r.face(format), r.content[r.offsets[i]:r.offsets[j]])
 		i = j
 	}
 	return width

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"golang.org/x/mobile/event/mouse"
 )
@@ -20,7 +20,7 @@ var rallyColors = []struct{ Value, Name string }{
 	{"#f9a814", "Orange"}, {"#fce205", "Yellow"}, {"#848689", "Grey"},
 }
 
-func (a *App) detailColor(w *nucular.Window, d *detailView, f rally.Field) {
+func (a *App) detailColor(w *desktop.Window, d *detailView, f rally.Field) {
 	ed := d.Editors[f.Name]
 	if ed == nil {
 		return

@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
-	"github.com/aarzilli/nucular/rect"
 	"github.com/allquixotic/fastrock/internal/codex"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/allquixotic/fastrock/internal/workspace"
@@ -29,7 +29,7 @@ func TestV54AssistantDockGeometryAndRetention(t *testing.T) {
 			s := &assistantView{Editor: textEditor("retained question", true), View: v, Visible: true}
 			a.assistant = s
 			var click image.Point
-			h := nucular.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(900*scale)), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(900*scale)), func(w *desktop.Window) {
 				if click != (image.Point{}) {
 					m := &w.Input().Mouse
 					m.Pos = click
@@ -98,13 +98,14 @@ func TestV54AIViewAndDisclosures(t *testing.T) {
 	v.AIView = true
 	var expanded bool
 	var click image.Point
-	h := nucular.NewHeadlessHarness(0, image.Pt(900, 240), func(w *nucular.Window) {
+	h := desktop.NewHeadlessHarness(0, image.Pt(900, 240), func(w *desktop.Window) {
 		if click != (image.Point{}) {
 			m := &w.Input().Mouse
 			m.Pos = click
 			m.Buttons[mouse.ButtonLeft].Clicked = true
 			m.Buttons[mouse.ButtonLeft].ClickedPos = click
 		}
+		w.Row(28).Static(210)
 		a.drawRallyViewLabel(w, v)
 		expanded = a.infoSection(w, "terminals", "Background terminals", "2 running")
 	})

@@ -1,10 +1,10 @@
 package ui
 
-import "github.com/aarzilli/nucular"
+import "github.com/allquixotic/fastrock/internal/desktop"
 
 // Estimate only the bounded visible prefix. Drafts can be arbitrarily longer
 // than the growing editor; its own scrollbar handles text beyond this height.
-func composerHeight(ed *nucular.TextEditor, width, fontSize int) int {
+func composerHeight(ed *desktop.TextEditor, width, fontSize int) int {
 	columns := max(8, width/max(1, fontSize/2))
 	lines, column := 1, 0
 	for _, r := range ed.Buffer {

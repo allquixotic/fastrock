@@ -2,7 +2,7 @@ package ui
 
 import (
 	"crypto/sha256"
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 func (s *settingsView) rawDirty() bool {
@@ -15,7 +15,7 @@ func (a *App) leaveRawConfig(next func()) {
 		next()
 		return
 	}
-	a.window.PopupOpen("Unsaved config.toml", nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(520, 200), false, func(w *nucular.Window) {
+	a.window.PopupOpen("Unsaved config.toml", desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(520, 200), false, func(w *desktop.Window) {
 		w.Row(70).Dynamic(1)
 		w.LabelWrap("Save config.toml before continuing? This draft is kept only in this window because configuration can contain credentials.")
 		w.Row(30).Dynamic(3)

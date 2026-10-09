@@ -5,20 +5,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/font"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 	"golang.org/x/mobile/event/mouse"
 )
 
-func approvalScale(w *nucular.Window) float64 { return max(1, w.Master().Style().Scaling) }
-func approvalWrap(w *nucular.Window, value string, width int, face font.Face) []string {
-	return nucular.WrapText(face, value, max(40, width))
+func approvalScale(w *desktop.Window) float64 { return max(1, w.Master().Style().Scaling) }
+func approvalWrap(w *desktop.Window, value string, width int, face font.Face) []string {
+	return desktop.WrapText(face, value, max(40, width))
 }
-func approvalTextHeight(w *nucular.Window, value string, width int, face font.Face) int {
-	return max(int(24*approvalScale(w)), len(approvalWrap(w, value, width, face))*(nucular.FontHeight(face)+2)+2*w.Master().Style().Text.Padding.Y+2)
+func approvalTextHeight(w *desktop.Window, value string, width int, face font.Face) int {
+	return max(int(24*approvalScale(w)), len(approvalWrap(w, value, width, face))*(desktop.FontHeight(face)+2)+2*w.Master().Style().Text.Padding.Y+2)
 }
-func approvalChoiceHeight(w *nucular.Window, c approvalChoice) int {
+func approvalChoiceHeight(w *desktop.Window, c approvalChoice) int {
 	return max(int(30*approvalScale(w)), approvalTextHeight(w, c.Title, int(float64(w.Bounds.W-80)*.88), w.Master().Style().Font)+12)
 }
 
@@ -29,17 +29,17 @@ const approvalNoChoicesHint = "Codex did not offer any approval choices for this
 func approvalHasDecisions(r *approval) bool {
 	return r.Message.Method == "item/commandExecution/requestApproval" || r.Message.Method == "item/fileChange/requestApproval"
 }
-func approvalHintHeight(w *nucular.Window, hint string) int {
+func approvalHintHeight(w *desktop.Window, hint string) int {
 	return approvalTextHeight(w, hint, w.Bounds.W-60, w.Master().Style().Font)
 }
-func (a *App) drawApprovalHint(w *nucular.Window, hint string) {
+func (a *App) drawApprovalHint(w *desktop.Window, hint string) {
 	w.RowScaled(approvalHintHeight(w, hint)).Dynamic(1)
 	previous := w.Master().Style().Text.Color
 	w.Master().Style().Text.Color = a.p.Muted
 	w.LabelWrap(hint)
 	w.Master().Style().Text.Color = previous
 }
-func approvalFooterHeight(w *nucular.Window, r *approval) int {
+func approvalFooterHeight(w *desktop.Window, r *approval) int {
 	scale := approvalScale(w)
 	spacing := w.Master().Style().GroupWindow.Spacing.Y
 	h := 0
@@ -63,7 +63,7 @@ func approvalFooterHeight(w *nucular.Window, r *approval) int {
 	}
 	return h + int(28*scale) + spacing
 }
-func approvalBodyHeight(w *nucular.Window, r *approval) int {
+func approvalBodyHeight(w *desktop.Window, r *approval) int {
 	scale := approvalScale(w)
 	width := w.Bounds.W - 60
 	face := w.Master().Style().Font
@@ -76,7 +76,7 @@ func approvalBodyHeight(w *nucular.Window, r *approval) int {
 		h += approvalTextHeight(w, r.Content.Reason, width, face) + 8
 	}
 	if r.Content.Code != "" {
-		h += min(int(150*scale), max(int(50*scale), (strings.Count(r.Content.Code, "\n")+1)*(nucular.FontHeight(face)+5))) + int(30*scale)
+		h += min(int(150*scale), max(int(50*scale), (strings.Count(r.Content.Code, "\n")+1)*(desktop.FontHeight(face)+5))) + int(30*scale)
 	}
 	if r.Content.Caption != "" {
 		h += approvalTextHeight(w, r.Content.Caption, width, face) + 6
@@ -97,7 +97,7 @@ func approvalBodyHeight(w *nucular.Window, r *approval) int {
 	}
 	return h
 }
-func approvalCardDimensions(w *nucular.Window, r *approval) (int, int) {
+func approvalCardDimensions(w *desktop.Window, r *approval) (int, int) {
 	footer := approvalFooterHeight(w, r)
 	padding := 2*w.Master().Style().GroupWindow.Padding.Y + 12
 	// The body scrolls independently; decisions stay visible even for long context.
@@ -112,7 +112,7 @@ func approvalCardDimensions(w *nucular.Window, r *approval) (int, int) {
 	}
 	return body, total
 }
-func (a *App) approvalHeight(w *nucular.Window, thread string, limit ...int) int {
+func (a *App) approvalHeight(w *desktop.Window, thread string, limit ...int) int {
 	for i := range a.approvals {
 		if a.approvals[i].ThreadID == thread {
 			a.approvals[i].HeightLimit = 0
@@ -125,7 +125,7 @@ func (a *App) approvalHeight(w *nucular.Window, thread string, limit ...int) int
 	}
 	return 0
 }
-func (a *App) drawApprovalCard(w *nucular.Window, r *approval, count int) {
+func (a *App) drawApprovalCard(w *desktop.Window, r *approval, count int) {
 	bodyHeight, total := approvalCardDimensions(w, r)
 	style := w.Master().Style()
 	previous := style.GroupWindow
@@ -137,13 +137,13 @@ func (a *App) drawApprovalCard(w *nucular.Window, r *approval, count int) {
 	w.RowScaled(total).Dynamic(1)
 	// Very short windows can scroll the entire card when even the decision
 	// rows exceed the available area. Never clip away an action permanently.
-	box := w.GroupBegin("approval", nucular.WindowBorder|nucular.WindowNoHScrollbar)
+	box := w.GroupBegin("approval", desktop.WindowBorder|desktop.WindowNoHScrollbar)
 	if box == nil {
 		style.GroupWindow = previous
 		return
 	}
 	box.RowScaled(bodyHeight).Dynamic(1)
-	if body := box.GroupBegin("approval-body", nucular.WindowNoHScrollbar); body != nil {
+	if body := box.GroupBegin("approval-body", desktop.WindowNoHScrollbar); body != nil {
 		a.drawApprovalBody(body, r, count)
 		body.GroupEnd()
 	}
@@ -151,7 +151,7 @@ func (a *App) drawApprovalCard(w *nucular.Window, r *approval, count int) {
 	box.GroupEnd()
 	style.GroupWindow = previous
 }
-func (a *App) drawApprovalBody(w *nucular.Window, r *approval, count int) {
+func (a *App) drawApprovalBody(w *desktop.Window, r *approval, count int) {
 	face := w.Master().Style().Font
 	large := typeFace(fontPointSize(face)+3, boldFont)
 	w.Master().Style().Font = large
@@ -186,7 +186,7 @@ func (a *App) drawApprovalBody(w *nucular.Window, r *approval, count int) {
 			a.copyText(r.Content.Code)
 		}
 		w.Master().Style().Font = typeFace(max(8, fontPointSize(face)-1), monoFont)
-		h := min(int(150*approvalScale(w)), max(int(50*approvalScale(w)), (strings.Count(r.Content.Code, "\n")+1)*(nucular.FontHeight(w.Master().Style().Font)+5)))
+		h := min(int(150*approvalScale(w)), max(int(50*approvalScale(w)), (strings.Count(r.Content.Code, "\n")+1)*(desktop.FontHeight(w.Master().Style().Font)+5)))
 		w.RowScaled(h).Dynamic(1)
 		approvalCodeEditor(r).Edit(w)
 		w.Master().Style().Font = face
@@ -253,7 +253,7 @@ func (a *App) drawApprovalBody(w *nucular.Window, r *approval, count int) {
 		a.openApprovalDetails(r)
 	}
 }
-func (a *App) drawApprovalChoice(w *nucular.Window, r *approval, i int, c approvalChoice) bool {
+func (a *App) drawApprovalChoice(w *desktop.Window, r *approval, i int, c approvalChoice) bool {
 	w.RowScaled(approvalChoiceHeight(w, c)).Ratio(.08, .92)
 	p := a.p
 	if i == approvalCancelIndex(r.Choices) || c.Key == 'd' || c.Key == 'b' {
@@ -281,7 +281,7 @@ func (a *App) drawApprovalChoice(w *nucular.Window, r *approval, i int, c approv
 	out.FillRect(inset(bounds, 1, 1), 3, bg)
 	face := w.Master().Style().Font
 	lines := approvalWrap(w, c.Title, bounds.W-20, face)
-	lineHeight := nucular.FontHeight(face) + 4
+	lineHeight := desktop.FontHeight(face) + 4
 	for j, line := range lines {
 		out.DrawText(rect.Rect{X: bounds.X + 10, Y: bounds.Y + 6 + j*lineHeight, W: bounds.W - 20, H: lineHeight}, line, face, p.Text)
 	}

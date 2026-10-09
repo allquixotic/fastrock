@@ -4,6 +4,9 @@ on:
     tags: ['v[0-9]*.[0-9]*.[0-9]*']
 permissions:
   contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   check:
     strategy:
@@ -20,10 +23,8 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.27.2'
-      - run: go vet -tags=nucular_headless ./...
-      - run: go test -tags=nucular_headless ./...
-      - run: go test -tags=nucular_headless ./...
-        working-directory: third_party/nucular
+      - run: go vet -tags=fltk_headless ./...
+      - run: go test -tags=fltk_headless ./...
   windows:
     needs: check
     runs-on: windows-latest
@@ -39,6 +40,12 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.27.2'
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
+        with:
+          msystem: UCRT64
+          install: mingw-w64-ucrt-x86_64-gcc
+      - shell: pwsh
+        run: '"C:\msys64\ucrt64\bin" >> $env:GITHUB_PATH'
       - run: go run dev/package.go -os windows -arch amd64 -version '${{ github.ref_name }}' -phase build
       - name: Azure login for Artifact Signing (OIDC)
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
@@ -71,7 +78,9 @@ jobs:
         env:
           FASTROCK_WINDOWS_PUBLISHER: ${{ vars.FASTROCK_WINDOWS_PUBLISHER }}
         run: go run dev/package.go -os windows -arch amd64 -version '${{ github.ref_name }}' -phase package
-      - uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+      # Private-repository attestations require GitHub Enterprise Cloud.
+      - if: github.event.repository.visibility == 'public' || vars.FASTROCK_ATTESTATIONS == 'true'
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
         with:
           subject-path: dist/*.zip
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -107,7 +116,8 @@ jobs:
           FASTROCK_PACKAGE_ARCHIVE: ${{ github.workspace }}/dist/fastrock-darwin-${{ matrix.arch }}.zip
           FASTROCK_PACKAGE_VERSION: ${{ github.ref_name }}
         run: go test ./internal/update -run TestV15PackagedMacBundle -count=1
-      - uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+      - if: github.event.repository.visibility == 'public' || vars.FASTROCK_ATTESTATIONS == 'true'
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
         with:
           subject-path: |
             dist/*.zip

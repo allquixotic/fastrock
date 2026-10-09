@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/buildinfo"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 )
@@ -19,18 +19,18 @@ type settingsView struct {
 	ConfigData                  map[string]any
 	ConfigLayer                 int
 	Layers                      []configLayer
-	ConfigContext               *nucular.TextEditor
-	PluginSearch                *nucular.TextEditor
+	ConfigContext               *desktop.TextEditor
+	PluginSearch                *desktop.TextEditor
 	ConfigFolders               []string
 	PluginCatalog               bool
 	Locals                      []*localProviderView
 	LocalLoadGeneration         uint64
 	Fields                      []configField
-	Search, Raw                 *nucular.TextEditor
+	Search, Raw                 *desktop.TextEditor
 	RawPath, ConfigVersion      string
 	RawHash                     [32]byte
 	afterRawSave                func()
-	Name, Value, Secret, Region *nucular.TextEditor
+	Name, Value, Secret, Region *desktop.TextEditor
 	Items                       []settingsItem
 	Selected                    map[string]bool
 	LoginID, LoginCode          string
@@ -49,7 +49,7 @@ type settingsView struct {
 	ActionRequest               map[string]uint64
 
 	Page                                                                string
-	Endpoint, Token, Workspace, Project, ConfigKey, ConfigValue, Output *nucular.TextEditor
+	Endpoint, Token, Workspace, Project, ConfigKey, ConfigValue, Output *desktop.TextEditor
 	Busy                                                                bool
 	MemoryResetting                                                     bool
 	RawFeedback                                                         settingFeedback
@@ -58,9 +58,9 @@ type settingsView struct {
 func newSettingsView(p settings.Preferences) *settingsView {
 	secret := textEditor("", false)
 	secret.PasswordChar = '●'
-	return &settingsView{Search: textEditor("", false), PluginSearch: textEditor("", false), Raw: textEditor("", true), Name: textEditor("", false), Value: textEditor("", true), Secret: secret, Region: textEditor("us-east-1", false), Selected: map[string]bool{}, Page: "Common", Endpoint: textEditor(p.RallyEndpoint, false), Token: &nucular.TextEditor{Flags: nucular.EditSimple, PasswordChar: '●'}, Workspace: textEditor(p.RallyWorkspace, false), Project: textEditor(p.RallyProject, false), ConfigKey: textEditor("", false), ConfigValue: textEditor("", false), Output: textEditor("", true)}
+	return &settingsView{Search: textEditor("", false), PluginSearch: textEditor("", false), Raw: textEditor("", true), Name: textEditor("", false), Value: textEditor("", true), Secret: secret, Region: textEditor("us-east-1", false), Selected: map[string]bool{}, Page: "Common", Endpoint: textEditor(p.RallyEndpoint, false), Token: &desktop.TextEditor{Flags: desktop.EditSimple, PasswordChar: '●'}, Workspace: textEditor(p.RallyWorkspace, false), Project: textEditor(p.RallyProject, false), ConfigKey: textEditor("", false), ConfigValue: textEditor("", false), Output: textEditor("", true)}
 }
-func (a *App) drawSettings(w *nucular.Window) {
+func (a *App) drawSettings(w *desktop.Window) {
 	s := a.settingsView
 	if s == nil {
 		s = newSettingsView(a.prefs)
@@ -70,11 +70,11 @@ func (a *App) drawSettings(w *nucular.Window) {
 	title(w, "Settings", a.p)
 	a.drawSettingsServer(w)
 	w.Row(max(200, w.LayoutAvailableHeight()-10)).Static(170, max(300, w.LayoutAvailableWidth()-180))
-	if nav := w.GroupBegin("settings-nav", nucular.WindowNoHScrollbar); nav != nil {
+	if nav := w.GroupBegin("settings-nav", desktop.WindowNoHScrollbar); nav != nil {
 		a.drawSettingsNavigation(nav, s)
 		nav.GroupEnd()
 	}
-	if body := w.GroupBegin("settings-content", nucular.WindowNoHScrollbar); body != nil {
+	if body := w.GroupBegin("settings-content", desktop.WindowNoHScrollbar); body != nil {
 		title(body, s.Page, a.p)
 		muted(body, settingsSubtitle(s.Page), a.p)
 		a.drawPageFeedback(body, s)
@@ -252,7 +252,7 @@ func (a *App) drawSettings(w *nucular.Window) {
 			if body.ButtonText("Check for updates…") {
 				a.showUpdates()
 			}
-			muted(body, "Fastrock "+buildinfo.Version+" · Go + nucular", a.p)
+			muted(body, "Fastrock "+buildinfo.Version+" · Go + FLTK", a.p)
 			body.Row(70).Dynamic(1)
 			body.LabelWrap("Independent desktop client for Codex and Rally. Not an official Broadcom or OpenAI application. No Fastrock account, telemetry, embedded browser, or bundled Codex runtime.")
 			muted(body, a.status, a.p)
@@ -339,7 +339,7 @@ func scrub(v any) {
 		}
 	}
 }
-func (a *App) scopePicker(w *nucular.Window, label string, items []rally.Object, selected *string, changed func()) {
+func (a *App) scopePicker(w *desktop.Window, label string, items []rally.Object, selected *string, changed func()) {
 	title(w, label, a.p)
 	names, refs, old := a.picker(label, items).options("All", *selected)
 	w.Row(30).Dynamic(1)

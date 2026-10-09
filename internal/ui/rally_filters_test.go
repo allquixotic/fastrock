@@ -1,4 +1,4 @@
-//go:build nucular_headless
+//go:build fltk_headless
 
 package ui
 
@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/command"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/command"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/allquixotic/fastrock/internal/workspace"
@@ -236,7 +236,7 @@ func TestV64FilterPersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 	restored := b.rallyViews[b.state.Active]
-	if restored.QueryApplied != "" || text(restored.Query) != text(v.Query) || !restored.FilterDraft.matches(v.FilterDraft.snapshot()) || !slices.Equal(restored.StructuredFilters, v.StructuredFilters) || restored.Query.Flags&nucular.EditSigEnter == 0 {
+	if restored.QueryApplied != "" || text(restored.Query) != text(v.Query) || !restored.FilterDraft.matches(v.FilterDraft.snapshot()) || !slices.Equal(restored.StructuredFilters, v.StructuredFilters) || restored.Query.Flags&desktop.EditSigEnter == 0 {
 		t.Fatal("transfer applied a draft or lost filters")
 	}
 	v.StructuredFilters[0].Value = "mutated"
@@ -268,7 +268,7 @@ func TestV64FilterControlsAtDisplayScales(t *testing.T) {
 				v.resetFilterDraft("Tags", "contains")
 				setText(v.FilterDraft.Value, "specific tag")
 				var click image.Point
-				h := nucular.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(400*scale)), func(w *nucular.Window) {
+				h := desktop.NewHeadlessHarness(0, image.Pt(int(float64(width)*scale), int(400*scale)), func(w *desktop.Window) {
 					if click != (image.Point{}) {
 						m := &w.Input().Mouse
 						m.Pos, m.Buttons[mouse.ButtonLeft].ClickedPos = click, click
@@ -318,7 +318,7 @@ func TestV64EnterAppliesOnlyActiveFilterEditor(t *testing.T) {
 			setText(v.FilterDraft.Value, "Sprint")
 			setText(v.Query, `(Blocked = true)`)
 			activate := true
-			h := nucular.NewHeadlessHarness(0, image.Pt(900, 400), func(w *nucular.Window) {
+			h := desktop.NewHeadlessHarness(0, image.Pt(900, 400), func(w *desktop.Window) {
 				if activate {
 					e := v.Query
 					if structured {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/platform"
 	"maps"
 	"os"
@@ -27,13 +27,13 @@ type Connection struct {
 }
 type editorPosition struct{ Cursor, Start, End, ScrollX, ScrollY int }
 
-func position(e *nucular.TextEditor) editorPosition {
+func position(e *desktop.TextEditor) editorPosition {
 	if e == nil {
 		return editorPosition{}
 	}
 	return editorPosition{Cursor: e.Cursor, Start: e.SelectStart, End: e.SelectEnd, ScrollX: e.Scrollbar.X, ScrollY: e.Scrollbar.Y}
 }
-func (p editorPosition) apply(e *nucular.TextEditor) {
+func (p editorPosition) apply(e *desktop.TextEditor) {
 	if e != nil {
 		e.Cursor = max(0, min(p.Cursor, len(e.Buffer)))
 		e.SelectStart = max(0, min(p.Start, len(e.Buffer)))
@@ -364,7 +364,7 @@ func (a *App) installTransfer(p tabTransfer) error {
 			v.Detail.CommentRich = r
 			d.restorePresentation(v.Detail)
 			if d.InlineField != "" && v.Detail.Editors[d.InlineField] != nil {
-				v.Detail.Editors[d.InlineField].Flags |= nucular.EditSigEnter
+				v.Detail.Editors[d.InlineField].Flags |= desktop.EditSigEnter
 			}
 			if d.PendingDefaultOwner && v.Detail.New && text(v.Detail.Editors["Owner"]) == "" {
 				v.Detail.ownerDefaultEditor = v.Detail.Editors["Owner"]
@@ -399,7 +399,7 @@ func (a *App) installTransfer(p tabTransfer) error {
 				v.Editor = loadedFileEditor(f.Text)
 				v.Loaded, v.LoadedText = f.TextLoaded, f.Text
 				if !v.Wrap {
-					v.Editor.Flags &^= nucular.EditNoHorizontalScroll | nucular.EditSoftWrap
+					v.Editor.Flags &^= desktop.EditNoHorizontalScroll | desktop.EditSoftWrap
 				}
 				f.Position.apply(v.Editor)
 				v.Editor.Scrollbar.X, v.Editor.Scrollbar.Y = max(0, f.ScrollX), max(0, f.ScrollY)
@@ -688,7 +688,7 @@ func (a *App) moveTab(t workspace.Tab) {
 	a.rpc("fastrock/windows", map[string]any{}, func(raw json.RawMessage) {
 		var list struct{ Windows []struct{ ID, Name string } }
 		_ = json.Unmarshal(raw, &list)
-		a.window.PopupOpen("Move tab to window", nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(600, 500), false, func(w *nucular.Window) {
+		a.window.PopupOpen("Move tab to window", desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(600, 500), false, func(w *desktop.Window) {
 			if len(list.Windows) == 0 {
 				muted(w, "No other Fastrock windows are open.", a.p)
 			}

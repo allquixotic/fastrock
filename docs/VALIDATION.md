@@ -1,13 +1,36 @@
 # Validation
 
-## Verified on 2026-10-09
+## FLTK port, verified on 2026-10-09
 
-Fastrock builds with **Go 1.27.2 and `CGO_ENABLED=0`** for Windows amd64,
+- `make mac` and `make windows` build with Go 1.27.2 and CGo enabled.
+  macOS arm64 and amd64 both link successfully; Windows amd64 builds with
+  MinGW-w64. Import-table checks find no FLTK dynamic library or Windows
+  GCC/libstdc++/winpthread DLL. The binaries use normal system libraries.
+- The full headless tests, race suite, `go vet -tags=fltk_headless ./...` and the
+  pinned staticcheck with the headless tag pass. Headless
+  tests also run with `CGO_ENABLED=0`; this never initializes FLTK or a display.
+- A physical Windows input fixture creates an FLTK field and button and verifies
+  Unicode replacement, Select All/Copy, canvas focus isolation, Enter commit and button dispatch reach
+  the application model. See `dev/native-smoke.go` and
+  `dev/windows-native-input.ahk`.
+- The complete Windows smoke scenario passes: dark/light boards, filtering,
+  story/task details, saved rich HTML, conversation streaming, Rally-assistant
+  tools and shutdown. It uses only loopback fixture services. The mock server
+  now supports the mixed Artifact queries used by Team Board.
+- The Windows pop-out scenario also passes with 10,006 mixed artifacts: bounded
+  paging, refresh/filter, rich draft transfer, chat transfer, Codex restart and
+  unsent draft preservation. Its final sample reports 300 MiB across the windows.
+- Screenshots were inspected from Windows. No GUI was launched on the Mac.
+  Exhaustive physical interaction and mixed-monitor DPI parity are not claimed.
+
+## Prior nucular validation, 2026-10-09
+
+Before the FLTK port, Fastrock built with **Go 1.27.2 and `CGO_ENABLED=0`** for Windows amd64,
 macOS arm64 and macOS amd64. `go list -deps` reports no `CgoFiles` in either
 the Windows or macOS application dependency graph. The vendored nucular
 software renderer uses Ebitengine 2.10.0 for native presentation.
 
-`make check` passes root vet/tests and the vendored nucular tests with the
+At that checkpoint, `make check` passed root vet/tests and the vendored nucular tests with the
 `nucular_headless` tag. This tag disables native windows. The tests cover
 WSAPI scopes/pagination, CRUD/custom fields, metadata, token/redirect containment,
 cancellation, mutation retries, JSON-RPC correlation/shutdown, version rejection,
@@ -63,7 +86,7 @@ rich-text undo storage is bounded and discarded snapshots release their referenc
 Reproduce the measurements without opening a window:
 
 ```sh
-CGO_ENABLED=0 GOTOOLCHAIN=go1.27.2 go test -tags=nucular_headless \
+CGO_ENABLED=0 GOTOOLCHAIN=go1.27.2 go test -tags=fltk_headless \
   -run '^$' -bench 'Benchmark(BoardFilter|EditorSnapshot|FontWidthCached)$' \
   -benchmem ./internal/ui
 ```
@@ -120,3 +143,32 @@ Windows headless timings (Core Ultra 9 275HX): folder toggle/render 0.098 ms
 for both 100 and 100,000 chats; complete sidebar visibility/Rally redraw 0.405 ms.
 These timings exclude the native compositor. Physical input checks used the
 Windows GUI; no GUI or display-driver test ran on the Mac.
+
+## Compact FLTK navigation (2026-10-09)
+
+The section/page selectors are bordered native buttons at 25 logical pixels.
+Every Rally control row can be collapsed independently with its small minus
+button. Hidden rows share a compact + restore strip; + All restores them together.
+Preferences retain hidden rows across restarts without changing filters or scope.
+The saved-view and timebox rows use inline labels on wider windows. New-tab
+recents begin collapsed and remain expandable; existing folder, file, resume and
+Rally actions remain available.
+
+Tabs retain a 160-logical-pixel minimum width. A Windows mouse fixture verifies
+independent row visibility buttons, single-click scrolling, double-click jumps
+to each end, and automatic selection reveal across 13 tabs. Run
+`dev/windows-smoke.ps1 -Layout` alongside `dev/windows-layout-input.ahk` on Windows.
+Headless checks cover selection reveal at 100/150/200% scale, drag ordering,
+collapse/restore, recent-folder expansion and tooltip/native-button overlap.
+Screenshots are saved locally in `build/ui-refinement-screenshots/`.
+The complete headless suite, vet, pinned staticcheck and targeted race checks pass after these refinements. Both native build targets retain static FLTK linkage.
+
+The per-row compaction fixture is `dev/windows-smoke.ps1 -Rows`. It captures
+expanded, partially hidden, fully hidden and restored Rally controls in both
+themes. Headless checks also cover independent restore, legacy preference
+migration, persistence, board-height recovery and wrapped rows at multiple DPIs.
+The 797-test headless suite, vet, pinned staticcheck, targeted race checks, and
+Windows mouse checks pass. The full Windows fixture also passes filtering,
+rich-text save/reopen, child-task navigation, chat and Rally assistant checks.
+Updated screenshots are in
+`build/rally-row-screenshots/`; both release binaries verify static FLTK linkage.

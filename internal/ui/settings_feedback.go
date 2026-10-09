@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 )
 
 type settingFeedback struct {
@@ -78,7 +78,7 @@ func (a *App) settingsRequestAt(key, method string, params any) {
 	})
 }
 
-func (a *App) drawSettingFeedback(w *nucular.Window, feedback settingFeedback) {
+func (a *App) drawSettingFeedback(w *desktop.Window, feedback settingFeedback) {
 	if feedback.Message == "" {
 		return
 	}
@@ -88,7 +88,7 @@ func (a *App) drawSettingFeedback(w *nucular.Window, feedback settingFeedback) {
 		muted(w, feedback.Message, a.p)
 	}
 }
-func (a *App) drawPageFeedback(w *nucular.Window, s *settingsView) {
+func (a *App) drawPageFeedback(w *desktop.Window, s *settingsView) {
 	keys := []string{}
 	for key := range s.ActionFeedback {
 		if strings.HasPrefix(key, "page:"+s.Page+":") {
@@ -100,7 +100,7 @@ func (a *App) drawPageFeedback(w *nucular.Window, s *settingsView) {
 		a.drawSettingFeedback(w, s.ActionFeedback[key])
 	}
 }
-func (a *App) configFeedback(w *nucular.Window, s *settingsView, key string) {
+func (a *App) configFeedback(w *desktop.Window, s *settingsView, key string) {
 	a.drawSettingFeedback(w, settingFeedback{Message: s.ConfigFeedback[key], Failed: s.ConfigFailed[key]})
 }
 

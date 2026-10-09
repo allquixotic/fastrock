@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/desktop"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 )
@@ -25,7 +25,7 @@ var rallyFilterOperators = []string{"is", "is not", "contains"}
 
 type rallyFilterDraft struct {
 	Field, Operator, Label string
-	Value                  *nucular.TextEditor
+	Value                  *desktop.TextEditor
 	Picker                 *detailView
 	Error                  string
 }
@@ -63,7 +63,7 @@ func (s *rallyFilterDraftState) restore() *rallyFilterDraft {
 func newRallyFilterDraft(field, operator string) *rallyFilterDraft {
 	d := &rallyFilterDraft{Field: field, Operator: operator, Value: textEditor("", false)}
 	d.Value.Placeholder = "Name contains…"
-	d.Value.Flags |= nucular.EditSigEnter
+	d.Value.Flags |= desktop.EditSigEnter
 	return d
 }
 
@@ -221,7 +221,7 @@ func (a *App) chooseRallyFilter(v *rallyView) *referencePicker {
 	d.closePicker()
 	// Reuse the paged, typed reference chooser without making it the current
 	// work item editor. The value and lifecycle remain owned by this draft.
-	d.Picker = &detailView{Editors: map[string]*nucular.TextEditor{d.Field: d.Value}}
+	d.Picker = &detailView{Editors: map[string]*desktop.TextEditor{d.Field: d.Value}}
 	p := a.openReferencePicker(d.Picker, rally.Field{Name: d.Field, DisplayName: label, AttributeType: "OBJECT", ReferenceType: kind})
 	if p == nil {
 		return nil
@@ -232,7 +232,7 @@ func (a *App) chooseRallyFilter(v *rallyView) *referencePicker {
 	return p
 }
 
-func (a *App) drawRallyFilterBuilder(w *nucular.Window, v *rallyView) {
+func (a *App) drawRallyFilterBuilder(w *desktop.Window, v *rallyView) {
 	if v.FilterDraft == nil {
 		v.resetFilterDraft("Iteration", "is")
 	}
@@ -254,7 +254,7 @@ func (a *App) drawRallyFilterBuilder(w *nucular.Window, v *rallyView) {
 	var committed bool
 	if d.Operator == "contains" {
 		w.Row(30).Ratio(.75, .25)
-		committed = d.Value.Edit(w)&nucular.EditCommitted != 0
+		committed = d.Value.Edit(w)&desktop.EditCommitted != 0
 		if d.Value.Active {
 			v.cardFocusActive = false
 		}
@@ -293,11 +293,11 @@ func (a *App) drawRallyFilterBuilder(w *nucular.Window, v *rallyView) {
 	}
 }
 
-func (a *App) drawRallyAdvancedQuery(w *nucular.Window, v *rallyView) {
+func (a *App) drawRallyAdvancedQuery(w *desktop.Window, v *rallyView) {
 	w.Row(30).Ratio(.68, .14, .18)
 	event := v.Query.Edit(w)
 	apply := w.ButtonText("Apply")
-	if apply || event&nucular.EditCommitted != 0 {
+	if apply || event&desktop.EditCommitted != 0 {
 		v.QueryApplied = text(v.Query)
 		a.refreshRally(v)
 	}

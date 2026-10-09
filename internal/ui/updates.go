@@ -3,13 +3,13 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/rect"
+	"github.com/allquixotic/fastrock/internal/desktop"
+	"github.com/allquixotic/fastrock/internal/desktop/rect"
 )
 
 func (a *App) showUpdates() {
 	a.rpc("fastrock/update", map[string]bool{"check": true}, func(raw json.RawMessage) { json.Unmarshal(raw, &a.updateStatus) })
-	a.window.PopupOpen("Fastrock updates", nucular.WindowTitle|nucular.WindowMovable|nucular.WindowClosable, rect.Rect{X: 280, Y: 190, W: 510, H: 230}, true, func(w *nucular.Window) {
+	a.window.PopupOpen("Fastrock updates", desktop.WindowTitle|desktop.WindowMovable|desktop.WindowClosable, rect.Rect{X: 280, Y: 190, W: 510, H: 230}, true, func(w *desktop.Window) {
 		w.Row(80).Dynamic(1)
 		w.LabelWrap(a.updateStatus.Message)
 		if a.updateStatus.Total > 0 && a.updateStatus.State == "downloading" {
