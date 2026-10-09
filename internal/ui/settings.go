@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/buildinfo"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 )
@@ -215,7 +216,11 @@ func (a *App) drawSettings(w *nucular.Window) {
 			a.keyboardSettings(body)
 
 		case "About":
-			muted(body, "Fastrock 1.0 · Go + nucular", a.p)
+			body.Row(30).Static(190)
+			if body.ButtonText("Check for updates…") {
+				a.showUpdates()
+			}
+			muted(body, "Fastrock "+buildinfo.Version+" · Go + nucular", a.p)
 			body.Row(70).Dynamic(1)
 			body.LabelWrap("Independent desktop client for Codex and Rally. Not an official Broadcom or OpenAI application. No Fastrock account, telemetry, embedded browser, or bundled Codex runtime.")
 			muted(body, a.status, a.p)

@@ -8,7 +8,6 @@ import (
 	"image"
 	"image/color"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/aarzilli/nucular"
@@ -18,12 +17,16 @@ import (
 	"github.com/allquixotic/fastrock/internal/platform"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
+	"github.com/allquixotic/fastrock/internal/update"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/mouse"
 )
 
 type App struct {
+	updateStatus     update.Status
 	italicFace       font.Face
+	navigationFace   font.Face
+	draftChats       map[string]bool
 	openThreads      []codex.OpenThread
 	crossSequence    uint64
 	layoutJobs       chan func()
@@ -150,6 +153,7 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences,
 		}()
 	}
 	a.connection = connection
+	a.toast = connection.Notice
 	a.client = connection.Client
 	a.popping, a.transfers = map[string]bool{}, map[string]string{}
 	a.sessionName = "session.json"
@@ -185,6 +189,7 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences,
 	}
 	a.p = colors(prefs.Theme == "light")
 	a.italicFace, _ = font.NewFace(uiItalic, prefs.FontSize)
+	a.navigationFace, _ = font.NewFace(uiRegular, prefs.FontSize+3)
 	a.sidebarSearch = textEditor("", false)
 	a.sidebarSearch.Placeholder = "Search conversations"
 	a.newFolder = textEditor(prefs.WorkingDirectory, false)
@@ -217,6 +222,12 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences,
 			a.post(a.restoreDocuments)
 		}
 		a.post(func() { a.status = client.Version + " · Connected" })
+		a.work(func() {
+			var status update.Status
+			if client.Call(ctx, "fastrock/update", map[string]bool{}, &status) == nil {
+				a.post(func() { a.updateStatus = status })
+			}
+		})
 		go a.consume(client)
 		a.loadCatalog(client, prefs.WorkingDirectory)
 		a.loadThreads(client, false)
@@ -337,6 +348,7 @@ func (a *App) savePrefs() {
 }
 func (a *App) theme() {
 	a.italicFace, _ = font.NewFace(uiItalic, a.prefs.FontSize)
+	a.navigationFace, _ = font.NewFace(uiRegular, a.prefs.FontSize+3)
 	if a.prefs.Theme != "light" {
 		a.prefs.Theme = "dark"
 	}
@@ -507,7 +519,11 @@ func (a *App) draw(w *nucular.Window) {
 			a.toast = ""
 		}
 	}
-	h := max(240, w.LayoutAvailableHeight()-28)
+	footerHeight := 0
+	if a.prefs.StatusBar {
+		footerHeight = 25
+	}
+	h := max(240, w.LayoutAvailableHeight()-footerHeight)
 	side := 0
 	if a.prefs.Sidebar {
 		side = 255
@@ -565,9 +581,14 @@ func (a *App) draw(w *nucular.Window) {
 			iw.GroupEnd()
 		}
 	}
-	w.Row(25).Ratio(.68, .32)
-	w.LabelColored(a.status, "LC", a.p.Muted)
-	w.LabelColored("Fastrock 1.0 · "+strings.ToUpper(a.prefs.Theme[:1])+a.prefs.Theme[1:], "RC", a.p.Faint)
+	if a.prefs.StatusBar {
+		w.Row(25).Static(max(100, w.LayoutAvailableWidth()-28), 28)
+		w.LabelColored(a.status, "LC", a.p.Muted)
+		if iconButton(w, "close", false, a.p) {
+			a.prefs.StatusBar = false
+			a.savePrefs()
+		}
+	}
 	if a.paletteOpen {
 		a.drawPalette()
 	}
@@ -577,7 +598,8 @@ func (a *App) draw(w *nucular.Window) {
 	}
 }
 func (a *App) drawTabs(w *nucular.Window) {
-	w.Row(38).Static(36, max(100, w.LayoutAvailableWidth()-184), 30, 30, 88)
+	settingsWidth := nucular.FontWidth(w.Master().Style().Font, "Settings") + 20
+	w.Row(38).Static(36, max(100, w.LayoutAvailableWidth()-96-settingsWidth), 30, 30, settingsWidth)
 	if iconButton(w, "sidebar", a.prefs.Sidebar, a.p) {
 		a.prefs.Sidebar = !a.prefs.Sidebar
 		a.savePrefs()
@@ -712,7 +734,7 @@ func (a *App) drawTabs(w *nucular.Window) {
 	if iconButton(w, "plus", false, a.p) {
 		a.state.Open(workspace.New, "New tab", "", "")
 	}
-	if iconButton(w, "i", a.prefs.Info, a.p) {
+	if iconButton(w, "info", a.prefs.Info, a.p) {
 		a.prefs.Info = !a.prefs.Info
 		a.savePrefs()
 	}

@@ -11,9 +11,9 @@ var applicationMenus = []struct {
 	Items []struct{ ID, Title string }
 }{
 	{"File", []struct{ ID, Title string }{{"new-tab", "New tab"}, {"open-file", "Open file…"}, {"close-tab", "Close tab"}, {"settings", "Settings…"}, {"quit", "Quit"}}},
-	{"View", []struct{ ID, Title string }{{"toggle-sidebar", "Toggle sidebar"}, {"toggle-info", "Toggle information"}, {"next-tab", "Next tab"}, {"prev-tab", "Previous tab"}}},
+	{"View", []struct{ ID, Title string }{{"toggle-sidebar", "Toggle sidebar"}, {"toggle-info", "Toggle information"}, {"toggle-status", "Show/hide status bar"}, {"next-tab", "Next tab"}, {"prev-tab", "Previous tab"}}},
 	{"Thread", []struct{ ID, Title string }{{"escape", "Interrupt"}, {"fork", "Fork"}, {"compact", "Compact context"}, {"review", "Review changes…"}, {"export", "Export Markdown…"}}},
-	{"Help", []struct{ ID, Title string }{{"about", "About Fastrock"}, {"keyboard", "Keyboard shortcuts"}, {"feedback", "Send feedback…"}, {"open-logs", "Open log folder"}, {"docs", "Codex documentation"}}},
+	{"Help", []struct{ ID, Title string }{{"about", "About Fastrock"}, {"updates", "Check for updates…"}, {"keyboard", "Keyboard shortcuts"}, {"feedback", "Send feedback…"}, {"open-logs", "Open log folder"}, {"docs", "Codex documentation"}}},
 }
 
 func (a *App) drawMenu(w *nucular.Window) {
@@ -33,6 +33,11 @@ func (a *App) drawMenu(w *nucular.Window) {
 }
 func (a *App) menuAction(id string) {
 	switch id {
+	case "updates":
+		a.showUpdates()
+	case "toggle-status":
+		a.prefs.StatusBar = !a.prefs.StatusBar
+		a.savePrefs()
 	case "quit":
 		a.window.Close()
 	case "keyboard":

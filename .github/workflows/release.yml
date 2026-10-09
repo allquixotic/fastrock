@@ -1,0 +1,44 @@
+name: Release
+on:
+  push:
+    tags: ['v[0-9]*.[0-9]*.[0-9]*']
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - { runner: windows-latest, os: windows, arch: amd64, dmg: 'false' }
+          - { runner: macos-latest, os: darwin, arch: arm64, dmg: 'true' }
+          - { runner: macos-latest, os: darwin, arch: amd64, dmg: 'true' }
+    runs-on: ${{ matrix.runner }}
+    env:
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.2'
+      - run: go test -tags=nucular_headless ./...
+      - run: go run dev/package.go -os ${{ matrix.os }} -arch ${{ matrix.arch }} -version ${{ github.ref_name }} -dmg=${{ matrix.dmg }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+      - run: cat dist/*.sha256 > dist/SHA256SUMS
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create '${{ github.ref_name }}' dist/*.zip dist/*.dmg dist/SHA256SUMS --verify-tag --generate-notes

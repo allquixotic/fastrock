@@ -42,6 +42,7 @@ func (p *peer) send(m Message) error {
 }
 
 type Broker struct {
+	updateHandler func(bool) any
 	restartMu     sync.Mutex
 	starter       func() (*Client, error)
 	sequence      atomic.Uint64
@@ -210,11 +211,22 @@ func (b *Broker) request(p *peer, m Message) {
 	var err error
 	var args struct {
 		ThreadID, Ticket, Window, Name string
+		Check                          bool
 		Bytes                          uint64
 		Data                           json.RawMessage
 	}
 	_ = json.Unmarshal(m.Params, &args)
 	switch m.Method {
+	case "fastrock/update":
+		b.mu.Lock()
+		handler := b.updateHandler
+		b.mu.Unlock()
+		if handler == nil {
+			err = errors.New("updates are unavailable in this process")
+		} else {
+			result = raw(handler(args.Check))
+		}
+
 	case "fastrock/publishThreads":
 		var threads []OpenThread
 		err = json.Unmarshal(args.Data, &threads)
@@ -622,3 +634,11 @@ func (b *Broker) restart() error {
 	b.broadcast("fastrock/serverReady", map[string]string{"version": c.Version})
 	return nil
 }
+
+// SetUpdateHandler connects the one shared updater to every native window.
+func (b *Broker) SetUpdateHandler(fn func(bool) any) {
+	b.mu.Lock()
+	b.updateHandler = fn
+	b.mu.Unlock()
+}
+func (b *Broker) UpdateStatus(value any) { b.broadcast("fastrock/updateStatus", value) }

@@ -384,7 +384,39 @@ func (a *App) drawRally(w *nucular.Window, v *rallyView) {
 
 }
 func (a *App) rallyNav(w *nucular.Window, v *rallyView) {
-	w.Row(34).Static(170, 90, 90, 58, 58, 58, 70, 82, 70)
+	w.Row(54).Dynamic(6)
+	for _, group := range []string{"Home", "Plan", "Track", "Quality", "Portfolio", "Reports"} {
+		clicked := rallySection(w, group, v.Spec.Group == group, a.navigationFace, a.p)
+		if clicked {
+			if group == v.Spec.Group {
+				continue
+			}
+			page := ""
+			for _, p := range rally.Pages {
+				if p.Group == group {
+					page = p.ID
+					break
+				}
+			}
+			if group == "Track" {
+				page = "teamboard"
+			}
+			a.openRally(page)
+		}
+	}
+	pages := 0
+	for _, p := range rally.Pages {
+		if p.Group == v.Spec.Group {
+			pages++
+		}
+	}
+	w.Row(32).Dynamic(pages)
+	for _, p := range rally.Pages {
+		if p.Group == v.Spec.Group && sectionTab(w, p.Title, p.ID == v.Spec.ID, a.p) {
+			a.openRally(p.ID)
+		}
+	}
+	w.Row(32).Static(210, 100, 100)
 	projects := []string{"All teams"}
 	refs := []string{""}
 	for _, o := range a.projects {
@@ -406,18 +438,6 @@ func (a *App) rallyNav(w *nucular.Window, v *rallyView) {
 	if parentsChanged || childrenChanged {
 		a.savePrefs()
 		a.reloadRally()
-	}
-	for _, group := range []string{"Home", "Plan", "Track", "Quality", "Portfolio", "Reports"} {
-		if menu := w.Menu(labelText(group), 210, nil); menu != nil {
-			for _, p := range rally.Pages {
-				if p.Group == group {
-					menu.Row(27).Dynamic(1)
-					if menu.MenuItem(labelText(p.Title)) {
-						a.openRally(p.ID)
-					}
-				}
-			}
-		}
 	}
 	w.Row(29).Ratio(.65, .15, .2)
 	w.LabelColored("Fastrock  /  "+v.Spec.Title, "LC", a.p.Muted)

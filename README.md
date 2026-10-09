@@ -3,6 +3,7 @@
 A native Go/nucular desktop workspace for Codex conversations and Rally work.
 Windows 11 x64 is the primary target; macOS builds use the same application code.
 Dark mode is the default. Light mode and font size are in Settings.
+The status bar starts hidden; restore it from View and close it with its × icon.
 
 The shell follows the Codex GUI layout: horizontal document tabs, a conversation-only
 sidebar grouped by project, an optional conversation information panel, independent
@@ -34,6 +35,15 @@ On Windows, `powershell -ExecutionPolicy Bypass -File dev/build.ps1` produces
 `build/fastrock.exe`. Run it from a terminal whose PATH includes Codex, or arrange
 that PATH for your desktop login. The generated macOS app bundle is unsigned.
 No GUI tests are run on macOS.
+
+## Updates and installation
+
+Release builds check GitHub automatically and download verified updates in the
+background. **Help → Check for updates** checks manually. Close all Fastrock
+windows to install a ready update and restart. Windows uses a per-user installation
+and automatically creates a Start menu shortcut; administrator access is never
+required. macOS releases ship as a drag-to-Applications DMG. Development builds
+remain portable. See [release packaging and update behavior](docs/UPDATES.md).
 
 ## Codex conversations
 

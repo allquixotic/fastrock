@@ -30,6 +30,7 @@ type Preferences struct {
 	Keymap           map[string]KeyBinding `json:"keymap,omitempty"`
 	Theme            string                `json:"theme"`
 	FontSize         int                   `json:"fontSize"`
+	StatusBar        bool                  `json:"statusBar"`
 	Sidebar          bool                  `json:"sidebar"`
 	Info             bool                  `json:"info"`
 	EnterSends       bool                  `json:"enterSends"`

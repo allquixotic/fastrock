@@ -51,16 +51,20 @@ func iconButton(w *nucular.Window, icon string, active bool, p palette) bool {
 	} else if in.Mouse.HoveringRect(b) {
 		o.FillRect(inset(b, 2, 3), 4, p.Hover)
 	}
-	r := inset(b, 7, 7)
+	r := rect.Rect{X: b.X + (b.W-18)/2, Y: b.Y + (b.H-16)/2, W: 18, H: 16}
 	c := p.Muted
 	if active {
 		c = p.Text
 	}
 	switch icon {
-	case "sidebar":
+	case "sidebar", "info":
 		o.FillRect(rect.Rect{X: r.X, Y: r.Y, W: r.W, H: r.H}, 2, p.Border)
 		o.FillRect(inset(r, 1, 1), 1, p.Window)
-		o.StrokeLine(image.Pt(r.X+5, r.Y), image.Pt(r.X+5, r.Y+r.H), 1, c)
+		x := r.X + 5
+		if icon == "info" {
+			x = r.X + r.W - 5
+		}
+		o.StrokeLine(image.Pt(x, r.Y), image.Pt(x, r.Y+r.H), 1, c)
 	case "close":
 		closeGlyph(o, b, c)
 	case "plus":
@@ -69,6 +73,12 @@ func iconButton(w *nucular.Window, icon string, active bool, p palette) bool {
 		o.StrokeLine(image.Pt(x, y-4), image.Pt(x, y+4), 1, c)
 	default:
 		labelAt(o, inset(b, 5, 0), icon, w.Master().Style().Font, c)
+	}
+	if in.Mouse.HoveringRect(b) {
+		tips := map[string]string{"sidebar": "Show or hide conversations", "info": "Show or hide conversation information", "plus": "New tab or conversation", "close": "Hide status bar"}
+		if tip := tips[icon]; tip != "" {
+			w.Tooltip(tip)
+		}
 	}
 	return in.Mouse.Clicked(mouse.ButtonLeft, b)
 }
@@ -181,5 +191,43 @@ func formatButton(w *nucular.Window, label, tip string, active bool, p palette) 
 	if in.Mouse.HoveringRect(b) {
 		w.Tooltip(tip)
 	}
+	return in.Mouse.Clicked(mouse.ButtonLeft, b)
+}
+
+func folderRow(w *nucular.Window, title string, expanded bool, p palette) bool {
+	b, out := w.Custom(w.CustomState())
+	if out == nil {
+		return false
+	}
+	in := w.Input()
+	if in.Mouse.HoveringRect(b) {
+		out.FillRect(inset(b, 2, 1), 4, p.Hover)
+	}
+	x, y := b.X+12, b.Y+b.H/2
+	if expanded {
+		out.StrokeLine(image.Pt(x-3, y-2), image.Pt(x, y+1), 1, p.Muted)
+		out.StrokeLine(image.Pt(x, y+1), image.Pt(x+3, y-2), 1, p.Muted)
+	} else {
+		out.StrokeLine(image.Pt(x-1, y-3), image.Pt(x+2, y), 1, p.Muted)
+		out.StrokeLine(image.Pt(x+2, y), image.Pt(x-1, y+3), 1, p.Muted)
+	}
+	labelAt(out, rect.Rect{X: b.X + 26, Y: b.Y, W: b.W - 32, H: b.H}, title, w.Master().Style().Font, p.Muted)
+	return in.Mouse.Clicked(mouse.ButtonLeft, b)
+}
+func rallySection(w *nucular.Window, title string, active bool, face font.Face, p palette) bool {
+	b, out := w.Custom(w.CustomState())
+	if out == nil {
+		return false
+	}
+	in := w.Input()
+	fg := p.Muted
+	if active {
+		out.FillRect(inset(b, 3, 3), 6, p.Selected)
+		fg = p.Accent
+	} else if in.Mouse.HoveringRect(b) {
+		out.FillRect(inset(b, 3, 3), 6, p.Hover)
+	}
+	width := nucular.FontWidth(face, title)
+	labelAt(out, rect.Rect{X: b.X + (b.W-width)/2, Y: b.Y, W: width + 2, H: b.H}, title, face, fg)
 	return in.Mouse.Clicked(mouse.ButtonLeft, b)
 }

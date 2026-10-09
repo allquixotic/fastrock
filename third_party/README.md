@@ -35,3 +35,7 @@ renderer updater when its native window closes (releasing its frame buffers).
 
 Menu and closable-popup Escape handling removes the top popup before the next
 layout pass; regression coverage protects non-closable approval dialogs.
+
+A `nucular_headless`-only harness now exercises the complete layout and software
+render path without constructing any native window or starting clipboard services.
+It is used for large-history regressions and viewport performance measurements.

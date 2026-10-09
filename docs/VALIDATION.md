@@ -91,3 +91,30 @@ native soft wrapping, direct rich-text selection and source line/column links.
 Physical Escape, Ctrl+Comma and image paste are also verified. All tests use
 deterministic or local data. Detailed interaction coverage is in
 [INTERACTIONS.md](INTERACTIONS.md).
+
+## Navigation and updates (2026-10-09)
+
+- Headless regression renders an expanded 100,000-conversation folder, checks
+  bounded draw commands, collapse/reopen, changed title search and archive scope.
+  Its alternating collapse/expand software-render benchmark on this Mac measured
+  0.059–0.065 ms/frame for both 100 and 100,000 rows (prior implementation:
+  6.33 ms for 100,000). Full-window sidebar toggle plus Rally redraw: 0.30 ms. This is not a Mac GUI test.
+- Session regression verifies only open conversations and retained drafts are
+  copied, excluding unrelated loaded server history from recurring snapshots.
+- Windows native UI fixture: 10,000 conversations and 10,000 Rally stories;
+  search, disclosure clicks, sidebar toggle, dark/light Rally navigation, View and
+  Help menus. Screenshots remain local under `build/`.
+- Windows update unit suite exercises a live process wait, native Start menu link,
+  verified staging, corrupt/truncated/oversized/missing-platform downloads,
+  traversal rejection, cancellation and rollback. The test restores the original
+  user shortcut after checking it.
+- Windows helper smoke test keeps the old executable running, verifies it is not
+  replaced early, exits it, then confirms replacement and automatic restart of a
+  new fixture executable. No external release or production API is needed.
+- macOS arm64 DMG and app packaging checked non-interactively. Mac GUI execution
+  remains prohibited; public Developer ID signing/notarization is not claimed.
+
+Windows headless timings (Core Ultra 9 275HX): folder toggle/render 0.098 ms
+for both 100 and 100,000 chats; complete sidebar visibility/Rally redraw 0.405 ms.
+These timings exclude the native compositor. Physical input checks used the
+Windows GUI; no GUI or display-driver test ran on the Mac.

@@ -114,6 +114,7 @@ func (a *App) chatAction(id, action string) {
 				return
 			}
 			a.rpc("thread/name/set", map[string]any{"threadId": id, "name": name}, func(_ json.RawMessage) {
+				a.invalidateSidebar()
 				c.Title = name
 				for i := range a.state.Tabs {
 					if a.state.Tabs[i].Target == id {
@@ -168,6 +169,7 @@ func (a *App) chatAction(id, action string) {
 	case "archive", "unarchive":
 		method := "thread/" + action
 		a.rpc(method, map[string]any{"threadId": id}, func(_ json.RawMessage) {
+			a.invalidateSidebar()
 			c.Archived = action == "archive"
 			for _, t := range append([]workspace.Tab(nil), a.state.Tabs...) {
 				if t.Target == id {

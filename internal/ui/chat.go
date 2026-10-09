@@ -68,8 +68,14 @@ func (a *App) fetchThreads(client *codex.Client, archived bool, cursor string) {
 			if id == "" {
 				continue
 			}
-			if _, ok := a.state.Chats[id]; !ok {
-				a.state.Chats[id] = &workspace.Conversation{ID: id, Title: threadTitle(t), Cwd: str(t, "cwd"), Updated: integer(t, "updatedAt"), Archived: archived, Status: "idle"}
+			title, cwd, updated := threadTitle(t), str(t, "cwd"), integer(t, "updatedAt")
+			if c := a.state.Chats[id]; c != nil {
+				if c.Title != title || c.Cwd != cwd || c.Updated != updated || c.Archived != archived {
+					c.Title, c.Cwd, c.Updated, c.Archived = title, cwd, updated, archived
+					a.invalidateSidebar()
+				}
+			} else {
+				a.state.Chats[id] = &workspace.Conversation{ID: id, Title: title, Cwd: cwd, Updated: updated, Archived: archived, Status: "idle"}
 			}
 		}
 	})
@@ -238,21 +244,23 @@ func (a *App) drawSidebar(w *nucular.Window) {
 			a.work(func() { a.loadThreads(client, true) })
 		}
 	}
+	spacing := w.Master().Style().GroupWindow.Spacing.Y
+	rowHeight := int(28 * w.Master().Style().Scaling)
+	stride := rowHeight + spacing
 	for _, folder := range a.sidebarFolders() {
-		w.Row(28).Dynamic(1)
-		arrow := "v  "
-		if a.collapsed[folder.path] {
-			arrow = ">  "
-		}
-		if flatRow(w, arrow+folder.title, "", false, color.RGBA{}, a.p) {
+		w.RowScaled(rowHeight).Dynamic(1)
+		if folderRow(w, folder.title, !a.collapsed[folder.path], a.p) {
 			a.collapsed[folder.path] = !a.collapsed[folder.path]
 		}
 		a.folderContext(w, folder.path)
 		if a.collapsed[folder.path] {
 			continue
 		}
-		for _, c := range folder.rows {
-			w.Row(28).Dynamic(1)
+		top := w.WidgetBounds().Y
+		first, last := sidebarVisible(top, w.Bounds.Y, w.Bounds.Y+w.Bounds.H, stride, len(folder.rows))
+		sidebarSkip(w, first, stride, spacing)
+		for _, c := range folder.rows[first:last] {
+			w.RowScaled(rowHeight).Dynamic(1)
 			var dot color.RGBA
 			if c.Busy() {
 				dot = a.p.Accent
@@ -268,6 +276,7 @@ func (a *App) drawSidebar(w *nucular.Window) {
 			}
 			a.sidebarContext(w, c)
 		}
+		sidebarSkip(w, len(folder.rows)-last, stride, spacing)
 	}
 	if a.sidebarCache.count == 0 {
 		muted(w, "No conversations", a.p)
@@ -327,6 +336,7 @@ func (a *App) send(c *workspace.Conversation, mode string) {
 		return
 	}
 	if c.Title == "New conversation" {
+		a.invalidateSidebar()
 		c.Title = cut(strings.SplitN(value, "\n", 2)[0], 65)
 		for i := range a.state.Tabs {
 			if a.state.Tabs[i].Target == c.ID {
@@ -421,6 +431,7 @@ func (a *App) startTurn(c *workspace.Conversation, value string, attachments []s
 				}
 			}
 			chat.Updated = time.Now().Unix()
+			a.invalidateSidebar()
 		})
 	})
 }
@@ -460,6 +471,13 @@ func (a *App) event(m codex.Message) {
 	a.eventDecoded(m, codex.Decode(m.Params))
 }
 func (a *App) eventDecoded(m codex.Message, p map[string]any) {
+	if m.Method == "fastrock/updateStatus" {
+		json.Unmarshal(m.Params, &a.updateStatus)
+		if a.updateStatus.State == "ready" || a.updateStatus.State == "error" {
+			a.toast = a.updateStatus.Message
+		}
+		return
+	}
 	if a.transferEvent(m) {
 		return
 	}
@@ -525,6 +543,7 @@ func (a *App) eventDecoded(m codex.Message, p map[string]any) {
 		c.Append(str(p, "itemId"), "commandExecution", "tool", str(p, "delta"))
 	case "thread/name/updated":
 		if name := str(p, "threadName"); name != "" {
+			a.invalidateSidebar()
 			c.Title = name
 			for i := range a.state.Tabs {
 				if a.state.Tabs[i].Target == c.ID {
@@ -543,6 +562,9 @@ func (a *App) eventDecoded(m codex.Message, p map[string]any) {
 		if err, ok := p["error"].(map[string]any); ok {
 			a.toast = str(err, "message")
 		}
+	}
+	if m.Method == "turn/started" || m.Method == "turn/completed" {
+		a.invalidateSidebar()
 	}
 	c.Updated = time.Now().Unix()
 }
@@ -931,7 +953,7 @@ func (a *App) drawInfo(w *nucular.Window) {
 	w.Row(28).Dynamic(1)
 	if w.ButtonText("Rename…") {
 		a.inputDialog("Rename conversation", c.Title, func(name string) {
-			a.rpc("thread/name/set", map[string]any{"threadId": c.ID, "name": name}, func(_ json.RawMessage) { c.Title = name; tab.Title = name })
+			a.rpc("thread/name/set", map[string]any{"threadId": c.ID, "name": name}, func(_ json.RawMessage) { a.invalidateSidebar(); c.Title = name; tab.Title = name })
 		})
 	}
 	w.Row(28).Dynamic(1)
@@ -952,7 +974,7 @@ func (a *App) drawInfo(w *nucular.Window) {
 		archiveLabel, archiveMethod = "Unarchive", "thread/unarchive"
 	}
 	if w.ButtonText(archiveLabel) {
-		a.rpc(archiveMethod, map[string]any{"threadId": c.ID}, func(_ json.RawMessage) { c.Archived = !c.Archived; a.state.Close(tab.ID) })
+		a.rpc(archiveMethod, map[string]any{"threadId": c.ID}, func(_ json.RawMessage) { a.invalidateSidebar(); c.Archived = !c.Archived; a.state.Close(tab.ID) })
 	}
 	w.Row(28).Dynamic(1)
 	if w.ButtonText("Export Markdown…") {

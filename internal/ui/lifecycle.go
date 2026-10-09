@@ -35,6 +35,7 @@ func (a *App) closeTabNow(id string) {
 					if v := a.chats[c.ID]; v != nil {
 						c.Draft = text(v.Editor)
 						c.DraftAttachments = v.Attachments
+						a.rememberDraft(c.ID)
 					}
 					if c.Ephemeral {
 						if c.Busy() && c.TurnID != "" {
@@ -108,6 +109,11 @@ func (a *App) maintain() {
 			for id, c := range a.state.Chats {
 				if c.Ephemeral || c.Busy() || active != nil && active.Target == id {
 					continue
+				}
+				if v := a.chats[id]; v != nil {
+					c.Draft = text(v.Editor)
+					c.DraftAttachments = v.Attachments
+					a.rememberDraft(id)
 				}
 				c.ReleaseTranscript()
 				delete(a.chats, id)

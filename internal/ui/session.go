@@ -39,6 +39,7 @@ func (a *App) loadSession() {
 		}
 		c.Status, c.TurnID = "idle", ""
 		a.state.Chats[id] = c
+		a.rememberDraft(id)
 	}
 	for _, doc := range s.Documents {
 		a.installTransfer(doc)
@@ -54,6 +55,7 @@ func (a *App) loadSession() {
 				for id, c := range extra.Chats {
 					if c != nil {
 						a.state.Chats[id] = c
+						a.rememberDraft(id)
 					}
 				}
 				for _, t := range extra.Tabs {
@@ -81,8 +83,21 @@ func (a *App) sessionSnapshot() session {
 	for id, messages := range a.mailbox {
 		s.Mailbox[id] = append([]mailMessage(nil), messages...)
 	}
-	for id, c := range a.state.Chats {
-		if c.Ephemeral {
+	candidates := make(map[string]bool, len(a.draftChats)+len(a.chats)+len(a.state.Tabs))
+	for id := range a.draftChats {
+		candidates[id] = true
+	}
+	for id := range a.chats {
+		candidates[id] = true
+	}
+	for _, t := range a.state.Tabs {
+		if t.Kind == workspace.Chat {
+			candidates[t.Target] = true
+		}
+	}
+	for id := range candidates {
+		c := a.state.Chats[id]
+		if c == nil || c.Ephemeral {
 			continue
 		}
 		local := *c
@@ -263,4 +278,16 @@ func (a *App) forgetFolder(folder string) {
 	}
 	a.prefs.RecentFolders = out
 	a.savePrefs()
+}
+
+func (a *App) rememberDraft(id string) {
+	c := a.state.Chats[id]
+	if c == nil || (c.Draft == "" && len(c.DraftAttachments) == 0 && len(c.Queue) == 0) {
+		delete(a.draftChats, id)
+		return
+	}
+	if a.draftChats == nil {
+		a.draftChats = make(map[string]bool)
+	}
+	a.draftChats[id] = true
 }

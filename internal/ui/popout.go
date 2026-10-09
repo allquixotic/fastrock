@@ -18,6 +18,7 @@ import (
 )
 
 type Connection struct {
+	Notice                 string
 	Client                 *codex.Client
 	Address, Token, Ticket string
 }
@@ -151,6 +152,7 @@ func (a *App) installTransfer(p tabTransfer) {
 		}
 		a.mailbox[c.ID] = p.Mailbox
 		delete(a.detached, c.ID)
+		a.invalidateSidebar()
 		a.state.Chats[c.ID] = c
 		v := newChatView()
 		setText(v.Editor, c.Draft)
