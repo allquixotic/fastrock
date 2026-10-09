@@ -10,7 +10,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/allquixotic/fastrock/internal/update"
 	"io"
 	"os"
 	"os/exec"
@@ -18,6 +17,9 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/allquixotic/fastrock/internal/platform"
+	"github.com/allquixotic/fastrock/internal/update"
 )
 
 func must(e error) {
@@ -119,7 +121,7 @@ func main() {
 		if runtime.GOOS != "windows" {
 			panic("Windows release packaging requires native Authenticode verification; use -phase build for cross-builds")
 		}
-		run(os.Environ(), "powershell.exe", "-NoProfile", "-NonInteractive", "-File", "dev/verify-windows.ps1", "-Path", filepath.Join(root, "fastrock.exe"))
+		run(platform.ChildEnv("PSModulePath"), "powershell.exe", "-NoProfile", "-NonInteractive", "-File", "dev/verify-windows.ps1", "-Path", filepath.Join(root, "fastrock.exe"))
 	}
 
 	_ = os.Remove(filepath.Join(root, "Applications"))

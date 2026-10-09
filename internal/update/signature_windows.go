@@ -35,7 +35,9 @@ func signedPublisher(path string) (string, error) {
 	defer cancel()
 	command := platform.CommandContext(ctx, filepath.Join(system, "WindowsPowerShell", "v1.0", "powershell.exe"), "-NoProfile", "-NonInteractive", "-EncodedCommand", base64.StdEncoding.EncodeToString(encoded))
 	command.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	command.Env = append(platform.ChildEnv("FASTROCK_SIGNATURE_PATH"), "FASTROCK_SIGNATURE_PATH="+path)
+	// Windows PowerShell must rebuild its own module path. Inheriting PS7's
+	// modules can prevent its Authenticode command from loading at all.
+	command.Env = append(platform.ChildEnv("FASTROCK_SIGNATURE_PATH", "PSModulePath"), "FASTROCK_SIGNATURE_PATH="+path)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("Authenticode verification failed: %w: %s", err, strings.TrimSpace(string(output)))

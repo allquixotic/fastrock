@@ -189,3 +189,10 @@ The Windows compile then exposed a hardcoded MSYS2 location: GitHub selected
 its preinstalled MinGW compiler and failed to link FLTK's UCRT archives. Both
 workflows now use the setup action's reported installation directory for PATH,
 CC and CXX. The native Windows build and import check verify this configuration.
+
+The first signed release attempt produced a valid Windows signature, then failed
+when Windows PowerShell inherited incompatible PowerShell 7 modules during
+verification. Packaging and updater verification now clear `PSModulePath` for
+that child process. A Windows regression supplies a fake incompatible module and
+checks that verification still reaches Authenticode and rejects an unsigned
+executable. The failed `v0.1.0` tag is retained; the release fix uses `v0.1.1`.
