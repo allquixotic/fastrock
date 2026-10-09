@@ -25,6 +25,12 @@ startup cancels pending work. Fastrock never updates Codex itself: update the
 installed CLI separately, then retry. `fastrock --doctor` is an explicit headless
 diagnostic and checks the CLI without opening a GUI.
 
+An app-server SQLite initialization error concerns Codex's local runtime state,
+even when the CLI version is supported. Run `codex app-server` from the same
+Windows account to check whether it also fails independently of Fastrock.
+The terminal UI and a GUI with an embedded backend can behave differently.
+Fastrock preserves the reported cause and does not reset Codex databases.
+
 Use **Go 1.27.2** and **`CGO_ENABLED=1`**. macOS needs the Xcode command-line
 tools; Windows needs MinGW-w64 UCRT GCC/G++ on PATH (MSYS2's `ucrt64/bin`,
 with `CC` and `CXX` selecting its `gcc.exe` and `g++.exe`). `go-fltk` supplies pinned static

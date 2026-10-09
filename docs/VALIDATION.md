@@ -219,3 +219,12 @@ Release provenance is mandatory for signed platform executables, ZIPs, DMGs
 and `SHA256SUMS`. The publication job verifies every attached release asset
 against the repository, workflow, tag and source commit before creating the
 GitHub release; missing or invalid provenance fails publication.
+
+## Codex initialization diagnostics (2026-10-09)
+
+Subprocess fixtures verify that SQLite RPC failures and app-server EOF retain
+their original causes without claiming an accepted CLI version is incompatible
+or recommending an update. Both failed handshakes reap their child processes.
+The regression passes on Windows 11 x64 and under the Go race detector; the
+complete headless suite, Codex package vet and pinned staticcheck also pass.
+No Codex configuration or databases were changed during verification.

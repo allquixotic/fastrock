@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -74,6 +75,15 @@ func TestHelperProcess(t *testing.T) {
 		if len(m.ID) == 0 {
 			continue
 		}
+		if m.Method == "initialize" {
+			switch os.Getenv("FASTROCK_RPC_INIT_FAILURE") {
+			case "sqlite":
+				send(map[string]any{"id": m.ID, "error": RPCError{Code: -32603, Message: "failed to initialize sqlite state runtime: database is locked"}})
+				continue
+			case "eof":
+				os.Exit(1)
+			}
+		}
 		if m.Method == "never" {
 			continue
 		}
@@ -104,6 +114,33 @@ func helper(t *testing.T) *Client {
 	}
 	t.Cleanup(c.Close)
 	return c
+}
+
+func TestV75InitializationFailurePreservesCause(t *testing.T) {
+	for _, mode := range []string{"sqlite", "eof"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Setenv("FASTROCK_RPC_INIT_FAILURE", mode)
+			c := helper(t)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			err := c.initialize(ctx)
+			if err == nil || strings.Contains(err.Error(), "incompatible") || strings.Contains(err.Error(), "update Codex") {
+				t.Fatal("startup failure blamed the accepted CLI version", err)
+			}
+			var rpc *RPCError
+			if !errors.As(err, &rpc) {
+				t.Fatal("lost underlying RPC failure", err)
+			}
+			if mode == "sqlite" && (rpc.Code != -32603 || !strings.Contains(rpc.Message, "database is locked")) || mode == "eof" && (rpc.Code != CodeDisconnected || !strings.Contains(rpc.Message, "EOF")) {
+				t.Fatal("lost original startup cause", err)
+			}
+			select {
+			case <-c.done:
+			default:
+				t.Fatal("failed initialization retained a live process")
+			}
+		})
+	}
 }
 func TestConcurrentRPCNotificationsAndServerRequest(t *testing.T) {
 	c := helper(t)

@@ -130,16 +130,25 @@ func StartWithStartup(parent, startup context.Context) (*Client, error) {
 	c.Version = strings.TrimSpace(string(out))
 	initCtx, stop := context.WithTimeout(startup, 30*time.Second)
 	defer stop()
+	if e = c.initialize(initCtx); e != nil {
+		return nil, e
+	}
+	return c, nil
+}
+
+// Initialization can fail because of local state, permissions or transport
+// errors even when the installed CLI passed the supported-version check.
+func (c *Client) initialize(ctx context.Context) error {
 	var result map[string]any
-	e = c.Call(initCtx, "initialize", map[string]any{"clientInfo": map[string]any{"name": "fastrock", "title": "Fastrock", "version": buildinfo.Version}, "capabilities": map[string]any{"experimentalApi": true}}, &result)
+	e := c.Call(ctx, "initialize", map[string]any{"clientInfo": map[string]any{"name": "fastrock", "title": "Fastrock", "version": buildinfo.Version}, "capabilities": map[string]any{"experimentalApi": true}}, &result)
 	if e == nil {
 		e = c.Notify("initialized", map[string]any{})
 	}
 	if e != nil {
 		c.Close()
-		return nil, fmt.Errorf("installed Codex app-server is incompatible: %w; update Codex CLI", e)
+		return fmt.Errorf("Codex app-server initialization failed: %w", e)
 	}
-	return c, nil
+	return nil
 }
 
 // StartCommand is also used with a subprocess fixture; it does not initialize.
