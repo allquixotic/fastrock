@@ -97,11 +97,20 @@ func checkMinimumVersion(output, minimum string) error {
 
 // Start never downloads Codex or changes CODEX_HOME/config.toml.
 func Start(ctx context.Context) (*Client, error) {
+	return StartWithStartup(ctx, ctx)
+}
+
+// StartWithStartup keeps the shared process alive independently of the window
+// that initiates it, while letting that window cancel a probe or initialization.
+func StartWithStartup(parent, startup context.Context) (*Client, error) {
+	if err := startup.Err(); err != nil {
+		return nil, err
+	}
 	binary, e := lookPath()
 	if e != nil {
-		return nil, errors.New("Codex CLI was not found on PATH. Install the latest Codex CLI, then reopen Fastrock")
+		return nil, errors.New("Codex CLI was not found on PATH. Install the latest Codex CLI, then retry")
 	}
-	probeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	probeCtx, cancel := context.WithTimeout(startup, 10*time.Second)
 	defer cancel()
 	probe := command(probeCtx, binary, "--version")
 	out, e := probe.Output()
@@ -111,12 +120,15 @@ func Start(ctx context.Context) (*Client, error) {
 	if e = CheckVersion(string(out)); e != nil {
 		return nil, e
 	}
-	c, e := StartCommand(ctx, binary, []string{"app-server"})
+	if err := startup.Err(); err != nil {
+		return nil, err
+	}
+	c, e := StartCommand(parent, binary, []string{"app-server"})
 	if e != nil {
 		return nil, e
 	}
 	c.Version = strings.TrimSpace(string(out))
-	initCtx, stop := context.WithTimeout(ctx, 30*time.Second)
+	initCtx, stop := context.WithTimeout(startup, 30*time.Second)
 	defer stop()
 	var result map[string]any
 	e = c.Call(initCtx, "initialize", map[string]any{"clientInfo": map[string]any{"name": "fastrock", "title": "Fastrock", "version": buildinfo.Version}, "capabilities": map[string]any{"experimentalApi": true}}, &result)

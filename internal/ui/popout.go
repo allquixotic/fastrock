@@ -21,6 +21,9 @@ import (
 )
 
 type Connection struct {
+	// Connect runs off-thread, only after a native frame has been displayed.
+	// Its context owns this window's connection, not the shared backend process.
+	Connect                func(context.Context) (Connection, error)
 	Notice                 string
 	Client                 *codex.Client
 	Address, Token, Ticket string

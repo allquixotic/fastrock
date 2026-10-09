@@ -11,6 +11,10 @@ import (
 // sample into a full wheel step.
 type Wheel struct{ X, Y, DeltaX, DeltaY float32 }
 
+// PresentedEvent follows the first completed native draw of an uploaded frame.
+// Focus and window creation alone do not mean application content is visible.
+type PresentedEvent struct{}
+
 // Events coalesces only adjacent replaceable events. Button/key/lifecycle
 // transitions remain ordered barriers, and bounded storage backpressures their
 // producers instead of dropping them.

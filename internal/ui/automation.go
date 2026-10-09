@@ -94,6 +94,13 @@ func (a *App) startAutomation() {
 				}
 				fail := func(message string) { log += "FAIL: " + message + "\n"; a.exitCode = 1 }
 				switch step.Action {
+				case "retry_codex":
+					a.reconnect()
+				case "assert_codex":
+					ok := a.fatal == "" && !a.connecting && (step.Value == "connected" && a.client != nil && !a.serverPaused || step.Value == "unavailable" && a.client == nil && a.serverError != "")
+					if !ok {
+						log += fmt.Sprintf("FAIL: Codex state %s: connecting=%v error=%s fatal=%s\n", step.Value, a.connecting, a.serverError, a.fatal)
+					}
 				case "rally_navigation":
 					a.setRallyRowHidden("sections", step.Value == "hidden")
 					a.setRallyRowHidden("pages", step.Value == "hidden")

@@ -196,3 +196,26 @@ verification. Packaging and updater verification now clear `PSModulePath` for
 that child process. A Windows regression supplies a fake incompatible module and
 checks that verification still reaches Authenticode and rejects an unsigned
 executable. The failed `v0.1.0` tag is retained; the release fix uses `v0.1.1`.
+
+## Visible, retryable Codex startup (2026-10-09)
+
+The native Windows startup fixture (`dev/startup-fixture.go` and
+`dev/windows-startup.ps1`) records the parent window's visibility and a painted
+pixel on every Codex invocation. Blocked and incompatible CLI cases retain the
+GUI, retry successfully, and persist settings changed while disconnected. A
+missing CLI also retains the GUI and saves local settings on exit. Closing
+during a stalled version probe cancels startup in about 211 ms. The previous
+release source reproduces the original invocation before a visible window.
+Results and screenshots are local under `build/startup-verification/`.
+
+Headless regressions cover first-frame gating, single-flight retry, startup
+panic recovery, cancellation, unclaimed-client disposal, offline preference
+retention, session-load ordering and separate setup/shared-service lifetimes.
+The complete headless race suite, vet, pinned staticcheck, module tidy checks,
+workflow lint and Windows/macOS static FLTK linkage checks pass. No GUI was
+launched on the Mac and no real Rally writes or paid inference were used.
+
+Release provenance is mandatory for signed platform executables, ZIPs, DMGs
+and `SHA256SUMS`. The publication job verifies every attached release asset
+against the repository, workflow, tag and source commit before creating the
+GitHub release; missing or invalid provenance fails publication.

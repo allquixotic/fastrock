@@ -62,6 +62,7 @@ type window struct {
 	keys          map[int]bool
 	controls      []windowing.Control
 	widgets       map[uint64]*nativeWidget
+	presented     bool // FLTK thread only
 }
 
 func Main(f func(windowing.Display)) {
@@ -202,6 +203,15 @@ func (w *window) draw() {
 	w.mu.Unlock()
 	if w.cached != nil {
 		w.cached.Draw(0, 0, w.canvas.W(), w.canvas.H())
+		if !w.presented {
+			// Awake dispatches after this draw returns to the native event loop;
+			// only then may startup launch an external process.
+			w.presented = fltk.Awake(func() {
+				if !w.closed.Load() {
+					w.Send(windowing.PresentedEvent{})
+				}
+			})
+		}
 	}
 }
 func (w *window) handle(e fltk.Event) bool {

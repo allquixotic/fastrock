@@ -107,42 +107,58 @@ func run() int {
 	address, token := os.Getenv("FASTROCK_BROKER"), os.Getenv("FASTROCK_BROKER_TOKEN")
 	var broker *codex.Broker
 	var updater *update.Manager
-	if *popout == "" {
-		client, err := codex.Start(ctx)
-		if err != nil {
-			platform.ShowError(err.Error())
-			return 1
-		}
-		broker, err = codex.NewBroker(client)
-		if err != nil {
-			client.Close()
-			platform.ShowError(err.Error())
-			return 1
-		}
-		broker.SetStarter(func() (*codex.Client, error) { return codex.Start(ctx) })
-		broker.SetPreferences(prefs, store.Save)
-		address, token = broker.Address(), broker.Token()
-		exe, _ := os.Executable()
-		updater = update.New(buildinfo.Version, filepath.Join(store.Dir, "updates"), exe, func(s update.Status) { broker.UpdateStatus(s) })
-		broker.SetUpdateHandler(func(check bool) any {
-			if check {
-				updater.Check(ctx)
+	connection := ui.Connection{Address: address, Token: token, Ticket: *popout, Notice: startupNotice}
+	// Run invokes this off-thread after FLTK confirms the first displayed frame.
+	// It also joins pending startup before returning, so service ownership below
+	// stays synchronized even if the window closes during CLI initialization.
+	connection.Connect = func(windowCtx context.Context) (ui.Connection, error) {
+		if *popout == "" {
+			if broker != nil {
+				select {
+				case <-broker.Done():
+					updater.Close()
+					broker, updater = nil, nil
+				default:
+				}
 			}
-			return updater.Status()
-		})
-		updater.Check(ctx)
-	}
-	client, err := codex.Dial(ctx, address, token)
-	if err != nil {
-		if broker != nil {
-			broker.Close()
+			if broker == nil {
+				backend, err := codex.StartWithStartup(ctx, windowCtx)
+				if err != nil {
+					return ui.Connection{}, err
+				}
+				owned, err := codex.NewBroker(backend)
+				if err != nil {
+					backend.Close()
+					return ui.Connection{}, err
+				}
+				owned.SetStarter(func() (*codex.Client, error) { return codex.Start(ctx) })
+				owned.SetPreferences(prefs, store.Save)
+				exe, _ := os.Executable()
+				manager := update.New(buildinfo.Version, filepath.Join(store.Dir, "updates"), exe, func(s update.Status) { owned.UpdateStatus(s) })
+				owned.SetUpdateHandler(func(check bool) any {
+					if check {
+						manager.Check(ctx)
+					}
+					return manager.Status()
+				})
+				client, err := codex.DialWithStartup(ctx, windowCtx, owned.Address(), owned.Token())
+				if err != nil {
+					owned.Close()
+					manager.Close()
+					return ui.Connection{}, err
+				}
+				broker, updater = owned, manager
+				address, token = owned.Address(), owned.Token()
+				manager.Check(ctx)
+				return ui.Connection{Client: client, Address: address, Token: token, Notice: startupNotice}, nil
+			}
 		}
-		platform.ShowError(err.Error())
-		return 1
+		client, err := codex.DialWithStartup(ctx, windowCtx, address, token)
+		return ui.Connection{Client: client, Address: address, Token: token, Ticket: *popout, Notice: startupNotice}, err
 	}
 	_ = os.Unsetenv("FASTROCK_BROKER")
 	_ = os.Unsetenv("FASTROCK_BROKER_TOKEN")
-	code := ui.Run(ctx, store, prefs, ui.Connection{Client: client, Address: address, Token: token, Ticket: *popout, Notice: startupNotice})
+	code := ui.Run(ctx, store, prefs, connection)
 	if broker != nil {
 		debug.FreeOSMemory()
 		broker.ReportServiceMemory(platform.ProcessMemoryBytes())

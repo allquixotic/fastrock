@@ -721,19 +721,25 @@ func (b *Broker) events(c *Client) {
 	}
 }
 func Dial(ctx context.Context, address, token string) (*Client, error) {
+	return DialWithStartup(ctx, ctx, address, token)
+}
+
+// DialWithStartup cancels connection setup without tying an established client
+// to the short-lived setup context.
+func DialWithStartup(parent, startup context.Context, address, token string) (*Client, error) {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil || host != "127.0.0.1" {
 		return nil, errors.New("invalid local broker address")
 	}
-	conn, err := (&net.Dialer{Timeout: 10 * time.Second}).DialContext(ctx, "tcp4", address)
+	conn, err := (&net.Dialer{Timeout: 10 * time.Second}).DialContext(startup, "tcp4", address)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(parent)
 	c := &Client{broker: true, input: conn, ctx: ctx, cancel: cancel, pending: map[string]chan Message{}, Events: make(chan Message, 256), done: make(chan struct{})}
 	go c.read(conn)
 	var response struct{ Version string }
-	authCtx, stop := context.WithTimeout(ctx, 10*time.Second)
+	authCtx, stop := context.WithTimeout(startup, 10*time.Second)
 	defer stop()
 	if err = c.Call(authCtx, "fastrock/hello", map[string]string{"token": token}, &response); err != nil {
 		c.Close()

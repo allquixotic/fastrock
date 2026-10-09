@@ -24,6 +24,7 @@ type MasterWindow interface {
 	Close()
 	Closed() bool
 	OnClose(func())
+	OnPresented(func())
 	ActivateWindow(*Window)
 	ActivateEditor(*Window, interface{})
 

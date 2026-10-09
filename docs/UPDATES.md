@@ -89,10 +89,14 @@ check the expected identity during packaging. Configure the Azure federated
 credential for this repository's protected environment before releasing. No
 credentials, runner registration, or Azure permissions are provisioned by a
 normal build. CI refuses to publish if signing or verification fails. All action
-versions are pinned. Public repositories receive build provenance attestations;
-private repositories can enable them with `FASTROCK_ATTESTATIONS=true` when their
-GitHub Enterprise Cloud plan supports them. Native signature verification is
-mandatory in either case. The final DMG is mounted read-only to verify the
+versions are pinned. Build provenance attestations are required for every ZIP,
+DMG, platform executable and the final checksum manifest. Before publishing,
+CI verifies every release asset's attestation against this repository, release
+workflow, tag and source commit. Attestation failure prevents publication.
+Downloaded files can be checked with
+`gh attestation verify FILE --repo allquixotic/fastrock --signer-workflow allquixotic/fastrock/.github/workflows/release.yml`.
+The v0.1.1 release predates public-repository attestations.
+Native signature verification remains mandatory. The final DMG is mounted read-only to verify the
 contained app signature, notarization ticket, and Gatekeeper assessment.
 
 For a Windows cross-build, use `-phase build`; sign the resulting executable on

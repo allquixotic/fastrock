@@ -45,6 +45,8 @@ type masterWindow struct {
 	initialSize      image.Point
 	onClose          func()
 	onCloseRequested func() bool
+	onPresented      func()
+	presented        bool
 
 	// window is focused
 	Focus bool
@@ -88,6 +90,10 @@ func (mw *masterWindow) OnClose(onClose func()) {
 	mw.onClose = onClose
 }
 
+// OnPresented runs once on the UI owner after the native window displays its
+// first application frame. Register it before Main.
+func (mw *masterWindow) OnPresented(f func()) { mw.onPresented = f }
+
 // OnCloseRequested can veto a native close while the application confirms
 // running work. It executes on the same locked UI owner as event dispatch.
 func (mw *masterWindow) OnCloseRequested(check func() bool) {
@@ -123,6 +129,13 @@ func (mw *masterWindow) main(s windowing.Display) {
 func (w *masterWindow) handleEventLocked(ei interface{}) bool {
 	defer w.signalUpdate()
 	switch e := ei.(type) {
+	case windowing.PresentedEvent:
+		if !w.presented && !w.closing {
+			w.presented = true
+			if w.onPresented != nil {
+				w.onPresented()
+			}
+		}
 	case windowing.ControlFocusEvent:
 		w.ctx.nativeFocus(e.ID)
 		atomic.StoreInt32(&w.ctx.changed, 2)

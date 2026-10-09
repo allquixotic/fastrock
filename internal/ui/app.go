@@ -33,6 +33,7 @@ type App struct {
 	notices                          []notice
 	noticeKind                       string
 	sessionLoading                   bool
+	restorePending                   bool
 	workOnce                         sync.Once
 	readJobs, writeJobs, controlJobs chan workTask
 	systemLight                      bool
@@ -150,6 +151,9 @@ type App struct {
 	timeRefreshInterval                               time.Duration
 	timeRefreshGeneration                             uint64
 	connecting                                        bool
+	presented                                         bool
+	connectionDone                                    chan struct{}
+	connectionResults                                 chan connectionResult
 	serverPaused                                      bool
 	serverStarting, restartPending                    bool
 	serverError, restartNote, startedProvider         string
@@ -313,6 +317,7 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences,
 		clipboard.OnClipboardError(a.report)
 	}
 	a.window.SetStyle(makeStyle(a.p, prefs.FontSize))
+	a.window.OnPresented(a.windowPresented)
 	a.themeChanges = make(chan bool, 1)
 	go a.observeTheme()
 	a.applyTheme()
@@ -320,12 +325,49 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences,
 		guard.OnCloseRequested(a.canCloseWindow)
 	}
 
-	a.work(func() {
-		if connection.Ticket == "" {
+	if connection.Ticket == "" {
+		a.work(func() {
 			loaded := readSessions(a.store.Dir)
 			a.post(func() { a.applySessions(loaded) })
+		})
+	}
+	a.connectRally()
+	a.startAutomation()
+	a.window.Main()
+	a.clearReplyWaits()
+	cancel()
+	a.stopStartup()
+	<-a.writerDone
+	<-a.preferencesDone
+	if err := a.saveSession(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		platform.ShowError(err.Error())
+		a.exitCode = 1
+	}
+	if a.client != nil {
+		ctx, done := context.WithTimeout(context.Background(), 15*time.Second)
+		var state codex.PreferencesState
+		err := a.client.Call(ctx, "fastrock/preferences", map[string]any{"data": settings.Diff(a.preferencesServer, a.prefs)}, &state)
+		done()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Preferences not saved:", err)
+			a.exitCode = 1
 		}
-		client := connection.Client
+		a.client.Close()
+	} else if a.connection.Ticket == "" && a.connection.Address == "" {
+		// There is no shared broker to persist changes while initial startup is
+		// unavailable. The native window has closed, so disk I/O is safe here.
+		if err := a.store.Save(a.prefs); err != nil {
+			fmt.Fprintln(os.Stderr, "Preferences not saved:", err)
+			a.exitCode = 1
+		}
+	}
+	return a.exitCode
+}
+
+func (a *App) initializeConnection(connection Connection) {
+	client, ctx := connection.Client, a.ctx
+	a.work(func() {
 		var currentPreferences codex.PreferencesState
 		if err := client.Call(ctx, "fastrock/preferences", map[string]any{"data": settings.Patch{}}, &currentPreferences); err == nil {
 			a.post(func() { a.applyPreferences(currentPreferences, nil) })
@@ -352,9 +394,16 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences,
 				})
 			}
 		} else {
-			a.post(a.restoreDocuments)
+			a.post(func() {
+				a.restorePending = true
+				a.restoreWhenReady()
+			})
 		}
-		a.post(func() { a.status = client.Version + " · Connected" })
+		a.post(func() {
+			if a.client == client {
+				a.status = client.Version + " · Connected"
+			}
+		})
 		a.work(func() {
 			var status update.Status
 			if client.Call(ctx, "fastrock/update", map[string]bool{}, &status) == nil {
@@ -365,7 +414,6 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences,
 		a.post(a.refreshCatalog)
 		a.post(func() { a.requestThreads(false, "") })
 	})
-	a.connectRally()
 	a.work(func() {
 		name := "Fastrock"
 		if connection.Ticket != "" {
@@ -373,31 +421,6 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences,
 		}
 		_ = connection.Client.Notify("fastrock/name", map[string]string{"name": name})
 	})
-	a.startAutomation()
-	a.window.Main()
-	a.clearReplyWaits()
-	cancel()
-	<-a.writerDone
-	<-a.preferencesDone
-	if err := a.saveSession(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		platform.ShowError(err.Error())
-		a.exitCode = 1
-	}
-	if a.client != nil {
-		ctx, done := context.WithTimeout(context.Background(), 15*time.Second)
-		var state codex.PreferencesState
-		err := a.client.Call(ctx, "fastrock/preferences", map[string]any{"data": settings.Diff(a.preferencesServer, a.prefs)}, &state)
-		done()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Preferences not saved:", err)
-			a.exitCode = 1
-		}
-	}
-	if a.client != nil {
-		a.client.Close()
-	}
-	return a.exitCode
 }
 func (a *App) post(f func()) {
 	if a.updates == nil {
@@ -863,6 +886,7 @@ func (a *App) draw(w *desktop.Window) {
 		}
 	}
 	a.drawTabs(w)
+	a.drawConnectionStatus(w)
 	if a.persistenceError != "" {
 		w.Row(42).Dynamic(1)
 		w.LabelWrap(a.persistenceError)

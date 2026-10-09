@@ -1,10 +1,32 @@
 package desktop
 
 import (
+	"github.com/allquixotic/fastrock/internal/desktop/internal/windowing"
 	"golang.org/x/mobile/event/lifecycle"
 	"testing"
 	"time"
 )
+
+func TestV73PresentationCallbackRequiresNativeFrame(t *testing.T) {
+	w := &masterWindow{masterWindowCommon: masterWindowCommon{ctx: &context{}}}
+	calls := 0
+	w.OnPresented(func() { calls++ })
+	w.handleEventLocked(lifecycle.Event{To: lifecycle.StageFocused})
+	if calls != 0 {
+		t.Fatal("focus was mistaken for a displayed frame")
+	}
+	w.handleEventLocked(windowing.PresentedEvent{})
+	w.handleEventLocked(windowing.PresentedEvent{})
+	if calls != 1 {
+		t.Fatal("presentation callback was not once-only", calls)
+	}
+	w = &masterWindow{closing: true}
+	w.OnPresented(func() { calls++ })
+	w.handleEventLocked(windowing.PresentedEvent{})
+	if calls != 1 {
+		t.Fatal("closing window invoked a startup callback")
+	}
+}
 
 func TestClosedWindowStopsUpdater(t *testing.T) {
 	w := &masterWindow{closing: true}

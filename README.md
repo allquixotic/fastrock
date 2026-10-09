@@ -18,7 +18,12 @@ Install **Codex CLI 0.162.0 or later** and put `codex` on PATH. The supported pr
 baseline is the current 0.162 release; use the latest Codex release. Fastrock checks
 both the version and app-server initialization. It does not download, bundle,
 compile, or replace Codex. A missing/obsolete/incompatible CLI produces a startup
-error with an Exit button. `fastrock --doctor` checks the CLI without opening a GUI.
+error with Retry Codex and settings actions while the workspace stays usable.
+The first native GUI frame is displayed before Fastrock invokes Codex, including
+its version check. CLI checks and startup run in the background; closing during
+startup cancels pending work. Fastrock never updates Codex itself: update the
+installed CLI separately, then retry. `fastrock --doctor` is an explicit headless
+diagnostic and checks the CLI without opening a GUI.
 
 Use **Go 1.27.2** and **`CGO_ENABLED=1`**. macOS needs the Xcode command-line
 tools; Windows needs MinGW-w64 UCRT GCC/G++ on PATH (MSYS2's `ucrt64/bin`,

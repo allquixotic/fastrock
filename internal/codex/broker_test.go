@@ -8,6 +8,34 @@ import (
 	"time"
 )
 
+func TestV73SetupContextDoesNotOwnSharedConnection(t *testing.T) {
+	b, err := NewBroker(helper(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	parent, stop := context.WithTimeout(context.Background(), 5*time.Second)
+	defer stop()
+	setup, cancel := context.WithCancel(parent)
+	client, err := DialWithStartup(parent, setup, b.Address(), b.Token())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	cancel()
+	if err := client.Call(parent, "echo", nil, nil); err != nil {
+		t.Fatal("completed setup cancellation killed a live connection", err)
+	}
+}
+
+func TestV73CancelledStartupDoesNotLaunchCodex(t *testing.T) {
+	setup, cancel := context.WithCancel(context.Background())
+	cancel()
+	if client, err := StartWithStartup(context.Background(), setup); err != context.Canceled || client != nil {
+		t.Fatal("cancelled startup resolved or launched Codex", client, err)
+	}
+}
+
 func TestBrokerMultiplexingAndTransfer(t *testing.T) {
 	server := helper(t)
 	b, err := NewBroker(server)

@@ -35,6 +35,7 @@ type loadedSessions struct {
 }
 
 func (a *App) applySessions(loaded loadedSessions) {
+	defer a.restoreWhenReady()
 	a.sessionLoading = false
 	a.sessionBlocked, a.persistenceError = loaded.blocked, loaded.problem
 	if loaded.primary == nil {
@@ -257,6 +258,10 @@ func (a *App) restoreDocuments() {
 	a.state.Active = active
 }
 func (a *App) reconnect() {
+	if a.connection.Connect != nil {
+		a.beginConnection()
+		return
+	}
 	if a.connecting {
 		return
 	}
