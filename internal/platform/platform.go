@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"golang.org/x/mobile/event/key"
 	"net/url"
-	"os/exec"
+	"strings"
+
 	"runtime"
 )
 
@@ -16,15 +17,15 @@ func PrimaryModifier() key.Modifiers {
 }
 func OpenURL(target string) error {
 	u, e := url.Parse(target)
-	if e != nil || u.Scheme != "https" && u.Scheme != "http" {
+	if e != nil || strings.ContainsAny(target, "\r\n") || u.Scheme != "https" && u.Scheme != "http" && !(u.Scheme == "mailto" && u.Opaque != "") {
 		return fmt.Errorf("invalid web URL")
 	}
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command("open", target).Run()
+		return Command("open", target).Run()
 	case "windows":
-		return exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", target).Run()
+		return Command("rundll32.exe", "url.dll,FileProtocolHandler", target).Run()
 	default:
-		return exec.Command("xdg-open", target).Run()
+		return Command("xdg-open", target).Run()
 	}
 }

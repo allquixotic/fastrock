@@ -18,18 +18,19 @@ import (
 )
 
 type RichText struct {
-	name       string
-	chunks     []chunk    // the full text of this widget, divided into chunks as they were added by the caller
-	styleSels  []styleSel // styling for the text in non-overlapping selections of increasing S
-	Sel        Sel        // selected text if this widget is selectable, cursor position will have S == E
-	Flags      Flags
-	flags      Flags                   // flags for this widget
-	SelFgColor color.RGBA              // foreground color for selection, zero value specifies that it should be copied from the window style
-	SelColor   color.RGBA              // background color for selection, zero value specifies that it should be copied from the window style
-	Width      int                     // maximum line width
-	Events     Events                  // events that happened during current frame
-	Group      *SelectionGroup         // selection group for this object, only one object in the group can have a selection
-	Replace    func(Sel, *string) bool // if set and the Editable flag is set it will be called when the user wants to edit and should replace the specified selection with the given string
+	lastDrawGeneration uint64
+	name               string
+	chunks             []chunk    // the full text of this widget, divided into chunks as they were added by the caller
+	styleSels          []styleSel // styling for the text in non-overlapping selections of increasing S
+	Sel                Sel        // selected text if this widget is selectable, cursor position will have S == E
+	Flags              Flags
+	flags              Flags                   // flags for this widget
+	SelFgColor         color.RGBA              // foreground color for selection, zero value specifies that it should be copied from the window style
+	SelColor           color.RGBA              // background color for selection, zero value specifies that it should be copied from the window style
+	Width              int                     // maximum line width
+	Events             Events                  // events that happened during current frame
+	Group              *SelectionGroup         // selection group for this object, only one object in the group can have a selection
+	Replace            func(Sel, *string) bool // if set and the Editable flag is set it will be called when the user wants to edit and should replace the specified selection with the given string
 
 	txtColor, selFgColor, selColor color.RGBA // default foreground color and background selected color
 
@@ -356,7 +357,7 @@ func (rtxt *RichText) FollowCursor() {
 func (rtxt *RichText) Get(sel Sel) string {
 	var titer textIter
 	titer.Init(rtxt)
-	if !titer.Advance(rtxt.Sel.S) {
+	if !titer.Advance(sel.S) {
 		return ""
 	}
 
@@ -365,7 +366,7 @@ func (rtxt *RichText) Get(sel Sel) string {
 
 	var endChunkIdx int
 	var endByteIdx int32
-	if titer.Advance(rtxt.Sel.E - rtxt.Sel.S) {
+	if titer.Advance(sel.E - sel.S) {
 		endChunkIdx = titer.chunkIdx
 		endByteIdx = titer.j
 	} else {
@@ -429,6 +430,7 @@ func (rtxt *RichText) Len() int {
 }
 
 func (rtxt *RichText) initialize(w *nucular.Window, changed *bool) {
+	rtxt.lastDrawGeneration = w.FrameID()
 	style := w.Master().Style()
 	if (rtxt.SelColor != color.RGBA{}) {
 		rtxt.selColor = rtxt.SelColor

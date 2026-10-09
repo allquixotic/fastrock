@@ -3,6 +3,7 @@ package rally
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -15,35 +16,44 @@ type cachedPage struct {
 	Used, Expires time.Time
 }
 type pageFlight struct {
-	done chan struct{}
-	page Page
-	err  error
+	done    chan struct{}
+	page    Page
+	err     error
+	cancel  context.CancelFunc
+	waiters int
+	serial  uint64
 }
 type pageCache struct {
 	epoch   uint64
 	mu      sync.Mutex
 	pages   map[string]cachedPage
 	flights map[string]*pageFlight
-	slots   chan struct{}
 	bytes   int
+	serial  uint64
+	latest  map[string]uint64
 }
 
 func newPageCache() *pageCache {
-	return &pageCache{pages: map[string]cachedPage{}, flights: map[string]*pageFlight{}, slots: make(chan struct{}, 4)}
+	return &pageCache{pages: map[string]cachedPage{}, flights: map[string]*pageFlight{}, latest: map[string]uint64{}}
 }
 
 // Results are immutable: mutation callers replace objects rather than editing
 // shared maps. Cache keys include every scope, filter and ordering argument.
+// ErrStaleQuery means a mutation or explicit invalidation superseded this read.
+var ErrStaleQuery = errors.New("Rally query was invalidated; refresh the view")
+
 func (c *Client) CachedQuery(ctx context.Context, kind string, q Query, fresh bool) (Page, error) {
+	if err := ctx.Err(); err != nil {
+		return Page{}, err
+	}
 	cache := c.cache
 	keyBytes, _ := json.Marshal(struct {
 		Kind  string
 		Query Query
 	}{kind, q})
 	key := string(keyBytes)
-	now := time.Now()
 	cache.mu.Lock()
-	epoch := cache.epoch
+	now := time.Now()
 	if !fresh {
 		if hit, ok := cache.pages[key]; ok && now.Before(hit.Expires) {
 			hit.Used = now
@@ -52,69 +62,95 @@ func (c *Client) CachedQuery(ctx context.Context, kind string, q Query, fresh bo
 			return hit.Page, nil
 		}
 	}
-	if flight := cache.flights[key]; flight != nil {
-		cache.mu.Unlock()
-		select {
-		case <-ctx.Done():
-			return Page{}, ctx.Err()
-		case <-flight.done:
-			return flight.page, flight.err
+	epoch := cache.epoch
+	flightKey := fmt.Sprintf("%d:%s", epoch, key)
+	// An explicit refresh must not inherit a read that started before it.
+	if fresh {
+		flightKey += ":fresh"
+	}
+	flight := cache.flights[flightKey]
+	if flight == nil {
+		if len(cache.flights) >= 64 {
+			cache.mu.Unlock()
+			return Page{}, errors.New("too many pending Rally reads; try again shortly")
 		}
-	}
-	flight := &pageFlight{done: make(chan struct{})}
-	cache.flights[key] = flight
-	cache.mu.Unlock()
-	select {
-	case cache.slots <- struct{}{}:
-		flight.page, flight.err = c.Query(ctx, kind, q)
-		<-cache.slots
-	case <-ctx.Done():
-		flight.err = ctx.Err()
-	}
-	if flight.err == nil && flight.page.Start != 0 && flight.page.Start != max(q.Start, 1) {
-		flight.err = fmt.Errorf("Rally returned page %d, expected %d", flight.page.Start, max(q.Start, 1))
-	}
-	if flight.err == nil && q.Fetch != "" && q.Fetch != "true" {
-		for _, o := range flight.page.Results {
-			trimFetch(o, q.Fetch)
-		}
-	}
-	cache.mu.Lock()
-	if flight.err == nil && cache.epoch == epoch {
-		size := pageBytes(flight.page)
-		if old, ok := cache.pages[key]; ok {
-			cache.bytes -= old.Bytes
-			delete(cache.pages, key)
-		}
-		for len(cache.pages) > 0 && (len(cache.pages) >= 32 || cache.bytes+size > 24<<20) {
-			oldKey := ""
-			oldest := time.Now().Add(time.Hour)
-			for k, p := range cache.pages {
-				if p.Used.Before(oldest) {
-					oldest = p.Used
-					oldKey = k
+		work, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		cache.serial++
+		flight = &pageFlight{done: make(chan struct{}), cancel: cancel, serial: cache.serial}
+		cache.latest[key] = flight.serial
+		cache.flights[flightKey] = flight
+		go func() {
+			defer cancel()
+			page, err := c.Query(work, kind, q)
+			if err == nil && page.Start != 0 && page.Start != max(q.Start, 1) {
+				err = fmt.Errorf("Rally returned page %d, expected %d", page.Start, max(q.Start, 1))
+			}
+			if err == nil && q.Fetch != "" && q.Fetch != "true" {
+				for _, o := range page.Results {
+					trimFetch(o, q.Fetch)
 				}
 			}
-			cache.bytes -= cache.pages[oldKey].Bytes
-			delete(cache.pages, oldKey)
-		}
-		if size <= 24<<20 {
-			cache.pages[key] = cachedPage{Bytes: size, Page: flight.page, Used: now, Expires: now.Add(45 * time.Second)}
-			cache.bytes += size
-		}
-
+			cache.mu.Lock()
+			defer cache.mu.Unlock()
+			if err == nil && (cache.epoch != epoch || cache.latest[key] != flight.serial || work.Err() != nil) {
+				err = ErrStaleQuery
+			}
+			flight.page, flight.err = page, err
+			if err == nil {
+				size := pageBytes(page)
+				if old, ok := cache.pages[key]; ok {
+					cache.bytes -= old.Bytes
+					delete(cache.pages, key)
+				}
+				for len(cache.pages) > 0 && (len(cache.pages) >= 32 || cache.bytes+size > 24<<20) {
+					oldestKey := ""
+					oldest := time.Now().Add(time.Hour)
+					for k, p := range cache.pages {
+						if p.Used.Before(oldest) {
+							oldest, oldestKey = p.Used, k
+						}
+					}
+					cache.bytes -= cache.pages[oldestKey].Bytes
+					delete(cache.pages, oldestKey)
+				}
+				if size <= 24<<20 {
+					cache.pages[key] = cachedPage{Bytes: size, Page: page, Used: time.Now(), Expires: time.Now().Add(45 * time.Second)}
+					cache.bytes += size
+				}
+			}
+			if cache.flights[flightKey] == flight {
+				delete(cache.flights, flightKey)
+			}
+			if cache.latest[key] == flight.serial {
+				delete(cache.latest, key)
+			}
+			close(flight.done)
+		}()
 	}
-	if cache.flights[key] == flight {
-		delete(cache.flights, key)
-	}
-	close(flight.done)
+	flight.waiters++
 	cache.mu.Unlock()
-	return flight.page, flight.err
+	defer func() {
+		cache.mu.Lock()
+		defer cache.mu.Unlock()
+		flight.waiters--
+		if flight.waiters == 0 {
+			flight.cancel()
+			if cache.flights[flightKey] == flight {
+				delete(cache.flights, flightKey)
+			}
+		}
+	}()
+	select {
+	case <-ctx.Done():
+		return Page{}, ctx.Err()
+	case <-flight.done:
+		return flight.page, flight.err
+	}
 }
 func (c *Client) PurgeCache() {
 	c.cache.mu.Lock()
 	clear(c.cache.pages)
-	clear(c.cache.flights)
+	clear(c.cache.latest)
 	c.cache.epoch++
 	c.cache.bytes = 0
 	c.cache.mu.Unlock()

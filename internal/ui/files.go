@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/allquixotic/fastrock/internal/platform"
 	"io"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/aarzilli/nucular"
@@ -21,23 +23,37 @@ import (
 )
 
 func (a *App) openPath(path string, reveal bool) {
+	if !reveal && executablePath(path) {
+		a.confirm("Run this file?", "Opening this file can execute code: "+path, func() { a.openPathNow(path, false) })
+		return
+	}
+	a.openPathNow(path, reveal)
+}
+func executablePath(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".exe", ".com", ".bat", ".cmd", ".ps1", ".vbs", ".js", ".wsf", ".scr", ".msi", ".app", ".command", ".sh", ".lnk", ".url", ".desktop":
+		return true
+	}
+	return false
+}
+func (a *App) openPathNow(path string, reveal bool) {
 	a.work(func() {
 		var cmd *exec.Cmd
 		switch runtime.GOOS {
 		case "darwin":
 			if reveal {
-				cmd = exec.Command("open", "-R", path)
+				cmd = platform.Command("open", "-R", path)
 			} else {
-				cmd = exec.Command("open", path)
+				cmd = platform.Command("open", path)
 			}
 		case "windows":
 			if reveal {
-				cmd = exec.Command("explorer.exe", "/select,"+path)
+				cmd = platform.Command("explorer.exe", "/select,"+path)
 			} else {
-				cmd = exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", path)
+				cmd = platform.Command("rundll32.exe", "url.dll,FileProtocolHandler", path)
 			}
 		default:
-			cmd = exec.Command("xdg-open", path)
+			cmd = platform.Command("xdg-open", path)
 		}
 		if err := cmd.Run(); err != nil {
 			a.post(func() { a.report(err) })
@@ -50,65 +66,164 @@ const maxFileBytes = 4 << 20
 // Files are paged independently of text layout. Work and UTF-8 conversion stay
 // off the UI thread; only the bounded prepared editor is published.
 func (a *App) reloadFile(v *fileView) { a.loadFilePage(v, false) }
-func (a *App) loadFilePage(v *fileView, more bool) {
-	if v.Virtual || v.Loading {
+
+func (a *App) ensureFileEditor(v *fileView) {
+	if !v.Loaded {
+		a.reloadFile(v)
+		return
+	}
+	if v.Loading || v.Closed {
 		return
 	}
 	v.Loading = true
-	offset := int64(0)
-	previous := ""
-	if more {
-		offset = v.Offset
-		previous = text(v.Editor)
-	}
+	v.LoadGeneration++
+	generation, value := v.LoadGeneration, v.LoadedText
 	a.work(func() {
-		f, err := os.Open(v.Path)
-		var data []byte
-		hasMore := false
-		if err == nil {
-			defer f.Close()
-			_, err = f.Seek(offset, io.SeekStart)
-			if err == nil {
-				data, err = io.ReadAll(io.LimitReader(f, 256<<10))
-				if err == nil {
-					if info, e := f.Stat(); e == nil {
-						hasMore = offset+int64(len(data)) < info.Size()
-					}
-				}
-			}
-		}
-		if err == nil {
-			data, err = completeUTF8Page(data, hasMore)
-		}
-		next := offset + int64(len(data))
-		limited := hasMore && next >= maxFileBytes
-		value := previous + string(data)
-		editor := textEditor(value, true)
-		editor.Flags |= nucular.EditReadOnly
+		editor := loadedFileEditor(value)
 		a.post(func() {
-			v.Loading = false
-			v.More = hasMore && !limited
-			v.LimitReached = limited
-			v.Offset = next
-			if err != nil {
-				v.Error = err.Error()
+			if v.Closed || generation != v.LoadGeneration {
 				return
 			}
-			v.Editor = editor
-			if !v.Wrap {
-				editor.Flags &^= nucular.EditNoHorizontalScroll | nucular.EditSoftWrap
+			v.Loading = false
+			v.installEditor(editor)
+		})
+	}, func() { v.Loading = false })
+}
+
+func loadedFileEditor(value string) *nucular.TextEditor {
+	editor := textEditor(value, true)
+	editor.Maxlen = maxFileBytes + 1
+	editor.Flags |= nucular.EditReadOnly
+	return editor
+}
+
+func (v *fileView) installEditor(editor *nucular.TextEditor) {
+	v.resetFileSearch()
+	v.Editor = editor
+	if !v.Wrap {
+		editor.Flags &^= nucular.EditNoHorizontalScroll | nucular.EditSoftWrap
+	}
+	if v.PendingPosition != nil {
+		v.PendingPosition.apply(editor)
+		v.PendingPosition = nil
+		editor.CursorFollow = true
+	}
+}
+
+type filePage struct {
+	value string
+	stamp fileStamp
+	next  int64
+	more  bool
+	limit bool
+}
+
+var errFileChanged = errors.New("file changed while loading; reload to read the current version")
+var errFileNotUTF8 = errors.New("file is not UTF-8 text; use Show as text or Open externally")
+
+func readFilePage(path string, offset int64, previous string, expected fileStamp, lossy bool) (filePage, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return filePage{}, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return filePage{}, err
+	}
+	if !info.Mode().IsRegular() {
+		return filePage{}, errors.New("only regular text files can be opened")
+	}
+	stamp := stampFile(info)
+	if expected.Valid && !expected.matches(stamp) {
+		return filePage{}, errFileChanged
+	}
+	if offset < 0 || offset >= maxFileBytes {
+		return filePage{}, errors.New("file preview limit reached; open the full file externally")
+	}
+	if _, err := f.Seek(offset, io.SeekStart); err != nil {
+		return filePage{}, err
+	}
+	data, err := io.ReadAll(io.LimitReader(f, min(256<<10, maxFileBytes-offset)))
+	if err != nil {
+		return filePage{}, err
+	}
+	// Check both the open handle and the path: an atomic replacement leaves the
+	// old handle readable but must not become a new baseline for later pages.
+	for _, stat := range []func() (os.FileInfo, error){f.Stat, func() (os.FileInfo, error) { return os.Stat(path) }} {
+		after, err := stat()
+		if err != nil {
+			return filePage{}, err
+		}
+		if !stamp.matches(stampFile(after)) {
+			return filePage{}, errFileChanged
+		}
+	}
+	rawNext := offset + int64(len(data))
+	hasMore := rawNext < info.Size()
+	data = utf8PagePrefix(data, hasMore)
+	next := offset + int64(len(data))
+	if !utf8.Valid(data) {
+		if !lossy {
+			return filePage{}, errFileNotUTF8
+		}
+		data = bytes.ToValidUTF8(data, []byte("�"))
+	}
+	limited := hasMore && rawNext >= maxFileBytes
+	return filePage{value: previous + string(data), stamp: stamp, next: next, more: hasMore && !limited, limit: limited}, nil
+}
+
+func (a *App) loadFilePage(v *fileView, more bool) {
+	if v.Virtual || v.Loading || v.Closed {
+		return
+	}
+	v.Loading = true
+	v.LoadGeneration++
+	generation, path, lossy := v.LoadGeneration, v.Path, v.Lossy
+	offset := int64(0)
+	previous := ""
+	var expected fileStamp
+	if more {
+		offset = v.Offset
+		previous, expected = v.fileText(), v.Stamp
+	}
+	if v.Editor != nil {
+		p := position(v.Editor)
+		v.PendingPosition = &p
+	}
+	a.work(func() {
+		page, err := readFilePage(path, offset, previous, expected, lossy)
+		var editor *nucular.TextEditor
+		if err == nil {
+			editor = loadedFileEditor(page.value)
+		}
+		a.post(func() {
+			if v.Closed || generation != v.LoadGeneration {
+				return
 			}
-			if v.PendingPosition != nil {
-				v.PendingPosition.apply(editor)
-				v.PendingPosition = nil
-				editor.CursorFollow = true
+			v.Loading = false
+			if err != nil {
+				v.Error = err.Error()
+				v.NonUTF8 = errors.Is(err, errFileNotUTF8)
+				if errors.Is(err, os.ErrNotExist) {
+					v.FileNotice = fileNotice(v.Stamp, nil, err)
+				} else if errors.Is(err, errFileChanged) {
+					v.FileNotice = fileChangedNotice
+				}
+				return
 			}
+			v.More, v.LimitReached, v.Offset = page.more, page.limit, page.next
+			v.Loaded, v.LoadedText, v.Stamp = true, page.value, page.stamp
+			v.installEditor(editor)
 			v.Error = ""
+			v.NonUTF8 = false
+			v.FileNotice = ""
+			a.watchFile(v)
 			if v.PendingLine > 0 {
 				a.goToFileLine(v, v.PendingLine, v.PendingColumn)
 			}
 		})
-	})
+	}, func() { v.Loading = false; v.Error = errWorkQueueFull.Error() })
 }
 
 func fileLinePosition(buf []rune, line, column int) (int, bool) {
@@ -140,6 +255,10 @@ func (a *App) goToFileLine(v *fileView, line, column int) {
 			if v.Editor != editor {
 				return
 			}
+			if !found && !v.More {
+				a.toast = "That line is beyond the loaded file; open the full file externally"
+				return
+			}
 			if !found && v.More {
 				v.PendingLine, v.PendingColumn = line, column
 				a.loadFilePage(v, true)
@@ -155,6 +274,14 @@ func (a *App) goToFileLine(v *fileView, line, column int) {
 // Exclude only an incomplete trailing rune. Invalid interior bytes identify a
 // binary/non-UTF-8 file instead of silently deleting arbitrary bytes.
 func completeUTF8Page(data []byte, more bool) ([]byte, error) {
+	data = utf8PagePrefix(data, more)
+	if !utf8.Valid(data) {
+		return nil, errFileNotUTF8
+	}
+	return data, nil
+}
+
+func utf8PagePrefix(data []byte, more bool) []byte {
 	if more && len(data) > 0 {
 		start := len(data) - 1
 		for start > 0 && len(data)-start < utf8.UTFMax && !utf8.RuneStart(data[start]) {
@@ -164,90 +291,76 @@ func completeUTF8Page(data []byte, more bool) ([]byte, error) {
 			data = data[:start]
 		}
 	}
-	if !utf8.Valid(data) {
-		return nil, errors.New("file is not UTF-8 text; use Open externally")
-	}
-	return data, nil
+	return data
 }
 func findText(value, query string, start int, back bool) (int, int) {
-	hay, needle := strings.ToLower(value), strings.ToLower(query)
-	if needle == "" {
+	hay, needle := []rune(value), []rune(query)
+	if len(needle) == 0 {
 		return -1, -1
 	}
-	pos := 0
-	for i := range hay {
-		if start <= 0 {
-			pos = i
-			break
+	fold := func(r rune) rune {
+		minimum := r
+		for n := unicode.SimpleFold(r); n != r; n = unicode.SimpleFold(n) {
+			if n < minimum {
+				minimum = n
+			}
 		}
-		start--
-		pos = len(hay)
+		return minimum
 	}
-	at := -1
+	for i := range needle {
+		needle[i] = fold(needle[i])
+	}
+	matches := []int{}
+	for i := 0; i+len(needle) <= len(hay); i++ {
+		ok := true
+		for j, n := range needle {
+			if fold(hay[i+j]) != n {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			matches = append(matches, i)
+		}
+	}
+	if len(matches) == 0 {
+		return -1, -1
+	}
+	at := matches[0]
 	if back {
-		at = strings.LastIndex(hay[:pos], needle)
-		if at < 0 {
-			at = strings.LastIndex(hay, needle)
+		at = matches[len(matches)-1]
+		for i := len(matches) - 1; i >= 0; i-- {
+			if matches[i] < start {
+				at = matches[i]
+				break
+			}
 		}
 	} else {
-		if n := strings.Index(hay[pos:], needle); n >= 0 {
-			at = pos + n
-		} else {
-			at = strings.Index(hay, needle)
+		for _, i := range matches {
+			if i >= start {
+				at = i
+				break
+			}
 		}
 	}
-	if at < 0 {
-		return -1, -1
-	}
-	begin := utf8.RuneCountInString(hay[:at])
-	return begin, begin + utf8.RuneCountInString(needle)
-}
-func (a *App) fileFind(v *fileView, back bool) {
-	if v.Editor == nil || text(v.Find) == "" {
-		return
-	}
-	editor, query, value := v.Editor, text(v.Find), text(v.Editor)
-	start := editor.SelectEnd
-	if back {
-		start = editor.SelectStart
-	}
-	v.SearchGeneration++
-	generation := v.SearchGeneration
-	a.work(func() {
-		begin, end := findText(value, query, start, back)
-		a.post(func() {
-			if v.Editor != editor || v.SearchGeneration != generation {
-				return
-			}
-			if begin < 0 {
-				a.toast = "No matches"
-				return
-			}
-			editor.SelectStart = begin
-			editor.SelectEnd = end
-			editor.Cursor = end
-			editor.CursorFollow = true
-		})
-	})
+	return at, at + len(needle)
 }
 func (a *App) drawFile(w *nucular.Window, v *fileView) {
 	if v == nil {
 		return
 	}
 	title(w, v.Path, a.p)
-	w.Row(28).Static(70, 70, 75, 85, 100, 90, 95)
+	if len(v.Diff) > 0 || v.DiffSummary != "" {
+		a.drawDiff(w, v)
+		return
+	}
+	w.Row(28).Static(70, 70, 75)
 	if w.ButtonText("Find") {
 		v.FindOpen = !v.FindOpen
+		v.FocusFind = v.FindOpen
 	}
 	if w.ButtonText("Go to…") {
-		a.inputDialog("Go to line", "1", func(value string) {
-			line, err := strconv.Atoi(value)
-			if err != nil || line < 1 {
-				a.toast = "Enter a positive line number"
-				return
-			}
-			a.goToFileLine(v, line, 1)
-		})
+		a.fileGoTo(v)
 	}
 	if w.CheckboxText("Wrap", &v.Wrap) && v.Editor != nil {
 		if v.Wrap {
@@ -256,30 +369,40 @@ func (a *App) drawFile(w *nucular.Window, v *fileView) {
 			v.Editor.Flags &^= nucular.EditNoHorizontalScroll | nucular.EditSoftWrap
 		}
 	}
-	if w.ButtonText("Copy path") {
-		a.copyText(v.Path)
+	if !v.Virtual {
+		w.Row(28).Static(85, 100, 120, 95)
+		if w.ButtonText("Copy path") {
+			a.copyText(v.Path)
+		}
+		if w.ButtonText("Reveal") {
+			a.openPath(v.Path, true)
+		}
+		if w.ButtonText("Open externally") {
+			a.openPath(v.Path, false)
+		}
+		if w.ButtonText("Reload") {
+			a.reloadFile(v)
+		}
 	}
-	if w.ButtonText("Reveal") {
-		a.openPath(v.Path, true)
-	}
-	if w.ButtonText("Open externally") {
-		a.openPath(v.Path, false)
-	}
-	if w.ButtonText("Reload") {
-		a.reloadFile(v)
+	if v.More || v.LimitReached {
+		muted(w, "Copy and Save use the loaded text only.", a.p)
 	}
 	w.Row(27).Static(95, 100)
 	if w.ButtonText("Copy all") && v.Editor != nil {
 		a.copyText(text(v.Editor))
 	}
 	if w.ButtonText("Save as…") && v.Editor != nil {
-		value := text(v.Editor)
-		a.choosePath(true, false, func(path string) {
-			a.work(func() { err := os.WriteFile(path, []byte(value), 0600); a.post(func() { a.report(err) }) })
-		})
+		a.saveTextAs(v.Path, v.fileText())
 	}
 	if v.FindOpen {
+		if v.Find == nil {
+			v.Find = textEditor("", false)
+		}
 		w.Row(28).Ratio(.7, .1, .1, .1)
+		if v.FocusFind {
+			v.FocusFind = false
+			w.Master().ActivateEditor(w, v.Find)
+		}
 		v.Find.Edit(w)
 		if w.ButtonText("Previous") {
 			a.fileFind(v, true)
@@ -288,14 +411,42 @@ func (a *App) drawFile(w *nucular.Window, v *fileView) {
 			a.fileFind(v, false)
 		}
 		if w.ButtonText("Close") {
-			v.FindOpen = false
+			v.FindOpen, v.FocusFile = false, true
+		}
+		a.prepareFileAnalysis(v)
+		w.Row(24).Dynamic(1)
+		color := a.p.Muted
+		if v.findLabel() == "No results" || v.Search.err != "" {
+			color = a.p.Danger
+		}
+		w.LabelColored(v.findLabel(), "LC", color)
+		if v.Search.err != "" {
+			w.Row(26).Dynamic(1)
+			if w.ButtonText("Retry search") {
+				v.Search.editor = nil
+			}
 		}
 	}
 	if v.Error != "" {
 		muted(w, v.Error, a.p)
-		return
+		if v.NonUTF8 {
+			w.Row(28).Static(175)
+			if w.ButtonText("Show as text (lossy)") {
+				v.Lossy = true
+				a.reloadFile(v)
+			}
+		}
+		if v.Editor == nil && !v.Loaded {
+			return
+		}
 	}
-	if len(v.Diff) > 0 {
+	if v.FileNotice != "" {
+		muted(w, v.FileNotice, a.p)
+	}
+	if v.Lossy {
+		muted(w, "Invalid UTF-8 bytes are shown as �. Copy and Save use this displayed text.", a.p)
+	}
+	if len(v.Diff) > 0 || v.DiffSummary != "" {
 		a.drawDiff(w, v)
 		return
 	}
@@ -308,22 +459,33 @@ func (a *App) drawFile(w *nucular.Window, v *fileView) {
 			a.loadFilePage(v, true)
 		}
 	}
-	w.Row(max(140, w.LayoutAvailableHeight()-8)).Dynamic(1)
+	scale := w.Master().Style().Scaling
+	w.RowScaled(max(int(80*scale), w.LayoutAvailableHeight()-int(30*scale))).Dynamic(1)
 	if v.Editor != nil {
-		v.Editor.Edit(w)
+		a.prepareFileAnalysis(v)
+		face := typeFace(fontPointSize(w.Master().Style().Font)-1, monoFont)
+		a.decorateFile(v, scale, face)
+		if v.FocusFile {
+			v.FocusFile = false
+			w.Master().ActivateEditor(w, v.Editor)
+		}
+		codeEditor(w, v.Editor)
 	} else {
 		w.Label("Loading…", "LC")
 	}
+	w.Row(24).Dynamic(1)
+	w.LabelColored(v.fileStatus(), "LC", a.p.Muted)
 }
 func (a *App) showDiff(c *workspace.Conversation) {
 	a.work(func() {
-		cmd := exec.CommandContext(a.ctx, "git", "-C", c.Cwd, "diff", "--no-ext-diff", "HEAD")
-		out, err := cmd.Output()
+		cmd := platform.CommandContext(a.ctx, "git", "-C", c.Cwd, "diff", "--no-ext-diff", "HEAD")
+		out, err := boundedCommandOutput(cmd, 4<<20)
 		a.post(func() {
+			if len(out) != 0 {
+				a.openDiff("Changes · "+c.Title, string(out), c.Cwd)
+			}
 			if err != nil {
 				a.report(err)
-			} else {
-				a.openDiff("Changes · "+c.Title, string(out), c.Cwd)
 			}
 		})
 	})
@@ -333,14 +495,14 @@ func (a *App) continueWorktree(c *workspace.Conversation, parent string) {
 		path := filepath.Join(parent, fmt.Sprintf("fastrock-%d", time.Now().Unix()))
 		git := func(dir string, args ...string) ([]byte, error) {
 			argv := append([]string{"-C", dir}, args...)
-			return exec.CommandContext(a.ctx, "git", argv...).CombinedOutput()
+			return platform.CommandContext(a.ctx, "git", argv...).CombinedOutput()
 		}
 		patch, err := git(c.Cwd, "diff", "--binary", "HEAD")
 		if err == nil {
 			_, err = git(c.Cwd, "worktree", "add", "--detach", path, "HEAD")
 		}
 		if err == nil && len(patch) > 0 {
-			cmd := exec.CommandContext(a.ctx, "git", "-C", path, "apply", "--binary")
+			cmd := platform.CommandContext(a.ctx, "git", "-C", path, "apply", "--binary")
 			cmd.Stdin = bytes.NewReader(patch)
 			out, e := cmd.CombinedOutput()
 			if e != nil {
@@ -417,4 +579,36 @@ func copyWorktreeFile(source, destination, name string) error {
 		return err
 	}
 	return closeErr
+}
+
+func boundedCommandOutput(cmd *exec.Cmd, limit int64) ([]byte, error) {
+	pipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err = cmd.Start(); err != nil {
+		return nil, err
+	}
+	data, readErr := io.ReadAll(io.LimitReader(pipe, limit+1))
+	if int64(len(data)) > limit {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		return data[:limit], fmt.Errorf("diff exceeds %d MiB; use an external viewer for the complete diff", limit>>20)
+	}
+	err = cmd.Wait()
+	if readErr != nil {
+		return nil, readErr
+	}
+	return data, err
+}
+
+func (a *App) fileGoTo(v *fileView) {
+	a.inputDialog("Go to line", "1", func(value string) {
+		line, err := strconv.Atoi(value)
+		if err != nil || line < 1 {
+			a.toast = "Enter a positive line number"
+			return
+		}
+		a.goToFileLine(v, line, 1)
+	})
 }

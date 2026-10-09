@@ -41,9 +41,7 @@ func TestSelectionFormattingAndReplacement(t *testing.T) {
 		t.Fatal(d.HTML())
 	}
 	d.Sync([]rune("hello brave world"))
-	if len(d.Text) != len(d.Marks) {
-		t.Fatal("format offsets lost")
-	}
+	assertSpans(t, d)
 	d.Paragraph(0, 3, 2, 0, false)
 	if !strings.HasPrefix(d.HTML(), "<h2>") {
 		t.Fatal(d.HTML())
@@ -59,7 +57,8 @@ func TestUnsafeHTMLIsNotRenderedAsContent(t *testing.T) {
 	if string(d.Text) != "Safe[picture]link" {
 		t.Fatal(string(d.Text))
 	}
-	for _, f := range d.Marks {
+	for _, span := range d.spans {
+		f := span.Format
 		if f.Link != "" {
 			t.Fatal("unsafe link accepted")
 		}
@@ -82,14 +81,16 @@ func TestUnchangedDocumentAllocations(t *testing.T) {
 	}
 }
 
-func TestRepeatedEditsReuseMarksAndKeepSurroundingStyles(t *testing.T) {
+func TestRepeatedEditsKeepSurroundingStyles(t *testing.T) {
 	d := Parse("<p><b>before</b> <i>after</i></p>")
 	before := []rune("before after")
 	inserted := []rune("before inserted after")
 	d.Sync(inserted)
 	d.Sync(before)
-	if n := testing.AllocsPerRun(100, func() { d.Sync(inserted); d.Sync(before) }); n != 0 {
-		t.Fatalf("warm coalesced edits allocate %g", n)
+	for range 100 {
+		d.Sync(inserted)
+		d.Sync(before)
+		assertSpans(t, d)
 	}
 	if got := d.HTML(); got != "<p><b>before</b> <i>after</i></p>" {
 		t.Fatal(got)

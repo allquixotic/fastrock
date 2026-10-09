@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"syscall"
+	"unicode/utf16"
 	"unsafe"
 )
 
@@ -28,6 +29,14 @@ type openFileName struct {
 }
 
 func ChoosePath(save, dir bool) (string, error) {
+	return choosePath(save, dir, "", "")
+}
+
+func ChooseSaveText(name string) (string, error) {
+	return choosePath(true, false, name, textSaveFilter)
+}
+
+func choosePath(save, dir bool, name, fileFilter string) (string, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	ole := syscall.NewLazyDLL("ole32.dll")
@@ -36,6 +45,13 @@ func ChoosePath(save, dir bool) (string, error) {
 		defer ole.NewProc("CoUninitialize").Call()
 	}
 	buffer := make([]uint16, 32768)
+	if name != "" {
+		initial, err := syscall.UTF16FromString(name)
+		if err != nil || len(initial) > len(buffer) {
+			return "", fmt.Errorf("invalid suggested filename")
+		}
+		copy(buffer, initial)
+	}
 	if dir {
 		title, _ := syscall.UTF16PtrFromString("Choose project folder")
 		info := struct {
@@ -57,8 +73,20 @@ func ChoosePath(save, dir bool) (string, error) {
 		}
 		return syscall.UTF16ToString(buffer), nil
 	}
-	filter := []uint16{'A', 'l', 'l', ' ', 'f', 'i', 'l', 'e', 's', 0, '*', '.', '*', 0, 0}
+	if fileFilter == "" {
+		fileFilter = "All files\x00*.*\x00\x00"
+	}
+	filter := utf16.Encode([]rune(fileFilter))
 	info := openFileName{Filter: &filter[0], File: &buffer[0], MaxFile: uint32(len(buffer)), Flags: 0x80000 | 0x8 | 0x800}
+	var extension *uint16
+	if name != "" {
+		extension, _ = syscall.UTF16PtrFromString(textSaveExtension(name))
+		info.DefaultExtension = extension
+		info.FilterIndex = 1
+		if textSaveExtension(name) == "txt" {
+			info.FilterIndex = 2
+		}
+	}
 	info.Size = uint32(unsafe.Sizeof(info))
 	api := syscall.NewLazyDLL("comdlg32.dll")
 	method := "GetOpenFileNameW"
@@ -71,6 +99,7 @@ func ChoosePath(save, dir bool) (string, error) {
 	ok, _, _ := api.NewProc(method).Call(uintptr(unsafe.Pointer(&info)))
 	runtime.KeepAlive(filter)
 	runtime.KeepAlive(buffer)
+	runtime.KeepAlive(extension)
 	if ok == 0 {
 		code, _, _ := api.NewProc("CommDlgExtendedError").Call()
 		if code != 0 {

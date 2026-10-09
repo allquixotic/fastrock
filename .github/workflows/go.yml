@@ -3,16 +3,45 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  analysis:
+    runs-on: macos-latest
+    env:
+      GOTOOLCHAIN: go1.27.2
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.2'
+          cache: true
+      - run: go mod tidy -diff
+      - run: go -C dev/tools mod tidy -diff
+      # x/tools is pinned in this module for Go 1.27 export-format support.
+      - run: go -C dev/tools install honnef.co/go/tools/cmd/staticcheck golang.org/x/vuln/cmd/govulncheck
+      - run: staticcheck -tags=nucular_headless ./...
+      - run: govulncheck -tags=nucular_headless ./...
+      - run: govulncheck ./...
+  race:
+    runs-on: macos-latest
+    env:
+      CGO_ENABLED: '1'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.2'
+          cache: true
+      - run: go test -race -tags=nucular_headless ./...
   check:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
     env:
       CGO_ENABLED: '0'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.27.2'
           cache: true
@@ -24,7 +53,7 @@ jobs:
         run: go build -trimpath -ldflags="-H=windowsgui -s -w" -o fastrock.exe ./cmd/fastrock
       - if: runner.os == 'macOS'
         run: go build -trimpath -o fastrock ./cmd/fastrock
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: fastrock-${{ matrix.os }}
           path: |

@@ -2,7 +2,6 @@ package ui
 
 import (
 	"encoding/json"
-	"fmt"
 	"image"
 	"path/filepath"
 	"strings"
@@ -27,14 +26,20 @@ func shellActions() []actionSpec {
 	return []actionSpec{
 		{"new-tab", "New tab", key.CodeT, m}, {"close-tab", "Close tab", key.CodeW, m}, {"next-tab", "Next tab", key.CodeTab, key.ModControl}, {"prev-tab", "Previous tab", key.CodeTab, key.ModControl | key.ModShift},
 		{"settings", "Settings", key.CodeComma, m}, {"toggle-sidebar", "Toggle sidebar", key.CodeB, m}, {"toggle-info", "Toggle information", key.CodeI, m | key.ModShift}, {"open-file", "Open file", key.CodeO, m},
+		{"rally-search", "Rally: Focus search", key.CodeSlash, 0}, {"rally-team-board", "Rally: Open Team Board", key.CodeB, key.ModAlt},
+		{"rally-close-detail", "Rally: Close work item", key.CodeEscape, 0}, {"rally-open-card", "Rally: Open focused work item", key.CodeReturnEnter, 0},
+		{"rally-next-card", "Rally: Focus next work item", key.CodeTab, 0}, {"rally-prev-card", "Rally: Focus previous work item", key.CodeTab, key.ModShift},
 		{"escape", "Interrupt / dismiss", key.CodeEscape, 0}, {"palette", "Command palette", key.CodeP, m | key.ModShift}, {"theme", "Toggle dark / light", key.CodeT, m | key.ModShift},
 		{"tab-1", "Select tab 1", key.Code1, m}, {"tab-2", "Select tab 2", key.Code2, m}, {"tab-3", "Select tab 3", key.Code3, m}, {"tab-4", "Select tab 4", key.Code4, m}, {"tab-5", "Select tab 5", key.Code5, m}, {"tab-6", "Select tab 6", key.Code6, m}, {"tab-7", "Select tab 7", key.Code7, m}, {"tab-8", "Select tab 8", key.Code8, m}, {"tab-9", "Select last tab", key.Code9, m},
 	}
 }
 func (a *App) runAction(id string) {
+	if a.runRallyAction(id) {
+		return
+	}
 	switch id {
 	case "new-tab":
-		a.state.Open(workspace.New, "New tab", "", "")
+		a.state.OpenNew()
 	case "close-tab":
 		a.closeTab(a.state.Active)
 	case "next-tab":
@@ -114,7 +119,7 @@ func (a *App) chatAction(id, action string) {
 				return
 			}
 			a.rpc("thread/name/set", map[string]any{"threadId": id, "name": name}, func(_ json.RawMessage) {
-				a.invalidateSidebar()
+				a.invalidateSidebar(c.ID)
 				c.Title = name
 				for i := range a.state.Tabs {
 					if a.state.Tabs[i].Target == id {
@@ -149,27 +154,21 @@ func (a *App) chatAction(id, action string) {
 	case "compact":
 		a.rpc("thread/compact/start", map[string]any{"threadId": id}, nil)
 	case "recap":
-		a.startTurn(c, "Summarize the current goal, work completed, verification, open issues, and the next concrete step.", nil, "send")
+		a.startRecap(c)
 	case "init":
 		a.startTurn(c, "Create or update AGENTS.md with concise, repository-specific instructions for coding agents. Inspect the repository and document its actual build, testing, architecture and conventions.", nil, "send")
 	case "review":
-		a.inputDialog("Review target (empty = uncommitted changes)", "", func(instructions string) {
-			target := map[string]any{"type": "uncommittedChanges"}
-			if instructions != "" {
-				target = map[string]any{"type": "custom", "instructions": instructions}
-			}
-			a.rpc("review/start", map[string]any{"threadId": id, "target": target, "delivery": "inline"}, nil)
-		})
+		a.reviewDialog(id)
 	case "export":
 		a.exportChat(c)
 	case "view-text":
-		a.openText(c.Title, transcriptText(c.Blocks))
+		a.viewChatText(c)
 	case "copy-id":
 		a.copyText(id)
 	case "archive", "unarchive":
 		method := "thread/" + action
 		a.rpc(method, map[string]any{"threadId": id}, func(_ json.RawMessage) {
-			a.invalidateSidebar()
+			a.invalidateSidebar(c.ID)
 			c.Archived = action == "archive"
 			for _, t := range append([]workspace.Tab(nil), a.state.Tabs...) {
 				if t.Target == id {
@@ -186,18 +185,12 @@ func (a *App) chatAction(id, action string) {
 					}
 				}
 				delete(a.state.Chats, id)
+				a.invalidateSidebar(id)
 			})
 		})
 	case "worktree":
 		a.choosePath(false, true, func(path string) { a.continueWorktree(c, path) })
 	}
-}
-func transcriptText(blocks []workspace.Block) string {
-	var b strings.Builder
-	for _, block := range blocks {
-		fmt.Fprintf(&b, "## %s\n\n%s\n\n", block.Role, block.Text)
-	}
-	return b.String()
 }
 func (a *App) openText(title, content string) {
 	id := a.state.Open(workspace.File, title, "text:"+title, "")
@@ -215,23 +208,35 @@ func (a *App) openText(title, content string) {
 	})
 }
 func (a *App) sidebarContext(w *nucular.Window, c *workspace.Conversation) {
-	if menu := w.ContextualOpen(0, image.Pt(230, 360), w.LastWidgetBounds, nil); menu != nil {
-		for _, item := range chatActions {
-			if item.ID == "archive" && c.Archived {
-				if menu.MenuItem(label.T("Unarchive")) {
-					a.chatAction(c.ID, "unarchive")
-				}
-				continue
-			}
-			if menu.MenuItem(label.T(item.Title)) {
-				a.chatAction(c.ID, item.ID)
-			}
+	if menu := w.ContextualOpen(0, image.Pt(230, 220), w.LastWidgetBounds, nil); menu != nil {
+		menu.Row(28).Dynamic(1)
+		if menu.MenuItem(label.T("Open")) {
+			a.resumeThread(c.ID)
 		}
 		if menu.MenuItem(label.T("New chat in this folder")) {
 			a.newThread(c.Cwd)
 		}
+		menu.Row(7).Dynamic(1)
+		menu.Spacing(1)
+		menu.Row(28).Dynamic(1)
+		if menu.MenuItem(label.T("Rename…")) {
+			a.chatAction(c.ID, "rename")
+		}
+		action, caption := "archive", "Archive"
+		if c.Archived {
+			action, caption = "unarchive", "Unarchive"
+		}
+		if menu.MenuItem(label.T(caption)) {
+			a.chatAction(c.ID, action)
+		}
 		if menu.MenuItem(label.T("Delete permanently…")) {
 			a.chatAction(c.ID, "delete")
+		}
+		menu.Row(7).Dynamic(1)
+		menu.Spacing(1)
+		menu.Row(28).Dynamic(1)
+		if menu.MenuItem(label.T("Copy thread ID")) {
+			a.copyText(c.ID)
 		}
 	}
 }

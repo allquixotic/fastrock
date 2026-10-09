@@ -4,6 +4,7 @@
 package clipboard
 
 import (
+	"errors"
 	"fmt"
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
@@ -55,15 +56,21 @@ func Start() {
 }
 
 func Set(text string) {
+	if err := Write(text); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+}
+func Write(text string) error {
 	clipboardText = text
 	ssoc := xproto.SetSelectionOwnerChecked(X, win, clipboardAtom, xproto.TimeCurrentTime)
 	if err := ssoc.Check(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error setting clipboard: %v", err)
+		return fmt.Errorf("setting clipboard: %w", err)
 	}
 	ssoc = xproto.SetSelectionOwnerChecked(X, win, primaryAtom, xproto.TimeCurrentTime)
 	if err := ssoc.Check(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error setting primary selection: %v", err)
+		return fmt.Errorf("setting primary selection: %w", err)
 	}
+	return nil
 }
 
 func Get() string {
@@ -75,32 +82,38 @@ func GetPrimary() string {
 }
 
 func getSelection(selAtom xproto.Atom) string {
+	value, _ := readSelection(selAtom)
+	return value
+}
+func Read(primary bool) (string, error) {
+	if primary {
+		return readSelection(primaryAtom)
+	}
+	return readSelection(clipboardAtom)
+}
+func readSelection(selAtom xproto.Atom) (string, error) {
 	csc := xproto.ConvertSelectionChecked(X, win, selAtom, textAtom, selAtom, xproto.TimeCurrentTime)
 	err := csc.Check()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return ""
+		return "", err
 	}
 
 	select {
 	case r := <-selnotify:
 		if !r {
-			return ""
+			return "", errors.New("selection owner did not provide text")
 		}
 		gpc := xproto.GetProperty(X, true, win, selAtom, textAtom, 0, 5*1024*1024)
 		gpr, err := gpc.Reply()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return ""
+			return "", err
 		}
 		if gpr.BytesAfter != 0 {
-			fmt.Fprintln(os.Stderr, "Clipboard too large")
-			return ""
+			return "", errors.New("clipboard text exceeds the size limit")
 		}
-		return string(gpr.Value[:gpr.ValueLen])
+		return string(gpr.Value[:gpr.ValueLen]), nil
 	case <-time.After(1 * time.Second):
-		fmt.Fprintln(os.Stderr, "Clipboard retrieval failed, timeout")
-		return ""
+		return "", errors.New("clipboard retrieval timed out")
 	}
 }
 

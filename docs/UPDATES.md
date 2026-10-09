@@ -16,13 +16,24 @@ new executable is rolled back. Failed automatic installation is recorded under
 `<Fastrock settings directory>/updates/last-update.json` and reported next launch.
 The updater never stops Codex conversations just to install an update.
 
-Downloads use HTTPS and GitHub's asset SHA-256 digest (or the release's
-`SHA256SUMS` for older assets). Archives are limited to 192 MiB compressed,
-512 MiB expanded and 4,096 entries. Absolute/traversal paths, symlinks, duplicate
-files and unexpected top-level contents are rejected. macOS additionally verifies
-the app bundle's code signature before replacing it. Checksums authenticate the
-transported asset through GitHub; they are not a separately signed update feed.
-The existing binary is preserved on download, checksum and extraction failures.
+Downloads use HTTPS and SHA-256 to detect transport corruption. Archives are
+limited to 192 MiB compressed, 512 MiB expanded and 4,096 entries. Absolute/traversal
+paths, symlinks, duplicate files and unexpected top-level contents are rejected.
+Before an update becomes ready, and again immediately before replacement, the
+native code signature authenticates the publisher:
+
+- Windows verifies Authenticode trust, revocation and the complete publisher name
+  against the running signed Fastrock executable. A renewed certificate for the
+  same publisher is accepted; an unsigned or differently signed update is rejected.
+- macOS requires Developer ID team `B6XDYNLMPU`, bundle ID
+  `com.allquixotic.fastrock`, a valid sealed bundle, a stapled notarization ticket,
+  and a successful Gatekeeper assessment.
+
+Signed Go build metadata must also identify Fastrock and match the selected
+release version, preventing an old signed binary from being relabeled as newer.
+A changed checksum in a compromised release feed cannot bypass these checks.
+The existing installation remains intact on a failed check. Development builds
+cannot serve as an unsigned bridge into managed updates.
 
 Windows release launches establish `%LOCALAPPDATA%\Programs\Fastrock\fastrock.exe`
 and a **per-user** Start menu shortcut using native `IShellLinkW`/`IPersistFile`.
@@ -48,15 +59,44 @@ tests, and publishes:
 - `fastrock-darwin-amd64.zip` and `.dmg`
 - `SHA256SUMS`
 
-Locally: `go run dev/package.go -os darwin -arch arm64 -version vX.Y.Z -dmg=true`.
-For Windows omit `-dmg`; packaging works from macOS using a Go cross-build.
-Generated files are ignored under `build/` and `dist/`.
+On a provisioned Mac:
 
-The current workflow ad-hoc signs macOS bundles. Public distribution without a
-Gatekeeper warning additionally needs a Developer ID certificate and notarization;
-these credentials are not installed or inferred by this workflow. The packager
-accepts `FASTROCK_SIGN_IDENTITY` on a Mac where the signing identity is provisioned.
-A tag is not created automatically by ordinary builds or commits.
+```sh
+go run dev/package.go -os darwin -arch arm64 -version vX.Y.Z -dmg=true
+```
+
+The packager signs the executable and enclosing app with hardened runtime and
+secure timestamps, notarizes and staples the app, then builds its ZIP and DMG.
+It signs/notarizes/staples the DMG separately. The pinned application identity is
+`9A3CFFC04D3472208A62C48E707EA6D4261998A1`; the Keychain notarization profile is
+`AC_NOTARY`. No private key is stored in this repository or exported by the scripts.
+Reports, submission IDs and Apple logs remain under `build/release/signing-<arch>`.
+If notarization times out, rerun `dev/sign_macos.py` for the same artifact and
+report directory to resume its recorded submission; do not rebuild it first.
+
+The macOS CI job requires a trusted self-hosted runner labeled `macOS` and
+`fastrock-signing`, with this identity/profile provisioned. The Windows job uses
+Azure Artifact Signing with OIDC, matching the Codex repository's signing action.
+Its protected `azure-artifact-signing` environment needs these secrets:
+
+- `AZURE_ARTIFACT_SIGNING_CLIENT_ID`, `AZURE_ARTIFACT_SIGNING_TENANT_ID`,
+  `AZURE_ARTIFACT_SIGNING_SUBSCRIPTION_ID`
+- `AZURE_ARTIFACT_SIGNING_ENDPOINT`, `AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME`,
+  `AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
+
+Optionally set `FASTROCK_WINDOWS_PUBLISHER` to the certificate's exact subject to
+check the expected identity during packaging. Configure the Azure federated
+credential for this repository's protected environment before releasing. No
+credentials, runner registration, or Azure permissions are provisioned by a
+normal build. CI refuses to publish if signing or verification fails. All action
+versions are pinned and the final archives receive build provenance attestations.
+
+For a Windows cross-build, use `-phase build`; sign the resulting executable on
+Windows, then use `-phase package` there to verify and archive it. `-unsigned` is
+available only as an explicit local fixture option; those artifacts are rejected
+by the updater. Generated files remain under ignored `build/` and `dist/`.
+A tag is not created by ordinary builds or commits. The previously generated
+Ed25519 update key is not used by this native-signing pipeline.
 
 References: [GitHub release assets](https://docs.github.com/en/rest/releases/releases#get-the-latest-release),
 [Windows shell links](https://learn.microsoft.com/en-us/windows/win32/shell/links),

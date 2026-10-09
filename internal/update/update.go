@@ -42,6 +42,7 @@ type Release struct {
 	Assets            []Asset `json:"assets"`
 }
 type Manager struct {
+	verify                                       func(string, string) error
 	cancel                                       context.CancelFunc
 	done                                         chan struct{}
 	mu                                           sync.Mutex
@@ -60,7 +61,7 @@ func New(current, cache, executable string, changed func(Status)) *Manager {
 			return errors.New("unsafe update redirect")
 		}
 		return nil
-	}}, changed: changed, status: Status{State: "idle", Message: "Updates are checked automatically on launch."}}
+	}}, changed: changed, verify: verifyRelease, status: Status{State: "idle", Message: "Updates are checked automatically on launch."}}
 }
 func (m *Manager) Status() Status { m.mu.Lock(); defer m.mu.Unlock(); return m.status }
 func (m *Manager) publish(s Status) {
@@ -187,32 +188,9 @@ func (m *Manager) check(ctx context.Context) error {
 	if asset.Size <= 0 || asset.Size > maxArchive {
 		return errors.New("invalid update archive size")
 	}
-	digest := strings.TrimPrefix(asset.Digest, "sha256:")
-	if !strings.HasPrefix(asset.Digest, "sha256:") {
-		// Older GitHub assets omit digest. The release workflow also publishes SHA256SUMS.
-		for _, a := range r.Assets {
-			if a.Name == "SHA256SUMS" {
-				rr, err := m.request(ctx, a.URL)
-				if err != nil {
-					return err
-				}
-				data, err := io.ReadAll(io.LimitReader(rr.Body, 64<<10))
-				rr.Body.Close()
-				if err != nil {
-					return err
-				}
-				for _, line := range strings.Split(string(data), "\n") {
-					f := strings.Fields(line)
-					if len(f) == 2 && strings.TrimPrefix(f[1], "*") == name {
-						digest = f[0]
-					}
-				}
-			}
-		}
-	}
-	expected, e := hex.DecodeString(digest)
-	if e != nil || len(expected) != 32 {
-		return errors.New("release is missing a valid SHA-256 digest")
+	expected, e := m.archiveDigest(ctx, r, asset)
+	if e != nil {
+		return e
 	}
 	if e = os.MkdirAll(m.cache, 0700); e != nil {
 		return e
@@ -267,6 +245,9 @@ func (m *Manager) check(ctx context.Context) error {
 		staged = filepath.Join(tree, "Fastrock.app")
 	}
 	if e = validatePayload(staged, m.goos); e != nil {
+		return e
+	}
+	if e = m.verify(staged, r.Tag); e != nil {
 		return e
 	}
 	job := Job{ParentPID: os.Getpid(), Target: m.target, Staged: staged, Stage: stage, Version: r.Tag, GOOS: m.goos}

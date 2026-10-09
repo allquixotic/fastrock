@@ -4,6 +4,7 @@ package update
 
 import (
 	"fmt"
+	"github.com/allquixotic/fastrock/internal/platform"
 	"os/exec"
 	"runtime"
 	"syscall"
@@ -29,9 +30,16 @@ func verifyPlatform(path string) error {
 	if runtime.GOOS != "darwin" {
 		return nil
 	}
-	// Verify the bundle assembled by the release workflow, including its code seal.
-	if output, e := exec.Command("/usr/bin/codesign", "--verify", "--deep", "--strict", path).CombinedOutput(); e != nil {
+	// Require our Developer ID identity, not merely a valid/ad-hoc code seal.
+	const requirement = `anchor apple generic and identifier "com.allquixotic.fastrock" and certificate leaf[subject.OU] = "B6XDYNLMPU" and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists`
+	if output, e := platform.Command("/usr/bin/codesign", "--verify", "--deep", "--strict", "-R", "="+requirement, path).CombinedOutput(); e != nil {
 		return fmt.Errorf("app signature verification failed: %s", output)
+	}
+	if output, e := platform.Command("/usr/bin/xcrun", "stapler", "validate", path).CombinedOutput(); e != nil {
+		return fmt.Errorf("app notarization ticket verification failed: %s", output)
+	}
+	if output, e := platform.Command("/usr/sbin/spctl", "--assess", "--type", "execute", path).CombinedOutput(); e != nil {
+		return fmt.Errorf("Gatekeeper rejected update: %s", output)
 	}
 	return nil
 }

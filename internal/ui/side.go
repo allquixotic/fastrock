@@ -28,6 +28,8 @@ func (a *App) startSide(c *workspace.Conversation) {
 				return
 			}
 			next := &workspace.Conversation{ID: id, Title: "Side chat · " + c.Title, Cwd: c.Cwd, Model: c.Model, Effort: c.Effort, Tier: c.Tier, Ephemeral: true, Blocks: append([]workspace.Block(nil), c.Blocks...)}
+			next.Settings = threadSettings(response)
+			next.SideParentID, next.SideParentTitle = c.ID, c.Title
 			boundary := map[string]any{"type": "message", "role": "user", "content": []map[string]any{{"type": "input_text", "text": sideInstructions + " Only the next user question is active."}}}
 			a.rpc("thread/inject_items", map[string]any{"threadId": id, "items": []any{boundary}}, func(_ json.RawMessage) {
 				a.state.Chats[id] = next

@@ -34,7 +34,7 @@ func TestWarmBoardAndSidebarDoNotAllocate(t *testing.T) {
 	}
 	a := &App{state: workspace.NewState(), sidebarSearch: textEditor("", false)}
 	a.state.Chats["1"] = &workspace.Conversation{ID: "1", Title: "Thread", Cwd: "/repo"}
-	a.sidebarFolders()
+	waitSidebar(t, a)
 	if n := testing.AllocsPerRun(100, func() { a.sidebarFolders() }); n != 0 {
 		t.Fatalf("warm sidebar allocates %g", n)
 	}

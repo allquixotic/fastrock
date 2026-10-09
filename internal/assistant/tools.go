@@ -83,7 +83,7 @@ func (t Tools) Execute(ctx context.Context, name string, raw json.RawMessage) (a
 		}
 		return o, nil
 	case "rally_fields":
-		return t.Client.Fields(ctx, args.Kind)
+		return t.Client.Fields(ctx, args.Kind, t.Scope.Workspace)
 	case "rally_show_view":
 		var v View
 		if e := json.Unmarshal(raw, &v); e != nil {
@@ -101,6 +101,9 @@ func (t Tools) Execute(ctx context.Context, name string, raw json.RawMessage) (a
 		}
 		if v.Mode != "" && v.Mode != "board" && v.Mode != "list" && v.Mode != "charts" && v.Mode != "planning" {
 			return nil, errors.New("unknown view mode")
+		}
+		if v.Group != "" && v.Group != "None" && v.Group != "Owner" && v.Group != "Iteration" && v.Group != "Release" && v.Group != "ScheduleState" && v.Group != "Feature" && v.Group != "Project" {
+			return nil, errors.New("unknown view grouping")
 		}
 		if t.Show == nil {
 			return nil, errors.New("view callback unavailable")

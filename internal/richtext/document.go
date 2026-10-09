@@ -3,6 +3,7 @@
 package richtext
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"html"
 	"net/url"
@@ -33,35 +34,42 @@ type Format struct {
 	Quote   bool
 }
 
-type snapshot struct {
-	Text  []rune
-	Marks []Format
-}
-
 type Document struct {
-	Revision   uint64
-	Text       []rune
-	Marks      []Format // one entry per Unicode code point, including paragraph separators
-	original   string
-	initial    *snapshot
-	changed    bool
-	pending    *Format
-	undo, redo []snapshot
-	html       string
-	dirty      bool
-	lastEdit   time.Time
+	Unsupported         []string
+	Revision            uint64
+	Text                []rune
+	spans, spareSpans   []Span
+	original            string
+	originalFingerprint [sha256.Size]byte
+	changed             bool
+	pending             *Format
+	undo, redo          []*undoGroup
+	history             *historyPool
+	html                string
+	dirty               bool
+	lastEdit            time.Time
 }
 
 func Parse(source string) *Document {
+	return ParseWithLinks(source, SafeLink)
+}
+
+// ParseWithLinks lets a read-only renderer retain local file citations while
+// editable Rally documents continue to use the web-only SafeLink policy.
+func ParseWithLinks(source string, link func(string) string) *Document {
+	if link == nil {
+		link = SafeLink
+	}
 	d := &Document{original: source}
 	nodes, err := xhtml.ParseFragment(strings.NewReader(source), &xhtml.Node{Type: xhtml.ElementNode, Data: "div", DataAtom: atom.Div})
 	if err != nil {
 		d.Text = []rune(source)
-		d.Marks = make([]Format, len(d.Text))
+		if len(d.Text) > 0 {
+			d.spans = []Span{{End: len(d.Text)}}
+		}
 		return d
 	}
-	var appendText func(string, Format, bool)
-	appendText = func(s string, f Format, pre bool) {
+	appendText := func(s string, f Format, pre bool) {
 		for _, r := range s {
 			if !pre && unicode.IsSpace(r) {
 				if len(d.Text) == 0 || unicode.IsSpace(d.Text[len(d.Text)-1]) {
@@ -69,18 +77,15 @@ func Parse(source string) *Document {
 				}
 				r = ' '
 			}
-			d.Text = append(d.Text, r)
-			d.Marks = append(d.Marks, f)
+			d.appendRune(r, f)
 		}
 	}
 	newline := func(f Format) {
 		for len(d.Text) > 0 && d.Text[len(d.Text)-1] == ' ' {
-			d.Text = d.Text[:len(d.Text)-1]
-			d.Marks = d.Marks[:len(d.Marks)-1]
+			d.truncate(len(d.Text) - 1)
 		}
 		if len(d.Text) > 0 && d.Text[len(d.Text)-1] != '\n' {
-			d.Text = append(d.Text, '\n')
-			d.Marks = append(d.Marks, f)
+			d.appendRune('\n', f)
 		}
 	}
 	var walk func(*xhtml.Node, Format, bool)
@@ -93,6 +98,20 @@ func Parse(source string) *Document {
 			return
 		}
 		tag := n.Data
+		unsupported := false
+		switch tag {
+		case "p", "div", "br", "span", "b", "strong", "em", "i", "u", "s", "del", "strike", "code", "pre", "blockquote", "ul", "ol", "li", "a", "h1", "h2", "h3", "h4", "h5", "h6":
+		default:
+			unsupported = true
+		}
+		for _, a := range n.Attr {
+			if a.Key != "href" || tag != "a" {
+				unsupported = true
+			}
+		}
+		if unsupported && !slices.Contains(d.Unsupported, tag) {
+			d.Unsupported = append(d.Unsupported, tag)
+		}
 		switch tag {
 		case "script", "style", "iframe", "object", "embed", "svg", "math":
 			return
@@ -129,12 +148,11 @@ func Parse(source string) *Document {
 		case "a":
 			for _, a := range n.Attr {
 				if a.Key == "href" {
-					f.Link = SafeLink(a.Val)
+					f.Link = link(a.Val)
 				}
 			}
 		case "br":
-			d.Text = append(d.Text, '\n')
-			d.Marks = append(d.Marks, f)
+			d.appendRune('\n', f)
 			return
 		case "img":
 			alt := "image"
@@ -181,8 +199,7 @@ func Parse(source string) *Document {
 		walk(n, Format{}, false)
 	}
 	for len(d.Text) > 0 && unicode.IsSpace(d.Text[len(d.Text)-1]) {
-		d.Text = d.Text[:len(d.Text)-1]
-		d.Marks = d.Marks[:len(d.Marks)-1]
+		d.truncate(len(d.Text) - 1)
 	}
 	return d
 }
@@ -199,51 +216,6 @@ func SafeLink(s string) string {
 	return ""
 }
 
-func (d *Document) record() {
-	d.lastEdit = time.Time{}
-	d.undo = append(d.undo, snapshot{slices.Clone(d.Text), slices.Clone(d.Marks)})
-	if d.initial == nil {
-		s := d.undo[len(d.undo)-1]
-		d.initial = &s
-	}
-	if len(d.undo) > 100 {
-		copy(d.undo, d.undo[len(d.undo)-100:])
-		clear(d.undo[100:])
-		d.undo = d.undo[:100]
-	}
-	d.redo = nil
-	d.trimHistory()
-}
-
-// Coalesce typing bursts and bound history memory even for long descriptions.
-func (d *Document) recordEdit() {
-	now := time.Now()
-	if d.lastEdit.IsZero() || now.Sub(d.lastEdit) > 650*time.Millisecond {
-		d.record()
-	}
-	d.lastEdit = now
-}
-func (d *Document) trimHistory() {
-	const budget = 8 << 20
-	cost := func(s snapshot) int { return len(s.Text)*4 + len(s.Marks)*40 }
-	total := 0
-	for _, s := range d.undo {
-		total += cost(s)
-	}
-	for _, s := range d.redo {
-		total += cost(s)
-	}
-	for total > budget && len(d.undo) > 0 {
-		total -= cost(d.undo[0])
-		d.undo[0] = snapshot{}
-		d.undo = d.undo[1:]
-	}
-	for total > budget && len(d.redo) > 0 {
-		total -= cost(d.redo[0])
-		d.redo[0] = snapshot{}
-		d.redo = d.redo[1:]
-	}
-}
 func (d *Document) invalidate() { d.changed = true; d.dirty = true; d.Revision++ }
 
 // Sync reconciles a native editor insertion/deletion while retaining surrounding styles.
@@ -252,7 +224,6 @@ func (d *Document) Sync(next []rune) bool {
 	if slices.Equal(d.Text, next) {
 		return false
 	}
-	d.recordEdit()
 	prefix := 0
 	for prefix < min(len(d.Text), len(next)) && d.Text[prefix] == next[prefix] {
 		prefix++
@@ -261,24 +232,29 @@ func (d *Document) Sync(next []rune) bool {
 	for suffix < min(len(d.Text)-prefix, len(next)-prefix) && d.Text[len(d.Text)-1-suffix] == next[len(next)-1-suffix] {
 		suffix++
 	}
-	f := Format{}
-	if prefix > 0 {
-		f = d.Marks[prefix-1]
-	} else if len(d.Marks) > 0 {
-		f = d.Marks[0]
+	return d.ApplyEdit(prefix, len(d.Text)-prefix-suffix, next[prefix:len(next)-suffix])
+}
+
+// ApplyEdit accepts a native editor's changed range without scanning unchanged
+// text to rediscover its boundaries. Styles outside the edit retain identity.
+func (d *Document) ApplyEdit(start, removed int, inserted []rune) bool {
+	start = max(0, min(start, len(d.Text)))
+	removed = max(0, min(removed, len(d.Text)-start))
+	end := start + removed
+	if slices.Equal(d.Text[start:end], inserted) {
+		return false
 	}
-	if d.pending != nil {
-		f = *d.pending
+	d.captureOriginal()
+	f := d.FormatAt(max(0, start-1))
+	after := []Span(nil)
+	if len(inserted) > 0 {
+		after = []Span{{End: len(inserted), Format: f}}
 	}
-	marks := slices.Grow(d.Marks, max(0, len(next)-len(d.Marks)))[:len(next)]
-	// Move the preserved tail first: insertion and deletion can overlap the
-	// existing storage. Reuse its capacity across keystrokes.
-	copy(marks[len(next)-suffix:], d.Marks[len(d.Marks)-suffix:])
-	for i := prefix; i < len(next)-suffix; i++ {
-		marks[i] = f
-	}
-	d.Text = append(d.Text[:0], next...)
-	d.Marks = marks
+	e := editDelta{start: start, removed: removed, inserted: len(inserted), text: true,
+		beforeText: slices.Clone(d.Text[start:end]), afterText: slices.Clone(inserted),
+		beforeSpans: d.sliceSpans(start, end), afterSpans: after}
+	d.record(e, true)
+	d.applyDelta(e, false)
 	d.invalidate()
 	return true
 }
@@ -294,10 +270,8 @@ func (d *Document) FormatAt(i int) Format {
 	if d.pending != nil {
 		return *d.pending
 	}
-	if len(d.Marks) == 0 {
-		return Format{}
-	}
-	return d.Marks[max(0, min(i, len(d.Marks)-1))]
+	format, _ := d.RunAt(i)
+	return format
 }
 
 func (d *Document) ClearPending() { d.pending = nil }
@@ -310,35 +284,48 @@ func (d *Document) Toggle(start, end int, style Style) {
 		d.pending = &f
 		return
 	}
-	d.record()
 	remove := true
-	for _, f := range d.Marks[start:end] {
+	for i := start; i < end; {
+		f, next := d.RunAt(i)
 		if f.Style&style == 0 {
 			remove = false
 			break
 		}
+		i = next
 	}
-	for i := start; i < end; i++ {
+	d.formatRange(start, end, func(f Format) Format {
 		if remove {
-			d.Marks[i].Style &^= style
+			f.Style &^= style
 		} else {
-			d.Marks[i].Style |= style
+			f.Style |= style
 		}
+		return f
+	})
+}
+
+func (d *Document) formatRange(start, end int, transform func(Format) Format) {
+	if start == end {
+		return
 	}
+	before := d.sliceSpans(start, end)
+	var after []Span
+	for _, s := range before {
+		after = appendSpan(after, s.End, transform(s.Format))
+	}
+	if slices.Equal(before, after) {
+		return
+	}
+	d.captureOriginal()
+	e := editDelta{start: start, removed: end - start, inserted: end - start, beforeSpans: before, afterSpans: after}
+	d.record(e, false)
+	d.applyDelta(e, false)
 	d.invalidate()
 }
 
 func (d *Document) Link(start, end int, link string) {
 	start, end = d.Selection(start, end)
-	if start == end {
-		return
-	}
-	d.record()
 	link = SafeLink(link)
-	for i := start; i < end; i++ {
-		d.Marks[i].Link = link
-	}
-	d.invalidate()
+	d.formatRange(start, end, func(f Format) Format { f.Link = link; return f })
 }
 
 func (d *Document) Paragraph(start, end int, heading, list uint8, quote bool) {
@@ -349,33 +336,7 @@ func (d *Document) Paragraph(start, end int, heading, list uint8, quote bool) {
 	for end < len(d.Text) && d.Text[end] != '\n' {
 		end++
 	}
-	d.record()
-	for i := start; i < end; i++ {
-		d.Marks[i].Heading = heading
-		d.Marks[i].List = list
-		d.Marks[i].Quote = quote
-	}
-	d.invalidate()
-}
-
-func (d *Document) Undo(redo bool) bool {
-	d.lastEdit = time.Time{}
-	from, to := &d.undo, &d.redo
-	if redo {
-		from, to = to, from
-	}
-	if len(*from) == 0 {
-		return false
-	}
-	*to = append(*to, snapshot{slices.Clone(d.Text), slices.Clone(d.Marks)})
-	s := (*from)[len(*from)-1]
-	(*from)[len(*from)-1] = snapshot{}
-	*from = (*from)[:len(*from)-1]
-	d.Text, d.Marks = s.Text, s.Marks
-	d.pending = nil
-	d.trimHistory()
-	d.invalidate()
-	return true
+	d.formatRange(start, end, func(f Format) Format { f.Heading, f.List, f.Quote = heading, list, quote; return f })
 }
 
 func (d *Document) HTML() string {
@@ -385,7 +346,7 @@ func (d *Document) HTML() string {
 	if !d.dirty {
 		return d.html
 	}
-	if d.initial != nil && slices.Equal(d.Text, d.initial.Text) && slices.Equal(d.Marks, d.initial.Marks) {
+	if d.fingerprint() == d.originalFingerprint {
 		d.html = d.original
 		d.dirty = false
 		return d.html
@@ -397,7 +358,7 @@ func (d *Document) HTML() string {
 		for end < len(d.Text) && d.Text[end] != '\n' {
 			end++
 		}
-		f := d.Marks[start]
+		f, _ := d.RunAt(start)
 		if f.List != list {
 			if list == 1 {
 				b.WriteString("</ul>")
@@ -424,11 +385,8 @@ func (d *Document) HTML() string {
 			b.WriteString("<br>")
 		}
 		for i := start; i < end; {
-			format := d.Marks[i]
-			j := i + 1
-			for j < end && d.Marks[j] == format {
-				j++
-			}
+			format, next := d.RunAt(i)
+			j := min(end, next)
 			if format.Link != "" {
 				b.WriteString(`<a href="` + html.EscapeString(format.Link) + `">`)
 			}
@@ -466,30 +424,3 @@ var tags = []struct {
 	style Style
 	tag   string
 }{{Bold, "strong"}, {Italic, "em"}, {Underline, "u"}, {Strike, "s"}, {Code, "code"}}
-
-// Saved preserves editor content and formatting without rendering HTML on the
-// UI thread. Undo history stays local; saved drafts carry only the current text.
-type Saved struct {
-	Original string
-	Text     []rune
-	Marks    []Format
-	Changed  bool
-}
-
-func (d *Document) Save() Saved {
-	s := Saved{Original: d.original, Changed: d.changed}
-	if d.changed {
-		s.Text = slices.Clone(d.Text)
-		s.Marks = slices.Clone(d.Marks)
-	}
-	return s
-}
-func Restore(s Saved) *Document {
-	d := Parse(s.Original)
-	if s.Changed && len(s.Text) == len(s.Marks) {
-		d.Text = slices.Clone(s.Text)
-		d.Marks = slices.Clone(s.Marks)
-		d.invalidate()
-	}
-	return d
-}

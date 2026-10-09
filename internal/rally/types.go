@@ -105,15 +105,16 @@ func (o Object) Count(k string) int {
 }
 
 type Query struct {
-	Expression string
-	Fetch      string
-	Order      string
-	Workspace  string
-	Project    string
-	Parents    bool
-	Children   bool
-	Start      int
-	PageSize   int
+	ArtifactTypes string
+	Expression    string
+	Fetch         string
+	Order         string
+	Workspace     string
+	Project       string
+	Parents       bool
+	Children      bool
+	Start         int
+	PageSize      int
 }
 type Page struct {
 	Results  []Object
@@ -134,6 +135,7 @@ type Field struct {
 	Name          string
 	DisplayName   string
 	AttributeType string
+	ReferenceType string
 	Required      bool
 	ReadOnly      bool
 	AllowedValues []string

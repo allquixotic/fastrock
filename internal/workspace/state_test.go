@@ -1,6 +1,11 @@
 package workspace
 
-import "testing"
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"unicode/utf8"
+)
 
 func TestTabsAndSidebarStaySeparate(t *testing.T) {
 	s := NewState()
@@ -50,5 +55,29 @@ func TestIndependentThreadsAndActivityDates(t *testing.T) {
 	s.Chats["a"].Append("m", "agentMessage", "assistant", "world")
 	if len(s.Chats["a"].Blocks) != 1 || s.Chats["a"].Blocks[0].Text != "hello world" {
 		t.Fatal("delta duplication")
+	}
+}
+
+func TestTranscriptBoundsEveryInsertAndReplacement(t *testing.T) {
+	c := &Conversation{}
+	huge := strings.Repeat("🙂", 2<<20)
+	c.Append("one", "agentMessage", "assistant", huge)
+	if len(c.Blocks[0].Text) > MaxBlockBytes || !utf8.ValidString(c.Blocks[0].Text) {
+		t.Fatal("unbounded or invalid UTF-8 initial block")
+	}
+	c.Append("one", "agentMessage", "assistant", " more")
+	c.ReplaceBlock("one", huge, "completed")
+	if len(c.streams) != 0 || len(c.Blocks[0].Text) > MaxBlockBytes {
+		t.Fatal("completion retained streaming text")
+	}
+	for i := 0; i < MaxTranscriptBlocks+10; i++ {
+		c.Append(fmt.Sprint(i), "message", "assistant", "x")
+	}
+	if len(c.Blocks) > MaxTranscriptBlocks {
+		t.Fatal("block limit exceeded")
+	}
+	c.ReleaseTranscript()
+	if c.transcriptBytes != 0 || len(c.streams) != 0 {
+		t.Fatal("retained released transcript")
 	}
 }

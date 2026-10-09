@@ -34,10 +34,16 @@ func (a *App) markdown(w *nucular.Window, source string) {
 		}
 		line = strings.ReplaceAll(line, "**", "")
 		width := max(100, w.LayoutAvailableWidth())
-		face := w.Master().Style().Font
+		old := w.Master().Style().Font
+		face := old
+		if inCode {
+			face = typeFace(fontPointSize(old)-1, monoFont)
+		}
+		w.Master().Style().Font = face
 		rows := len(nucular.WrapText(face, line, width-8))
 		w.Row(max(28, rows*nucular.FontHeight(face)+8)).Dynamic(1)
 		w.LabelWrapColored(line, color)
+		w.Master().Style().Font = old
 		for _, m := range markdownLink.FindAllStringSubmatch(line, -1) {
 			w.Row(24).Static(min(width, 500))
 			if w.ButtonText("Open: " + m[1]) {

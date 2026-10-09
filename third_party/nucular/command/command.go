@@ -14,7 +14,7 @@ type Buffer struct {
 	Commands []Command
 }
 
-var nk_null_rect = rect.Rect{-8192.0, -8192.0, 16384.0, 16384.0}
+var nk_null_rect = rect.Rect{X: -8192, Y: -8192, W: 16384, H: 16384}
 
 func (buffer *Buffer) Reset() {
 	buffer.Clip = nk_null_rect
@@ -32,6 +32,7 @@ type Command struct {
 	Image          Image
 	Text           Text
 	Cursor         font.Cursor
+	ClipboardID    uint64
 }
 
 type CommandKind uint8

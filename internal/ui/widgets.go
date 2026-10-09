@@ -3,6 +3,8 @@ package ui
 import (
 	"image"
 	"image/color"
+	"math"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/aarzilli/nucular"
@@ -15,6 +17,23 @@ import (
 func inset(r rect.Rect, x, y int) rect.Rect {
 	return rect.Rect{X: r.X + x, Y: r.Y + y, W: max(0, r.W-2*x), H: max(0, r.H-2*y)}
 }
+
+func tooltipButton(w *nucular.Window, caption, tip string) bool {
+	b := w.WidgetBounds()
+	clicked := w.ButtonText(caption)
+	if w.Input().Mouse.HoveringRect(b) {
+		w.Tooltip(tip)
+	}
+	return clicked
+}
+
+func detailStatusButton(w *nucular.Window, caption string, active bool, tone color.RGBA, p palette) bool {
+	if active {
+		p.Accent = tone
+		return primary(w, caption, p)
+	}
+	return w.ButtonText(caption)
+}
 func labelAt(out *command.Buffer, r rect.Rect, s string, f font.Face, c color.RGBA) {
 	r.Y += (r.H - nucular.FontHeight(f)) / 2
 	r.H = nucular.FontHeight(f) + 2
@@ -26,12 +45,35 @@ func ellipsize(s string, f font.Face, width int) string {
 	}
 	suffix := "…"
 	width -= nucular.FontWidth(f, suffix)
-	for len(s) > 0 {
-		_, n := utf8.DecodeLastRuneInString(s)
-		s = s[:len(s)-n]
-		if nucular.FontWidth(f, s) <= width {
-			return s + suffix
+	lo, hi := 0, len(s)
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		for mid < len(s) && !utf8.RuneStart(s[mid]) {
+			mid++
 		}
+		if mid > hi {
+			mid = hi
+		}
+		if nucular.FontWidth(f, s[:mid]) <= width {
+			lo = mid
+		} else {
+			hi = mid - 1
+			for hi > 0 && !utf8.RuneStart(s[hi]) {
+				hi--
+			}
+		}
+	}
+	// Never leave a combining mark or joiner dangling at the truncation point.
+	for lo > 0 && lo < len(s) {
+		r, _ := utf8.DecodeRuneInString(s[lo:])
+		prev, n := utf8.DecodeLastRuneInString(s[:lo])
+		if !unicode.Is(unicode.Mn, r) && r != '\u200d' && prev != '\u200d' {
+			break
+		}
+		lo -= n
+	}
+	if lo > 0 {
+		return s[:lo] + suffix
 	}
 	return suffix
 }
@@ -83,6 +125,27 @@ func iconButton(w *nucular.Window, icon string, active bool, p palette) bool {
 	return in.Mouse.Clicked(mouse.ButtonLeft, b)
 }
 func flatRow(w *nucular.Window, title, detail string, selected bool, dot color.RGBA, p palette) bool {
+	return flatStatusRow(w, title, detail, selected, statusDot{Color: dot}, 12, p)
+}
+func drawStatusDot(out *command.Buffer, bounds rect.Rect, dot statusDot) {
+	if dot.Color.A == 0 {
+		return
+	}
+	if dot.Hollow {
+		x, y := float64(bounds.X)+float64(bounds.W)/2, float64(bounds.Y)+float64(bounds.H)/2
+		radius := float64(min(bounds.W, bounds.H)-1) / 2
+		point := func(i int) image.Point {
+			angle := float64(i) * 2 * math.Pi / 16
+			return image.Pt(int(math.Round(x+radius*math.Cos(angle))), int(math.Round(y+radius*math.Sin(angle))))
+		}
+		for i := range 16 {
+			out.StrokeLine(point(i), point(i+1), 1, dot.Color)
+		}
+	} else {
+		out.FillCircle(bounds, dot.Color)
+	}
+}
+func flatStatusRow(w *nucular.Window, title, detail string, selected bool, dot statusDot, indent int, p palette) bool {
 	b, o := w.Custom(w.CustomState())
 	if o == nil {
 		return false
@@ -94,45 +157,57 @@ func flatRow(w *nucular.Window, title, detail string, selected bool, dot color.R
 		o.FillRect(inset(b, 2, 1), 4, p.Hover)
 	}
 	face := w.Master().Style().Font
-	x := b.X + 12
-	if dot.A != 0 {
-		o.FillCircle(rect.Rect{X: x, Y: b.Y + b.H/2 - 3, W: 6, H: 6}, dot)
-		x += 13
+	scale := w.Master().Style().Scaling
+	x := b.X + int(float64(indent)*scale)
+	if dot.Color.A != 0 {
+		size := int(8 * scale)
+		drawStatusDot(o, rect.Rect{X: x, Y: b.Y + (b.H-size)/2, W: size, H: size}, dot)
+		x += int(15 * scale)
 	}
 	fg := p.Muted
 	if selected {
 		fg = p.Text
 	}
-	labelAt(o, rect.Rect{X: x, Y: b.Y, W: b.W - (x - b.X) - 10, H: b.H}, title, face, fg)
+	detailWidth := 0
+	if detail != "" {
+		detailWidth = min(b.W/3, nucular.FontWidth(face, detail)+12)
+		labelAt(o, rect.Rect{X: b.X + b.W - detailWidth - 8, Y: b.Y, W: detailWidth, H: b.H}, detail, face, p.Faint)
+	}
+	labelAt(o, rect.Rect{X: x, Y: b.Y, W: b.W - (x - b.X) - 10 - detailWidth, H: b.H}, title, face, fg)
+	if in.Mouse.HoveringRect(b) {
+		w.Tooltip(title)
+	}
 	return in.Mouse.Clicked(mouse.ButtonLeft, b)
 }
 
 type tabRects struct{ Body, Title, Close, Dot rect.Rect }
 
 func tabLayout(b rect.Rect) tabRects {
-	return tabRects{Body: b, Title: rect.Rect{X: b.X + 23, Y: b.Y, W: max(0, b.W-49), H: b.H}, Close: rect.Rect{X: b.X + b.W - 24, Y: b.Y + (b.H-20)/2, W: 20, H: 20}, Dot: rect.Rect{X: b.X + 10, Y: b.Y + b.H/2 - 3, W: 6, H: 6}}
+	return tabRects{Body: b, Title: rect.Rect{X: b.X + 23, Y: b.Y, W: max(0, b.W-49), H: b.H}, Close: rect.Rect{X: b.X + b.W - 24, Y: b.Y + (b.H-20)/2, W: 20, H: 20}, Dot: rect.Rect{X: b.X + 9, Y: b.Y + b.H/2 - 4, W: 8, H: 8}}
 }
-func documentTab(w *nucular.Window, title string, active bool, dot color.RGBA, p palette) (activate, close bool, b rect.Rect) {
+func documentTab(w *nucular.Window, title string, active, dragged bool, dot statusDot, p palette) (activate, close bool, b rect.Rect) {
 	b, o := w.Custom(w.CustomState())
 	if o == nil {
 		return false, false, b
 	}
 	r := tabLayout(b)
 	in := w.Input()
-	if active {
+	if dragged {
+		o.FillRect(b, 4, p.Accent)
+		o.FillRect(inset(b, 1, 1), 3, p.Surface)
+	} else if active {
 		o.FillRect(b, 4, p.Surface)
 	} else if in.Mouse.HoveringRect(b) {
 		o.FillRect(b, 4, p.Hover)
 	}
-	if dot.A != 0 {
-		o.FillCircle(r.Dot, dot)
-	}
+	drawStatusDot(o, r.Dot, dot)
 	fg := p.Muted
-	if active {
+	if active || dragged {
 		fg = p.Text
 	}
 	labelAt(o, r.Title, title, w.Master().Style().Font, fg)
 	if in.Mouse.HoveringRect(r.Close) {
+		w.Tooltip("Close tab")
 		o.FillRect(r.Close, 4, p.Hover)
 	}
 	closeGlyph(o, r.Close, p.Muted)
@@ -202,6 +277,11 @@ func folderRow(w *nucular.Window, title string, expanded bool, p palette) bool {
 	in := w.Input()
 	if in.Mouse.HoveringRect(b) {
 		out.FillRect(inset(b, 2, 1), 4, p.Hover)
+		action := "Expand "
+		if expanded {
+			action = "Collapse "
+		}
+		w.Tooltip(action + title)
 	}
 	x, y := b.X+12, b.Y+b.H/2
 	if expanded {

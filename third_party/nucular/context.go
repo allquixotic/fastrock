@@ -19,6 +19,7 @@ import (
 const perfUpdate = false
 const dumpFrame = false
 
+//lint:ignore ST1012 Preserve the public upstream API name.
 var UnknownCommandErr = errors.New("unknown command")
 
 type context struct {
@@ -29,11 +30,19 @@ type context struct {
 	DockedWindows dockedTree
 	changed       int32
 	cmds          []command.Command
+	shapeMasks    shapeMaskCache
 	trashFrame    bool
 	autopos       image.Point
 
 	hasNextClipboard bool
 	nextClipboard    string
+	clipboardResults chan clipboardResult
+	clipboardClosed  chan struct{}
+	clipboardTargets map[uint64]clipboardTarget
+	clipboardSubmit  func(clipboardJob) error
+	clipboardError   func(error)
+	nextClipboardID  uint64
+	drawGeneration   uint64
 
 	finalCmds command.Buffer
 
@@ -69,6 +78,7 @@ func (ctx *context) setupMasterWindow(layout *panel, updatefn UpdateFn) {
 }
 
 func (ctx *context) Update() {
+	ctx.drawGeneration++
 	for count := 0; count < 2; count++ {
 		contextBegin(ctx, ctx.Windows[0].layout)
 		for i := 0; i < len(ctx.Windows); i++ {
@@ -97,6 +107,7 @@ func (ctx *context) Update() {
 			ctx.Reset()
 		}
 	}
+	ctx.drainClipboard()
 }
 
 func (ctx *context) updateWindow(win *Window) {
@@ -128,6 +139,7 @@ func (ctx *context) processKeyEvent(e key.Event, textbuffer *bytes.Buffer) {
 		if top.flags&windowPopup != 0 && top.flags&(windowNonblock|WindowClosable) != 0 {
 			// Input runs between frames. Remove the top menu/closable popup now;
 			// marking close here would be cleared by contextBegin.
+			top.closed()
 			ctx.Windows[len(ctx.Windows)-1] = nil
 			ctx.Windows = ctx.Windows[:len(ctx.Windows)-1]
 			ctx.Input.activateWindow = ctx.Windows[len(ctx.Windows)-1]
@@ -203,6 +215,7 @@ func (ctx *context) Reset() {
 	prevNumWindows := len(ctx.Windows)
 	for i := 0; i < len(ctx.Windows); i++ {
 		if ctx.Windows[i].close {
+			ctx.Windows[i].closed()
 			if i != len(ctx.Windows)-1 {
 				copy(ctx.Windows[i:], ctx.Windows[i+1:])
 				i--
@@ -567,7 +580,7 @@ func (t *dockedTree) Scale(win *Window, delta image.Point, scaling float64) imag
 			}
 			d0.X = 0
 		}
-		if d0 != image.ZP {
+		if d0 != (image.Point{}) {
 			return d0
 		}
 		return t.Child[1].Scale(win, delta, scaling)
@@ -580,7 +593,7 @@ func (t *dockedTree) Scale(win *Window, delta image.Point, scaling float64) imag
 			}
 			d0.Y = 0
 		}
-		if d0 != image.ZP {
+		if d0 != (image.Point{}) {
 			return d0
 		}
 		return t.Child[1].Scale(win, delta, scaling)

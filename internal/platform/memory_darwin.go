@@ -2,7 +2,6 @@ package platform
 
 import (
 	"os"
-	"runtime"
 	"sync"
 	"unsafe"
 
@@ -12,7 +11,9 @@ import (
 var usageOnce sync.Once
 var readUsage func(int32, int32, unsafe.Pointer) int32
 
-func ResidentMemory() uint64 {
+// ProcessMemoryBytes reports the kernel's physical footprint, including
+// compressed private pages, rather than the resident set alone.
+func ProcessMemoryBytes() uint64 {
 	usageOnce.Do(func() {
 		lib, err := purego.Dlopen("/usr/lib/libproc.dylib", purego.RTLD_LAZY|purego.RTLD_LOCAL)
 		if err == nil {
@@ -25,10 +26,8 @@ func ResidentMemory() uint64 {
 			User, System, PackageWakeups, InterruptWakeups, Pageins, Wired, Resident, Footprint, Start, Exit uint64
 		}
 		if readUsage(int32(os.Getpid()), 0, unsafe.Pointer(&usage)) == 0 {
-			return usage.Resident
+			return usage.Footprint
 		}
 	}
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	return m.Sys - m.HeapReleased
+	return managedMemoryBytes()
 }

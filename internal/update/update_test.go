@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -48,6 +49,7 @@ func TestV15VerifiedDownloadAndCoalescing(t *testing.T) {
 	m := New("1.1.0", t.TempDir(), filepath.Join(t.TempDir(), "fastrock.exe"), nil)
 	m.endpoint = server.URL + "/release"
 	m.client = server.Client()
+	m.verify = func(string, string) error { return nil }
 	m.goos = "windows"
 	m.arch = "amd64"
 	if e := m.check(context.Background()); e != nil {
@@ -101,6 +103,7 @@ func TestV15BadDownloadsDoNotStage(t *testing.T) {
 			m := New("1.0.0", cache, target, nil)
 			m.endpoint = server.URL + "/release"
 			m.client = server.Client()
+			m.verify = func(string, string) error { return nil }
 			m.goos = "windows"
 			m.arch = "amd64"
 			if e := m.check(context.Background()); e == nil {
@@ -115,6 +118,41 @@ func TestV15BadDownloadsDoNotStage(t *testing.T) {
 				t.Fatal("left partial stage")
 			}
 		})
+	}
+}
+
+func TestNativeSignatureRequiredBeforeReady(t *testing.T) {
+	data := archive(t, map[string]string{"fastrock.exe": "MZ\x00\x00untrusted"})
+	sum := sha256.Sum256(data)
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/release" {
+			json.NewEncoder(w).Encode(Release{Tag: "v2.0.0", Assets: []Asset{{Name: "fastrock-windows-amd64.zip", URL: server.URL + "/binary", Size: int64(len(data)), Digest: "sha256:" + hex.EncodeToString(sum[:])}}})
+			return
+		}
+		w.Write(data)
+	}))
+	defer server.Close()
+	cache := t.TempDir()
+	m := New("1.0.0", cache, filepath.Join(t.TempDir(), "fastrock.exe"), nil)
+	m.client, m.endpoint, m.goos, m.arch = server.Client(), server.URL+"/release", "windows", "amd64"
+	checked := false
+	m.verify = func(path, version string) error {
+		checked = true
+		if _, err := os.Stat(path); err != nil {
+			t.Fatal(err)
+		}
+		return errors.New("untrusted publisher")
+	}
+	if err := m.check(context.Background()); err == nil || !strings.Contains(err.Error(), "untrusted publisher") {
+		t.Fatal(err)
+	}
+	if !checked || m.Pending() != "" || m.Status().State == "ready" {
+		t.Fatal("untrusted payload became ready")
+	}
+	entries, _ := os.ReadDir(cache)
+	if len(entries) != 0 {
+		t.Fatal("untrusted payload was retained")
 	}
 }
 func TestV15ArchiveContainment(t *testing.T) {

@@ -26,6 +26,55 @@ type Face struct {
 	Face font.Face
 }
 
+// synchronizedFace protects both freetype's glyph cache and fallback lookup
+// state when background layout and the renderer share a font face.
+type synchronizedFace struct {
+	mu   sync.Mutex
+	face font.Face
+}
+
+func (f *synchronizedFace) Close() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.face.Close()
+}
+func (f *synchronizedFace) Glyph(dot fixed.Point26_6, r rune) (image.Rectangle, image.Image, image.Point, fixed.Int26_6, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.face.Glyph(dot, r)
+}
+func (f *synchronizedFace) GlyphBounds(r rune) (fixed.Rectangle26_6, fixed.Int26_6, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.face.GlyphBounds(r)
+}
+func (f *synchronizedFace) GlyphAdvance(r rune) (fixed.Int26_6, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.face.GlyphAdvance(r)
+}
+func (f *synchronizedFace) Kern(a, b rune) fixed.Int26_6 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.face.Kern(a, b)
+}
+func (f *synchronizedFace) Metrics() font.Metrics {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.face.Metrics()
+}
+
+func (face Face) MeasureString(text string) int {
+	f := face.Face
+	if safe, ok := f.(*synchronizedFace); ok {
+		safe.mu.Lock()
+		defer safe.mu.Unlock()
+		f = safe.face
+	}
+	d := font.Drawer{Face: f}
+	return d.MeasureString(text).Ceil()
+}
+
 func (face Face) Metrics() font.Metrics {
 	return face.Face.Metrics()
 }
@@ -60,7 +109,7 @@ func newFaceIntl(ttf []byte, size int) (*truetype.Font, Face, error) {
 		fontsMap[key] = fnt
 	}
 
-	return fnt, Face{truetype.NewFace(fnt, &truetype.Options{Size: float64(size), Hinting: font.HintingFull, DPI: 72})}, nil
+	return fnt, Face{&synchronizedFace{face: truetype.NewFace(fnt, &truetype.Options{Size: float64(size), Hinting: font.HintingFull, DPI: 72})}}, nil
 }
 
 func NewFallbackFace(size int, ttfs ...[]byte) (Face, error) {
@@ -73,7 +122,7 @@ func NewFallbackFace(size int, ttfs ...[]byte) (Face, error) {
 			return Face{}, err
 		}
 	}
-	return Face{&fallbackFace{fnts: fnts, faces: faces, runeToFace: make(map[rune]int)}}, nil
+	return Face{&synchronizedFace{face: &fallbackFace{fnts: fnts, faces: faces, runeToFace: make(map[rune]int)}}}, nil
 }
 
 type fallbackFace struct {

@@ -1,6 +1,7 @@
 package nucular
 
 import (
+	"golang.org/x/mobile/event/lifecycle"
 	"testing"
 	"time"
 )
@@ -13,5 +14,13 @@ func TestClosedWindowStopsUpdater(t *testing.T) {
 	case <-done:
 	case <-time.After(time.Second):
 		t.Fatal("closed window retained its renderer goroutine")
+	}
+}
+
+func TestCloseRequestCanBeVetoed(t *testing.T) {
+	called := false
+	w := &masterWindow{onCloseRequested: func() bool { called = true; return false }}
+	if !w.handleEventLocked(lifecycle.Event{To: lifecycle.StageDead}) || w.closing || !called {
+		t.Fatal("close request bypassed the application guard")
 	}
 }

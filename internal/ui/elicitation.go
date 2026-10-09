@@ -85,27 +85,137 @@ func (a *App) drawQuestion(w *nucular.Window, q *question) {
 	if q.Required {
 		header += " *"
 	}
-	muted(w, header+": "+q.Text, a.p)
-	if q.Form != nil && q.Type == "boolean" {
+	boolean := q.Form != nil && q.Type == "boolean"
+	if boolean {
 		w.Row(28).Dynamic(1)
-		w.CheckboxText(q.Header, &q.Form.Bool)
-		return
-	}
-	for i, label := range q.Options {
-		w.Row(28).Dynamic(1)
-		if q.Form != nil && q.Type == "array" {
-			w.CheckboxText(label, &q.Form.Checked[i])
-		} else if button(w, label, q.Selected == i, a.p) {
-			q.Selected = i
+		if w.CheckboxText(header, &q.Form.Bool) {
+			q.Error = ""
 		}
-		if i < len(q.Descriptions) && q.Descriptions[i] != "" {
-			muted(w, q.Descriptions[i], a.p)
+	} else if header != "" {
+		muted(w, header, a.p)
+	}
+	if q.Text != "" {
+		lines := nucular.WrapText(w.Master().Style().Font, q.Text, max(80, w.LayoutAvailableWidth()-16))
+		w.Row(min(180, max(28, len(lines)*(a.prefs.FontSize+7)))).Dynamic(1)
+		w.LabelWrap(q.Text)
+	}
+	if hint := elicitationHint(q); hint != "" {
+		muted(w, hint, a.p)
+	}
+	if !boolean {
+		for i, label := range q.Options {
+			w.Row(28).Dynamic(1)
+			if q.Form != nil && q.Type == "array" {
+				if w.CheckboxText(label, &q.Form.Checked[i]) {
+					q.Error = ""
+				}
+			} else if button(w, label, q.Selected == i, a.p) {
+				q.Selected = i
+				q.Error = ""
+			}
+			if i < len(q.Descriptions) && q.Descriptions[i] != "" {
+				lines := nucular.WrapText(w.Master().Style().Font, q.Descriptions[i], max(80, w.LayoutAvailableWidth()-16))
+				w.Row(min(120, max(28, len(lines)*(a.prefs.FontSize+7)))).Dynamic(1)
+				w.LabelWrap(q.Descriptions[i])
+			}
+		}
+		if q.Form == nil || len(q.Options) == 0 {
+			if q.Form == nil {
+				q.Editor.Placeholder = questionPlaceholder(*q)
+			}
+			revision := q.Editor.TextRevision()
+			w.Row(28).Dynamic(1)
+			q.Editor.Edit(w)
+			if revision != q.Editor.TextRevision() {
+				q.Error = ""
+			}
 		}
 	}
-	if q.Form == nil || len(q.Options) == 0 {
-		w.Row(28).Dynamic(1)
-		q.Editor.Edit(w)
+	if q.Error != "" {
+		a.drawSettingsError(w, q.Error)
 	}
+}
+
+func questionPlaceholder(q question) string {
+	if len(q.Options) == 0 {
+		return "Type your answer"
+	}
+	if q.Other && q.Selected == len(q.Options)-1 {
+		return "Describe what you want instead"
+	}
+	return "Add a note (optional)"
+}
+
+func elicitationContent(r *approval) (map[string]any, bool) {
+	content := map[string]any{}
+	valid := true
+	for i := range r.Questions {
+		q := &r.Questions[i]
+		value, err := elicitationValue(*q)
+		q.Error = ""
+		if err != nil {
+			q.Error = err.Error()
+			valid = false
+			continue
+		}
+		if value != nil {
+			content[q.ID] = value
+		}
+	}
+	r.FormError = ""
+	if !valid {
+		r.FormError = "Fix the highlighted fields to continue."
+	}
+	return content, valid
+}
+
+func elicitationHint(q *question) string {
+	if q.Form == nil {
+		return ""
+	}
+	schema := q.Form.Schema
+	bounded := func(label, minKey, maxKey string) string {
+		min, minOK := schema[minKey].(float64)
+		max, maxOK := schema[maxKey].(float64)
+		switch {
+		case minOK && maxOK:
+			return fmt.Sprintf("%s from %g to %g", label, min, max)
+		case minOK:
+			return fmt.Sprintf("%s, at least %g", label, min)
+		case maxOK:
+			return fmt.Sprintf("%s, at most %g", label, max)
+		default:
+			return label
+		}
+	}
+	switch q.Type {
+	case "integer":
+		return bounded("Whole number", "minimum", "maximum")
+	case "number":
+		return bounded("Number", "minimum", "maximum")
+	case "array":
+		return bounded("Choose options", "minItems", "maxItems")
+	case "string":
+		if len(q.Options) > 0 {
+			return "Choose one option"
+		}
+		if format := str(schema, "format"); format != "" {
+			switch format {
+			case "email":
+				return "Email address"
+			case "uri":
+				return "Web address"
+			case "date":
+				return "Date (YYYY-MM-DD)"
+			case "date-time":
+				return "Date and time (RFC 3339)"
+			}
+		}
+		if schema["minLength"] != nil || schema["maxLength"] != nil {
+			return bounded("Text length in characters", "minLength", "maxLength")
+		}
+	}
+	return ""
 }
 
 func questionAnswers(q question) []string {

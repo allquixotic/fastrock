@@ -84,10 +84,19 @@ func run() int {
 		platform.ShowError(e.Error())
 		return 1
 	}
+	if *popout == "" {
+		release, err := platform.AcquireInstance(store.Dir)
+		if err != nil {
+			platform.ShowError(err.Error())
+			return 1
+		}
+		defer release()
+	}
 	if data, err := os.ReadFile(filepath.Join(store.Dir, "updates", "last-update.json")); err == nil {
 		var last update.Status
 		if json.Unmarshal(data, &last) == nil && last.State == "error" {
 			startupNotice = last.Message
+			_ = os.Remove(filepath.Join(store.Dir, "updates", "last-update.json"))
 		}
 	}
 	prefs, e := store.Load()
@@ -111,6 +120,7 @@ func run() int {
 			return 1
 		}
 		broker.SetStarter(func() (*codex.Client, error) { return codex.Start(ctx) })
+		broker.SetPreferences(prefs, store.Save)
 		address, token = broker.Address(), broker.Token()
 		exe, _ := os.Executable()
 		updater = update.New(buildinfo.Version, filepath.Join(store.Dir, "updates"), exe, func(s update.Status) { broker.UpdateStatus(s) })
@@ -130,10 +140,12 @@ func run() int {
 		platform.ShowError(err.Error())
 		return 1
 	}
+	_ = os.Unsetenv("FASTROCK_BROKER")
+	_ = os.Unsetenv("FASTROCK_BROKER_TOKEN")
 	code := ui.Run(ctx, store, prefs, ui.Connection{Client: client, Address: address, Token: token, Ticket: *popout, Notice: startupNotice})
 	if broker != nil {
 		debug.FreeOSMemory()
-		broker.ReportServiceMemory(platform.ResidentMemory())
+		broker.ReportServiceMemory(platform.ProcessMemoryBytes())
 		go func() {
 			ticker := time.NewTicker(10 * time.Second)
 			defer ticker.Stop()
@@ -142,7 +154,7 @@ func run() int {
 				case <-broker.Done():
 					return
 				case <-ticker.C:
-					broker.ReportServiceMemory(platform.ResidentMemory())
+					broker.ReportServiceMemory(platform.ProcessMemoryBytes())
 				}
 			}
 		}()

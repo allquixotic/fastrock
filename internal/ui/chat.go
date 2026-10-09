@@ -15,17 +15,26 @@ import (
 )
 
 type chatView struct {
-	RichSelection transcriptSelection
-	SelectID      string
-	Selection     *nucular.TextEditor
-	Suggest       []string
-	SuggestQuery  string
-	SuggestIndex  int
-	SuggestCancel context.CancelFunc
-	Layouts       map[string]*transcriptLayout
-	ShowBlocks    int
-	Scroll        int
-	RestoreScroll bool
+	Cwd                         string
+	HistoryCursor, HistoryError string
+	HistoryLoading              bool
+	HistoryWindowed             bool
+	LayoutBlockCount            int
+	LayoutFirstID               string
+	LayoutClock                 uint64
+	LoadError                   string
+	RichSelection               transcriptSelection
+	SelectID                    string
+	Selection                   *nucular.TextEditor
+	Suggest                     []string
+	SuggestQuery                string
+	SuggestGeneration           uint64
+	SuggestIndex                int
+	SuggestCancel               context.CancelFunc
+	Layouts                     map[string]*transcriptLayout
+	ShowBlocks                  int
+	Scroll                      int
+	RestoreScroll               bool
 
 	Editor         *nucular.TextEditor
 	Attachments    []string
@@ -39,10 +48,7 @@ type chatView struct {
 func newChatView() *chatView {
 	return &chatView{ShowBlocks: 200, Editor: textEditor("", true), Follow: true, Expanded: map[string]bool{}}
 }
-func (a *App) loadThreads(client *codex.Client, archived bool) {
-	a.fetchThreads(client, archived, "")
-}
-func (a *App) fetchThreads(client *codex.Client, archived bool, cursor string) {
+func (a *App) fetchThreads(client *codex.Client, archived bool, cursor string, page *threadPageState, request, revision uint64) {
 	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
 	defer cancel()
 	var r struct {
@@ -55,29 +61,17 @@ func (a *App) fetchThreads(client *codex.Client, archived bool, cursor string) {
 	}
 	e := client.Call(ctx, "thread/list", params, &r)
 	a.post(func() {
-		if e != nil {
-			a.report(e)
+		if a.client != client || page.request != request {
 			return
 		}
-		if a.historyCursor == nil {
-			a.historyCursor = map[bool]string{}
+		if e != nil {
+			page.loading, page.err = false, e.Error()
+			return
 		}
-		a.historyCursor[archived] = r.Next
-		for _, t := range r.Data {
-			id := str(t, "id")
-			if id == "" {
-				continue
-			}
-			title, cwd, updated := threadTitle(t), str(t, "cwd"), integer(t, "updatedAt")
-			if c := a.state.Chats[id]; c != nil {
-				if c.Title != title || c.Cwd != cwd || c.Updated != updated || c.Archived != archived {
-					c.Title, c.Cwd, c.Updated, c.Archived = title, cwd, updated, archived
-					a.invalidateSidebar()
-				}
-			} else {
-				a.state.Chats[id] = &workspace.Conversation{ID: id, Title: title, Cwd: cwd, Updated: updated, Archived: archived, Status: "idle"}
-			}
+		if r.Next == cursor {
+			r.Next = ""
 		}
+		a.applyThreadPage(archived, cursor, r.Next, r.Data, page, revision)
 	})
 }
 func str(m map[string]any, k string) string    { s, _ := m[k].(string); return s }
@@ -85,6 +79,9 @@ func integer(m map[string]any, k string) int64 { n, _ := m[k].(float64); return 
 func threadTitle(t map[string]any) string {
 	for _, k := range []string{"name", "preview", "id"} {
 		if s := str(t, k); s != "" {
+			if k != "preview" {
+				return s
+			}
 			return cut(s, 65)
 		}
 	}
@@ -105,6 +102,10 @@ func cut(s string, n int) string {
 }
 
 func (a *App) newThread(cwd string) {
+	if a.newThreadPending {
+		a.toast = "A new conversation is already starting"
+		return
+	}
 	if cwd != "" && !filepath.IsAbs(cwd) {
 		a.toast = "Choose an absolute project folder"
 		return
@@ -116,7 +117,13 @@ func (a *App) newThread(cwd string) {
 	if cwd != "" {
 		params["cwd"] = cwd
 	}
-	a.rpc("thread/start", params, func(raw json.RawMessage) {
+	origin := ""
+	if current := a.state.Current(); current != nil && current.Kind == workspace.New {
+		origin = current.ID
+	}
+	a.newThreadPending = true
+	a.rpcResult("thread/start", params, func(raw json.RawMessage) {
+		a.newThreadPending = false
 		r := codex.Decode(raw)
 		t, _ := r["thread"].(map[string]any)
 		id := str(t, "id")
@@ -126,6 +133,7 @@ func (a *App) newThread(cwd string) {
 		}
 		c := &workspace.Conversation{ID: id, Title: "New conversation", Cwd: str(t, "cwd"), Model: str(r, "model"), Tier: str(r, "serviceTier"), Effort: str(r, "reasoningEffort"), Status: "idle", Updated: time.Now().Unix()}
 		c.NoMessages = !a.prefs.AgentMessages
+		c.Settings = threadSettings(r)
 		if c.Cwd == "" {
 			c.Cwd = cwd
 		}
@@ -138,17 +146,19 @@ func (a *App) newThread(cwd string) {
 			}
 		}
 		a.state.Chats[id] = c
+		a.invalidateSidebar(id)
 		a.chats[id] = newChatView()
 		delete(a.detached, id)
-		a.state.Open(workspace.Chat, c.Title, id, "")
+		a.state.CompleteNew(origin, c.Title, id)
 		if cwd != "" {
 			a.prefs.WorkingDirectory = cwd
 			a.rememberFolder(cwd)
 		}
 		a.savePrefs()
-	})
+	}, func(error) { a.newThreadPending = false })
 }
 func (a *App) resumeThread(id string) {
+	a.invalidateSidebar(id)
 	wasDetached := a.detached[id]
 	delete(a.detached, id)
 	if wasDetached {
@@ -163,13 +173,15 @@ func (a *App) resumeThread(id string) {
 		return
 	}
 	a.state.Open(workspace.Chat, c.Title, id, "")
+	c.Unread = false
 	if a.chats[id] != nil {
 		return
 	}
 	a.chats[id] = newChatView()
 	setText(a.chats[id].Editor, c.Draft)
 	a.chats[id].Attachments = c.DraftAttachments
-	if a.serverPaused || c.EphemeralLost {
+	if a.serverPaused || c.EphemeralLost || a.client == nil {
+		a.chats[id].LoadError = "Codex is disconnected. Reconnect in Settings, then retry."
 		return
 	}
 	c.Status = "starting"
@@ -179,9 +191,10 @@ func (a *App) resumeThread(id string) {
 		ctx, cancel := context.WithTimeout(a.ctx, 45*time.Second)
 		defer cancel()
 		var raw json.RawMessage
-		err := client.Call(ctx, "thread/resume", map[string]any{"threadId": id}, &raw)
+		err := client.Call(ctx, "thread/resume", map[string]any{"threadId": id, "excludeTurns": true}, &raw)
 		r := codex.Decode(raw)
 		prepared := &workspace.Conversation{Status: "idle", Model: str(r, "model"), Effort: str(r, "reasoningEffort"), Tier: str(r, "serviceTier")}
+		prepared.Settings = threadSettings(r)
 		t, _ := r["thread"].(map[string]any)
 		if turns, ok := t["turns"].([]any); ok {
 			for _, turn := range turns {
@@ -199,17 +212,28 @@ func (a *App) resumeThread(id string) {
 				}
 			}
 		}
+		var history itemPage
+		var historyErr error
+		if err == nil {
+			history, historyErr = readItemPage(ctx, client, id, "")
+			prepared.Blocks = a.prepareItemPage(history)
+			var turns struct{ Data []struct{ ID, Status string } }
+			if client.Call(ctx, "thread/turns/list", map[string]any{"threadId": id, "limit": 1, "sortDirection": "desc", "itemsView": "notLoaded"}, &turns) == nil && len(turns.Data) > 0 && turns.Data[0].Status == "inProgress" {
+				prepared.TurnID, prepared.Status = turns.Data[0].ID, "running"
+			}
+		}
 		a.post(func() {
-			if a.chats[id] != view {
+			if a.chats[id] != view || a.client != client {
 				return
 			}
 			if err != nil {
 				c.Status = "error"
-				delete(a.chats, id)
+				view.LoadError = err.Error()
 				a.report(err)
 				return
 			}
 			c.Model, c.Effort, c.Tier = prepared.Model, prepared.Effort, prepared.Tier
+			c.Settings = prepared.Settings
 			if c.Model == "" {
 				c.Model = a.catalog.DefaultModel()
 			}
@@ -217,11 +241,21 @@ func (a *App) resumeThread(id string) {
 				c.Status, c.TurnID = prepared.Status, prepared.TurnID
 			}
 			c.Blocks = mergeTranscript(prepared.Blocks, c.Blocks)
+			view.HistoryCursor = history.Next
+			if historyErr != nil {
+				view.HistoryError = "History unavailable: " + historyErr.Error()
+			}
 			if len(c.Agents) == 0 {
 				c.Agents = prepared.Agents
 			}
 			c.TrimTranscript()
+			a.dispatchQueue(c)
 		})
+	}, func() {
+		if a.chats[id] == view && a.client == client {
+			c.Status = "error"
+			view.LoadError = errWorkQueueFull.Error()
+		}
 	})
 
 }
@@ -233,16 +267,26 @@ func (a *App) drawSidebar(w *nucular.Window) {
 	}
 	w.Row(28).Dynamic(1)
 	a.sidebarSearch.Edit(w)
+	if query := text(a.sidebarSearch); query != a.threadSearch.query || a.archived != a.threadSearch.archived {
+		a.searchThreads(query, a.archived, "")
+	}
+	if a.threadSearch.loading {
+		muted(w, "Searching conversation history…", a.p)
+	}
+	if a.threadSearch.err != "" {
+		muted(w, a.threadSearch.err, a.p)
+		w.Row(26).Dynamic(1)
+		if w.ButtonText("Retry search") {
+			a.searchThreads(text(a.sidebarSearch), a.archived, "")
+		}
+	}
 	w.Row(26).Dynamic(2)
 	if flatRow(w, "Recent", "", !a.archived, color.RGBA{}, a.p) {
 		a.archived = false
 	}
 	if flatRow(w, "Archived", "", a.archived, color.RGBA{}, a.p) {
 		a.archived = true
-		if a.client != nil {
-			client := a.client
-			a.work(func() { a.loadThreads(client, true) })
-		}
+		a.requestThreads(true, "")
 	}
 	spacing := w.Master().Style().GroupWindow.Spacing.Y
 	rowHeight := int(28 * w.Master().Style().Scaling)
@@ -266,48 +310,48 @@ func (a *App) drawSidebar(w *nucular.Window) {
 			a.folderContext(w, folder.path)
 			continue
 		}
-		c := folder.rows[row-cache.starts[folderIndex]-1]
-		var dot color.RGBA
-		if c.Busy() {
-			dot = a.p.Accent
-		} else if c.Status == "error" {
-			dot = a.p.Danger
+		c := a.state.Chats[folder.rows[row-cache.starts[folderIndex]-1].ID]
+		if c == nil {
+			w.Spacing(1)
+			continue
 		}
+		dot := a.conversationDot(c, a.chatIsOpen(c.ID))
 		active := false
 		if tab := a.state.Current(); tab != nil {
 			active = tab.Target == c.ID
 		}
-		if flatRow(w, c.Title, "", active, dot, a.p) {
+		if flatStatusRow(w, c.Title, conversationAge(c.Updated, time.Now()), active, dot, 22, a.p) {
 			a.resumeThread(c.ID)
 		}
 		a.sidebarContext(w, c)
 	}
 	sidebarSkip(w, cache.totalRows-last, stride, spacing)
-	if a.sidebarCache.count == 0 {
-		muted(w, "No conversations", a.p)
-	}
-	if cursor := a.historyCursor[a.archived]; cursor != "" && a.client != nil {
-		w.Row(28).Dynamic(1)
-		if w.ButtonText("Load older conversations") {
-			client, archived := a.client, a.archived
-			a.historyCursor[archived] = ""
-			a.work(func() { a.fetchThreads(client, archived, cursor) })
+	if a.sidebarCache.err != "" {
+		muted(w, "Could not prepare conversations: "+a.sidebarCache.err, a.p)
+		w.Row(26).Dynamic(1)
+		if w.ButtonText("Retry preparing conversations") {
+			a.invalidateSidebarView()
 		}
+	} else if !a.sidebarCache.ready {
+		muted(w, "Preparing conversations…", a.p)
+	} else if message := a.sidebarEmptyMessage(); message != "" {
+		muted(w, message, a.p)
 	}
+	a.sidebarPaging(w)
 	w.Row(26).Dynamic(1)
 	if flatRow(w, "Refresh history", "", false, color.RGBA{}, a.p) {
-		if a.client != nil {
-			client := a.client
-			archived := a.archived
-			a.work(func() { a.loadThreads(client, archived) })
-		}
+		a.requestThreads(a.archived, "")
 	}
+
 }
 func (a *App) send(c *workspace.Conversation, mode string) {
 	if mode == "send" && a.prefs.BusyInput == "steer" && c.Busy() {
 		mode = "steer"
 	}
 	v := a.chats[c.ID]
+	if v == nil {
+		return
+	}
 	if a.serverPaused || c.EphemeralLost {
 		a.toast = "This conversation is unavailable; your unsent draft is retained"
 		return
@@ -324,10 +368,14 @@ func (a *App) send(c *workspace.Conversation, mode string) {
 		setText(v.Editor, "")
 		return
 	}
-	if v.EditQueue != "" {
-		c.EditQueued(v.EditQueue, value)
-		v.EditQueue = ""
-		setText(v.Editor, "")
+	if c.EditQueue != "" {
+		for i := range c.Queue {
+			if c.Queue[i].ID == c.EditQueue {
+				c.Queue[i].Text = value
+				c.Queue[i].Attachments = append([]string(nil), v.Attachments...)
+			}
+		}
+		finishQueueEdit(c, v)
 		return
 	}
 	if c.Busy() && mode != "steer" {
@@ -341,7 +389,7 @@ func (a *App) send(c *workspace.Conversation, mode string) {
 		return
 	}
 	if c.Title == "New conversation" {
-		a.invalidateSidebar()
+		a.invalidateSidebar(c.ID)
 		c.Title = cut(strings.SplitN(value, "\n", 2)[0], 65)
 		for i := range a.state.Tabs {
 			if a.state.Tabs[i].Target == c.ID {
@@ -349,41 +397,54 @@ func (a *App) send(c *workspace.Conversation, mode string) {
 			}
 		}
 	}
-	a.startTurn(c, value, v.Attachments, mode)
-	v.Attachments = nil
-	setText(v.Editor, "")
+	if a.startTurn(c, value, v.Attachments, mode) {
+		v.Attachments = nil
+		setText(v.Editor, "")
+	}
 }
-func (a *App) startTurn(c *workspace.Conversation, value string, attachments []string, mode string) {
-	if a.serverPaused || c.EphemeralLost {
-		a.toast = "Codex is restarting; your draft is retained"
-		return
+func (a *App) startTurn(c *workspace.Conversation, value string, attachments []string, mode string) bool {
+	return a.submitTurn(c, value, attachments, mode, "")
+}
+func (a *App) submitTurn(c *workspace.Conversation, value string, attachments []string, mode, queueID string) bool {
+	if a.serverPaused || c.EphemeralLost || a.client == nil {
+		a.toast = "Codex is disconnected or restarting; your draft is retained"
+		return false
 	}
-	tier := c.Tier
-	if tier == "" {
-		tier = "default"
+	if c.Busy() && mode != "steer" {
+		return false
 	}
-	if warning := a.catalog.SpeedWarning(c.Model, tier); warning != "" {
+	if warning := a.catalog.SpeedWarning(c.Model, fallback(c.Tier, "default")); warning != "" {
 		a.toast = warning
-		a.chats[c.ID].Editor.Buffer = []rune(value)
-		return
+		return false
 	}
-	input := []map[string]any{}
-	for _, path := range attachments {
-		input = append(input, map[string]any{"type": "localImage", "path": path})
+	if c.Busy() && c.TurnID == "" {
+		c.Enqueue(value, attachments)
+		return true
 	}
-	input = append(input, codex.TextInput(value)...)
-	params := map[string]any{"threadId": c.ID, "input": input, "clientUserMessageId": fmt.Sprintf("fastrock-%d", time.Now().UnixNano())}
-	method := "turn/start"
-	if c.Busy() && mode == "steer" {
-		if c.TurnID == "" {
-			c.Enqueue(value, attachments)
-			return
+	attachments = append([]string(nil), attachments...)
+	input := codex.TextInput(value)
+	id := workspace.NewID("fastrock")
+	pending := workspace.Draft{ID: id, Text: value, Attachments: append([]string(nil), attachments...), Status: "pending"}
+	c.Outbox = append(c.Outbox, pending)
+	if queueID != "" {
+		for i := range c.Queue {
+			if c.Queue[i].ID == queueID {
+				c.Queue[i].Status = "pending"
+			}
 		}
+	}
+	params := map[string]any{"threadId": c.ID, "input": input, "clientUserMessageId": id}
+	method := "turn/start"
+	if c.Busy() {
 		method = "turn/steer"
 		params["expectedTurnId"] = c.TurnID
 	} else {
-		params["model"] = c.Model
-		params["serviceTier"] = tier
+		if c.Model != "" {
+			params["model"] = c.Model
+		}
+		if c.Tier != "" {
+			params["serviceTier"] = c.Tier
+		}
 		if c.Effort != "" {
 			params["effort"] = c.Effort
 		}
@@ -392,90 +453,187 @@ func (a *App) startTurn(c *workspace.Conversation, value string, attachments []s
 		}
 		c.Status = "starting"
 	}
-	client := a.client
-	if client == nil {
-		a.toast = "Codex is disconnected"
-		return
-	}
-	id, cwd := c.ID, c.Cwd
-	a.work(func() {
+	client, chatID, cwd := a.client, c.ID, c.Cwd
+	a.writeWork(func() {
 		ctx, cancel := context.WithTimeout(a.ctx, 45*time.Second)
 		defer cancel()
 		var raw json.RawMessage
-		var e error
-		if strings.Contains(value, "$") {
-			var skills skillList
-			e = client.Call(ctx, "skills/list", map[string]any{"cwds": []string{cwd}}, &skills)
-			if e == nil {
-				params["input"] = append(input, skillInputs(value, skills)...)
+		attachmentInput, err := attachmentInputs(attachments)
+		if err == nil {
+			params["input"] = append(attachmentInput, input...)
+			if strings.Contains(value, "$") {
+				var skills skillList
+				var skillErr error
+				skills, skillErr = a.skillCache.get(ctx, a.ctx, client, cwd)
+				if skillErr == nil {
+					params["input"] = append(params["input"].([]map[string]any), skillInputs(value, skills)...)
+				}
 			}
 		}
-		if e == nil {
-			e = client.Call(ctx, method, params, &raw)
+		if err == nil {
+			err = client.Call(ctx, method, params, &raw)
 		}
 		a.post(func() {
-			chat := a.state.Chats[id]
-			if chat == nil || a.detached[id] {
+			chat := a.state.Chats[chatID]
+			if chat == nil || a.detached[chatID] {
 				return
 			}
-			if e != nil {
-				chat.Status = "error"
-				a.report(e)
-				if v := a.chats[id]; v != nil && text(v.Editor) == "" {
-					setText(v.Editor, value)
-					v.Attachments = attachments
+			if err != nil {
+				if method == "turn/start" && chat.Status == "starting" {
+					chat.Status = "error"
 				}
+				chat.QueuePaused = true
+				for i := range chat.Outbox {
+					if chat.Outbox[i].ID == id {
+						chat.Outbox[i].Status = "unconfirmed"
+						chat.Outbox[i].Error = err.Error()
+					}
+				}
+				for i := range chat.Queue {
+					if chat.Queue[i].ID == queueID {
+						chat.Queue[i].Status = "unconfirmed"
+					}
+				}
+				a.report(err)
 				return
 			}
-			if method == "turn/start" {
+			for i := range chat.Outbox {
+				if chat.Outbox[i].ID == id {
+					chat.Outbox = append(chat.Outbox[:i], chat.Outbox[i+1:]...)
+					break
+				}
+			}
+			if queueID != "" {
+				chat.DeleteQueued(queueID)
+			}
+			if method == "turn/start" && chat.Status == "starting" {
 				r := codex.Decode(raw)
 				turn, _ := r["turn"].(map[string]any)
-				if chat.Status == "starting" {
-					chat.TurnID = str(turn, "id")
-					chat.Status = "running"
-				}
+				chat.TurnID = str(turn, "id")
+				chat.Status = "running"
 			}
 			chat.Updated = time.Now().Unix()
-			a.invalidateSidebar()
+			a.invalidateSidebar(chat.ID)
 		})
+	}, func() {
+		c.QueuePaused = true
+		if c.Status == "starting" {
+			c.Status = "error"
+		}
+		for i := range c.Outbox {
+			if c.Outbox[i].ID == id {
+				c.Outbox[i].Status = "not sent"
+				c.Outbox[i].Error = errWorkQueueFull.Error()
+			}
+		}
 	})
+	return true
 }
+func finishQueueEdit(c *workspace.Conversation, v *chatView) {
+	setText(v.Editor, c.QueueDraft.Text)
+	v.Attachments = append([]string(nil), c.QueueDraft.Attachments...)
+	c.EditQueue = ""
+	c.QueueDraft = workspace.Draft{}
+}
+func beginQueueEdit(c *workspace.Conversation, v *chatView, d workspace.Draft) {
+	if c.EditQueue == "" {
+		c.QueueDraft = workspace.Draft{Text: text(v.Editor), Attachments: append([]string(nil), v.Attachments...)}
+	}
+	c.EditQueue = d.ID
+	setText(v.Editor, d.Text)
+	v.Attachments = append([]string(nil), d.Attachments...)
+}
+func (a *App) dispatchQueue(c *workspace.Conversation) {
+	if a.windowReturn != nil || c.Busy() || c.QueuePaused || c.EditQueue != "" || len(c.Queue) == 0 || a.client == nil {
+		return
+	}
+	for _, t := range a.state.Tabs {
+		if t.Target == c.ID && a.popping[t.ID] {
+			return
+		}
+	}
+	d := c.Queue[0]
+	if d.Status != "" {
+		return
+	}
+	a.submitTurn(c, d.Text, d.Attachments, "send", d.ID)
+}
+
 func (a *App) consume(client *codex.Client) {
 	for m := range client.Events {
 		message := m
-		if len(m.ID) > 0 && m.Method == "item/tool/call" {
-			a.runDynamicTool(client, m)
-			continue
+
+		if !a.consumeEvent(client, message) {
+			return
 		}
-		params := codex.Decode(message.Params)
-		a.post(func() { a.eventDecoded(message, params) })
 	}
-	a.post(func() {
-		if a.ctx.Err() == nil {
-			if a.client != client {
-				return
-			}
-			a.client = nil
-			a.status = "Codex disconnected"
-			a.toast = "Codex app-server stopped. Reconnect in Settings."
-			if a.assistant != nil {
-				a.assistant.Busy = false
-				a.assistant.ThreadID = ""
-				a.assistant.TurnID = ""
-				a.assistant.Status = a.toast
-			}
-			for _, c := range a.state.Chats {
-				if c.Busy() {
-					c.Status = "error"
-				}
+	a.events.push(a.ctx, decodedEvent{client: client, disconnected: true})
+	if a.window != nil {
+		a.window.Changed()
+	}
+}
+func (a *App) disconnected(client *codex.Client) {
+	if a.ctx.Err() == nil {
+		if a.client != client {
+			return
+		}
+		a.client = nil
+		a.cancelRecaps()
+		a.resetSettingsConnection()
+		a.serverGeneration++
+		a.catalogGeneration++
+		a.catalog.PolicyLoaded = false
+		a.serverStarting = false
+		a.serverError = "Connection to the Codex service was lost."
+		a.approvals = nil
+		a.approvalDiffs = nil
+		a.clearReplyWaits()
+		a.status = "Codex disconnected"
+		a.toast = "Codex app-server stopped. Reconnect in Settings."
+		if a.assistant != nil {
+			a.assistant.Busy = false
+			a.assistant.ThreadID = ""
+			a.assistant.TurnID = ""
+			a.assistant.Status = a.toast
+		}
+		for _, c := range a.state.Chats {
+			if c.Busy() {
+				c.Status = "error"
 			}
 		}
-	})
+	}
 }
+
 func (a *App) event(m codex.Message) {
 	a.eventDecoded(m, codex.Decode(m.Params))
 }
 func (a *App) eventDecoded(m codex.Message, p map[string]any) {
+	if a.recapEvent(m, p) {
+		return
+	}
+	a.approvalEvent(m.Method, p)
+	a.settingsEvent(m.Method, p)
+	if m.Method == "configWarning" || m.Method == "warning" || m.Method == "deprecationNotice" {
+		message := fallback(str(p, "message"), str(p, "summary"))
+		if message == "" {
+			message = m.Method + ": see Codex logs for details"
+		}
+		if !contains(a.warnings, message) {
+			a.warnings = append(a.warnings, message)
+			if len(a.warnings) > 16 {
+				a.warnings = a.warnings[len(a.warnings)-16:]
+			}
+		}
+		return
+	}
+	if m.Method == "fastrock/frameError" {
+		a.toast = str(p, "message")
+		return
+	}
+	if m.Method == "serverRequest/resolved" {
+		a.pruneApprovals("", fmt.Sprint(p["requestId"]))
+		return
+	}
 	if m.Method == "fastrock/updateStatus" {
 		json.Unmarshal(m.Params, &a.updateStatus)
 		if a.updateStatus.State == "ready" || a.updateStatus.State == "error" {
@@ -518,7 +676,14 @@ func (a *App) eventDecoded(m codex.Message, p map[string]any) {
 		}
 		c.EventSequence = m.Sequence
 	}
+	a.infoEvent(c, m.Method, p)
 	switch m.Method {
+	case "thread/goal/updated", "thread/goal/cleared":
+		if v := a.infoViews[id]; v != nil {
+			v.GoalGeneration++
+			v.Goal, _ = p["goal"].(map[string]any)
+			v.GoalLoading, v.GoalUnsupported, v.GoalAvailable, v.GoalNote = false, false, true, ""
+		}
 	case "turn/started":
 		t, _ := p["turn"].(map[string]any)
 		c.TurnID = str(t, "id")
@@ -533,9 +698,11 @@ func (a *App) eventDecoded(m codex.Message, p map[string]any) {
 			}
 		}
 		c.TurnID = ""
-		if d, ok := c.Pop(); ok {
-			a.startTurn(c, d.Text, d.Attachments, "send")
+		if status := str(t, "status"); status == "failed" || status == "interrupted" {
+			c.QueuePaused = true
 		}
+		a.pruneApprovals(c.ID, "")
+		a.dispatchQueue(c)
 	case "item/started", "item/completed":
 		if it, ok := p["item"].(map[string]any); ok {
 			a.upsertItem(c, it)
@@ -548,7 +715,7 @@ func (a *App) eventDecoded(m codex.Message, p map[string]any) {
 		c.Append(str(p, "itemId"), "commandExecution", "tool", str(p, "delta"))
 	case "thread/name/updated":
 		if name := str(p, "threadName"); name != "" {
-			a.invalidateSidebar()
+			a.invalidateSidebar(c.ID)
 			c.Title = name
 			for i := range a.state.Tabs {
 				if a.state.Tabs[i].Target == c.ID {
@@ -556,24 +723,55 @@ func (a *App) eventDecoded(m codex.Message, p map[string]any) {
 				}
 			}
 		}
+	case "turn/plan/updated":
+		if plan, ok := p["plan"].([]any); ok {
+			var lines []string
+			for _, raw := range plan {
+				if step, ok := raw.(map[string]any); ok {
+					lines = append(lines, str(step, "status")+": "+str(step, "step"))
+				}
+			}
+			body := strings.Join(lines, "\n")
+			if !c.ReplaceBlock("plan-"+c.TurnID, body, "") {
+				c.Append("plan-"+c.TurnID, "plan", "activity", body)
+			}
+		}
 	case "thread/tokenUsage/updated":
 		if usage, ok := p["tokenUsage"].(map[string]any); ok {
 			if total, ok := usage["total"].(map[string]any); ok {
 				c.Tokens = int(integer(total, "totalTokens"))
+				c.InputTokens = int(integer(total, "inputTokens"))
+				c.CachedTokens = int(integer(total, "cachedInputTokens"))
+				c.OutputTokens = int(integer(total, "outputTokens"))
 			}
+			if last, ok := usage["last"].(map[string]any); ok {
+				c.ContextTokens = int(integer(last, "totalTokens"))
+			}
+			c.ContextWindow = int(integer(usage, "modelContextWindow"))
 		}
 	case "error":
+		if retry, _ := p["willRetry"].(bool); retry {
+			break
+		}
+		c.QueuePaused = true
 		c.Status = "error"
 		if err, ok := p["error"].(map[string]any); ok {
 			a.toast = str(err, "message")
+			c.Append(workspace.NewID("error"), "error", "activity", a.toast)
 		}
 	}
 	if m.Method == "turn/started" || m.Method == "turn/completed" {
-		a.invalidateSidebar()
+		a.invalidateSidebar(c.ID)
+	}
+	if m.Method == "item/completed" || m.Method == "turn/completed" || m.Method == "error" {
+		current := a.state.Current()
+		if current == nil || current.Kind != workspace.Chat || current.Target != id {
+			c.Unread = true
+		}
 	}
 	c.Updated = time.Now().Unix()
 }
-func (a *App) upsertItem(c *workspace.Conversation, it map[string]any) {
+func formatItem(it map[string]any) workspace.Block {
 	id, kind := str(it, "id"), str(it, "type")
 	body := str(it, "text")
 	role := "assistant"
@@ -613,47 +811,51 @@ func (a *App) upsertItem(c *workspace.Conversation, it map[string]any) {
 	case "collabAgentToolCall":
 		role = "tool"
 		body = str(it, "tool") + " · " + str(it, "status")
-		c.Agents = append([]workspace.Agent(nil), c.Agents...)
-		if states, ok := it["agentsStates"].(map[string]any); ok {
-			for id, value := range states {
-				state, _ := value.(map[string]any)
-				agent := workspace.Agent{ID: id, Name: str(state, "nickname"), Status: str(state, "status")}
-				found := false
-				for i := range c.Agents {
-					if c.Agents[i].ID == id {
-						c.Agents[i] = agent
-						found = true
-						break
-					}
-				}
-				if !found && len(c.Agents) < 64 {
-					c.Agents = append(c.Agents, agent)
-				}
-			}
-		}
+
 	case "mcpToolCall", "dynamicToolCall", "webSearch":
 		role = "tool"
 		b, _ := json.MarshalIndent(it, "", "  ")
 		body = string(b)
-	}
-	for i := range c.Blocks {
-		if c.Blocks[i].ID == id {
-			if body != "" {
-				c.Blocks[i].Text = body
-			}
-			c.Blocks[i].Status = str(it, "status")
-			return
+	default:
+		if kind != "agentMessage" && body == "" {
+			role = "activity"
+			b, _ := json.MarshalIndent(it, "", "  ")
+			body = string(b)
 		}
 	}
-	c.Append(id, kind, role, body)
+	return workspace.Block{ID: id, Kind: kind, Role: role, Text: body, Status: str(it, "status")}
+}
+func (a *App) upsertItem(c *workspace.Conversation, it map[string]any) {
+	b := formatItem(it)
+	updateAgents(c, it)
+	if c.ReplaceBlock(b.ID, b.Text, b.Status) {
+		return
+	}
+	c.Append(b.ID, b.Kind, b.Role, b.Text)
+	c.FinishBlock(b.ID)
 }
 func (a *App) drawChat(w *nucular.Window, id string) {
 	c := a.state.Chats[id]
 	v := a.chats[id]
+	if v != nil && v.LoadError != "" {
+		w.Row(48).Dynamic(1)
+		w.LabelWrap(v.LoadError)
+		w.Row(28).Static(100)
+		if w.ButtonText("Retry") {
+			if c != nil {
+				c.Draft = text(v.Editor)
+				c.DraftAttachments = append([]string(nil), v.Attachments...)
+			}
+			delete(a.chats, id)
+			a.resumeThread(id)
+		}
+	}
 	if c == nil || v == nil {
 		muted(w, "Loading conversation…", a.p)
 		return
 	}
+	v.Cwd = c.Cwd
+	v.pruneLayouts(c.Blocks)
 	w.Row(30).Ratio(.62, .38)
 	w.Label(c.Title, "LC")
 	w.LabelColored(filepath.Base(c.Cwd)+" · "+c.Status, "RC", a.p.Muted)
@@ -667,7 +869,11 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 		v.PreviousScroll = -1
 	}
 	if w.ButtonText("Latest") {
-		v.Follow = true
+		if v.HistoryWindowed || v.HistoryError != "" {
+			a.latestMessages(c, v)
+		} else {
+			v.Follow = true
+		}
 	}
 	if w.ButtonText("Expand all") {
 		for _, b := range c.Blocks {
@@ -685,12 +891,17 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 			}
 		}
 	}
+	a.drawRecapStatus(w, c)
+	queueHeight := min(len(c.Queue), 4)*32 + min(8, len(v.Suggest))*24
+	composer := composerHeight(v.Editor, w.LayoutAvailableWidth(), a.prefs.FontSize)
+	scale := approvalScale(w)
+	remaining := w.LayoutAvailableHeight()
 	approvalHeight := 0
 	if len(a.approvals) > 0 {
-		approvalHeight = 190
+		budget := remaining - int(float64(120+114+composer+queueHeight)*scale)
+		approvalHeight = a.approvalHeight(w, c.ID, budget)
 	}
-	queueHeight := min(len(c.Queue), 4)*32 + min(8, len(v.Suggest))*24
-	h := max(120, w.LayoutAvailableHeight()-190-queueHeight-approvalHeight)
+	h := max(120, int(float64(remaining-approvalHeight)/scale)-114-composer-queueHeight)
 	w.Row(h).Dynamic(1)
 	if tr := w.GroupBegin("transcript-"+id, nucular.WindowNoHScrollbar); tr != nil {
 		if v.RestoreScroll {
@@ -711,28 +922,51 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 		}
 		if len(c.Blocks) > v.ShowBlocks {
 			tr.Row(28).Dynamic(1)
-			if tr.ButtonText("Load older messages") {
+			if tr.ButtonText("Show earlier loaded messages") {
 				v.ShowBlocks += 200
 				v.Follow = false
+			}
+		}
+		if v.HistoryError != "" {
+			muted(tr, v.HistoryError, a.p)
+			tr.Row(28).Dynamic(1)
+			if tr.ButtonText("Retry history") {
+				a.latestMessages(c, v)
+			}
+		}
+		if v.HistoryCursor != "" {
+			tr.Row(28).Dynamic(1)
+			if v.HistoryLoading {
+				muted(tr, "Loading earlier messages…", a.p)
+			} else if tr.ButtonText("Load earlier messages") {
+				a.olderMessages(c, v)
 			}
 		}
 		blocks := c.Blocks[max(0, len(c.Blocks)-v.ShowBlocks):]
 		offset := 0
 		for _, b := range blocks {
+			b = displayBlock(b)
 			folded := (b.Role == "tool" || b.Role == "reasoning" || b.Role == "changes") && !v.Expanded[b.ID]
-			layout := a.transcriptLayout(v, b, tr.LayoutAvailableWidth())
-			height := 32
+			layout := v.Layouts[b.ID]
+			if layout == nil {
+				layout = &transcriptLayout{Height: 48}
+			}
+			scale, spacing := tr.Master().Style().Scaling, tr.Master().Style().GroupWindow.Spacing.Y
+			height := int(24*scale) + spacing
 			if v.SelectID == b.ID && v.Selection != nil {
-				height += min(500, max(120, layout.Height)) + 24
+				height += int(float64(min(500, max(120, layout.Height))+24)*scale) + 2*spacing
 			} else if !folded {
-				height += layout.Height + 8
+				height += int(float64(layout.Height+8)*scale) + (len(layout.Lines)+1)*spacing
 			}
 			visible := offset+height >= tr.Scrollbar.Y-100 && offset <= tr.Scrollbar.Y+tr.Bounds.H+100
 			offset += height
 			if !visible {
-				tr.Row(height).Dynamic(1)
+				tr.RowScaled(max(1, height-spacing)).Dynamic(1)
 				tr.Spacing(1)
 				continue
+			}
+			if !folded {
+				layout = a.transcriptLayout(v, b, tr.LayoutAvailableWidth())
 			}
 			tr.Row(24).Dynamic(1)
 			if b.Role == "tool" || b.Role == "reasoning" || b.Role == "changes" {
@@ -740,7 +974,11 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 					v.Expanded[b.ID] = !v.Expanded[b.ID]
 				}
 			} else {
-				tr.LabelColored(strings.ToUpper(b.Role), "LC", a.p.Muted)
+				if b.Kind == "crossTabMessage" {
+					tr.LabelColored(b.Role, "LC", a.p.Accent)
+				} else {
+					tr.LabelColored(strings.ToUpper(b.Role), "LC", a.p.Muted)
+				}
 			}
 			a.transcriptMenu(tr, c, v, b)
 			if folded {
@@ -757,11 +995,20 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 				}
 				continue
 			}
-			for _, line := range layout.Lines {
+			lineFirst, lineLast, leading, trailing := visibleTranscriptLines(layout, tr.WidgetBounds().Y, tr.Bounds.Y, tr.Bounds.Y+tr.Bounds.H, tr.Master().Style().Scaling, tr.Master().Style().GroupWindow.Spacing.Y)
+			if leading > 0 {
+				tr.RowScaled(leading - tr.Master().Style().GroupWindow.Spacing.Y).Dynamic(1)
+				tr.Spacing(1)
+			}
+			for _, line := range layout.Lines[lineFirst:lineLast] {
 				tr.Row(line.Height).Dynamic(1)
 				if !a.drawTranscriptLine(tr, v, b.ID, layout, line) {
 					a.transcriptMenu(tr, c, v, b)
 				}
+			}
+			if trailing > 0 {
+				tr.RowScaled(trailing - tr.Master().Style().GroupWindow.Spacing.Y).Dynamic(1)
+				tr.Spacing(1)
 			}
 			tr.Row(8).Dynamic(1)
 			tr.Spacing(1)
@@ -774,8 +1021,11 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 		if v.RichSelection.BlockID != "" && !v.Editor.Active {
 			a.transcriptSelectionKeys(tr, v)
 		}
+		if !v.HistoryWindowed && !v.Follow && input.Mouse.ScrollDelta < 0 && tr.Scrollbar.Y >= max(0, offset-tr.Bounds.H-6) {
+			v.Follow = true
+		}
 		if v.Follow {
-			tr.Scrollbar.Y = 100000000
+			tr.Scrollbar.Y = max(0, offset-tr.Bounds.H)
 		}
 		tr.GroupEnd()
 		v.Scroll = tr.Scrollbar.Y
@@ -808,13 +1058,12 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 		w.Row(28).Ratio(.42, .12, .12, .10, .10, .14)
 		w.LabelColored("Queued: "+cut(d.Text, 90), "LC", a.p.Muted)
 		if w.ButtonText("Edit") {
-			v.EditQueue = d.ID
-			setText(v.Editor, d.Text)
+			beginQueueEdit(c, v, d)
 		}
 		if w.ButtonText("Delete") {
 			c.DeleteQueued(d.ID)
 		}
-		if w.ButtonText("↑") {
+		if tooltipButton(w, "↑", "Move queued message earlier") {
 			for i := 1; i < len(c.Queue); i++ {
 				if c.Queue[i].ID == d.ID {
 					c.Queue[i], c.Queue[i-1] = c.Queue[i-1], c.Queue[i]
@@ -822,7 +1071,7 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 				}
 			}
 		}
-		if w.ButtonText("↓") {
+		if tooltipButton(w, "↓", "Move queued message later") {
 			for i := 0; i+1 < len(c.Queue); i++ {
 				if c.Queue[i].ID == d.ID {
 					c.Queue[i], c.Queue[i+1] = c.Queue[i+1], c.Queue[i]
@@ -831,62 +1080,62 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 			}
 		}
 		if w.ButtonText("Send now") {
-			c.DeleteQueued(d.ID)
-			a.startTurn(c, d.Text, d.Attachments, "steer")
+			if d.Status == "" {
+				a.submitTurn(c, d.Text, d.Attachments, "steer", d.ID)
+			}
+		}
+	}
+	if c.QueuePaused && len(c.Queue) > 0 {
+		w.Row(28).Dynamic(2)
+		w.Label("Queue paused", "LC")
+		if w.ButtonText("Resume queue") {
+			c.QueuePaused = false
+			a.dispatchQueue(c)
+		}
+	}
+	for _, d := range c.Outbox {
+		w.Row(48).Dynamic(1)
+		w.LabelWrap("Send " + d.Status + ": " + cut(d.Text, 120))
+		if d.Status != "pending" {
+			w.Row(28).Dynamic(2)
+			if w.ButtonText("Recover as queued draft") {
+				c.Enqueue(d.Text, d.Attachments)
+				c.QueuePaused = true
+				removeOutbox(c, d.ID)
+				a.toast = "Check conversation history before resending an unconfirmed message."
+				break
+			}
+			if w.ButtonText("Discard saved send") {
+				removeOutbox(c, d.ID)
+				break
+			}
+		}
+	}
+	if c.EditQueue != "" {
+		w.Row(28).Dynamic(2)
+		if w.ButtonText("Save queued edit") {
+			for i := range c.Queue {
+				if c.Queue[i].ID == c.EditQueue {
+					c.Queue[i].Text = text(v.Editor)
+					c.Queue[i].Attachments = append([]string(nil), v.Attachments...)
+				}
+			}
+			finishQueueEdit(c, v)
+		}
+		if w.ButtonText("Cancel queued edit") {
+			finishQueueEdit(c, v)
 		}
 	}
 	a.suggestions(w, c, v)
-	w.Row(76).Dynamic(1)
+	if c.Busy() {
+		v.Editor.Placeholder = "Working… type to queue or steer, Esc to stop"
+	} else {
+		v.Editor.Placeholder = "Ask Codex anything. @ to mention files, / for commands"
+	}
+	w.Row(composer).Dynamic(1)
 	v.Editor.Edit(w)
 	w.Row(29).Static(210, 112, 110, 82, 110, 36)
-	models := a.catalog.Models
-	labels := []string{}
-	selection := 0
-	for i, m := range models {
-		labels = append(labels, m.Name)
-		if m.Model == c.Model || m.ID == c.Model {
-			selection = i
-		}
-	}
-	if len(labels) > 0 {
-		next := w.ComboSimple(labels, selection, 28)
-		if next != selection {
-			c.Model = models[next].Model
-			c.Effort = models[next].DefaultEffort
-			if a.catalog.SpeedWarning(c.Model, c.Tier) != "" {
-				c.Tier = "default"
-			}
-		}
-	} else {
-		w.Label("Model catalog loading…", "LC")
-	}
-	m, _ := a.catalog.Find(c.Model)
-	efforts := []string{}
-	ei := 0
-	for i, e := range m.Efforts {
-		efforts = append(efforts, e.ID)
-		if e.ID == c.Effort {
-			ei = i
-		}
-	}
-	if len(efforts) > 0 {
-		c.Effort = efforts[w.ComboSimple(efforts, ei, 28)]
-	} else {
-		w.Label("Default effort", "LC")
-	}
-	tiers := a.catalog.Speeds(m)
-	names := []string{}
-	ti := 0
-	for i, t := range tiers {
-		names = append(names, t.Name)
-		if t.ID == c.Tier {
-			ti = i
-		}
-	}
-	next := w.ComboSimple(names, ti, 28)
-	if next != ti {
-		c.Tier = tiers[next].ID
-	}
+	a.modelPickers(w, &c.Model, &c.Effort, &c.Tier, c.Busy())
 	if button(w, "Plan", c.Plan, a.p) {
 		c.Plan = !c.Plan
 	}
@@ -895,10 +1144,13 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 			a.rpc("turn/interrupt", map[string]any{"threadId": c.ID, "turnId": c.TurnID}, nil)
 		}
 	} else {
-		w.Label("Ready", "LC")
+		w.Spacing(1)
 	}
-	if w.ButtonText("+") {
+	if tooltipButton(w, "+", "Attach files or images") {
 		a.attachDialog(v)
+	}
+	if warning := a.catalog.SpeedWarning(c.Model, fallback(c.Tier, "default")); warning != "" {
+		muted(w, warning, a.p)
 	}
 	if len(v.Attachments) > 0 {
 		for i, path := range v.Attachments {
@@ -911,7 +1163,7 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 		}
 	}
 	w.Row(32).Ratio(.66, .17, .17)
-	w.LabelColored(fmt.Sprintf("%s · %d tokens", c.Model, c.Tokens), "LC", a.p.Faint)
+	w.LabelColored(contextLabel(c), "LC", a.p.Faint)
 	if c.Busy() {
 		if w.ButtonText("Steer") {
 			a.send(c, "steer")
@@ -920,16 +1172,15 @@ func (a *App) drawChat(w *nucular.Window, id string) {
 			a.send(c, "queue")
 		}
 	} else {
-		if v.EditQueue != "" {
+		if c.EditQueue != "" {
 			if w.ButtonText("Cancel edit") {
-				v.EditQueue = ""
-				setText(v.Editor, "")
+				finishQueueEdit(c, v)
 			}
 		} else {
 			w.Spacing(1)
 		}
 		caption := "Send ↑"
-		if v.EditQueue != "" {
+		if c.EditQueue != "" {
 			caption = "Save queued"
 		}
 		if primary(w, caption, a.p) {
@@ -946,53 +1197,67 @@ func (a *App) drawInfo(w *nucular.Window) {
 	if c == nil {
 		return
 	}
-	title(w, "Conversation", a.p)
-	muted(w, c.Title, a.p)
-	title(w, "Project", a.p)
-	w.Row(56).Dynamic(1)
-	w.LabelWrap(c.Cwd)
-	title(w, "Session", a.p)
-	muted(w, c.Status, a.p)
-	muted(w, c.Model, a.p)
-	muted(w, c.Effort+" · "+c.Tier, a.p)
-	w.Row(28).Dynamic(1)
-	if w.ButtonText("Rename…") {
-		a.inputDialog("Rename conversation", c.Title, func(name string) {
-			a.rpc("thread/name/set", map[string]any{"threadId": c.ID, "name": name}, func(_ json.RawMessage) { a.invalidateSidebar(); c.Title = name; tab.Title = name })
-		})
+	if a.infoSection(w, "conversation", "Conversation", c.Title) {
+		w.Row(28).Dynamic(1)
+		if w.ButtonText("Rename…") {
+			a.inputDialog("Rename conversation", c.Title, func(name string) {
+				a.rpc("thread/name/set", map[string]any{"threadId": c.ID, "name": name}, func(_ json.RawMessage) {
+					a.invalidateSidebar(c.ID)
+					c.Title = name
+					for i := range a.state.Tabs {
+						if a.state.Tabs[i].Kind == workspace.Chat && a.state.Tabs[i].Target == c.ID {
+							a.state.Tabs[i].Title = name
+						}
+					}
+				})
+			})
+		}
+		w.Row(28).Dynamic(1)
+		if w.ButtonText("Fork conversation") {
+			a.rpc("thread/fork", map[string]any{"threadId": c.ID}, func(raw json.RawMessage) {
+				r := codex.Decode(raw)
+				t, _ := r["thread"].(map[string]any)
+				id := str(t, "id")
+				if id != "" {
+					a.state.Chats[id] = &workspace.Conversation{ID: id, Title: threadTitle(t), Cwd: c.Cwd, Updated: time.Now().Unix()}
+					a.resumeThread(id)
+				}
+			})
+		}
+		w.Row(28).Dynamic(1)
+		archiveLabel, archiveMethod := "Archive", "thread/archive"
+		if c.Archived {
+			archiveLabel, archiveMethod = "Unarchive", "thread/unarchive"
+		}
+		if w.ButtonText(archiveLabel) {
+			a.rpc(archiveMethod, map[string]any{"threadId": c.ID}, func(_ json.RawMessage) { a.invalidateSidebar(c.ID); c.Archived = !c.Archived; a.closeChatTabs(c.ID) })
+		}
+		w.Row(28).Dynamic(1)
+		if w.ButtonText("Export Markdown…") {
+			a.exportChat(c)
+		}
 	}
-	w.Row(28).Dynamic(1)
-	if w.ButtonText("Fork conversation") {
-		a.rpc("thread/fork", map[string]any{"threadId": c.ID}, func(raw json.RawMessage) {
-			r := codex.Decode(raw)
-			t, _ := r["thread"].(map[string]any)
-			id := str(t, "id")
-			if id != "" {
-				a.state.Chats[id] = &workspace.Conversation{ID: id, Title: threadTitle(t), Cwd: c.Cwd, Updated: time.Now().Unix()}
-				a.resumeThread(id)
-			}
-		})
+	if c.Cwd != "" && a.infoSection(w, "project", "Project", c.Cwd) {
+		w.Row(56).Dynamic(1)
+		w.LabelWrap(c.Cwd)
+		w.Row(28).Dynamic(2)
+		if w.ButtonText("Open folder") {
+			a.openPath(c.Cwd, false)
+		}
+		if w.ButtonText("Changes") {
+			a.showDiff(c)
+		}
 	}
-	w.Row(28).Dynamic(1)
-	archiveLabel, archiveMethod := "Archive", "thread/archive"
-	if c.Archived {
-		archiveLabel, archiveMethod = "Unarchive", "thread/unarchive"
-	}
-	if w.ButtonText(archiveLabel) {
-		a.rpc(archiveMethod, map[string]any{"threadId": c.ID}, func(_ json.RawMessage) { a.invalidateSidebar(); c.Archived = !c.Archived; a.state.Close(tab.ID) })
-	}
-	w.Row(28).Dynamic(1)
-	if w.ButtonText("Export Markdown…") {
-		a.exportChat(c)
-	}
+	a.drawInfoSummary(w, c)
 	a.extraInfo(w, c)
-	title(w, "Document tabs", a.p)
-	w.Row(28).Dynamic(2)
-	if w.ButtonText("← Move") {
-		a.state.Move(tab.ID, -1)
-	}
-	if w.ButtonText("Move →") {
-		a.state.Move(tab.ID, 1)
+	if len(a.state.Tabs) > 1 && a.infoSection(w, "tabs", "Document tabs", "Move tab") {
+		w.Row(28).Dynamic(2)
+		if w.ButtonText("← Move") {
+			a.state.Move(tab.ID, -1)
+		}
+		if w.ButtonText("Move →") {
+			a.state.Move(tab.ID, 1)
+		}
 	}
 }
 
@@ -1014,4 +1279,13 @@ func mergeTranscript(history, live []workspace.Block) []workspace.Block {
 		}
 	}
 	return history
+}
+
+func removeOutbox(c *workspace.Conversation, id string) {
+	for i := range c.Outbox {
+		if c.Outbox[i].ID == id {
+			c.Outbox = append(c.Outbox[:i], c.Outbox[i+1:]...)
+			return
+		}
+	}
 }

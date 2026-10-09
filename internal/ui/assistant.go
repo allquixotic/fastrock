@@ -8,119 +8,155 @@ import (
 	"time"
 
 	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/rect"
 	"github.com/allquixotic/fastrock/internal/assistant"
 	"github.com/allquixotic/fastrock/internal/codex"
 	"github.com/allquixotic/fastrock/internal/rally"
+	"github.com/allquixotic/fastrock/internal/workspace"
+	"golang.org/x/mobile/event/key"
 )
 
 type assistantView struct {
-	ThreadID, TurnID, Model, Effort, Tier, Transcript, Status string
-	Editor                                                    *nucular.TextEditor
-	Busy, Visible                                             bool
-	View                                                      *rallyView
-	Scope                                                     rally.Query
-	Plan                                                      *assistant.Plan
+	ThreadID, TurnID, Model, Effort, Tier, Status string
+	History                                       workspace.Conversation
+	Layout                                        *chatView
+	Preview                                       []string
+	Selected                                      []bool
+	Outcomes                                      []string
+	Editor                                        *nucular.TextEditor
+	Busy, Visible                                 bool
+	PlanApplied                                   bool
+	PlanScope                                     rally.Query
+	View                                          *rallyView
+	Scope                                         rally.Query
+	Plan                                          *assistant.Plan
 }
 
 func (a *App) openAssistant(v *rallyView) {
+	if v != nil && v.Spec.ID == "customviews" {
+		a.toast = "Open a Rally work-item page to use the assistant"
+		return
+	}
+	if v == nil || v.Closed || a.rallyClient == nil || a.client == nil {
+		a.toast = "Connect Rally and Codex before opening the Rally assistant"
+		return
+	}
 	q := a.rallyQuery(v)
 	if a.assistant != nil && (a.assistant.Scope.Workspace != q.Workspace || a.assistant.Scope.Project != q.Project || a.assistant.Scope.Children != q.Children || a.assistant.Scope.Parents != q.Parents) {
 		if a.assistant.Busy {
 			a.toast = "Stop the current Rally assistant before changing its scope"
 			return
 		}
-		a.assistant = nil
+		a.confirm("Start a new Rally conversation?", "The selected scope has changed. Start a new assistant conversation?", func() { a.assistant = nil; a.openAssistant(v) })
+		return
 	}
 	if a.assistant == nil {
-		model := a.catalog.DefaultModel()
-		m, _ := a.catalog.Find(model)
-		a.assistant = &assistantView{Model: model, Effort: m.DefaultEffort, Tier: "default", Editor: textEditor("", true), Scope: a.rallyQuery(v)}
+		a.assistant = &assistantView{Editor: textEditor("", true), Scope: a.rallyQuery(v)}
 	}
 	s := a.assistant
 	s.View = v
 	s.Visible = true
-	a.window.PopupOpen("Rally assistant", nucular.WindowTitle|nucular.WindowMovable|nucular.WindowScalable|nucular.WindowClosable|nucular.WindowNonmodal, rect.Rect{X: 350, Y: 100, W: 760, H: 690}, true, func(w *nucular.Window) { a.drawAssistant(w) })
+	if a.window != nil {
+		a.window.Changed()
+	}
 }
 func (a *App) drawAssistant(w *nucular.Window) {
 	s := a.assistant
 	if s == nil {
 		return
 	}
+	w.Row(28).Ratio(.82, .18)
+	w.Label("Rally assistant", "LC")
+	if tooltipButton(w, "×", "Hide Rally assistant") {
+		s.Visible = false
+		return
+	}
+	if s.Plan != nil && len(s.Selected) != len(s.Plan.Changes) {
+		s.Selected = make([]bool, len(s.Plan.Changes))
+		s.Outcomes = make([]string, len(s.Plan.Changes))
+		for i := range s.Selected {
+			s.Selected[i] = true
+			s.Outcomes[i] = "Pending"
+		}
+	}
 	muted(w, "Uses your installed Codex and its configured model provider.", a.p)
+	w.Row(24).Dynamic(3)
+	w.Label("Model", "LC")
+	w.Label("Effort", "LC")
+	w.Label("Speed", "LC")
 	w.Row(28).Dynamic(3)
-	models := []string{}
-	mi := 0
-	for i, m := range a.catalog.Models {
-		models = append(models, m.Name)
-		if m.Model == s.Model {
-			mi = i
-		}
+	a.modelPickers(w, &s.Model, &s.Effort, &s.Tier, s.Busy)
+	if a.activeApprovalFor(s.ThreadID) {
+		a.drawApprovalFor(w, s.ThreadID)
 	}
-	if len(models) > 0 {
-		next := w.ComboSimple(models, mi, 28)
-		if next != mi && !s.Busy {
-			s.Model = a.catalog.Models[next].Model
-			s.Effort = a.catalog.Models[next].DefaultEffort
-			s.Tier = "default"
-		}
-	}
-	m, _ := a.catalog.Find(s.Model)
-	efforts := []string{}
-	ei := 0
-	for i, e := range m.Efforts {
-		efforts = append(efforts, e.ID)
-		if e.ID == s.Effort {
-			ei = i
-		}
-	}
-	if len(efforts) > 0 {
-		s.Effort = efforts[w.ComboSimple(efforts, ei, 28)]
-	} else {
-		w.Label("Default effort", "LC")
-	}
-	tiers := a.catalog.Speeds(m)
-	names := []string{}
-	ti := 0
-	for i, t := range tiers {
-		names = append(names, t.Name)
-		if t.ID == s.Tier {
-			ti = i
-		}
-	}
-	s.Tier = tiers[w.ComboSimple(names, ti, 28)].ID
-	h := max(120, w.LayoutAvailableHeight()-145)
+	scale := w.Master().Style().Scaling
+	spacing := w.Master().Style().GroupWindow.Spacing.Y
+	reserved := int(120*scale) + 4*spacing
 	if s.Plan != nil {
-		h = max(110, h-140)
+		reserved += int(float64(titleHeight(w)+168)*scale) + 3*spacing
 	}
-	w.Row(h).Dynamic(1)
+	h := max(int(60*scale), w.LayoutAvailableHeight()-reserved)
+	w.RowScaled(h).Dynamic(1)
 	if body := w.GroupBegin("rally-assistant-transcript", nucular.WindowNoHScrollbar); body != nil {
-		if s.Transcript == "" {
+		if len(s.History.Blocks) == 0 {
 			muted(body, "Try: Show blocked stories, group by owner, and explain the risks.", a.p)
 		} else {
-			a.markdown(body, s.Transcript)
+			a.drawAssistantHistory(body, s)
 		}
 		body.GroupEnd()
 	}
 	if s.Plan != nil {
 		title(w, s.Plan.Summary, a.p)
-		w.Row(70).Dynamic(1)
+		w.Row(140).Dynamic(1)
 		if preview := w.GroupBegin("change-preview", nucular.WindowNoHScrollbar); preview != nil {
-			for _, ch := range s.Plan.Changes {
-				b, _ := json.Marshal(ch.Fields)
-				preview.Row(25).Dynamic(1)
-				preview.Label(ch.Operation+" "+fallback(ch.Before.ID(), ch.Kind)+"  "+string(b), "LC")
+			for i, line := range s.Preview {
+				preview.Row(26).Dynamic(1)
+				if i < len(s.Selected) && !s.Busy && !s.PlanApplied {
+					preview.CheckboxText(fmt.Sprintf("Change %d", i+1), &s.Selected[i])
+				} else {
+					preview.Label(fmt.Sprintf("Change %d · %s", i+1, s.Outcomes[i]), "LC")
+				}
+				lines := nucular.WrapText(preview.Master().Style().Font, line, max(100, preview.LayoutAvailableWidth()-16))
+				preview.Row(min(240, max(44, len(lines)*(a.prefs.FontSize+7)))).Dynamic(1)
+				preview.LabelWrap(line)
+				preview.Row(26).Static(150)
+				if preview.ButtonText("View full change") {
+					a.openText(fmt.Sprintf("Proposed change %d", i+1), line)
+				}
 			}
 			preview.GroupEnd()
 		}
 		w.Row(28).Dynamic(2)
-		if primary(w, fmt.Sprintf("Apply %d changes", len(s.Plan.Changes)), a.p) && !s.Busy {
+		count := 0
+		for _, on := range s.Selected {
+			if on {
+				count++
+			}
+		}
+		if primary(w, fmt.Sprintf("Apply %d selected", count), a.p) && count > 0 && !s.Busy && !s.PlanApplied {
+			if a.rallyClient == nil {
+				s.Status = "Connect to Rally before applying changes"
+				return
+			}
+			if a.rallyQuery(s.View) != s.PlanScope {
+				s.Status = "Scope changed; request a new proposal before applying"
+				return
+			}
 			p := *s.Plan
+			p.Changes = nil
+			var selected []int
+			for i, change := range s.Plan.Changes {
+				if s.Selected[i] {
+					p.Changes = append(p.Changes, change)
+					selected = append(selected, i)
+				} else {
+					s.Outcomes[i] = "Not selected"
+				}
+			}
 			s.Busy = true
 			c := a.rallyClient
 			view := s.View
-			s.Plan = nil
-			a.work(func() {
+			s.PlanApplied = true
+			a.writeWork(func() {
 				ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
 				defer cancel()
 				n, e := assistant.Apply(ctx, c, p)
@@ -130,10 +166,18 @@ func (a *App) drawAssistant(w *nucular.Window) {
 					if e != nil {
 						s.Status += ". " + e.Error() + ". Refresh and request a new plan before retrying."
 					}
-					s.Transcript += "\n\n" + s.Status
-					a.refreshRally(view)
+					for i, index := range selected {
+						s.Outcomes[index] = "Not attempted"
+						if i < n {
+							s.Outcomes[index] = "Applied"
+						} else if i == n && e != nil {
+							s.Outcomes[index] = "Failed: " + e.Error()
+						}
+					}
+					s.History.Append(workspace.NewID("notice"), "notice", "notice", s.Status)
+					a.refreshRallyItems(view)
 				})
-			})
+			}, func() { s.Busy = false; s.PlanApplied = false; s.Status = errWorkQueueFull.Error() })
 		}
 		if w.ButtonText("Discard") {
 			s.Plan = nil
@@ -141,13 +185,24 @@ func (a *App) drawAssistant(w *nucular.Window) {
 	}
 	w.Row(62).Dynamic(1)
 	s.Editor.Edit(w)
+	if s.Editor.Active && !s.Busy {
+		for e := range w.Input().Keyboard.Events() {
+			if e.HandleKeyModmask(key.CodeReturnEnter, key.ModControl|key.ModMeta) {
+				a.sendAssistant()
+			}
+		}
+	}
+	w.Row(28).Dynamic(1)
+	if !s.Busy && w.ButtonText("New conversation") {
+		a.confirm("New Rally conversation?", "Start a new conversation in this scope? The current transcript will close.", func() { a.assistant = nil; a.openAssistant(s.View) })
+	}
 	w.Row(30).Ratio(.75, .25)
 	w.LabelColored(s.Status, "LC", a.p.Muted)
 	if s.Busy {
 		if w.ButtonText("Stop") && s.TurnID != "" {
 			a.rpc("turn/interrupt", map[string]any{"threadId": s.ThreadID, "turnId": s.TurnID}, nil)
 		}
-	} else if primary(w, "Ask AI", a.p) {
+	} else if enabledButton(w, "Ask AI", a.rallyClient != nil && a.client != nil, true, a.p) {
 		a.sendAssistant()
 	}
 }
@@ -168,16 +223,19 @@ func (a *App) sendAssistant() {
 		a.toast = "Codex is disconnected"
 		return
 	}
-	if warning := a.catalog.SpeedWarning(s.Model, s.Tier); warning != "" {
+	if warning := a.catalog.SpeedWarning(fallback(s.Model, a.catalog.DefaultModel()), fallback(s.Tier, "default")); warning != "" {
 		s.Status = warning
 		return
 	}
+	s.Scope = a.rallyQuery(s.View)
 	s.Busy = true
-	s.Transcript += "\n\nYou: " + prompt + "\n\n"
+	s.History.Append(workspace.NewID("user"), "userMessage", "you", prompt)
 	setText(s.Editor, "")
 	s.Status = "Thinking…"
 	startTurn := func() {
-		a.rpcResult("turn/start", map[string]any{"threadId": s.ThreadID, "input": codex.TextInput(prompt), "model": s.Model, "effort": s.Effort, "serviceTier": s.Tier}, func(raw json.RawMessage) {
+		params := map[string]any{"threadId": s.ThreadID, "input": codex.TextInput(prompt)}
+		setModelParams(params, s.Model, s.Effort, s.Tier)
+		a.rpcResult("turn/start", params, func(raw json.RawMessage) {
 			r := codex.Decode(raw)
 			t, _ := r["turn"].(map[string]any)
 			if s.Busy {
@@ -190,9 +248,11 @@ func (a *App) sendAssistant() {
 		return
 	}
 	s.Scope = a.rallyQuery(s.View)
-	s.Scope.Expression = ""
+
 	instructions := assistant.Instructions + "\nSelected workspace: " + s.Scope.Workspace + "\nSelected project: " + s.Scope.Project
-	a.rpcResult("thread/start", map[string]any{"ephemeral": true, "model": s.Model, "serviceTier": s.Tier, "cwd": a.prefs.WorkingDirectory, "developerInstructions": instructions, "dynamicTools": assistant.Specs(), "sandbox": "read-only"}, func(raw json.RawMessage) {
+	params := map[string]any{"ephemeral": true, "cwd": a.prefs.WorkingDirectory, "developerInstructions": instructions, "dynamicTools": assistant.Specs(), "sandbox": "read-only"}
+	setModelParams(params, s.Model, "", s.Tier)
+	a.rpcResult("thread/start", params, func(raw json.RawMessage) {
 		r := codex.Decode(raw)
 		t, _ := r["thread"].(map[string]any)
 		s.ThreadID = str(t, "id")
@@ -208,11 +268,18 @@ func (a *App) assistantEvent(m codex.Message, p map[string]any) {
 	s := a.assistant
 	switch m.Method {
 	case "item/agentMessage/delta":
-		s.Transcript += str(p, "delta")
+		s.History.Append(str(p, "itemId"), "agentMessage", "assistant", str(p, "delta"))
+	case "item/completed":
+		if item, ok := p["item"].(map[string]any); ok && str(item, "type") == "agentMessage" {
+			a.upsertItem(&s.History, item)
+		}
 	case "turn/started":
 		t, _ := p["turn"].(map[string]any)
 		s.TurnID = str(t, "id")
 	case "turn/completed":
+		for _, block := range s.History.Blocks {
+			s.History.FinishBlock(block.ID)
+		}
 		s.Busy = false
 		s.TurnID = ""
 		s.Status = "Ready"
@@ -221,6 +288,9 @@ func (a *App) assistantEvent(m codex.Message, p map[string]any) {
 			s.Status = str(err, "message")
 		}
 	case "error":
+		if retry, _ := p["willRetry"].(bool); retry {
+			return
+		}
 		s.Busy = false
 		err, _ := p["error"].(map[string]any)
 		s.Status = str(err, "message")
@@ -228,6 +298,10 @@ func (a *App) assistantEvent(m codex.Message, p map[string]any) {
 }
 func (a *App) runDynamicTool(client *codex.Client, m codex.Message) {
 	a.post(func() {
+		if a.client != client {
+			return
+		}
+		m.Origin = client
 		p := codex.Decode(m.Params)
 		if a.crossTabTool(m, p) {
 			return
@@ -245,28 +319,55 @@ func (a *App) runDynamicTool(client *codex.Client, m codex.Message) {
 		c := a.rallyClient
 		tools := assistant.Tools{Client: c, Scope: s.Scope,
 			Show: func(view assistant.View) error {
+				applied := make(chan error, 1)
 				a.post(func() {
 					a.openRally(view.Page)
 					tab := a.state.Current()
 					v := a.rallyViews[tab.ID]
 					if v.Detail != nil && v.Detail.dirty() {
 						a.toast = "An unsaved item is open; save it before applying the AI view"
+						applied <- fmt.Errorf("view was not changed: an unsaved work item is open")
 						return
 					}
 					v.Detail = nil
 					setText(v.Query, view.Query)
+					v.QueryApplied = view.Query
 					if view.Mode != "" {
 						v.Mode = view.Mode
 					}
 					if view.Group != "" {
 						v.Group = view.Group
 					}
+					v.AIView = true
 					a.refreshRally(v)
 					s.View = v
+					applied <- nil
+				})
+				select {
+				case err := <-applied:
+					return err
+				case <-a.ctx.Done():
+					return a.ctx.Err()
+				case <-time.After(30 * time.Second):
+					return fmt.Errorf("view update was not acknowledged")
+				}
+			},
+			Propose: func(plan assistant.Plan) error {
+				preview := proposalPreview(plan)
+				a.post(func() {
+					s.Plan = &plan
+					s.Preview = preview
+					s.PlanApplied = false
+					s.PlanScope = s.Scope
+					s.Selected = make([]bool, len(plan.Changes))
+					s.Outcomes = make([]string, len(plan.Changes))
+					for i := range s.Selected {
+						s.Selected[i] = true
+						s.Outcomes[i] = "Pending"
+					}
 				})
 				return nil
-			},
-			Propose: func(plan assistant.Plan) error { a.post(func() { s.Plan = &plan }); return nil }}
+			}}
 		a.work(func() {
 			ctx, cancel := context.WithTimeout(a.ctx, 45*time.Second)
 			defer cancel()

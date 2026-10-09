@@ -39,7 +39,7 @@ func (a *App) menuAction(id string) {
 		a.prefs.StatusBar = !a.prefs.StatusBar
 		a.savePrefs()
 	case "quit":
-		a.window.Close()
+		a.requestQuit()
 	case "keyboard":
 		a.settingsPage("Keyboard")
 	case "feedback":

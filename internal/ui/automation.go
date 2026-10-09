@@ -1,3 +1,5 @@
+//go:build fastrock_automation
+
 package ui
 
 import (
@@ -30,7 +32,7 @@ func (a *App) startAutomation() {
 		a.toast = "GUI automation is only supported on Windows"
 		return
 	}
-	a.work(func() {
+	go a.safeWork(func() {
 		b, e := os.ReadFile(path)
 		if e != nil {
 			a.post(func() { a.report(e) })
@@ -132,6 +134,7 @@ func (a *App) startAutomation() {
 				case "description":
 					if v != nil && v.Detail != nil {
 						r := v.Detail.Rich["Description"]
+						r.ensureEditor()
 						setText(r.editor, step.Value)
 						r.sync()
 					}
@@ -232,7 +235,7 @@ func (a *App) startAutomation() {
 						a.exitCode = 1
 					}
 				case "assert_assistant":
-					if a.assistant == nil || a.assistant.Busy || !strings.Contains(a.assistant.Transcript, step.Value) {
+					if a.assistant == nil || a.assistant.Busy || !strings.Contains(a.assistant.transcriptText(), step.Value) {
 						log += "FAIL: Rally assistant did not complete\n"
 						a.exitCode = 1
 					}

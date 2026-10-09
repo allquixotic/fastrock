@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/allquixotic/fastrock/internal/platform"
 	"io"
 	"os"
 	"os/exec"
@@ -24,15 +25,7 @@ func installTarget(exe string) string {
 	}
 	return exe
 }
-func cleanEnvironment() []string {
-	var out []string
-	for _, s := range os.Environ() {
-		if !strings.HasPrefix(s, "FASTROCK_BROKER=") && !strings.HasPrefix(s, "FASTROCK_BROKER_TOKEN=") {
-			out = append(out, s)
-		}
-	}
-	return out
-}
+func cleanEnvironment() []string { return platform.ChildEnv() }
 func startApp(target string) error {
 	exe := target
 	if strings.HasSuffix(target, ".app") {
@@ -104,7 +97,11 @@ func Apply(jobFile string) error {
 	if e != nil {
 		return fail(fmt.Errorf("installation is not writable; move Fastrock to a user-owned Applications folder: %w", e))
 	}
+	keepRecovery := false
 	defer func() {
+		if keepRecovery {
+			return
+		}
 		// Keep the rollback copy if an external lock prevented recovery.
 		if _, err := os.Stat(filepath.Join(local, "previous")); os.IsNotExist(err) {
 			_ = os.RemoveAll(local)
@@ -114,7 +111,7 @@ func Apply(jobFile string) error {
 	if e = copyTree(job.Staged, next); e != nil {
 		return fail(e)
 	}
-	if e = verifyPlatform(next); e != nil {
+	if e = verifyRelease(next, job.Version); e != nil {
 		return fail(e)
 	}
 	backup := filepath.Join(local, "previous")
@@ -127,6 +124,7 @@ func Apply(jobFile string) error {
 			rollback = os.Rename(backup, job.Target)
 		}
 		if rollback != nil { // Retain the backup if rollback fails for external reasons.
+			keepRecovery = true
 			_ = os.Rename(backup, job.Target+".recovery")
 			return fail(fmt.Errorf("restart failed: %v; rollback failed: %v", e, rollback))
 		}

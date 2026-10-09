@@ -10,7 +10,9 @@ require (
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/image v0.45.0
 	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a
-	golang.org/x/net v0.48.0
+	golang.org/x/net v0.55.0
+	golang.org/x/sync v0.22.0
+	golang.org/x/sys v0.47.0
 )
 
 require (
@@ -22,8 +24,7 @@ require (
 	github.com/golang/freetype v0.0.0-20161208064710-d9be45aaf745 // indirect
 	github.com/hajimehoshi/ebiten/v2 v2.10.0 // indirect
 	golang.org/x/exp/shiny v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 )
 
 replace github.com/aarzilli/nucular => ./third_party/nucular

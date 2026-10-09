@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"math"
 	"runtime"
+	"sort"
 	"time"
 	"unicode"
 
@@ -35,11 +36,28 @@ const (
 // &TextEditor{}, store it somewhere then in the update function call
 // the Edit method passing the window to it.
 type TextEditor struct {
-	textSnapshot string
-	wrapRight    int
-	Placeholder  string
+	// OnChange reports native text mutations, including paste and undo/redo.
+	OnChange                   func(TextChange)
+	trackedText, snapshotValid bool
+	textRevision               uint64
+	lastDrawGeneration         uint64
+	textSnapshot               string
+	wrapRight                  int
+	Placeholder                string
 	// PaintText optionally draws formatted text while selection, hit testing and editing stay native.
 	PaintText func(*command.Buffer, rect.Rect, []rune, int, font.Face, color.RGBA, bool)
+	// PaintTabText optionally handles the fragment before a tab. Its rectangle
+	// includes the tab stop; its rune slice excludes the tab character.
+	PaintTabText func(*command.Buffer, rect.Rect, []rune, int, font.Face, color.RGBA, bool)
+	// GutterWidth reserves physical pixels to the left of the editable text.
+	// PaintGutter receives only visible logical line starts in rune coordinates.
+	GutterWidth        int
+	PaintGutter        func(*command.Buffer, rect.Rect, int, font.Face)
+	gutter, gutterClip rect.Rect
+	// MeasureText must use the same faces as PaintText. The offset is in runes.
+	MeasureText func([]rune, int, font.Face) int
+	// MinRowHeight accommodates a formatted editor's largest font.
+	MinRowHeight int
 
 	win            *Window
 	propertyStatus propertyStatus
@@ -99,7 +117,9 @@ func (ed *TextEditor) init(win *Window) {
 				ed.Buffer = []rune{}
 			}
 			ed.Filter = nil
-			ed.Cursor = 0
+			// Restored editors may already have a caret/selection. A new
+			// zero-value editor naturally starts at zero; keep valid state.
+			ed.clamp()
 		}
 		ed.Redraw = true
 		ed.win = win
@@ -223,8 +243,15 @@ func (edit *TextEditor) locateCoord(p image.Point, font font.Face, row_height in
 		return len(edit.Buffer)
 	}
 
+	start := min(drawchunk.start, len(edit.Buffer))
+	end := max(start, min(drawchunk.end, len(edit.Buffer)))
+	if edit.MeasureText != nil && edit.PasswordChar == 0 {
+		return start + sort.Search(end-start, func(i int) bool {
+			return drawchunk.X+edit.textWidth(edit.Buffer[start:start+i+1], start, font) > x
+		})
+	}
 	curx := drawchunk.X
-	for i := drawchunk.start; i < drawchunk.end && i < len(edit.Buffer); i++ {
+	for i := drawchunk.start; i < end; i++ {
 		curx += FontWidth(font, string(edit.Buffer[i:i+1]))
 		if curx > x {
 			return i
@@ -259,13 +286,8 @@ func (edit *TextEditor) indexToCoord(index int, font font.Face, row_height int) 
 		drawchunk = &edit.drawchunks[len(edit.drawchunks)-1]
 	}
 
-	x := drawchunk.X
-	for i := drawchunk.start; i < drawchunk.end && i < len(edit.Buffer); i++ {
-		if i >= index {
-			break
-		}
-		x += FontWidth(font, string(edit.Buffer[i:i+1]))
-	}
+	start := min(drawchunk.start, len(edit.Buffer))
+	x := drawchunk.X + edit.textWidth(edit.Buffer[start:max(start, min(index, min(drawchunk.end, len(edit.Buffer))))], start, font)
 	if index >= len(edit.Buffer) && len(edit.Buffer) > 0 && edit.Buffer[len(edit.Buffer)-1] == '\n' {
 		return image.Point{x, drawchunk.Y + drawchunk.H + drawchunk.H/2}
 	}
@@ -366,6 +388,7 @@ func (edit *TextEditor) Delete(where int, len int) {
 	edit.makeundoDelete(where, len)
 
 	edit.Buffer = strDeleteText(edit.Buffer, where, len)
+	edit.changedText(where, len, nil)
 	edit.HasPreferredX = false
 }
 
@@ -507,6 +530,7 @@ func (edit *TextEditor) Paste(ctext string) {
 	text := []rune(ctext)
 
 	edit.Buffer = strInsertText(edit.Buffer, edit.Cursor, text)
+	edit.changedText(edit.Cursor, 0, text)
 
 	edit.makeundoInsert(edit.Cursor, len(text))
 	edit.Cursor += len(text)
@@ -538,11 +562,13 @@ func (edit *TextEditor) Text(text []rune) {
 			edit.makeundoReplace(edit.Cursor, 1, 1)
 			edit.Buffer = strDeleteText(edit.Buffer, edit.Cursor, 1)
 			edit.Buffer = strInsertText(edit.Buffer, edit.Cursor, text[i:i+1])
+			edit.changedText(edit.Cursor, 1, text[i:i+1])
 			edit.Cursor++
 			edit.HasPreferredX = false
 		} else {
 			edit.DeleteSelection() /* implicitly clamps */
 			edit.Buffer = strInsertText(edit.Buffer, edit.Cursor, text[i:i+1])
+			edit.changedText(edit.Cursor, 0, text[i:i+1])
 			edit.makeundoInsert(edit.Cursor, 1)
 			edit.Cursor++
 			edit.HasPreferredX = false
@@ -891,12 +917,14 @@ func (edit *TextEditor) DoUndo() {
 		r.Text = make([]rune, u.DeleteLength)
 		copy(r.Text, edit.Buffer[u.Where:u.Where+u.DeleteLength])
 		edit.Buffer = strDeleteText(edit.Buffer, u.Where, u.DeleteLength)
+		edit.changedText(u.Where, u.DeleteLength, nil)
 	}
 
 	/* check type of recorded action: */
 	if u.InsertLength != 0 {
 		/* easy case: was a deletion, so we need to insert n characters */
 		edit.Buffer = strInsertText(edit.Buffer, u.Where, u.Text)
+		edit.changedText(u.Where, 0, u.Text)
 	}
 
 	edit.Cursor = u.Where + u.InsertLength
@@ -930,11 +958,13 @@ func (edit *TextEditor) DoRedo() {
 		u.Text = make([]rune, r.DeleteLength)
 		copy(u.Text, edit.Buffer[r.Where:r.Where+r.DeleteLength])
 		edit.Buffer = strDeleteText(edit.Buffer, r.Where, r.DeleteLength)
+		edit.changedText(r.Where, r.DeleteLength, nil)
 	}
 
 	if r.InsertLength != 0 {
 		/* easy case: need to insert n characters */
 		edit.Buffer = strInsertText(edit.Buffer, r.Where, r.Text)
+		edit.changedText(r.Where, 0, r.Text)
 	}
 
 	edit.Cursor = r.Where + r.InsertLength
@@ -998,7 +1028,7 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 			return pwsz * (end - start)
 		}
 		// XXX calculating text width here is slow figure out why
-		return measureRunes(f, text[start:end])
+		return edit.textWidth(text[start:end], textOffset+start, f)
 	}
 
 	getText := func(start, end int) string {
@@ -1022,6 +1052,7 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 		lblrect.H = row_height
 		lblrect.W = nk_null_rect.W
 		lblrect.X = pos_x
+		edit.drawGutter(out, lblrect, start+textOffset, f)
 
 		if is_selected { // selection needs to draw different background color
 			if index == len(text) || (index == start && start == 0) {
@@ -1048,6 +1079,7 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 		lblrect.H = row_height
 		lblrect.W = measureText(start, index)
 		lblrect.X = pos_x
+		edit.drawGutter(out, lblrect, start+textOffset, f)
 
 		lblrect.W = int(math.Floor(float64(lblrect.X+lblrect.W-x_margin)/float64(tabsz))+1)*tabsz + x_margin - lblrect.X
 
@@ -1056,6 +1088,8 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 		}
 		edit.drawchunks = append(edit.drawchunks, drawchunk{lblrect, start + textOffset, index + textOffset})
 		if lblrect.Y+lblrect.H < out.Clip.Y || lblrect.Y > out.Clip.Y+out.Clip.H {
+		} else if edit.PaintTabText != nil && edit.PasswordChar == 0 {
+			edit.PaintTabText(out, lblrect, text[start:index], start+textOffset, f, foreground, is_selected)
 		} else if edit.PaintText != nil && edit.PasswordChar == 0 {
 			edit.PaintText(out, lblrect, text[start:index], start+textOffset, f, foreground, is_selected)
 		} else {
@@ -1070,7 +1104,7 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 	width := pos_x - x_margin
 	for index, glyph := range text {
 		if edit.Flags&EditSoftWrap != 0 && glyph != '\n' && glyph != '\r' {
-			advance := glyphAdvance(f, glyph)
+			advance := edit.textWidth(text[index:index+1], textOffset+index, f)
 			if glyph == '\t' {
 				advance = tabsz - width%tabsz
 			}
@@ -1078,11 +1112,11 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 			previousSpace := index == 0 && (textOffset == 0 || unicode.IsSpace(edit.Buffer[textOffset-1])) || index > 0 && unicode.IsSpace(text[index-1])
 			wordWidth := advance
 			if previousSpace && !unicode.IsSpace(glyph) {
-				for _, ch := range text[index+1:] {
+				for offset, ch := range text[index+1:] {
 					if unicode.IsSpace(ch) {
 						break
 					}
-					wordWidth += glyphAdvance(f, ch)
+					wordWidth += edit.textWidth(text[index+1+offset:index+2+offset], textOffset+index+1+offset, f)
 					if wordWidth > edit.wrapRight-x_margin {
 						break
 					}
@@ -1125,7 +1159,7 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 
 func (ed *TextEditor) doEdit(bounds rect.Rect, style *nstyle.Edit, inp *Input, cut, copy, paste bool) (ret EditEvents) {
 	font := ed.win.ctx.Style.Font
-	state := ed.win.widgets.PrevState(bounds)
+	var state nstyle.WidgetStates
 
 	ed.clamp()
 
@@ -1135,12 +1169,16 @@ func (ed *TextEditor) doEdit(bounds rect.Rect, style *nstyle.Edit, inp *Input, c
 	area.Y = bounds.Y + style.Padding.Y + style.Border
 	area.W = bounds.W - (2.0*style.Padding.X + 2*style.Border)
 	area.H = bounds.H - (2.0*style.Padding.Y + 2*style.Border)
+	gutter := area
+	gutter.W = min(max(0, ed.GutterWidth), max(0, area.W-1))
+	area.X += gutter.W
+	area.W -= gutter.W
 	if ed.Flags&EditMultiline != 0 {
 		area.H = area.H - style.ScrollbarSize.Y
 	}
 	var row_height int
 	if ed.Flags&EditMultiline != 0 {
-		row_height = FontHeight(font) + style.RowPadding
+		row_height = max(FontHeight(font), ed.MinRowHeight) + style.RowPadding
 	} else {
 		row_height = area.H
 	}
@@ -1332,7 +1370,7 @@ func (ed *TextEditor) doEdit(bounds rect.Rect, style *nstyle.Edit, inp *Input, c
 
 		/* paste handler */
 		if paste && (ed.Flags&EditClipboard != 0) {
-			ed.win.GetClipboard()
+			ed.requestPaste()
 		}
 	}
 
@@ -1366,6 +1404,8 @@ func (ed *TextEditor) doEdit(bounds rect.Rect, style *nstyle.Edit, inp *Input, c
 	d.Scaling = ed.win.ctx.Style.Scaling
 	d.Bounds = bounds
 	d.Area = area
+	gutter.H = area.H
+	d.Gutter = gutter
 	d.RowHeight = row_height
 	d.hasInput = inp.Mouse.valid
 	ed.win.widgets.Add(state, bounds)
@@ -1427,6 +1467,7 @@ type drawableTextEditor struct {
 	Scaling   float64
 	Bounds    rect.Rect
 	Area      rect.Rect
+	Gutter    rect.Rect
 	RowHeight int
 	hasInput  bool
 
@@ -1453,6 +1494,7 @@ func (d *drawableTextEditor) Draw(z *nstyle.Style, out *command.Buffer) {
 
 	/* select background colors/images  */
 	var old_clip rect.Rect = out.Clip
+	edit.gutter, edit.gutterClip = d.Gutter, unify(old_clip, d.Gutter)
 	{
 		var background *nstyle.Item
 		if state&nstyle.WidgetStateActive != 0 {
@@ -1586,6 +1628,9 @@ func (d *drawableTextEditor) Draw(z *nstyle.Style, out *command.Buffer) {
 		}
 	}
 	d.TextSize = pos.Sub(startPos)
+	if len(edit.Buffer) == 0 || edit.Buffer[len(edit.Buffer)-1] == '\n' {
+		edit.drawGutter(out, rect.Rect{Y: pos.Y, H: row_height}, len(edit.Buffer), font)
+	}
 
 	// fix rectangles in drawchunks by subtracting area from them
 	for i := range edit.drawchunks {
@@ -1594,6 +1639,20 @@ func (d *drawableTextEditor) Draw(z *nstyle.Style, out *command.Buffer) {
 	}
 
 	out.PushScissor(old_clip)
+}
+
+func (edit *TextEditor) drawGutter(out *command.Buffer, line rect.Rect, start int, face font.Face) {
+	if edit.PaintGutter == nil || edit.gutter.W == 0 || start < 0 || start > len(edit.Buffer) || start > 0 && edit.Buffer[start-1] != '\n' {
+		return
+	}
+	if line.Y+line.H <= edit.gutterClip.Y || line.Y >= edit.gutterClip.Y+edit.gutterClip.H {
+		return
+	}
+	clip := out.Clip
+	out.PushScissor(edit.gutterClip)
+	line.X, line.W = edit.gutter.X, edit.gutter.W
+	edit.PaintGutter(out, line, start, face)
+	out.PushScissor(clip)
 }
 
 func runeSliceEquals(a, b []rune) bool {
@@ -1630,7 +1689,7 @@ func (edit *TextEditor) popupFind() {
 	edit.SelectEnd = edit.SelectStart
 	edit.Cursor = edit.SelectStart
 
-	edit.win.Master().PopupOpen("Search...", WindowTitle|WindowNoScrollbar|WindowMovable|WindowBorder|WindowDynamic, rect.Rect{100, 100, 400, 500}, true, func(w *Window) {
+	edit.win.Master().PopupOpen("Search...", WindowTitle|WindowNoScrollbar|WindowMovable|WindowBorder|WindowDynamic, rect.Rect{X: 100, Y: 100, W: 400, H: 500}, true, func(w *Window) {
 		w.Row(30).Static()
 		w.LayoutFitWidth(0, 30)
 		w.Label("Search: ", "LC")
@@ -1701,10 +1760,13 @@ func (edit *TextEditor) lookForward(forceAdvance bool) {
 // alwaysSet is specified the contents of the editor will be reset
 // to text.
 func (edit *TextEditor) Edit(win *Window) EditEvents {
+	edit.lastDrawGeneration = win.FrameID()
 	edit.init(win)
 	if edit.Maxlen > 0 {
 		if len(edit.Buffer) > edit.Maxlen {
+			removed := len(edit.Buffer) - edit.Maxlen
 			edit.Buffer = edit.Buffer[:edit.Maxlen]
+			edit.changedText(edit.Maxlen, removed, nil)
 		}
 	}
 
@@ -1757,8 +1819,23 @@ func (edit *TextEditor) Edit(win *Window) EditEvents {
 	return ev
 }
 
+func (ed *TextEditor) requestPaste() {
+	original, cursor, start, end := ed.Snapshot(), ed.Cursor, ed.SelectStart, ed.SelectEnd
+	w := ed.win
+	w.RequestClipboard(func() bool {
+		return ed.Active && ed.lastDrawGeneration == w.FrameID() && ed.Cursor == cursor && ed.SelectStart == start && ed.SelectEnd == end && ed.Snapshot() == original
+	}, func(value string) { ed.Paste(value); ed.CursorFollow = true; ed.Redraw = true })
+}
+
 // Snapshot returns cached UTF-8, including changes made directly to Buffer.
 func (ed *TextEditor) Snapshot() string {
+	if ed.trackedText {
+		if !ed.snapshotValid {
+			ed.textSnapshot = string(ed.Buffer)
+			ed.snapshotValid = true
+		}
+		return ed.textSnapshot
+	}
 	i := 0
 	same := true
 	for _, r := range ed.textSnapshot {
@@ -1773,4 +1850,14 @@ func (ed *TextEditor) Snapshot() string {
 	}
 	ed.textSnapshot = string(ed.Buffer)
 	return ed.textSnapshot
+}
+
+func (edit *TextEditor) textWidth(text []rune, offset int, face font.Face) int {
+	if len(text) == 0 {
+		return 0
+	}
+	if edit.MeasureText != nil && edit.PasswordChar == 0 {
+		return edit.MeasureText(text, offset, face)
+	}
+	return measureRunes(face, text)
 }

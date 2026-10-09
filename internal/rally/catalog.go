@@ -43,6 +43,8 @@ func FindPage(id string) PageSpec {
 }
 func StateField(kind string) string {
 	switch kind {
+	case "TestCase":
+		return "LastVerdict"
 	case "Task", "Defect", "PortfolioItem/Feature", "PortfolioItem/Epic", "Iteration", "Release":
 		return "State"
 	default:

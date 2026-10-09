@@ -2,9 +2,9 @@ package ui
 
 import (
 	"fmt"
-	"image/color"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/buildinfo"
@@ -13,71 +13,78 @@ import (
 )
 
 type settingsView struct {
+	ReloadTimer                 *time.Timer
 	MCP                         *mcpForm
 	Bedrock                     *bedrockForm
 	ConfigData                  map[string]any
 	ConfigLayer                 int
 	Layers                      []configLayer
 	ConfigContext               *nucular.TextEditor
+	PluginSearch                *nucular.TextEditor
+	ConfigFolders               []string
 	PluginCatalog               bool
-	Local                       *localProviderView
+	Locals                      []*localProviderView
+	LocalLoadGeneration         uint64
 	Fields                      []configField
 	Search, Raw                 *nucular.TextEditor
 	RawPath, ConfigVersion      string
 	RawHash                     [32]byte
+	afterRawSave                func()
 	Name, Value, Secret, Region *nucular.TextEditor
 	Items                       []settingsItem
 	Selected                    map[string]bool
-	LoginID                     string
+	LoginID, LoginCode          string
+	LoginURL, LoginError        string
+	LoginBusy                   bool
+	LoginGeneration             uint64
 	LoadGeneration              int
+	LoadError                   string
+	MCPLive                     map[string]mcpLiveStatus
 	IncludeLogs                 bool
+	ConfigQueue                 []configEditRequest
+	ConfigWriting               bool
+	ConfigFeedback              map[string]string
+	ConfigFailed                map[string]bool
+	ActionFeedback              map[string]settingFeedback
+	ActionRequest               map[string]uint64
 
 	Page                                                                string
 	Endpoint, Token, Workspace, Project, ConfigKey, ConfigValue, Output *nucular.TextEditor
 	Busy                                                                bool
+	MemoryResetting                                                     bool
+	RawFeedback                                                         settingFeedback
 }
 
 func newSettingsView(p settings.Preferences) *settingsView {
 	secret := textEditor("", false)
 	secret.PasswordChar = '●'
-	return &settingsView{Search: textEditor("", false), Raw: textEditor("", true), Name: textEditor("", false), Value: textEditor("", true), Secret: secret, Region: textEditor("us-east-1", false), Selected: map[string]bool{}, Page: "Appearance", Endpoint: textEditor(p.RallyEndpoint, false), Token: &nucular.TextEditor{Flags: nucular.EditSimple, PasswordChar: '●'}, Workspace: textEditor(p.RallyWorkspace, false), Project: textEditor(p.RallyProject, false), ConfigKey: textEditor("", false), ConfigValue: textEditor("", false), Output: textEditor("", true)}
+	return &settingsView{Search: textEditor("", false), PluginSearch: textEditor("", false), Raw: textEditor("", true), Name: textEditor("", false), Value: textEditor("", true), Secret: secret, Region: textEditor("us-east-1", false), Selected: map[string]bool{}, Page: "Common", Endpoint: textEditor(p.RallyEndpoint, false), Token: &nucular.TextEditor{Flags: nucular.EditSimple, PasswordChar: '●'}, Workspace: textEditor(p.RallyWorkspace, false), Project: textEditor(p.RallyProject, false), ConfigKey: textEditor("", false), ConfigValue: textEditor("", false), Output: textEditor("", true)}
 }
 func (a *App) drawSettings(w *nucular.Window) {
 	s := a.settingsView
 	if s == nil {
 		s = newSettingsView(a.prefs)
 		a.settingsView = s
+		a.loadSettingsPage(s.Page)
 	}
 	title(w, "Settings", a.p)
-	w.Row(28).Static(180)
-	if w.ButtonText("Restart Codex app-server…") {
-		a.confirm("Restart Codex?", "Stop running turns in all Fastrock windows and reload Codex configuration? Unsent drafts stay open.", func() {
-			a.rpc("fastrock/restart", map[string]any{}, nil)
-		})
-	}
-	if a.client == nil {
-		w.Row(30).Static(200)
-		if w.ButtonText("Reconnect Codex") {
-			a.reconnect()
-		}
-	}
+	a.drawSettingsServer(w)
 	w.Row(max(200, w.LayoutAvailableHeight()-10)).Static(170, max(300, w.LayoutAvailableWidth()-180))
 	if nav := w.GroupBegin("settings-nav", nucular.WindowNoHScrollbar); nav != nil {
-		for _, page := range []string{"Appearance", "Rally", "Models", "Codex configuration", "Raw configuration", "Account", "AWS Bedrock", "Local providers", "MCP servers", "Skills", "Plugins", "Hooks", "Features", "Memories", "Import", "Feedback", "Sandbox", "Diagnostics", "Keyboard", "About"} {
-			nav.Row(30).Dynamic(1)
-			if flatRow(nav, page, "", s.Page == page, color.RGBA{}, a.p) {
-				s.Page = page
-				setText(s.Output, "")
-				a.loadSettingsPage(page)
-			}
-		}
+		a.drawSettingsNavigation(nav, s)
 		nav.GroupEnd()
 	}
 	if body := w.GroupBegin("settings-content", nucular.WindowNoHScrollbar); body != nil {
 		title(body, s.Page, a.p)
+		muted(body, settingsSubtitle(s.Page), a.p)
+		a.drawPageFeedback(body, s)
 		switch s.Page {
 		case "Appearance":
-			body.Row(30).Static(100, 100)
+			body.Row(30).Static(100, 100, 100)
+			if button(body, "System", a.prefs.Theme == "system", a.p) {
+				a.prefs.Theme = "system"
+				a.theme()
+			}
 			if button(body, "Dark", a.prefs.Theme == "dark", a.p) {
 				a.prefs.Theme = "dark"
 				a.theme()
@@ -88,7 +95,10 @@ func (a *App) drawSettings(w *nucular.Window) {
 			}
 			title(body, "Font size", a.p)
 			body.Row(30).Static(180)
-			sizes := []string{"11", "12", "13", "14", "15", "16", "18", "20"}
+			sizes := []string{}
+			for size := 10; size <= 24; size++ {
+				sizes = append(sizes, strconv.Itoa(size))
+			}
 			i := body.ComboSimple(sizes, index(sizes, strconv.Itoa(a.prefs.FontSize)), 28)
 			n, _ := strconv.Atoi(sizes[i])
 			if n != a.prefs.FontSize {
@@ -100,6 +110,14 @@ func (a *App) drawSettings(w *nucular.Window) {
 				a.savePrefs()
 			}
 			muted(body, "Ctrl/Cmd+Enter always sends.", a.p)
+			body.Row(30).Dynamic(1)
+			if body.CheckboxText("Show conversations sidebar", &a.prefs.Sidebar) {
+				a.savePrefs()
+			}
+			body.Row(30).Dynamic(1)
+			if body.CheckboxText("Show conversation information", &a.prefs.Info) {
+				a.savePrefs()
+			}
 			title(body, "When sending during a running turn", a.p)
 			body.Row(30).Dynamic(2)
 			if button(body, "Queue", a.prefs.BusyInput != "steer", a.p) {
@@ -122,11 +140,12 @@ func (a *App) drawSettings(w *nucular.Window) {
 			body.Row(32).Static(170, 170)
 			if !s.Busy && primary(body, "Save and connect", a.p) {
 				s.Busy = true
+				setSettingsFeedback(s, "page:Rally:connection", settingFeedback{Pending: true, Message: "Saving connection…"})
 				endpoint := strings.TrimRight(strings.TrimSpace(text(s.Endpoint)), "/")
 				token := text(s.Token)
 				if _, err := rally.New(endpoint, "validation", nil); err != nil {
 					s.Busy = false
-					a.report(err)
+					setSettingsFeedback(s, "page:Rally:connection", settingFeedback{Failed: true, Message: err.Error()})
 					return
 				}
 				a.work(func() {
@@ -137,7 +156,7 @@ func (a *App) drawSettings(w *nucular.Window) {
 					a.post(func() {
 						s.Busy = false
 						if e != nil {
-							a.report(e)
+							setSettingsFeedback(s, "page:Rally:connection", settingFeedback{Failed: true, Message: e.Error()})
 							return
 						}
 						a.prefs.RallyEndpoint = endpoint
@@ -145,23 +164,36 @@ func (a *App) drawSettings(w *nucular.Window) {
 						a.rallyClient = nil
 						a.savePrefs()
 						a.connectRally()
+						setSettingsFeedback(s, "page:Rally:connection", settingFeedback{Message: "Connection saved"})
 					})
+				}, func() {
+					s.Busy = false
+					setSettingsFeedback(s, "page:Rally:connection", settingFeedback{Failed: true, Message: errWorkQueueFull.Error()})
 				})
 			}
-			if body.ButtonText("Forget saved token") {
+			if !s.Busy && body.ButtonText("Forget saved token") {
+				s.Busy = true
+				setSettingsFeedback(s, "page:Rally:connection", settingFeedback{Pending: true, Message: "Removing saved token…"})
 				endpoint := a.prefs.RallyEndpoint
 				a.work(func() {
 					e := a.store.SetToken(endpoint, "")
 					a.post(func() {
-						a.report(e)
+						s.Busy = false
+						if e != nil {
+							setSettingsFeedback(s, "page:Rally:connection", settingFeedback{Failed: true, Message: e.Error()})
+							return
+						}
+						setSettingsFeedback(s, "page:Rally:connection", settingFeedback{Message: "Saved token removed"})
 						a.rallyClient = nil
 						a.rallyErr = "Connect your Rally endpoint and API token in Settings."
 					})
+				}, func() {
+					s.Busy = false
+					setSettingsFeedback(s, "page:Rally:connection", settingFeedback{Failed: true, Message: errWorkQueueFull.Error()})
 				})
 			}
 			if a.rallyErr != "" {
-				body.Row(48).Dynamic(1)
-				body.LabelWrap(a.rallyErr)
+				a.drawSettingsError(body, a.rallyErr)
 			} else {
 				muted(body, "Connected", a.p)
 			}
@@ -201,14 +233,14 @@ func (a *App) drawSettings(w *nucular.Window) {
 			}
 			body.Row(30).Static(180)
 			if body.ButtonText("Reload catalog") {
-				if a.client != nil {
-					c := a.client
-					cwd := a.prefs.WorkingDirectory
-					a.work(func() { a.loadCatalog(c, cwd) })
-				}
+				a.refreshCatalog()
 			}
 		case "Codex configuration":
 			a.drawConfiguration(body, s)
+		case "Common":
+			a.drawCommonSettings(body, s)
+		case "Memories":
+			a.drawMemorySettings(body, s)
 		case "Raw configuration":
 			a.drawRawConfig(body, s)
 
@@ -235,15 +267,30 @@ func (a *App) drawSettings(w *nucular.Window) {
 	}
 }
 func (a *App) loadSettingsPage(page string) {
+	if configurationPage(page) {
+		a.prepareConfigFolders()
+	}
+	if (configurationPage(page) || page == "Features") && !a.catalog.PolicyLoaded && !a.policyLoading {
+		a.refreshSignInPolicy()
+	}
+	if page == "Account" {
+		a.refreshAccount()
+		a.refreshUsage()
+		a.refreshSignInPolicy()
+		return
+	}
 	if page == "Local providers" {
 		a.loadLocalProvider()
 		return
 	}
 	if page == "Raw configuration" {
+		if a.settingsView.RawPath != "" {
+			return
+		}
 		a.loadRawConfig()
 		return
 	}
-	methods := map[string]string{"Codex configuration": "config/read", "Account": "account/read", "MCP servers": "mcpServerStatus/list", "Skills": "skills/list", "Plugins": "plugin/installed", "Hooks": "hooks/list", "Features": "experimentalFeature/list", "Memories": "memory/status", "Import": "externalAgentConfig/detect", "Sandbox": "windowsSandbox/readiness", "Diagnostics": "config/read", "AWS Bedrock": "account/bedrock/discover"}
+	methods := map[string]string{"Codex configuration": "config/read", "Account": "account/read", "MCP servers": "mcpServerStatus/list", "Skills": "skills/list", "Plugins": "plugin/installed", "Hooks": "hooks/list", "Features": "experimentalFeature/list", "Memories": "config/read", "Common": "config/read", "Import": "externalAgentConfig/detect", "Sandbox": "windowsSandbox/readiness", "Diagnostics": "config/read", "AWS Bedrock": "account/bedrock/discover"}
 	method := methods[page]
 	if page == "Plugins" && a.settingsView.PluginCatalog {
 		method = "plugin/list"
@@ -261,6 +308,9 @@ func (a *App) loadSettingsPage(page string) {
 		if c := a.settingsView.ConfigContext; c != nil && text(c) != "" {
 			params["cwd"] = text(c)
 		}
+	}
+	if method == "skills/list" {
+		a.skillCache.invalidate()
 	}
 	if method == "skills/list" || method == "hooks/list" || method == "externalAgentConfig/detect" {
 		params["cwds"] = []string{a.prefs.WorkingDirectory}
@@ -291,14 +341,8 @@ func scrub(v any) {
 }
 func (a *App) scopePicker(w *nucular.Window, label string, items []rally.Object, selected *string, changed func()) {
 	title(w, label, a.p)
-	names := []string{"All"}
-	refs := []string{""}
-	for _, o := range items {
-		names = append(names, o.String("Name"))
-		refs = append(refs, o.String("_ref"))
-	}
+	names, refs, old := a.picker(label, items).options("All", *selected)
 	w.Row(30).Dynamic(1)
-	old := index(refs, *selected)
 	next := w.ComboSimple(names, old, 28)
 	if old != next {
 		*selected = refs[next]
@@ -308,8 +352,17 @@ func (a *App) scopePicker(w *nucular.Window, label string, items []rally.Object,
 	}
 }
 func (a *App) reloadRally() {
-	for _, v := range a.rallyViews {
-		a.refreshRally(v)
+	for id, v := range a.rallyViews {
+		if a.state != nil && a.state.Active == id {
+			a.refreshRally(v)
+		} else {
+			if v.cancel != nil {
+				v.cancel()
+			}
+			v.Generation++
+			v.Loading = false
+			v.Evicted = true
+		}
 	}
 }
 

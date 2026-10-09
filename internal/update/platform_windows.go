@@ -3,6 +3,7 @@ package update
 import (
 	"errors"
 	"fmt"
+	"golang.org/x/sys/windows"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,25 +15,23 @@ import (
 )
 
 func detach(cmd *exec.Cmd) {
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x00000200 | 0x00000008}
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
 }
 func waitProcess(pid int, timeout time.Duration) error {
-	k := syscall.NewLazyDLL("kernel32.dll")
-	h, _, e := k.NewProc("OpenProcess").Call(0x00100000, 0, uintptr(pid))
-	if h == 0 {
-		if e == syscall.Errno(87) {
+	h, e := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(pid))
+	if e != nil {
+		if errors.Is(e, windows.ERROR_INVALID_PARAMETER) {
 			return nil
 		}
 		return e
 	}
-	defer k.NewProc("CloseHandle").Call(h)
-	result, _, e := k.NewProc("WaitForSingleObject").Call(h, uintptr(timeout.Milliseconds()))
-	if result == 0 {
+	defer windows.CloseHandle(h)
+	result, e := windows.WaitForSingleObject(h, uint32(timeout.Milliseconds()))
+	if result == windows.WAIT_OBJECT_0 {
 		return nil
 	}
 	return fmt.Errorf("waiting for old process: result %d (%v)", result, e)
 }
-func verifyPlatform(string) error { return nil }
 
 // PrepareInstallation establishes a stable, writable per-user update target.
 func PrepareInstallation(exe string) (bool, error) {
@@ -86,19 +85,29 @@ func callCOM(obj *comObject, index int, args ...uintptr) error {
 	return nil
 }
 func createShortcut(exe string) error {
+	folder, err := windows.KnownFolderPath(windows.FOLDERID_Programs, windows.KF_FLAG_DEFAULT)
+	if err != nil {
+		return fmt.Errorf("find user Start menu: %w", err)
+	}
+	return createShortcutAt(exe, folder)
+}
+func createShortcutAt(exe, folder string) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	ole := syscall.NewLazyDLL("ole32.dll")
-	hr, _, _ := ole.NewProc("CoInitializeEx").Call(0, 2)
-	if int32(hr) < 0 {
-		return fmt.Errorf("initialize shortcut COM: 0x%x", hr)
+	// CoInitializeEx returns S_FALSE (1) when this thread already owns an
+	// apartment. It is still a successful, balanced initialization.
+	const sFalse syscall.Errno = 1
+	if err := windows.CoInitializeEx(0, windows.COINIT_APARTMENTTHREADED); err != nil && err != sFalse {
+		return fmt.Errorf("initialize shortcut COM: %w", err)
 	}
-	defer ole.NewProc("CoUninitialize").Call()
+	defer windows.CoUninitialize()
+	// x/sys does not wrap CoCreateInstance; restrict its lookup to System32.
+	ole := windows.NewLazySystemDLL("ole32.dll")
 	clsid := guid{0x00021401, 0, 0, [8]byte{0xc0, 0, 0, 0, 0, 0, 0, 0x46}}
 	iid := guid{0x000214f9, 0, 0, [8]byte{0xc0, 0, 0, 0, 0, 0, 0, 0x46}}
 	persistIID := guid{0x0000010b, 0, 0, [8]byte{0xc0, 0, 0, 0, 0, 0, 0, 0x46}}
 	var link, persist *comObject
-	hr, _, _ = ole.NewProc("CoCreateInstance").Call(uintptr(unsafe.Pointer(&clsid)), 0, 1, uintptr(unsafe.Pointer(&iid)), uintptr(unsafe.Pointer(&link)))
+	hr, _, _ := ole.NewProc("CoCreateInstance").Call(uintptr(unsafe.Pointer(&clsid)), 0, windows.CLSCTX_INPROC_SERVER, uintptr(unsafe.Pointer(&iid)), uintptr(unsafe.Pointer(&link)))
 	if int32(hr) < 0 {
 		return fmt.Errorf("create shortcut: 0x%x", hr)
 	}
@@ -123,21 +132,7 @@ func createShortcut(exe string) error {
 		return e
 	}
 	defer callCOM(persist, 2)
-	// FOLDERID_Programs resolves redirected/OneDrive profiles correctly.
-	programsID := guid{0xa77f5d77, 0x2e2b, 0x44c3, [8]byte{0xa6, 0xa2, 0xab, 0xa6, 0x01, 0x05, 0x4a, 0x51}}
-	var folder *uint16
-	hr, _, _ = syscall.NewLazyDLL("shell32.dll").NewProc("SHGetKnownFolderPath").Call(uintptr(unsafe.Pointer(&programsID)), 0, 0, uintptr(unsafe.Pointer(&folder)))
-	if int32(hr) < 0 {
-		return fmt.Errorf("find user Start menu: 0x%x", hr)
-	}
-	defer ole.NewProc("CoTaskMemFree").Call(uintptr(unsafe.Pointer(folder)))
-	// The Windows API returns a null-terminated string allocated by COM.
-	chars := unsafe.Slice(folder, 32768)
-	end := 0
-	for end < len(chars) && chars[end] != 0 {
-		end++
-	}
-	path := filepath.Join(syscall.UTF16ToString(chars[:end]), "Fastrock.lnk")
+	path := filepath.Join(folder, "Fastrock.lnk")
 	shortcut, _ := syscall.UTF16PtrFromString(path)
 	e = callCOM(persist, 6, uintptr(unsafe.Pointer(shortcut)), 1)
 	runtime.KeepAlive(target)

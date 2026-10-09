@@ -26,7 +26,7 @@ type styleEditor struct {
 }
 
 func EditStyle(w nucular.MasterWindow, flags nucular.WindowFlags, saveFn func(string)) {
-	w.PopupOpen("Style Editor", nucular.WindowTitle|nucular.WindowBorder|nucular.WindowMovable|nucular.WindowScalable|flags, rect.Rect{0, 0, 400, 600}, true, StyleEditor(w.Style(), saveFn))
+	w.PopupOpen("Style Editor", nucular.WindowTitle|nucular.WindowBorder|nucular.WindowMovable|nucular.WindowScalable|flags, rect.Rect{W: 400, H: 600}, true, StyleEditor(w.Style(), saveFn))
 }
 
 func StyleEditor(style *nstyle.Style, saveFn func(string)) nucular.UpdateFn {

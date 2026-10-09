@@ -4,6 +4,16 @@ import (
 	"testing"
 )
 
+func TestGetUsesRequestedRange(t *testing.T) {
+	r := &RichText{chunks: []chunk{{s: "hello "}, {s: "world"}}, Sel: Sel{0, 1}}
+	if got := r.Get(Sel{6, 11}); got != "world" {
+		t.Fatalf("got %q", got)
+	}
+	if got := r.Get(Sel{0, 11}); got != "hello world" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestSeparateStyles(t *testing.T) {
 	out := separateStyles([]styleSel{
 		{Sel: Sel{0, 20}, align: 'a'},

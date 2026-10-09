@@ -94,3 +94,73 @@ func TestPurgePreventsStaleInflightCache(t *testing.T) {
 		t.Fatal("old flight repopulated cache")
 	}
 }
+
+func TestSharedReadSurvivesFirstWaiterCancellation(t *testing.T) {
+	started, release := make(chan struct{}), make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(started)
+		select {
+		case <-release:
+			fmt.Fprint(w, `{"QueryResult":{"Results":[{"Name":"shared"}],"StartIndex":1,"TotalResultCount":1}}`)
+		case <-r.Context().Done():
+		}
+	}))
+	defer server.Close()
+	c, _ := New(server.URL, "test", nil)
+	first, cancel := context.WithCancel(context.Background())
+	done1 := make(chan error, 1)
+	done2 := make(chan error, 1)
+	go func() { _, e := c.CachedQuery(first, "story", Query{}, false); done1 <- e }()
+	<-started
+	go func() { _, e := c.CachedQuery(context.Background(), "story", Query{}, false); done2 <- e }()
+	deadline := time.Now().Add(time.Second)
+	for {
+		c.cache.mu.Lock()
+		n := 0
+		for _, f := range c.cache.flights {
+			n = f.waiters
+		}
+		c.cache.mu.Unlock()
+		if n == 2 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("second waiter did not join")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	cancel()
+	if e := <-done1; e != context.Canceled {
+		t.Fatal(e)
+	}
+	close(release)
+	if e := <-done2; e != nil {
+		t.Fatalf("first caller cancelled shared read: %v", e)
+	}
+}
+
+func TestAllRequestPathsShareConcurrencyLimit(t *testing.T) {
+	var live, peak atomic.Int64
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := live.Add(1)
+		defer live.Add(-1)
+		for p := peak.Load(); n > p && !peak.CompareAndSwap(p, n); p = peak.Load() {
+		}
+		time.Sleep(10 * time.Millisecond)
+		fmt.Fprint(w, `{"Thing":{"ObjectID":1,"Name":"ok"}}`)
+	}))
+	defer s.Close()
+	c, _ := New(s.URL, "test", nil)
+	var wg sync.WaitGroup
+	for range 16 {
+		wg.Go(func() {
+			if _, e := c.Get(context.Background(), "thing/1"); e != nil {
+				t.Error(e)
+			}
+		})
+	}
+	wg.Wait()
+	if peak.Load() > 4 {
+		t.Fatalf("%d simultaneous requests", peak.Load())
+	}
+}

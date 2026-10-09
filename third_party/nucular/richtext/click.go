@@ -108,7 +108,6 @@ func (rtxt *RichText) handleClick(w *nucular.Window, r rect.Rect, in *nucular.In
 	if rtxt.flags&Selectable == 0 {
 		rtxt.Sel = oldSel
 	}
-	return
 }
 
 func (rtxt *RichText) expandSelection() {
@@ -444,7 +443,10 @@ func (rtxt *RichText) handleKeyboard(w *nucular.Window, in *nucular.Input, chang
 				w.SetClipboard(rtxt.Get(rtxt.Sel))
 				rtxt.replace("", changed)
 			case rtxt.flags&Clipboard != 0 && e.HandleKey(key.CodeV, key.ModControl):
-				w.GetClipboard()
+				original, sel := rtxt.Get(Sel{0, rtxt.length()}), rtxt.Sel
+				w.RequestClipboard(func() bool {
+					return rtxt.focused && rtxt.lastDrawGeneration == w.FrameID() && rtxt.Sel == sel && rtxt.Get(Sel{0, rtxt.length()}) == original
+				}, func(value string) { rtxt.replace(value, &rtxt.changed); rtxt.followCursor = true })
 			}
 		}
 	}

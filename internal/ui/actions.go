@@ -3,51 +3,69 @@ package ui
 import (
 	"context"
 	"encoding/base64"
-	"encoding/csv"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/label"
 	"github.com/aarzilli/nucular/rect"
 	"github.com/allquixotic/fastrock/internal/platform"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"golang.org/x/mobile/event/key"
+	"golang.org/x/mobile/event/mouse"
 )
 
-func labelText(s string) label.Label { return label.T(s) }
 func (a *App) inputDialog(title, value string, accept func(string)) {
 	ed := textEditor(value, false)
-	a.window.PopupOpen(title, nucular.WindowTitle|nucular.WindowMovable, rect.Rect{X: 360, Y: 240, W: 490, H: 150}, true, func(w *nucular.Window) {
+	a.window.PopupOpen(title, nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(520, 165), false, func(w *nucular.Window) {
 		w.Row(34).Dynamic(1)
 		ed.Edit(w)
 		w.Row(30).Dynamic(2)
-		if primary(w, "Save", a.p) {
-			accept(text(ed))
-			w.Close()
-		}
 		if w.ButtonText("Cancel") {
 			w.Close()
+		}
+		apply := primary(w, dialogAction(title, "Save"), a.p)
+		for event := range w.Input().Keyboard.Events() {
+			if event.HandleKey(key.CodeReturnEnter, 0) {
+				apply = true
+			}
+		}
+		if apply {
+			value := text(ed)
+			w.Close()
+			a.post(func() { accept(value) })
 		}
 	})
 }
 func (a *App) confirm(title, message string, accept func()) {
-	a.window.PopupOpen(title, nucular.WindowTitle|nucular.WindowMovable, rect.Rect{X: 360, Y: 240, W: 490, H: 165}, true, func(w *nucular.Window) {
-		w.Row(65).Dynamic(1)
+	a.window.PopupOpen(title, nucular.WindowTitle|nucular.WindowClosable, a.modalBounds(520, 210), false, func(w *nucular.Window) {
+		w.Row(max(55, w.LayoutAvailableHeight()-42)).Dynamic(1)
 		w.LabelWrap(message)
 		w.Row(30).Dynamic(2)
-		if primary(w, "Confirm", a.p) {
-			accept()
-			w.Close()
-		}
 		if w.ButtonText("Cancel") {
 			w.Close()
+		}
+		action := dialogAction(title, "Continue")
+		apply := false
+		if action == "Delete" || action == "Run" || action == "Stop" {
+			apply = dangerButton(w, action, a.p)
+		} else {
+			apply = primary(w, action, a.p)
+		}
+		for event := range w.Input().Keyboard.Events() {
+			if event.HandleKey(key.CodeReturnEnter, 0) {
+				apply = true
+			}
+		}
+		if apply {
+			w.Close()
+			a.post(accept)
 		}
 	})
 }
@@ -68,70 +86,14 @@ func (a *App) attachDialog(v *chatView) {
 }
 func (a *App) openURL(target string) {
 	u, e := url.Parse(target)
-	if e != nil || (u.Scheme != "https" && u.Scheme != "http") {
-		a.toast = "Only HTTP and HTTPS links may open in the browser"
+	if e != nil || (u.Scheme != "https" && u.Scheme != "http" && !(u.Scheme == "mailto" && u.Opaque != "")) {
+		a.toast = "Only HTTP, HTTPS and email links can be opened"
 		return
 	}
 	a.work(func() {
 		if e := platform.OpenURL(target); e != nil {
 			a.post(func() { a.report(e) })
 		}
-	})
-}
-func (a *App) exportChat(c *workspace.Conversation) {
-	blocks := append([]workspace.Block(nil), c.Blocks...)
-	a.choosePath(true, false, func(path string) {
-		a.work(func() {
-			err := os.WriteFile(path, []byte(transcriptText(blocks)), 0600)
-			a.post(func() {
-				if err != nil {
-					a.report(err)
-				} else {
-					a.toast = "Exported conversation"
-				}
-			})
-		})
-	})
-}
-func (a *App) exportRally(v *rallyView) {
-	items := append([]rally.Object(nil), v.filtered()...)
-	columns := append([]string{}, v.Columns...)
-	a.choosePath(true, false, func(path string) {
-		a.work(func() {
-			f, e := os.Create(path)
-			if e == nil {
-				writer := csv.NewWriter(f)
-				e = writer.Write(columns)
-				for _, o := range items {
-					record := []string{}
-					for _, k := range columns {
-						cell := o.String(k)
-						if len(cell) > 0 && strings.ContainsAny(cell[:1], "=+-@\t\r") {
-							cell = "'" + cell
-						}
-						record = append(record, cell)
-					}
-					if e == nil {
-						e = writer.Write(record)
-					}
-				}
-				writer.Flush()
-				if e == nil {
-					e = writer.Error()
-				}
-				ce := f.Close()
-				if e == nil {
-					e = ce
-				}
-			}
-			a.post(func() {
-				if e != nil {
-					a.report(e)
-				} else {
-					a.toast = "Exported Rally work items"
-				}
-			})
-		})
 	})
 }
 func (a *App) downloadAttachment(o rally.Object) {
@@ -154,7 +116,26 @@ func (a *App) downloadAttachment(o rally.Object) {
 }
 func (a *App) shortcuts(w *nucular.Window) {
 	primaryKey := platform.PrimaryModifier()
+	if v := a.currentRally(); v != nil && w.Input().Mouse.Pressed(mouse.ButtonLeft) {
+		v.cardFocusActive = false
+	}
+	var searchShortcut *rallyView
 	for event := range w.Input().Keyboard.Events() {
+		// Native input carries typing keys and their text separately. The slash
+		// that focuses search must not also become part of the search query.
+		if searchShortcut != nil && event.HandleText() {
+			value := event.Text()
+			if strings.HasPrefix(value, "/") {
+				if rest := strings.TrimPrefix(value, "/"); rest != "" {
+					searchShortcut.Search.Paste(rest)
+				}
+				searchShortcut = nil
+				continue
+			} else {
+				event.Unhandle()
+			}
+			searchShortcut = nil
+		}
 		if a.approvalKey(event) {
 			continue
 		}
@@ -165,6 +146,10 @@ func (a *App) shortcuts(w *nucular.Window) {
 				continue
 			}
 			if e.Code >= key.CodeLeftControl && e.Code <= key.CodeRightGUI {
+				continue
+			}
+			if problem := validateActionShortcut(a.recordShortcut, e.Code, e.Modifiers); problem != "" {
+				a.toast = problem
 				continue
 			}
 			id := a.recordShortcut
@@ -184,7 +169,7 @@ func (a *App) shortcuts(w *nucular.Window) {
 					code = key.Code(k.Code)
 					mods = key.Modifiers(k.Mods)
 				}
-				if s.ID != id && code == e.Code && mods == e.Modifiers {
+				if s.ID != id && actionsOverlap(id, s.ID) && code == e.Code && mods == e.Modifiers {
 					conflict = s.Title
 					break
 				}
@@ -199,7 +184,7 @@ func (a *App) shortcuts(w *nucular.Window) {
 						if !ok {
 							k = settings.KeyBinding{Code: int(s.Code), Mods: uint32(s.Mods)}
 						}
-						if s.ID != id && k == binding {
+						if s.ID != id && actionsOverlap(id, s.ID) && k == binding {
 							a.prefs.Keymap[s.ID] = settings.KeyBinding{}
 						}
 					}
@@ -212,6 +197,28 @@ func (a *App) shortcuts(w *nucular.Window) {
 		}
 		matched := false
 		for _, s := range shellActions() {
+			if s.ID == "escape" {
+				// Leave Escape available to the focused popup/editor unless
+				// there is an application action that can actually handle it.
+				t := a.state.Current()
+				handled := a.paletteOpen
+				if t != nil {
+					if c := a.state.Chats[t.Target]; c != nil {
+						handled = handled || c.Busy()
+					}
+					if v := a.chats[t.Target]; v != nil {
+						if len(v.Suggest) > 0 && event.HandleKey(key.CodeEscape, 0) {
+							v.Suggest = nil
+							matched = true
+							break
+						}
+						handled = handled || v.RichSelection.BlockID != ""
+					}
+				}
+				if !handled {
+					continue
+				}
+			}
 			code, mods := s.Code, s.Mods
 			if k, ok := a.prefs.Keymap[s.ID]; ok {
 				if k.Code == 0 {
@@ -221,6 +228,13 @@ func (a *App) shortcuts(w *nucular.Window) {
 				mods = key.Modifiers(k.Mods)
 			}
 			if event.HandleKey(code, mods) {
+				if strings.HasPrefix(s.ID, "rally-") && !a.rallyShortcutApplies(s.ID, code, mods) {
+					event.Unhandle()
+					continue
+				}
+				if s.ID == "rally-search" && code == key.CodeSlash && mods == 0 {
+					searchShortcut = a.currentRally()
+				}
 				a.runAction(s.ID)
 				matched = true
 				break
@@ -248,11 +262,9 @@ func (a *App) shortcuts(w *nucular.Window) {
 		if tab.Kind == workspace.File {
 			v := a.files[tab.ID]
 			if v != nil {
-				if event.HandleKey(key.CodeF, primaryKey) {
-					v.FindOpen = true
-				}
+				a.fileSearchKey(v, event, primaryKey)
 				if event.HandleKey(key.CodeG, primaryKey) {
-					a.fileFind(v, false)
+					a.fileGoTo(v)
 				}
 			}
 		}
@@ -267,7 +279,7 @@ func (a *App) shortcuts(w *nucular.Window) {
 					v.SuggestIndex = min(len(v.Suggest)-1, v.SuggestIndex+1)
 					continue
 				}
-				if event.HandleKey(key.CodeTab, 0) {
+				if event.HandleKey(key.CodeTab, 0) || event.HandleKey(key.CodeReturnEnter, 0) {
 					acceptSuggestion(v)
 					continue
 				}
@@ -337,7 +349,18 @@ func (a *App) drawPalette() {
 }
 
 func (a *App) openLink(target string) {
-	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
+	cwd := a.prefs.WorkingDirectory
+	if tab := a.state.Current(); tab != nil {
+		if c := a.state.Chats[tab.Target]; c != nil {
+			cwd = c.Cwd
+		}
+	}
+	a.openLinkAt(target, cwd)
+}
+
+func (a *App) openLinkAt(target, cwd string) {
+	target = strings.TrimSpace(target)
+	if externalTranscriptLink(target) {
 		a.openURL(target)
 	} else {
 		path, line, column := fileLocation(target)
@@ -345,14 +368,13 @@ func (a *App) openLink(target string) {
 			a.toast = "Unsupported link"
 			return
 		}
-		if !filepath.IsAbs(path) {
-			cwd := a.prefs.WorkingDirectory
-			if tab := a.state.Current(); tab != nil {
-				if c := a.state.Chats[tab.Target]; c != nil {
-					cwd = c.Cwd
-				}
+		if strings.HasPrefix(path, "~/") || strings.HasPrefix(path, `~\`) {
+			if home, err := os.UserHomeDir(); err == nil {
+				path = filepath.Join(home, path[2:])
 			}
-			path = filepath.Join(cwd, path)
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(fallback(cwd, a.prefs.WorkingDirectory), path)
 		}
 		a.openFile(path)
 		if tab := a.state.Current(); tab != nil && line > 0 {
@@ -365,47 +387,85 @@ func (a *App) openLink(target string) {
 }
 
 func fileLocation(target string) (string, int, int) {
+	target = strings.TrimSpace(target)
+	if target == "" || strings.ContainsFunc(target, unicode.IsControl) {
+		return "", 0, 0
+	}
 	line, column := 0, 1
-	if strings.HasPrefix(target, "file://") {
+	fragment := ""
+	if strings.HasPrefix(strings.ToLower(target), "file:") {
 		u, err := url.Parse(target)
-		if err != nil {
+		if err != nil || u.Opaque != "" || u.Path == "" || u.User != nil {
 			return "", 0, 0
 		}
 		target = u.Path
-		if u.Host != "" {
+		if u.Host != "" && !strings.EqualFold(u.Host, "localhost") {
 			target = "//" + u.Host + target
 		}
 		if len(target) > 3 && target[0] == '/' && target[2] == ':' {
 			target = target[1:]
 		}
-		if u.Fragment != "" {
-			target += "#" + u.Fragment
+		fragment = u.Fragment
+	} else {
+		if i := strings.LastIndexByte(target, '#'); i >= 0 {
+			fragment, target = target[i+1:], target[:i]
 		}
-	} else if strings.Contains(target, "://") {
-		return "", 0, 0
+		var err error
+		target, err = url.PathUnescape(target)
+		if err != nil {
+			return "", 0, 0
+		}
 	}
-	if i := strings.LastIndex(target, "#L"); i >= 0 {
-		location := target[i+2:]
-		target = target[:i]
+	if strings.HasPrefix(fragment, "L") {
+		location := strings.Replace(fragment[1:], "-L", "-", 1)
 		if j := strings.IndexByte(location, 'C'); j >= 0 {
 			column, _ = strconv.Atoi(location[j+1:])
 			location = location[:j]
 		}
-		if j := strings.IndexByte(location, '-'); j >= 0 {
-			location = location[:j]
-		}
-		line, _ = strconv.Atoi(location)
-	} else if i := strings.LastIndexByte(target, ':'); i >= 0 {
-		if n, err := strconv.Atoi(target[i+1:]); err == nil && n > 0 {
+		line, _ = fileLineNumber(location)
+	}
+	// Parse suffixes even with a fragment; an explicit #L location wins.
+	path, suffixLine, suffixColumn := splitFileLocation(target)
+	if line == 0 {
+		line, column = suffixLine, suffixColumn
+	}
+	if path == "" || strings.ContainsFunc(path, unicode.IsControl) || strings.Contains(path, "://") {
+		return "", 0, 0
+	}
+	if i := strings.IndexByte(path, ':'); i >= 0 && !(i == 1 && len(path) > 2 && (path[2] == '/' || path[2] == '\\') && (path[0] >= 'a' && path[0] <= 'z' || path[0] >= 'A' && path[0] <= 'Z')) {
+		return "", 0, 0
+	}
+	return path, max(0, line), max(1, column)
+}
+
+func splitFileLocation(target string) (string, int, int) {
+	line, column := 0, 1
+	if i := strings.LastIndexByte(target, ':'); i >= 0 {
+		if n, ok := fileLineNumber(target[i+1:]); ok {
 			line = n
 			target = target[:i]
 			if j := strings.LastIndexByte(target, ':'); j >= 0 {
-				if n, err := strconv.Atoi(target[j+1:]); err == nil && n > 0 {
+				if n, ok := fileLineNumber(target[j+1:]); ok {
 					column, line = line, n
 					target = target[:j]
 				}
 			}
 		}
 	}
-	return target, max(0, line), max(1, column)
+	return target, line, column
+}
+
+func fileLineNumber(value string) (int, bool) {
+	first, last, ranged := strings.Cut(value, "-")
+	n, err := strconv.Atoi(first)
+	if err != nil || n < 1 {
+		return 0, false
+	}
+	if ranged {
+		end, err := strconv.Atoi(last)
+		if err != nil || end < n {
+			return 0, false
+		}
+	}
+	return n, true
 }

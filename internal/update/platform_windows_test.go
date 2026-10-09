@@ -46,19 +46,8 @@ func TestV15WindowsPerUserShortcut(t *testing.T) {
 	root := t.TempDir()
 	exe := filepath.Join(root, "fastrock.exe")
 	os.WriteFile(exe, []byte("fixture"), 0600)
-	// The actual user's known folder is resolved through Windows. Preserve any
-	// existing shortcut exactly; this test must not damage an installed app.
-	appdata := os.Getenv("APPDATA")
-	path := filepath.Join(appdata, "Microsoft", "Windows", "Start Menu", "Programs", "Fastrock.lnk")
-	old, oldErr := os.ReadFile(path)
-	defer func() {
-		if oldErr == nil {
-			os.WriteFile(path, old, 0600)
-		} else {
-			os.Remove(path)
-		}
-	}()
-	if e := createShortcut(exe); e != nil {
+	path := filepath.Join(root, "Fastrock.lnk")
+	if e := createShortcutAt(exe, root); e != nil {
 		t.Fatal(e)
 	}
 	b, e := os.ReadFile(path)

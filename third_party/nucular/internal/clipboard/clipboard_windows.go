@@ -9,7 +9,13 @@ import (
 	"os"
 	"syscall"
 	"unsafe"
+
+	"github.com/ebitengine/purego"
 )
+
+var lockGlobalMemory func(uintptr) *uint16
+
+func init() { purego.RegisterFunc(&lockGlobalMemory, globalLock.Addr()) }
 
 const (
 	cfUnicodetext = 13
@@ -17,12 +23,13 @@ const (
 )
 
 var (
-	user32           = syscall.MustLoadDLL("user32")
-	openClipboard    = user32.MustFindProc("OpenClipboard")
-	closeClipboard   = user32.MustFindProc("CloseClipboard")
-	emptyClipboard   = user32.MustFindProc("EmptyClipboard")
-	getClipboardData = user32.MustFindProc("GetClipboardData")
-	setClipboardData = user32.MustFindProc("SetClipboardData")
+	user32                     = syscall.MustLoadDLL("user32")
+	openClipboard              = user32.MustFindProc("OpenClipboard")
+	closeClipboard             = user32.MustFindProc("CloseClipboard")
+	emptyClipboard             = user32.MustFindProc("EmptyClipboard")
+	getClipboardData           = user32.MustFindProc("GetClipboardData")
+	isClipboardFormatAvailable = user32.MustFindProc("IsClipboardFormatAvailable")
+	setClipboardData           = user32.MustFindProc("SetClipboardData")
 
 	kernel32     = syscall.NewLazyDLL("kernel32")
 	globalAlloc  = kernel32.NewProc("GlobalAlloc")
@@ -38,15 +45,18 @@ func readAll() (string, error) {
 		return "", err
 	}
 	defer closeClipboard.Call()
+	if available, _, _ := isClipboardFormatAvailable.Call(cfUnicodetext); available == 0 {
+		return "", nil
+	}
 
 	h, _, err := getClipboardData.Call(cfUnicodetext)
 	if h == 0 {
 		return "", err
 	}
 
-	l, _, err := globalLock.Call(h)
-	if l == 0 {
-		return "", err
+	l := lockGlobalMemory(h)
+	if l == nil {
+		return "", syscall.GetLastError()
 	}
 
 	size, _, _ := globalSize.Call(h)
@@ -54,7 +64,7 @@ func readAll() (string, error) {
 		globalUnlock.Call(h)
 		return "", fmt.Errorf("clipboard text exceeds 32 MiB")
 	}
-	text := syscall.UTF16ToString(unsafe.Slice((*uint16)(unsafe.Pointer(l)), int(size/2)))
+	text := syscall.UTF16ToString(unsafe.Slice(l, int(size/2)))
 	globalUnlock.Call(h)
 
 	return text, nil
@@ -79,13 +89,13 @@ func writeAll(text string) error {
 		return err
 	}
 
-	l, _, err := globalLock.Call(h)
-	if l == 0 {
+	l := lockGlobalMemory(h)
+	if l == nil {
 		globalFree.Call(h)
-		return err
+		return syscall.GetLastError()
 	}
 
-	copy(unsafe.Slice((*uint16)(unsafe.Pointer(l)), len(data)), data)
+	copy(unsafe.Slice(l, len(data)), data)
 	globalUnlock.Call(h)
 
 	r, _, err = setClipboardData.Call(cfUnicodetext, h)
@@ -98,6 +108,14 @@ func writeAll(text string) error {
 
 func Start() {
 }
+
+func Read(primary bool) (string, error) {
+	if primary {
+		return "", fmt.Errorf("primary selection is unavailable on Windows")
+	}
+	return readAll()
+}
+func Write(text string) error { return writeAll(text) }
 
 func Get() string {
 	str, err := readAll()

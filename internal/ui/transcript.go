@@ -3,9 +3,9 @@ package ui
 import (
 	"bytes"
 	"image"
+	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/aarzilli/nucular"
@@ -17,6 +17,10 @@ import (
 	"github.com/allquixotic/fastrock/internal/workspace"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/renderer"
+	gmtext "github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
+	"golang.org/x/image/math/fixed"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 )
@@ -33,13 +37,20 @@ type transcriptRun struct {
 	Start    int
 	X, Width int
 	Format   richtext.Format
+	Face     font.Face
+	Advances []int
+	Offsets  []int
 }
 type transcriptLayout struct {
+	Cwd                 string
+	Markup              string
 	Text                string
 	Plain               string
 	Width, Size, Height int
 	Lines               []transcriptLine
 	Pending             bool
+	Used                uint64
+	LineOffsets         []int
 }
 
 // Byte offsets are always UTF-8 boundaries from the rendered runs. Keeping a
@@ -67,19 +78,44 @@ func transcriptHit(line transcriptLine, x int, face font.Face) int {
 			return run.Start
 		}
 		if x <= run.X+run.Width {
-			previous := 0
-			for i, r := range run.Text {
-				end := i + utf8.RuneLen(r)
-				width := nucular.FontWidth(face, run.Text[:end])
-				if x-run.X < (previous+width)/2 {
-					return run.Start + i
+			if len(run.Advances) == 0 {
+				if run.Face.Face != nil {
+					face = run.Face
 				}
-				previous = width
+				measureTranscriptRun(&run, face)
 			}
-			return run.Start + len(run.Text)
+			i := sort.Search(len(run.Advances)-1, func(i int) bool { return x-run.X < (run.Advances[i]+run.Advances[i+1])/2 })
+			return run.Start + run.Offsets[i]
 		}
 	}
 	return line.End
+}
+func measureTranscriptRun(r *transcriptRun, f font.Face) {
+	r.Advances = []int{0}
+	r.Offsets = []int{0}
+	var advance fixed.Int26_6
+	previous := rune(-1)
+	for i, ch := range r.Text {
+		if previous >= 0 {
+			advance += f.Face.Kern(previous, ch)
+		}
+		a, _ := f.Face.GlyphAdvance(ch)
+		advance += a
+		r.Advances = append(r.Advances, advance.Ceil())
+		r.Offsets = append(r.Offsets, i+utf8.RuneLen(ch))
+		previous = ch
+	}
+}
+
+func borrowTranscriptFace(size int) (font.Face, func()) {
+	return typeFace(size, regularFont), func() {}
+}
+func borrowLayoutFace(size int, mono bool) (font.Face, func()) {
+	variant := regularFont
+	if mono {
+		variant = monoFont
+	}
+	return typeFace(size, variant), func() {}
 }
 func (a *App) transcriptSelectionKeys(w *nucular.Window, v *chatView) {
 	s := &v.RichSelection
@@ -95,14 +131,26 @@ func (a *App) transcriptSelectionKeys(w *nucular.Window, v *chatView) {
 }
 
 func prepareTranscript(source string, width, size int) *transcriptLayout {
-	f, _ := font.NewFace(uiRegular, size)
-	defer f.Face.Close()
+	return prepareMarkdownTranscript(source, width, size, true)
+}
+func prepareMarkdownTranscript(source string, width, size int, directives bool) *transcriptLayout {
+	display := source
+	if directives {
+		display = visibleTranscriptMarkdown(source)
+	}
+	var html bytes.Buffer
+	md := goldmark.New(goldmark.WithExtensions(extension.GFM), goldmark.WithRendererOptions(renderer.WithNodeRenderers(util.Prioritized(transcriptLinkRenderer{}, 500))))
+	data := []byte(display)
+	doc := md.Parser().Parse(gmtext.NewReader(data))
+	addTranscriptAutolinks(doc, data)
+	_ = md.Renderer().Render(&html, data, doc)
+	return prepareDocumentTranscript(richtext.ParseWithLinks(html.String(), transcriptSafeLink), source, width, size)
+}
+func prepareDocumentTranscript(doc *richtext.Document, source string, width, size int) *transcriptLayout {
+	f, release := borrowTranscriptFace(size)
+	defer release()
 	lineHeight := nucular.FontHeight(f) + 7
 	l := &transcriptLayout{Text: source, Width: width, Size: size}
-	var html bytes.Buffer
-	md := goldmark.New(goldmark.WithExtensions(extension.GFM))
-	_ = md.Convert([]byte(source), &html)
-	doc := richtext.Parse(html.String())
 	// The formatted document is temporary. Cache compact runs rather than a
 	// per-rune format array in every transcript layout.
 	ordered := 0
@@ -114,7 +162,7 @@ func prepareTranscript(source string, width, size int) *transcriptLayout {
 		value := string(doc.Text[start:end])
 		format := richtext.Format{}
 		if start < end {
-			format = doc.Marks[start]
+			format, _ = doc.RunAt(start)
 		}
 		columns := strings.Split(value, "\t")
 		if len(columns) > 1 && columns[len(columns)-1] == "" {
@@ -132,29 +180,16 @@ func prepareTranscript(source string, width, size int) *transcriptLayout {
 		rows := []transcriptLine{}
 		columnStart := start
 		for col, cell := range columns {
-			position := columnStart
-			for rowIndex, row := range nucular.WrapText(f, cell, max(20, cellWidth-10)) {
+			cellEnd := columnStart + utf8.RuneCountInString(cell)
+			cellRows := wrapTranscriptCell(doc, columnStart, cellEnd, max(20, cellWidth-10), size)
+			for rowIndex, row := range cellRows {
 				for len(rows) <= rowIndex {
 					rows = append(rows, transcriptLine{Height: lineHeight, Code: format.Style&richtext.Code != 0, Table: table})
 				}
-				n := utf8.RuneCountInString(row)
-				runes := doc.Text[position : position+n]
-				x := col*cellWidth + 4
-				for i := 0; i < n; {
-					mark := doc.Marks[position+i]
-					j := i + 1
-					for j < n && doc.Marks[position+j] == mark {
-						j++
-					}
-					s := string(runes[i:j])
-					w := nucular.FontWidth(f, s)
-					rows[rowIndex].Runs = append(rows[rowIndex].Runs, transcriptRun{Text: s, X: x, Width: w, Format: mark})
-					x += w
-					i = j
-				}
-				position += n
-				for position < end && unicode.IsSpace(doc.Text[position]) && doc.Text[position] != '\t' {
-					position++
+				rows[rowIndex].Height = max(rows[rowIndex].Height, row.Height)
+				for _, run := range row.Runs {
+					run.X += col * cellWidth
+					rows[rowIndex].Runs = append(rows[rowIndex].Runs, run)
 				}
 			}
 			columnStart += utf8.RuneCountInString(cell) + 1
@@ -193,6 +228,10 @@ func prepareTranscript(source string, width, size int) *transcriptLayout {
 	}
 	var plain strings.Builder
 	for i := range l.Lines {
+		l.LineOffsets = append(l.LineOffsets, 0)
+		if i > 0 {
+			l.LineOffsets[i] = l.LineOffsets[i-1] + l.Lines[i-1].Height
+		}
 		line := &l.Lines[i]
 		line.Start = plain.Len()
 		right := 0
@@ -236,43 +275,47 @@ func (a *App) drawTranscriptLine(w *nucular.Window, v *chatView, id string, layo
 	}
 	linkMenu := false
 	face := w.Master().Style().Font
+	if line.Code {
+		face = a.monoFace
+	}
 	for _, run := range line.Runs {
 		q := rect.Rect{X: b.X + run.X, Y: b.Y, W: run.Width + 2, H: b.H}
 		fg := a.p.Text
-		f := face
+		f := run.Face
+		if f.Face == nil {
+			f = face
+		}
 		if run.Format.Link != "" {
 			fg = a.p.Accent
 		}
-		if run.Format.Style&richtext.Italic != 0 {
-			f = a.italicFace
+		if run.Format.Style&richtext.Code != 0 && !line.Code {
+			out.FillRect(q, 2, a.p.Sunken)
 		}
 		if selection.BlockID == id && selection.Layout == layout {
 			start, end := selection.bounds()
 			lo, hi := max(start, run.Start)-run.Start, min(end, run.Start+len(run.Text))-run.Start
 			if lo < hi {
-				left := nucular.FontWidth(face, run.Text[:lo])
-				width := nucular.FontWidth(face, run.Text[lo:hi])
+				left := transcriptAdvance(run, lo)
+				width := transcriptAdvance(run, hi) - left
 				out.FillRect(rect.Rect{X: q.X + left, Y: q.Y, W: width, H: q.H}, 2, a.p.Selected)
 			}
 		}
 		out.DrawText(q, run.Text, f, fg)
-		if run.Format.Style&richtext.Bold != 0 || run.Format.Heading > 0 {
-			q.X++
-			out.DrawText(q, run.Text, f, fg)
-			q.X--
-		}
 		if run.Format.Style&richtext.Strike != 0 {
 			out.StrokeLine(image.Pt(q.X, q.Y+q.H/2), image.Pt(q.X+run.Width, q.Y+q.H/2), 1, fg)
 		}
 		if run.Format.Link != "" {
 			out.StrokeLine(image.Pt(q.X, q.Y+q.H-3), image.Pt(q.X+run.Width, q.Y+q.H-3), 1, fg)
+			if in.Mouse.HoveringRect(q) {
+				w.Tooltip(run.Format.Link)
+			}
 			if in.Mouse.Clicked(mouse.ButtonLeft, q) && selection.Anchor == selection.End {
-				a.openLink(run.Format.Link)
+				a.openLinkAt(run.Format.Link, layout.Cwd)
 			}
 			if menu := w.ContextualOpen(0, image.Pt(210, 80), q, nil); menu != nil {
 				linkMenu = true
 				if menu.MenuItem(label.T("Open link")) {
-					a.openLink(run.Format.Link)
+					a.openLinkAt(run.Format.Link, layout.Cwd)
 				}
 				if menu.MenuItem(label.T("Copy link")) {
 					a.copyText(run.Format.Link)
@@ -286,31 +329,60 @@ func (a *App) transcriptLayout(v *chatView, b workspace.Block, width int) *trans
 	if v.Layouts == nil {
 		v.Layouts = map[string]*transcriptLayout{}
 	}
-	source := cut(b.Text, 60000)
+	source := b.Text
+	if len(source) > 60000 {
+		end := 60000
+		for end > 0 && !utf8.RuneStart(source[end]) {
+			end--
+		}
+		source = source[:end] + "\n[Display truncated; open message as text for the retained content.]"
+	}
 	size := a.prefs.FontSize
+	cwd := fallback(v.Cwd, a.prefs.WorkingDirectory)
+	markup := "markdown"
+	if b.Role == "tool" || b.Role == "changes" || b.Role == "activity" || b.Kind == "crossTabMessage" {
+		markup = "literal"
+	} else if b.Role == "assistant" || b.Role == "recap" {
+		markup = "directives"
+	}
 	old := v.Layouts[b.ID]
-	if old != nil && old.Text == source && old.Width == width && old.Size == size {
+	v.LayoutClock++
+	if old != nil {
+		old.Used = v.LayoutClock
+	}
+	if old != nil && old.Text == source && old.Width == width && old.Size == size && old.Cwd == cwd && old.Markup == markup {
 		return old
 	}
 	if old != nil && old.Pending {
 		return old
 	}
-	placeholder := &transcriptLayout{Text: source, Width: width, Size: size, Height: 48, Pending: true}
-	if old != nil {
+	placeholder := &transcriptLayout{Text: source, Cwd: cwd, Markup: markup, Width: width, Size: size, Height: 48, Pending: true}
+	if old != nil && old.Cwd == cwd && old.Markup == markup {
 		placeholder.Height = old.Height
 		placeholder.Lines = old.Lines
 	}
 	job := func() {
-		result := prepareTranscript(source, width, size)
+		var result *transcriptLayout
+		if markup == "literal" {
+			result = prepareLiteralTranscript(source, width, size)
+		} else {
+			result = prepareMarkdownTranscript(source, width, size, markup == "directives")
+		}
+		result.Cwd = cwd
+		result.Markup = markup
 		a.post(func() {
 			if v.Layouts[b.ID] == placeholder {
+				result.Used = placeholder.Used
 				v.Layouts[b.ID] = result
+				v.boundLayouts(b.ID)
 			}
 		})
 	}
 	select {
 	case a.layoutJobs <- job:
+		placeholder.Used = v.LayoutClock
 		v.Layouts[b.ID] = placeholder
+		v.boundLayouts(b.ID)
 	default:
 		a.window.Changed()
 		if old != nil {
@@ -348,9 +420,9 @@ func (a *App) transcriptMenu(w *nucular.Window, c *workspace.Conversation, v *ch
 		if menu.MenuItem(label.T("Forward to conversation…")) {
 			a.chooseConversation(func(target *workspace.Conversation) {
 				a.resumeThread(target.ID)
-				if cv := a.chats[target.ID]; cv != nil {
-					setText(cv.Editor, value)
-				}
+				target.Enqueue("Forwarded from "+c.Title+":\n\n"+value, nil)
+				target.QueuePaused = true
+				a.toast = "Forwarded message added to the paused queue"
 			})
 		}
 		if menu.MenuItem(label.T("View as text")) {
@@ -364,16 +436,48 @@ func (a *App) transcriptMenu(w *nucular.Window, c *workspace.Conversation, v *ch
 		}
 	}
 }
-func (a *App) chooseConversation(pick func(*workspace.Conversation)) {
-	a.window.PopupOpen("Choose conversation", nucular.WindowTitle|nucular.WindowClosable, dialogBounds(), true, func(w *nucular.Window) {
-		for _, c := range a.state.Sidebar("", false) {
-			w.Row(30).Dynamic(1)
-			if w.ButtonText(c.Title) {
-				pick(c)
-				w.Close()
-			}
+
+// Tool output is literal text. In particular shell metacharacters and angle
+// brackets must never be interpreted as Markdown or HTML.
+func prepareLiteralTranscript(source string, width, size int) *transcriptLayout {
+	f, release := borrowLayoutFace(size-1, true)
+	defer release()
+	plain := strings.ReplaceAll(source, "\t", "    ")
+	l := &transcriptLayout{Text: source, Plain: plain, Width: width, Size: size}
+	height := nucular.FontHeight(f) + 7
+	start := 0
+	appendLine := func(end int) {
+		run := transcriptRun{Text: plain[start:end], Start: start, X: 4, Face: f, Format: richtext.Format{Style: richtext.Code}}
+		measureTranscriptRun(&run, f)
+		run.Width = run.Advances[len(run.Advances)-1]
+		l.LineOffsets = append(l.LineOffsets, l.Height)
+		l.Lines = append(l.Lines, transcriptLine{Start: start, End: end, Height: height, Code: true, Runs: []transcriptRun{run}})
+		l.Height += height
+	}
+	lineWidth := 0
+	for offset, r := range plain {
+		if r == '\n' {
+			appendLine(offset)
+			start = offset + 1
+			lineWidth = 0
+			continue
 		}
-	})
+		advance, _ := f.Face.GlyphAdvance(r)
+		if lineWidth+advance.Ceil() > max(20, width-8) && offset > start {
+			appendLine(offset)
+			start = offset
+			lineWidth = 0
+		}
+		lineWidth += advance.Ceil()
+	}
+	appendLine(len(plain))
+	return l
 }
 
-func dialogBounds() rect.Rect { return rect.Rect{X: 320, Y: 140, W: 600, H: 500} }
+func transcriptAdvance(run transcriptRun, offset int) int {
+	i := sort.SearchInts(run.Offsets, offset)
+	if i < len(run.Advances) {
+		return run.Advances[i]
+	}
+	return run.Width
+}

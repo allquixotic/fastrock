@@ -7,17 +7,22 @@ import (
 	"unicode"
 
 	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/codex"
 )
 
 type bedrockForm struct {
-	Endpoint, Method                         int
-	Profile, Region, AccessID, Secret, Token *nucular.TextEditor
+	Generation                                       uint64
+	Busy                                             bool
+	Feedback                                         settingFeedback
+	Endpoint, Method                                 int
+	Profile, Region, AccessID, Secret, APIKey, Token *nucular.TextEditor
 }
 
 func (a *App) bedrockSettings(w *nucular.Window, s *settingsView) {
 	if s.Bedrock == nil {
-		s.Bedrock = &bedrockForm{Profile: textEditor("", false), Region: textEditor("us-east-1", false), AccessID: textEditor("", false), Secret: textEditor("", false), Token: textEditor("", false)}
+		s.Bedrock = &bedrockForm{Profile: textEditor("", false), Region: textEditor("us-east-1", false), AccessID: textEditor("", false), Secret: textEditor("", false), APIKey: textEditor("", false), Token: textEditor("", false)}
 		s.Bedrock.Secret.PasswordChar = '●'
+		s.Bedrock.APIKey.PasswordChar = '●'
 		s.Bedrock.Token.PasswordChar = '●'
 	}
 	f := s.Bedrock
@@ -29,13 +34,27 @@ func (a *App) bedrockSettings(w *nucular.Window, s *settingsView) {
 		f.Endpoint = 1
 	}
 	w.Row(30).Dynamic(1)
-	f.Method = w.ComboSimple([]string{"AWS environment", "AWS profile", "Bedrock API token", "AWS access keys"}, f.Method, 28)
-	a.field(w, "AWS region", f.Region, false)
+	method := w.ComboSimple([]string{"AWS environment", "AWS profile", "Bedrock API token", "AWS access keys"}, f.Method, 28)
+	if method != f.Method {
+		setText(f.Secret, "")
+		setText(f.APIKey, "")
+		setText(f.Token, "")
+		f.Method = method
+	}
+	title(w, "AWS region", a.p)
+	regions, selected := bedrockRegionChoices(text(f.Region))
+	w.Row(30).Dynamic(1)
+	if chosen := w.ComboSimple(regions, selected, 28); chosen != selected && chosen >= 0 && chosen < len(bedrockRegions) {
+		setText(f.Region, bedrockRegions[chosen].code)
+	}
+	if strings.HasPrefix(text(f.Region), "us-gov-") {
+		muted(w, "GovCloud requires an eligible organization and supported credentials.", a.p)
+	}
 	switch f.Method {
 	case 1:
 		a.field(w, "AWS profile", f.Profile, false)
 	case 2:
-		a.field(w, "Bedrock API token", f.Secret, false)
+		a.field(w, "Bedrock API token", f.APIKey, false)
 	case 3:
 		a.field(w, "Access key ID", f.AccessID, false)
 		a.field(w, "Secret access key", f.Secret, false)
@@ -48,21 +67,29 @@ func (a *App) bedrockSettings(w *nucular.Window, s *settingsView) {
 	if w.ButtonText("Check inputs") {
 		_, _, err := bedrockParams(f)
 		if err != nil {
-			a.report(err)
+			f.Feedback = settingFeedback{Failed: true, Message: err.Error()}
 		} else {
-			a.toast = "Inputs are valid. Apply to let Codex verify the credentials."
+			f.Feedback = settingFeedback{Message: "Inputs are valid. Apply to let Codex verify the credentials."}
 		}
 	}
-	if primary(w, "Apply provider", a.p) {
+	if !f.Busy && primary(w, "Apply provider", a.p) {
 		a.applyBedrock(f)
 	}
+	if f.Busy {
+		muted(w, "Applying provider…", a.p)
+	}
+	a.drawSettingFeedback(w, f.Feedback)
 	w.Row(30).Dynamic(2)
 	if w.ButtonText("Check GovCloud requirements") {
 		a.inspectRPC("GovCloud requirements", "account/bedrock/checkGovCloudRequirements", map[string]any{})
 	}
 	if w.ButtonText("Return to OpenAI…") {
-		a.confirm("Return to OpenAI?", "Sign out of Bedrock and select OpenAI?", func() {
-			a.rpc("account/logout", map[string]any{}, func(_ json.RawMessage) { a.configWrite("model_provider", "openai") })
+		a.confirm("Return to OpenAI?", "Select OpenAI and clear Bedrock provider overrides? Existing account credentials are preserved.", func() {
+			edits := []map[string]any{{"keyPath": "model_provider", "value": "openai", "mergeStrategy": "replace"}, {"keyPath": "model", "value": nil, "mergeStrategy": "replace"}}
+			for _, provider := range []string{"amazon-bedrock", "amazon-bedrock-runtime"} {
+				edits = append(edits, map[string]any{"keyPath": "model_providers." + provider + ".aws", "value": nil, "mergeStrategy": "replace"})
+			}
+			a.settingsFormCall("openai", "config/batchWrite", map[string]any{"edits": edits, "reloadUserConfig": true}, func(json.RawMessage) { a.providerRestartPrompt() })
 		})
 	}
 	for _, item := range s.Items {
@@ -95,14 +122,14 @@ func bedrockParams(f *bedrockForm) (string, map[string]any, error) {
 			return "", nil, fmt.Errorf("enter an AWS profile")
 		}
 		p["type"] = "profile"
-		p["profile"] = text(f.Profile)
+		p["profile"] = strings.TrimSpace(text(f.Profile))
 		return "account/bedrock/setup", p, nil
 	case 2:
-		if text(f.Secret) == "" {
+		if text(f.APIKey) == "" {
 			return "", nil, fmt.Errorf("enter a Bedrock API token")
 		}
 		p["type"] = "amazonBedrock"
-		p["apiKey"] = text(f.Secret)
+		p["apiKey"] = text(f.APIKey)
 	case 3:
 		if text(f.AccessID) == "" || text(f.Secret) == "" {
 			return "", nil, fmt.Errorf("enter both AWS access key fields")
@@ -119,28 +146,91 @@ func bedrockParams(f *bedrockForm) (string, map[string]any, error) {
 	return "account/login/start", p, nil
 }
 func (a *App) applyBedrock(f *bedrockForm) {
-	method, params, err := bedrockParams(f)
-	if err != nil {
-		a.report(err)
+	if f.Busy {
 		return
 	}
-	endpoint, credential, profile, region := f.Endpoint, f.Method, text(f.Profile), text(f.Region)
-	a.rpc(method, params, func(_ json.RawMessage) {
-		setText(f.Secret, "")
-		setText(f.Token, "")
-		if endpoint == 0 {
-			a.toast = "Bedrock configured. Restart Codex to use it."
-			a.loadSettingsPage("AWS Bedrock")
+	method, params, err := bedrockParams(f)
+	if err != nil {
+		f.Feedback = settingFeedback{Failed: true, Message: err.Error()}
+		return
+	}
+	f.Generation++
+	generation, client, server := f.Generation, a.client, a.serverGeneration
+	current := func() bool { return generation == f.Generation && client == a.client && server == a.serverGeneration }
+	endpoint, credential, profile, region := f.Endpoint, f.Method, strings.TrimSpace(text(f.Profile)), strings.TrimSpace(text(f.Region))
+	secret, apiKey, token := text(f.Secret), text(f.APIKey), text(f.Token)
+	f.Busy = true
+	f.Feedback = settingFeedback{Pending: true, Message: "Applying provider…"}
+	failed := func(err error) {
+		if generation == f.Generation {
+			f.Busy = false
+			f.Feedback = settingFeedback{Failed: true, Message: err.Error()}
+		}
+	}
+	finish := func() {
+		if !current() {
 			return
 		}
-		var profileValue any
-		if credential == 1 {
-			profileValue = profile
+		f.Busy = false
+		f.Feedback = settingFeedback{Message: "Provider saved. Restart Codex to apply it."}
+		if text(f.Secret) == secret {
+			setText(f.Secret, "")
 		}
-		a.rpc("config/batchWrite", map[string]any{"reloadUserConfig": true, "edits": []map[string]any{
-			{"keyPath": "model_provider", "value": "amazon-bedrock-runtime", "mergeStrategy": "replace"},
-			{"keyPath": "model_providers.amazon-bedrock-runtime.aws.profile", "value": profileValue, "mergeStrategy": "replace"},
-			{"keyPath": "model_providers.amazon-bedrock-runtime.aws.region", "value": region, "mergeStrategy": "replace"},
-		}}, func(_ json.RawMessage) { a.toast = "Bedrock Runtime configured. Restart Codex to use it." })
-	})
+		if text(f.APIKey) == apiKey {
+			setText(f.APIKey, "")
+		}
+		if text(f.Token) == token {
+			setText(f.Token, "")
+		}
+		a.rpcInline("account/bedrock/checkGovCloudRequirements", map[string]any{}, func(raw json.RawMessage) {
+			if !current() {
+				return
+			}
+			result := codex.Decode(raw)
+			if yes, _ := result["isGovCloud"].(bool); yes {
+				a.confirm("AWS GovCloud guidance", "Read the AWS GovCloud application and network guidance before continuing. Your organization may require API-only sign-in and restricted endpoint access.", a.providerRestartPrompt)
+			} else {
+				a.providerRestartPrompt()
+			}
+		}, func(err error) {
+			if !current() {
+				return
+			}
+			f.Feedback = settingFeedback{Failed: true, Message: "Provider saved; GovCloud check failed: " + err.Error() + ". Restart Codex when ready."}
+			a.restartNote = "Provider saved. Restart Codex to apply it."
+		})
+	}
+	write := func() {
+		if !current() {
+			return
+		}
+		provider := "amazon-bedrock"
+		if endpoint == 1 {
+			provider = "amazon-bedrock-runtime"
+		}
+		edits := []map[string]any{}
+		if endpoint == 1 {
+			var profileValue any
+			if credential == 1 {
+				profileValue = profile
+			}
+			edits = append(edits, map[string]any{"keyPath": "model_provider", "value": provider, "mergeStrategy": "replace"}, map[string]any{"keyPath": "model_providers." + provider + ".aws.profile", "value": profileValue, "mergeStrategy": "replace"}, map[string]any{"keyPath": "model_providers." + provider + ".aws.region", "value": region, "mergeStrategy": "replace"})
+		}
+		// The same provider can have different models after a region or
+		// credential change. Let its next catalog choose a compatible default.
+		edits = append(edits, map[string]any{"keyPath": "model", "value": nil, "mergeStrategy": "replace"})
+		a.rpcInline("config/batchWrite", map[string]any{"edits": edits, "reloadUserConfig": true}, func(json.RawMessage) { finish() }, failed)
+	}
+	// Runtime environment/profile credentials do not need Mantle setup: that RPC
+	// changes the provider and can persist credentials for the wrong endpoint.
+	if endpoint == 1 && credential < 2 {
+		write()
+		return
+	}
+	a.rpcInline(method, params, func(json.RawMessage) { write() }, failed)
+}
+func (a *App) providerRestartPrompt() {
+	a.restartNote = "Provider saved. Restart Codex to apply it."
+	a.refreshConfiguredProvider()
+	a.confirm("Restart Codex now?", "The provider is saved. Restarting stops running turns in all windows; drafts stay open. Cancel to restart later.", a.restartServer)
 }

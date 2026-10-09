@@ -46,10 +46,6 @@ func acceptSuggestion(v *chatView) {
 			v.SuggestCancel()
 			v.SuggestCancel = nil
 		}
-		if v.SuggestCancel != nil {
-			v.SuggestCancel()
-			v.SuggestCancel = nil
-		}
 		return
 	}
 	value := v.Suggest[v.SuggestIndex] + " "
@@ -66,18 +62,24 @@ func (a *App) suggestions(w *nucular.Window, c *workspace.Conversation, v *chatV
 		query = ""
 	}
 	if query != v.SuggestQuery {
+		if v.SuggestCancel != nil {
+			v.SuggestCancel()
+			v.SuggestCancel = nil
+		}
+		v.SuggestGeneration++
 		v.SuggestQuery = query
 		v.SuggestIndex = 0
 		v.Suggest = nil
 		if strings.HasPrefix(query, "/") {
 			for _, name := range slashCommands {
-				if strings.HasPrefix(name, query[1:]) {
+				if fuzzyCommand(name, query[1:]) {
 					v.Suggest = append(v.Suggest, "/"+name)
 				}
 			}
 		}
 		if strings.HasPrefix(query, "@") || strings.HasPrefix(query, "$") {
 			client, cwd, id := a.client, c.Cwd, c.ID
+			generation := v.SuggestGeneration
 			if client != nil {
 				ctx, cancel := context.WithTimeout(a.ctx, 10*time.Second)
 				v.SuggestCancel = cancel
@@ -104,8 +106,8 @@ func (a *App) suggestions(w *nucular.Window, c *workspace.Conversation, v *chatV
 							}
 						}
 					} else {
-						var r skillList
-						if client.Call(ctx, "skills/list", map[string]any{"cwds": []string{cwd}}, &r) == nil {
+						r, err := a.skillCache.get(ctx, a.ctx, client, cwd)
+						if err == nil {
 							for _, d := range r.Data {
 								for _, s := range d.Skills {
 									if s.enabled() && strings.Contains(strings.ToLower(s.Name), strings.ToLower(query[1:])) && len(options) < 8 {
@@ -116,7 +118,7 @@ func (a *App) suggestions(w *nucular.Window, c *workspace.Conversation, v *chatV
 						}
 					}
 					a.post(func() {
-						if v.SuggestQuery == query {
+						if v.SuggestQuery == query && v.SuggestGeneration == generation {
 							v.Suggest = options
 						}
 					})
@@ -135,6 +137,16 @@ func (a *App) suggestions(w *nucular.Window, c *workspace.Conversation, v *chatV
 			acceptSuggestion(v)
 		}
 	}
+}
+
+func fuzzyCommand(name, query string) bool {
+	query = strings.ToLower(query)
+	for _, ch := range strings.ToLower(name) {
+		if query != "" && rune(query[0]) == ch {
+			query = query[1:]
+		}
+	}
+	return query == ""
 }
 
 func skillInputs(value string, skills skillList) []map[string]any {

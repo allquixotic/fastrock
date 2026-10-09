@@ -8,13 +8,12 @@ import (
 	"github.com/aarzilli/nucular/font"
 	"github.com/aarzilli/nucular/rect"
 
-	ifont "golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 )
 
 // A bounded typed FIFO avoids interface boxing and linked-list nodes on the hot
-// measurement path. All access, including cache misses, is serialized.
-var widthMu sync.Mutex
+// measurement path. Cache misses measure outside the shared cache lock.
+var widthMu sync.RWMutex
 var widthValues = make(map[fontWidthCacheKey]int, 2048)
 var widthKeys = make([]fontWidthCacheKey, 2048)
 var widthNext int
@@ -35,8 +34,6 @@ type fontWidthCacheKey struct {
 }
 
 func FontWidth(f font.Face, str string) int {
-	widthMu.Lock()
-	defer widthMu.Unlock()
 	maxw := 0
 	for {
 		newline := strings.Index(str, "\n")
@@ -47,15 +44,23 @@ func FontWidth(f font.Face, str string) int {
 
 		k := fontWidthCacheKey{f, line}
 
+		widthMu.RLock()
 		w, ok := widthValues[k]
+		widthMu.RUnlock()
 		if !ok {
-			d := ifont.Drawer{Face: f.Face}
-			w = d.MeasureString(line).Ceil()
-			delete(widthValues, widthKeys[widthNext])
-			k.string = strings.Clone(line)
-			widthValues[k] = w
-			widthKeys[widthNext] = k
-			widthNext = (widthNext + 1) % len(widthKeys)
+			w = f.MeasureString(line)
+			// Do not retain arbitrarily large pasted strings in the global cache.
+			if len(line) <= 4096 {
+				widthMu.Lock()
+				if _, exists := widthValues[k]; !exists {
+					delete(widthValues, widthKeys[widthNext])
+					k.string = strings.Clone(line)
+					widthValues[k] = w
+					widthKeys[widthNext] = k
+					widthNext = (widthNext + 1) % len(widthKeys)
+				}
+				widthMu.Unlock()
+			}
 		}
 
 		if w > maxw {
@@ -114,7 +119,7 @@ func textClamp(f font.Face, text []rune, space int) []rune {
 	text_width := 0
 	fc := f.Face
 	for i, ch := range text {
-		_, _, _, xwfixed, _ := fc.Glyph(fixed.P(0, 0), ch)
+		xwfixed, _ := fc.GlyphAdvance(ch)
 		xw := xwfixed.Ceil()
 		if text_width+xw >= space {
 			return text[:i]

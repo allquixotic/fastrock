@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"errors"
 	"runtime"
 	"sync"
 
@@ -33,9 +34,12 @@ func prepare() bool {
 	})
 	return pasteboard.ok
 }
-func Get() string {
+func Read(primary bool) (string, error) {
+	if primary {
+		return "", errors.New("primary selection is unavailable on macOS")
+	}
 	if !prepare() {
-		return ""
+		return "", errors.New("macOS pasteboard is unavailable")
 	}
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -45,14 +49,15 @@ func Get() string {
 	typ := objc.ID(objc.GetClass("NSString")).Send(pasteboard.utf8, "public.utf8-plain-text")
 	s := pb.Send(pasteboard.read, typ)
 	if s == 0 {
-		return ""
+		return "", nil
 	}
-	return objc.Send[string](s, objc.RegisterName("UTF8String"))
+	return objc.Send[string](s, objc.RegisterName("UTF8String")), nil
 }
+func Get() string        { value, _ := Read(false); return value }
 func GetPrimary() string { return Get() }
-func Set(text string) {
+func Write(text string) error {
 	if !prepare() {
-		return
+		return errors.New("macOS pasteboard is unavailable")
 	}
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -63,5 +68,9 @@ func Set(text string) {
 	typ := class.Send(pasteboard.utf8, "public.utf8-plain-text")
 	s := class.Send(pasteboard.utf8, text)
 	pb.Send(pasteboard.clear)
-	pb.Send(pasteboard.write, s, typ)
+	if !objc.Send[bool](pb, pasteboard.write, s, typ) {
+		return errors.New("could not write to the macOS pasteboard")
+	}
+	return nil
 }
+func Set(text string) { _ = Write(text) }

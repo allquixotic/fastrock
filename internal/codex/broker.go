@@ -16,6 +16,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/allquixotic/fastrock/internal/settings"
 )
 
 type transfer struct {
@@ -26,40 +28,91 @@ type transfer struct {
 	Expires   time.Time
 }
 type peer struct {
-	conn    net.Conn
-	writes  sync.Mutex
-	id      string
-	memory  uint64
-	name    string
-	threads []OpenThread
+	conn        net.Conn
+	out         chan []byte
+	ctx         context.Context
+	cancel      context.CancelFunc
+	calls       sync.Map
+	queuedBytes atomic.Int64
+	id          string
+	memory      uint64
+	name        string
+	threads     []OpenThread
 }
 
+const peerQueueBytes = 16 << 20
+
 func (p *peer) send(m Message) error {
-	p.writes.Lock()
-	defer p.writes.Unlock()
-	_ = p.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	return json.NewEncoder(p.conn).Encode(m)
+	data, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	if p.queuedBytes.Add(int64(len(data))) > peerQueueBytes {
+		p.queuedBytes.Add(-int64(len(data)))
+		p.cancel()
+		p.conn.Close()
+		return errors.New("window fell behind; reconnect to resynchronize")
+	}
+	select {
+	case <-p.ctx.Done():
+		p.queuedBytes.Add(-int64(len(data)))
+		return p.ctx.Err()
+	case p.out <- data:
+		return nil
+	default:
+		p.queuedBytes.Add(-int64(len(data)))
+		p.cancel()
+		p.conn.Close()
+		return errors.New("window fell behind; reconnect to resynchronize")
+	}
+}
+func (p *peer) writeLoop() {
+	defer p.cancel()
+	defer p.conn.Close()
+	for {
+		select {
+		case <-p.ctx.Done():
+			return
+		case data := <-p.out:
+			_ = p.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			_, err := p.conn.Write(data)
+			p.queuedBytes.Add(-int64(len(data)))
+			if err != nil {
+				return
+			}
+		}
+	}
 }
 
 type Broker struct {
-	updateHandler func(bool) any
-	restartMu     sync.Mutex
-	starter       func() (*Client, error)
-	sequence      atomic.Uint64
-	serviceMemory atomic.Uint64
-	client        *Client
-	listener      net.Listener
-	token         string
-	mu            sync.Mutex
-	peers         map[string]*peer
-	owners        map[string]*peer
-	approvals     map[string]*peer
-	tickets       map[string]transfer
-	requests      map[string]Message
-	done          chan struct{}
-	once          sync.Once
-	connected     bool
-	closed        bool
+	preferencesMu       sync.Mutex
+	preferences         settings.Preferences
+	preferencesRevision uint64
+	savePreferences     func(settings.Preferences) error
+	updateHandler       func(bool) any
+	restartMu           sync.Mutex
+	starter             func() (*Client, error)
+	sequence            atomic.Uint64
+	serviceMemory       atomic.Uint64
+	client              *Client
+	listener            net.Listener
+	token               string
+	mu                  sync.Mutex
+	peers               map[string]*peer
+	owners              map[string]*peer
+	approvals           map[string]*peer
+	tickets             map[string]transfer
+	transferReceipts    map[string]transferReceipt
+	requests            map[string]Message
+	done                chan struct{}
+	once                sync.Once
+	connected           bool
+	closed              bool
+	deliveries          map[string]*pendingDelivery
+	deliverySends       map[deliveryTurn]deliveryCount
+	deliveryGrants      map[deliveryPair]deliveryPermissionPair
+	deliveryHops        map[string]deliveryHop
 }
 
 func secret() string {
@@ -84,6 +137,10 @@ func (b *Broker) Token() string   { return b.token }
 func (b *Broker) Wait()           { <-b.done }
 func (b *Broker) Close() {
 	b.once.Do(func() {
+		b.mu.Lock()
+		b.closed = true
+		b.mu.Unlock()
+		b.clearDeliveries("the shared Codex connection closed")
 		b.listener.Close()
 		b.mu.Lock()
 		b.closed = true
@@ -123,7 +180,10 @@ func (b *Broker) serve(conn net.Conn) {
 	if subtle.ConstantTimeCompare([]byte(auth.Token), []byte(b.token)) != 1 {
 		return
 	}
-	p := &peer{conn: conn, id: secret()}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p := &peer{conn: conn, id: secret(), ctx: ctx, cancel: cancel, out: make(chan []byte, 128)}
+	go p.writeLoop()
 	b.mu.Lock()
 	b.peers[p.id] = p
 	b.connected = true
@@ -138,6 +198,7 @@ func (b *Broker) serve(conn net.Conn) {
 		for key, t := range b.tickets {
 			if t.Claimed == p || t.Owner == p {
 				delete(b.tickets, key)
+				b.recordTransfer(key, t, TransferCancelled)
 				target := t.Owner
 				if target == p {
 					target = t.Claimed
@@ -157,11 +218,17 @@ func (b *Broker) serve(conn net.Conn) {
 		}
 		for id, owner := range b.approvals {
 			if owner == p {
+				request := b.requests[id]
+				delete(b.requests, id)
+				if request.Origin != nil {
+					go request.Origin.Reject(request.ID, "Owning Fastrock window disconnected before answering")
+				}
 				delete(b.approvals, id)
 			}
 		}
 		empty := b.connected && len(b.peers) == 0
 		b.mu.Unlock()
+		b.refreshDeliveries()
 		for _, c := range cancelled {
 			_ = c.owner.send(Message{Method: "fastrock/tabCancelled", Params: raw(map[string]string{"ticket": c.ticket})})
 		}
@@ -178,35 +245,60 @@ func (b *Broker) serve(conn net.Conn) {
 		if json.Unmarshal(s.Bytes(), &m) != nil {
 			return
 		}
+		if m.Method == "fastrock/cancelRequest" {
+			var args struct{ ID string }
+			if json.Unmarshal(m.Params, &args) == nil {
+				if value, ok := p.calls.Load(args.ID); ok {
+					value.(context.CancelFunc)()
+				}
+			}
+			continue
+		}
 		if m.Method == "" {
 			b.mu.Lock()
 			owner := b.approvals[string(m.ID)]
+			request := b.requests[string(m.ID)]
 			if owner == p {
 				delete(b.approvals, string(m.ID))
 				delete(b.requests, string(m.ID))
 			}
 			b.mu.Unlock()
 			if owner == p {
-				if c := b.currentClient(); c != nil {
+				if c := request.Origin; c != nil && c == b.currentClient() {
 					_ = c.write(m)
 				}
 			}
 			continue
 		}
+		// Approval delivery has its own synchronous, deadline-bounded path so it
+		// remains available when ordinary request slots are occupied.
+		if m.Method == "fastrock/respond" {
+			work, stop := context.WithTimeout(p.ctx, 10*time.Second)
+			b.request(work, p, m)
+			stop()
+			continue
+		}
 		select {
 		case slots <- struct{}{}:
-			go func() { defer func() { <-slots }(); b.request(p, m) }()
+			work, stop := context.WithTimeout(p.ctx, 2*time.Minute)
+			p.calls.Store(string(m.ID), context.CancelFunc(stop))
+			go func() { defer func() { <-slots; p.calls.Delete(string(m.ID)); stop() }(); b.request(work, p, m) }()
 		default:
 			// Never stop reading the socket: approval responses must still pass
 			// through when all normal request slots are occupied.
 			if len(m.ID) > 0 {
-				_ = p.send(Message{ID: m.ID, Error: &RPCError{Code: -32000, Message: "Too many pending requests in this window; try again shortly"}})
+				_ = p.send(Message{ID: m.ID, Error: &RPCError{Code: CodeRequestRejected, Message: "Too many pending requests in this window; try again shortly"}})
 			}
 		}
 	}
 }
 func raw(v any) json.RawMessage { r, _ := json.Marshal(v); return r }
-func (b *Broker) request(p *peer, m Message) {
+func (b *Broker) request(requestCtx context.Context, p *peer, m Message) {
+	defer func() {
+		if err := recover(); err != nil {
+			_ = p.send(Message{ID: m.ID, Error: &RPCError{Code: CodeInternalError, Message: fmt.Sprintf("Internal broker error: %v", err)}})
+		}
+	}()
 	var result json.RawMessage
 	var err error
 	var args struct {
@@ -215,8 +307,54 @@ func (b *Broker) request(p *peer, m Message) {
 		Bytes                          uint64
 		Data                           json.RawMessage
 	}
-	_ = json.Unmarshal(m.Params, &args)
+	if len(m.Params) > 0 {
+		if err := json.Unmarshal(m.Params, &args); err != nil {
+			if len(m.ID) > 0 {
+				_ = p.send(Message{ID: m.ID, Error: &RPCError{Code: CodeInvalidParams, Message: "Invalid request parameters"}})
+			}
+			return
+		}
+	}
 	switch m.Method {
+	case "fastrock/requestDelivery":
+		err = b.requestDelivery(p, args.Data)
+		result = raw(nil)
+	case "fastrock/answerDelivery":
+		var answer DeliveryAnswer
+		answer, err = deliveryChoice(args.Data)
+		if err == nil {
+			err = b.answerDelivery(p, answer)
+		}
+		result = raw(nil)
+	case "fastrock/cancelDelivery":
+		var request struct{ ID string }
+		err = json.Unmarshal(args.Data, &request)
+		if err == nil {
+			b.cancelDelivery(p, request.ID)
+		}
+		result = raw(nil)
+	case "fastrock/respond":
+		var response Message
+		if err = json.Unmarshal(m.Params, &response); err != nil {
+			break
+		}
+		b.mu.Lock()
+		owner, request := b.approvals[string(response.ID)], b.requests[string(response.ID)]
+		b.mu.Unlock()
+		if owner != p || request.Origin == nil || request.Origin != b.currentClient() {
+			err = errors.New("approval no longer belongs to this window and server connection")
+			break
+		}
+		response.Method, response.Params = "", nil
+		if err = request.Origin.writeContext(requestCtx, response); err == nil {
+			b.mu.Lock()
+			if b.requests[string(response.ID)].Origin == request.Origin {
+				delete(b.requests, string(response.ID))
+				delete(b.approvals, string(response.ID))
+			}
+			b.mu.Unlock()
+		}
+		result = raw(nil)
 	case "fastrock/update":
 		b.mu.Lock()
 		handler := b.updateHandler
@@ -234,9 +372,23 @@ func (b *Broker) request(p *peer, m Message) {
 			err = errors.New("too many open threads")
 		}
 		if err == nil {
+			var disabled []string
 			b.mu.Lock()
+			previous := map[string]bool{}
+			for _, thread := range p.threads {
+				previous[thread.ID] = thread.AcceptsMessages
+			}
+			for _, thread := range threads {
+				if previous[thread.ID] && !thread.AcceptsMessages {
+					disabled = append(disabled, thread.ID)
+				}
+			}
 			p.threads = threads
 			b.mu.Unlock()
+			b.refreshDeliveries()
+			if len(disabled) > 0 {
+				b.broadcast("fastrock/messagingDisabled", map[string]any{"threadIds": disabled})
+			}
 		}
 		result = raw(nil)
 	case "fastrock/threads":
@@ -282,6 +434,7 @@ func (b *Broker) request(p *peer, m Message) {
 		for k, t := range b.tickets {
 			if time.Now().After(t.Expires) {
 				delete(b.tickets, k)
+				b.recordTransfer(k, t, TransferCancelled)
 			}
 		}
 		ticket := secret()
@@ -335,13 +488,15 @@ func (b *Broker) request(p *peer, m Message) {
 		t, ok := b.tickets[args.Ticket]
 		if ok && t.Claimed == p && t.Finalized {
 			delete(b.tickets, args.Ticket)
+			b.recordTransfer(args.Ticket, t, TransferCommitted)
 		} else {
 			ok = false
 		}
+		alreadyApplied := b.transferOutcome(args.Ticket, p) == TransferCommitted && b.transferReceipts[args.Ticket].claimed == p.id
 		b.mu.Unlock()
-		if !ok {
+		if !ok && !alreadyApplied {
 			err = errors.New("window transfer not finalized")
-		} else {
+		} else if ok {
 			var payload struct{ Chat *struct{ ID string } }
 			_ = json.Unmarshal(t.Data, &payload)
 			if payload.Chat != nil {
@@ -357,7 +512,9 @@ func (b *Broker) request(p *peer, m Message) {
 		allowed := t.Owner == p || t.Claimed == p
 		if allowed {
 			delete(b.tickets, args.Ticket)
+			b.recordTransfer(args.Ticket, t, TransferCancelled)
 		}
+		outcome := b.transferOutcome(args.Ticket, p)
 		b.mu.Unlock()
 		if allowed {
 			for _, target := range []*peer{t.Owner, t.Claimed} {
@@ -366,7 +523,11 @@ func (b *Broker) request(p *peer, m Message) {
 				}
 			}
 		}
-		result = raw(nil)
+		if outcome == "" {
+			err = errors.New("window transfer outcome is unavailable for this window")
+		} else {
+			result = raw(TransferResult{State: outcome})
+		}
 	case "fastrock/own":
 		b.own(p, args.ThreadID)
 		result = raw(nil)
@@ -376,18 +537,30 @@ func (b *Broker) request(p *peer, m Message) {
 		b.mu.Unlock()
 		result = raw(nil)
 	case "fastrock/preferences":
-		b.mu.Lock()
-		targets := make([]*peer, 0, len(b.peers))
-		for _, other := range b.peers {
-			if other != p {
-				targets = append(targets, other)
+		var patch settings.Patch
+		if err = json.Unmarshal(args.Data, &patch); err != nil {
+			break
+		}
+		b.preferencesMu.Lock()
+		next := b.preferences
+		if len(patch) > 0 {
+			next, err = settings.Apply(next, patch)
+			if err == nil && b.savePreferences != nil {
+				err = b.savePreferences(next)
+			}
+			if err == nil {
+				b.preferences = next
+				b.preferencesRevision++
 			}
 		}
-		b.mu.Unlock()
-		for _, other := range targets {
-			_ = other.send(Message{Method: "fastrock/preferences", Params: args.Data})
+		state := PreferencesState{Revision: b.preferencesRevision, Data: b.preferences}
+		if err == nil {
+			result = raw(state)
+			if len(patch) > 0 {
+				b.broadcast("fastrock/preferences", state)
+			}
 		}
-		result = raw(nil)
+		b.preferencesMu.Unlock()
 	case "fastrock/move":
 		b.mu.Lock()
 		dest := b.peers[args.Window]
@@ -430,10 +603,10 @@ func (b *Broker) request(p *peer, m Message) {
 		}
 		c := b.currentClient()
 		if c == nil {
-			err = errors.New("Codex app-server is disconnected; restart it in Settings")
+			err = fmt.Errorf("%w; restart it in Settings", ErrDisconnected)
 			break
 		}
-		ctx, cancel := context.WithTimeout(c.ctx, 2*time.Minute)
+		ctx, cancel := context.WithCancel(requestCtx)
 		defer cancel()
 		if len(m.ID) == 0 {
 			err = c.Notify(m.Method, json.RawMessage(m.Params))
@@ -447,21 +620,22 @@ func (b *Broker) request(p *peer, m Message) {
 	reply := Message{ID: m.ID, Result: result}
 	if err != nil {
 		reply.Result = nil
-		reply.Error = &RPCError{Code: -32000, Message: err.Error()}
+		reply.Error = protocolError(err)
 	}
 	if e := p.send(reply); e != nil {
 		p.conn.Close()
 	}
 }
 
-// Only presentation metadata is shared between windows; no transcript or draft.
+// OpenThread shares only presentation metadata between windows, never transcript or draft text.
 type OpenThread struct {
-	ID              string `json:"thread_id"`
-	Title           string `json:"title"`
-	Cwd             string `json:"cwd"`
-	Status          string `json:"status"`
-	AcceptsMessages bool   `json:"accepts_messages"`
-	Window          string `json:"window"`
+	ID              string          `json:"thread_id"`
+	Title           string          `json:"title"`
+	Cwd             string          `json:"cwd"`
+	Status          string          `json:"status"`
+	AcceptsMessages bool            `json:"accepts_messages"`
+	Window          string          `json:"window"`
+	Permissions     PermissionScope `json:"permissions"`
 }
 
 func (b *Broker) events(c *Client) {
@@ -470,23 +644,49 @@ func (b *Broker) events(c *Client) {
 			return
 		}
 		m.Sequence = b.sequence.Add(1)
+		b.deliveryEvent(m)
 		var scope struct {
-			ThreadID string `json:"threadId"`
+			ThreadID  string          `json:"threadId"`
+			RequestID json.RawMessage `json:"requestId"`
 		}
 		_ = json.Unmarshal(m.Params, &scope)
 		b.mu.Lock()
 		targets := make([]*peer, 0, len(b.peers))
 		owner := b.owners[scope.ThreadID]
+		if m.Method == "serverRequest/resolved" {
+			delete(b.approvals, string(scope.RequestID))
+			delete(b.requests, string(scope.RequestID))
+		}
+		if m.Method == "turn/completed" {
+			for id, request := range b.requests {
+				var pending struct {
+					ThreadID string `json:"threadId"`
+				}
+				_ = json.Unmarshal(request.Params, &pending)
+				if pending.ThreadID == scope.ThreadID {
+					delete(b.requests, id)
+					delete(b.approvals, id)
+				}
+			}
+		}
 		if len(m.ID) > 0 {
 			if owner == nil {
 				for _, p := range b.peers {
-					owner = p
-					break
+					for _, thread := range p.threads {
+						if thread.ID == scope.ThreadID {
+							owner = p
+							break
+						}
+					}
+					if owner != nil {
+						break
+					}
 				}
 			}
 			if owner != nil {
 				targets = append(targets, owner)
 				b.approvals[string(m.ID)] = owner
+				m.Origin = c
 				b.requests[string(m.ID)] = m
 			}
 		} else {
@@ -495,12 +695,20 @@ func (b *Broker) events(c *Client) {
 			}
 		}
 		b.mu.Unlock()
+		if len(m.ID) > 0 && owner == nil {
+			_ = c.Reject(m.ID, "No open Fastrock window owns this thread; open it and retry")
+			continue
+		}
 		for _, p := range targets {
 			if err := p.send(m); err != nil {
 				p.conn.Close()
 			}
 		}
 	}
+	// Serialize shutdown with replacement startup. Clearing delivery state takes
+	// b.mu internally and must complete before a new client accepts messages.
+	b.restartMu.Lock()
+	defer b.restartMu.Unlock()
 	b.mu.Lock()
 	current := b.client == c
 	if current {
@@ -508,6 +716,7 @@ func (b *Broker) events(c *Client) {
 	}
 	b.mu.Unlock()
 	if current {
+		b.clearDeliveries("Codex app-server stopped before delivery")
 		b.broadcast("fastrock/serverStopped", map[string]string{"message": "Codex app-server stopped. Restart it in Settings."})
 	}
 }
@@ -521,7 +730,7 @@ func Dial(ctx context.Context, address, token string) (*Client, error) {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	c := &Client{input: conn, ctx: ctx, cancel: cancel, pending: map[string]chan Message{}, Events: make(chan Message, 256), done: make(chan struct{})}
+	c := &Client{broker: true, input: conn, ctx: ctx, cancel: cancel, pending: map[string]chan Message{}, Events: make(chan Message, 256), done: make(chan struct{})}
 	go c.read(conn)
 	var response struct{ Version string }
 	authCtx, stop := context.WithTimeout(ctx, 10*time.Second)
@@ -555,6 +764,7 @@ func (b *Broker) own(p *peer, id string) {
 		}
 	}
 	b.mu.Unlock()
+	b.refreshDeliveries()
 	if old != nil && old != p {
 		_ = old.send(Message{Method: "fastrock/threadMoved", Params: raw(map[string]string{"threadId": id})})
 	}
@@ -613,7 +823,8 @@ func (b *Broker) restart() error {
 	clear(b.approvals)
 	clear(b.requests)
 	b.mu.Unlock()
-	b.broadcast("fastrock/serverStopped", map[string]string{"message": "Restarting Codex app-server…"})
+	b.clearDeliveries("Codex app-server restarted before delivery")
+	b.broadcast("fastrock/serverStopped", map[string]any{"message": "Restarting Codex app-server…", "restarting": true})
 	if old != nil {
 		old.Close()
 	}

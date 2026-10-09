@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/aarzilli/nucular"
+	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -20,6 +21,8 @@ type configField struct {
 	Key, Kind string
 	Value     any
 	Editor    *nucular.TextEditor
+	Baseline  string
+	Protected bool
 }
 type configLayer struct {
 	Label, Path, Disabled string
@@ -44,7 +47,7 @@ func configLayers(data map[string]any) []configLayer {
 			label += " · " + path
 		}
 		conf, _ := l["config"].(map[string]any)
-		result = append(result, configLayer{Label: label, Path: path, Disabled: str(l, "disabledReason"), Fields: configFields(conf)})
+		result = append(result, configLayer{Label: label, Path: path, Disabled: str(l, "disabledReason"), Fields: typedConfigFields(conf, configSpecs())})
 	}
 	return result
 }
@@ -55,7 +58,7 @@ func configOrigin(data map[string]any, key string) (string, bool) {
 		if origin, ok := origins[key].(map[string]any); ok {
 			n, _ := origin["name"].(map[string]any)
 			kind := str(n, "type")
-			locked := kind == "project" || kind == "sessionFlags" || strings.Contains(strings.ToLower(kind), "managed") || kind == "mdm"
+			locked := kind == "project" || kind == "profile" || kind == "sessionFlags" || strings.Contains(strings.ToLower(kind), "managed") || kind == "mdm" || kind == "cloudRequirements"
 			return kind, locked
 		}
 		i := strings.LastIndexByte(key, '.')
@@ -106,7 +109,7 @@ func configFields(v map[string]any) []configField {
 			b, _ := json.Marshal(value)
 			display = string(b)
 		}
-		fields = append(fields, configField{Key: path, Kind: kind, Value: value, Editor: textEditor(display, false)})
+		fields = append(fields, configField{Key: path, Kind: kind, Value: value, Editor: textEditor(display, false), Baseline: display})
 	}
 	visit("", v)
 	sort.Slice(fields, func(i, j int) bool { return fields[i].Key < fields[j].Key })
@@ -114,147 +117,37 @@ func configFields(v map[string]any) []configField {
 }
 func (a *App) configWrite(key string, value any) {
 	s := a.settingsView
-	params := map[string]any{"edits": []map[string]any{{"keyPath": key, "value": value, "mergeStrategy": "replace"}}, "reloadUserConfig": true}
-	if s.ConfigVersion != "" {
-		params["expectedVersion"] = s.ConfigVersion
+	if s.ConfigFeedback == nil {
+		s.ConfigFeedback = map[string]string{}
 	}
-	a.rpc("config/batchWrite", params, func(raw json.RawMessage) {
-		a.toast = "Saved " + key
-		var response struct{ OverriddenMetadata *struct{ Message string } }
-		_ = json.Unmarshal(raw, &response)
-		if response.OverriddenMetadata != nil {
-			a.toast = response.OverriddenMetadata.Message
-		}
-		a.loadSettingsPage(s.Page)
-	})
-}
-func (a *App) drawConfiguration(w *nucular.Window, s *settingsView) {
-	if s.ConfigContext == nil {
-		s.ConfigContext = textEditor(a.prefs.WorkingDirectory, false)
+	if s.ConfigFailed == nil {
+		s.ConfigFailed = map[string]bool{}
 	}
-	w.Row(28).Ratio(.8, .2)
-	s.ConfigContext.Edit(w)
-	if w.ButtonText("Use context") {
-		a.loadSettingsPage(s.Page)
+	s.ConfigFailed[key] = false
+	if policyControlledKey(key) && (!a.catalog.PolicyLoaded || a.policyLoading) {
+		s.ConfigFeedback[key] = "Organization policy is still loading. Retry after it finishes."
+		s.ConfigFailed[key] = true
+		return
 	}
-	labels := []string{"Effective configuration"}
-	for _, l := range s.Layers {
-		labels = append(labels, l.Label)
+	if !a.catalog.Policy.Allows(key, value) {
+		s.ConfigFeedback[key] = "This value is not permitted by organization policy."
+		s.ConfigFailed[key] = true
+		return
 	}
-	w.Row(28).Dynamic(1)
-	s.ConfigLayer = w.ComboSimple(labels, min(s.ConfigLayer, len(labels)-1), 28)
-	fields := s.Fields
-	if s.ConfigLayer > 0 {
-		l := s.Layers[s.ConfigLayer-1]
-		fields = l.Fields
-		if l.Disabled != "" {
-			muted(w, "Disabled: "+l.Disabled, a.p)
-		}
-		if l.Path != "" {
-			w.Row(28).Static(150)
-			if w.ButtonText("Open layer file") {
-				a.openFile(l.Path)
-			}
+	request := configEditRequest{Key: key, Value: value}
+	for _, f := range s.Fields {
+		if f.Key == key {
+			request.Text = text(f.Editor)
 		}
 	}
-	w.Row(30).Ratio(.7, .15, .15)
-	s.Search.Edit(w)
-	if w.ButtonText("Reload") {
-		a.loadSettingsPage(s.Page)
-	}
-	if w.ButtonText("Raw TOML") {
-		a.settingsPage("Raw configuration")
-	}
-	needle := strings.ToLower(text(s.Search))
-	offset := 150
-	for i := range fields {
-		f := &fields[i]
-		search := f.Search
-		if search == "" {
-			search = strings.ToLower(f.Key)
-		}
-		if !strings.Contains(search, needle) {
-			continue
-		}
-		// Skip offscreen controls while retaining their scroll extent.
-		const rowHeight = 95
-		visible := offset+rowHeight >= w.Scrollbar.Y-200 && offset <= w.Scrollbar.Y+w.Bounds.H+200
-		offset += rowHeight
-		if !visible {
-			w.Row(rowHeight).Dynamic(1)
-			w.Spacing(1)
-			continue
-		}
-		origin, locked := configOrigin(s.ConfigData, f.Key)
-		w.Row(25).Ratio(.85, .15)
-		w.Label(f.Key, "LC")
-		if w.ButtonText("Info") {
-			a.configFieldHelp(f, origin)
-		}
-		if s.ConfigLayer > 0 {
-			locked = true
-		}
-		muted(w, "Source: "+origin, a.p)
-		if locked {
-			w.Row(28).Dynamic(1)
-			w.Label(text(f.Editor), "LC")
-			continue
-		}
-		w.Row(30).Ratio(.72, .14, .14)
-		if f.Kind == "bool" {
-			on, _ := f.Value.(bool)
-			if w.CheckboxText("Enabled", &on) {
-				a.configWrite(f.Key, on)
-			}
-		} else if f.Spec != nil && len(f.Spec.Choices) > 0 {
-			choices := f.Spec.Options
-			current := 0
-			for i, choice := range f.Spec.Choices {
-				if choice == text(f.Editor) {
-					current = i + 1
-				}
-			}
-			selected := w.ComboSimple(choices, current, 28)
-			if selected != current {
-				if selected == 0 {
-					a.configWrite(f.Key, nil)
-				} else {
-					setText(f.Editor, choices[selected])
-				}
-			}
-		} else {
-			f.Editor.Edit(w)
-		}
-		if f.Kind == "bool" {
-			w.Label("", "LC")
-		} else if w.ButtonText("Apply") {
-			value, err := configFieldValue(f)
-			if err != nil {
-				a.report(err)
-				continue
-			}
-			a.configWrite(f.Key, value)
-		}
-		if w.ButtonText("Reset") {
-			a.configWrite(f.Key, nil)
-		}
-	}
-	title(w, "Add or edit a setting", a.p)
-	a.field(w, "Setting path", s.ConfigKey, false)
-	a.field(w, "JSON value", s.ConfigValue, false)
-	w.Row(30).Static(130)
-	if w.ButtonText("Apply setting") {
-		var value any
-		if err := json.Unmarshal([]byte(text(s.ConfigValue)), &value); err != nil {
-			a.report(err)
-		} else {
-			a.configWrite(text(s.ConfigKey), value)
-		}
-	}
+	s.ConfigQueue = append(s.ConfigQueue, request)
+	s.ConfigFeedback[key] = "Waiting to save…"
+	a.nextConfigWrite(s)
 }
 func (a *App) loadRawConfig() {
 	s := a.settingsView
 	s.Busy = true
+	s.RawFeedback = settingFeedback{Pending: true, Message: "Loading configuration…"}
 	a.work(func() {
 		path := filepath.Join(codexHome(), "config.toml")
 		if resolved, err := filepath.EvalSymlinks(path); err == nil {
@@ -267,21 +160,32 @@ func (a *App) loadRawConfig() {
 		hash := sha256.Sum256(data)
 		a.post(func() {
 			s.Busy = false
-			a.report(err)
+			if err != nil {
+				s.RawFeedback = settingFeedback{Failed: true, Message: err.Error()}
+				return
+			}
+			s.RawFeedback = settingFeedback{}
 			s.RawPath = path
 			s.RawHash = hash
 			setText(s.Raw, string(data))
 		})
+	}, func() {
+		s.Busy = false
+		s.RawFeedback = settingFeedback{Failed: true, Message: errWorkQueueFull.Error()}
 	})
 }
 func (a *App) saveRawConfig() {
 	s := a.settingsView
+	if s.Busy {
+		return
+	}
 	value, path, expected := text(s.Raw), s.RawPath, s.RawHash
 	if path == "" {
 		return
 	}
 	s.Busy = true
-	a.work(func() {
+	s.RawFeedback = settingFeedback{Pending: true, Message: "Saving…"}
+	a.writeWork(func() {
 		var parsed map[string]any
 		err := toml.Unmarshal([]byte(value), &parsed)
 		if err == nil {
@@ -293,35 +197,45 @@ func (a *App) saveRawConfig() {
 			}
 		}
 		if err == nil {
-			f, e := os.CreateTemp(filepath.Dir(path), ".fastrock-config-*")
-			err = e
+			mode := os.FileMode(0600)
+			if info, e := os.Stat(path); e == nil {
+				mode = info.Mode().Perm()
+			} else if !os.IsNotExist(e) {
+				err = e
+			}
 			if err == nil {
-				tmp := f.Name()
-				defer os.Remove(tmp)
-				_ = f.Chmod(0600)
-				_, err = f.WriteString(value)
-				if err == nil {
-					err = f.Sync()
-				}
-				closeErr := f.Close()
-				if err == nil {
-					err = closeErr
-				}
-				if err == nil {
-					err = os.Rename(tmp, path)
-				}
+				err = settings.WriteFileAtomic(path, []byte(value), mode)
 			}
 		}
 		a.post(func() {
 			s.Busy = false
 			if err != nil {
-				a.report(err)
+				s.afterRawSave = nil
+				s.RawFeedback = settingFeedback{Failed: true, Message: err.Error()}
 				return
 			}
 			s.RawHash = sha256.Sum256([]byte(value))
-			a.toast = "Configuration saved. Restart Codex to apply provider changes."
-			a.rpc("config/batchWrite", map[string]any{"edits": []any{}, "reloadUserConfig": true}, nil)
+			if next := s.afterRawSave; next != nil {
+				s.afterRawSave = nil
+				if text(s.Raw) == value {
+					next()
+				} else {
+					s.RawFeedback = settingFeedback{Message: "Earlier changes saved; newer edits remain open."}
+					return
+				}
+			}
+			s.RawFeedback = settingFeedback{Message: "Configuration saved."}
+			a.rpcInline("config/batchWrite", map[string]any{"edits": []any{}, "reloadUserConfig": true}, func(json.RawMessage) {
+				a.refreshConfiguredProvider()
+			}, func(err error) {
+				s.RawFeedback = settingFeedback{Failed: true, Message: "Configuration saved, but Codex could not reload it: " + err.Error()}
+				a.restartNote = "config.toml was saved but Codex could not reload it. Review the configuration, then restart Codex."
+			})
 		})
+	}, func() {
+		s.Busy = false
+		s.afterRawSave = nil
+		s.RawFeedback = settingFeedback{Failed: true, Message: errWorkQueueFull.Error()}
 	})
 }
 func (a *App) drawRawConfig(w *nucular.Window, s *settingsView) {
@@ -330,9 +244,10 @@ func (a *App) drawRawConfig(w *nucular.Window, s *settingsView) {
 		a.saveRawConfig()
 	}
 	if w.ButtonText("Reload") {
-		a.loadRawConfig()
+		a.leaveRawConfig(a.loadRawConfig)
 	}
 	muted(w, s.RawPath, a.p)
+	a.drawSettingFeedback(w, s.RawFeedback)
 	w.Row(max(160, w.LayoutAvailableHeight()-5)).Dynamic(1)
-	s.Raw.Edit(w)
+	codeEditor(w, s.Raw)
 }

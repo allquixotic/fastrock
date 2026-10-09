@@ -3,6 +3,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/rally"
@@ -26,6 +27,7 @@ func TestV13SidebarVirtualizationAndInvalidation(t *testing.T) {
 	h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(280, 900), a.drawSidebar)
 	a.window = h.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
+	waitSidebar(t, a)
 	commands := h.Frame(true)
 	if commands > 450 {
 		t.Fatalf("offscreen rows generated %d commands", commands)
@@ -41,15 +43,18 @@ func TestV13SidebarVirtualizationAndInvalidation(t *testing.T) {
 	a.state.Chats["0"].Title = "Renamed"
 	a.invalidateSidebar()
 	setText(a.sidebarSearch, "renamed")
+	waitSidebar(t, a)
 	if folders := a.sidebarFolders(); len(folders) != 1 || len(folders[0].rows) != 1 || folders[0].rows[0].ID != "0" {
 		t.Fatal("stale metadata/search")
 	}
 	a.state.Chats["0"].Archived = true
-	a.invalidateSidebar()
+	a.invalidateSidebar("0")
+	waitSidebar(t, a)
 	if len(a.sidebarFolders()) != 0 {
 		t.Fatal("archive membership stale")
 	}
 	a.archived = true
+	waitSidebar(t, a)
 	if len(a.sidebarFolders()) != 1 {
 		t.Fatal("archived view stale")
 	}
@@ -73,6 +78,7 @@ func BenchmarkV13SidebarToggleAndRender(b *testing.B) {
 			h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(280, 900), a.drawSidebar)
 			a.window = h.Master()
 			a.window.SetStyle(makeStyle(a.p, 13))
+			waitSidebar(b, a)
 			h.Frame(true)
 			b.ReportAllocs()
 			b.ResetTimer()
@@ -106,6 +112,7 @@ func BenchmarkV13SidebarVisibilityFullWindow(b *testing.B) {
 	h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(1360, 800), a.draw)
 	a.window = h.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
+	waitSidebar(b, a)
 	h.Frame(true)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -127,6 +134,7 @@ func TestV14StatusCloseFitsWindow(t *testing.T) {
 	h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(1360, 800), func(w *nucular.Window) { a.draw(w); r := w.LastWidgetBounds; x, y, width, height = r.X, r.Y, r.W, r.H })
 	a.window = h.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
+	waitSidebar(t, a)
 	h.Frame(true)
 	if x < 0 || x+width > 1360 || y < 0 || y+height > 800 {
 		t.Fatalf("close outside window: %d,%d %dx%d", x, y, width, height)
@@ -142,6 +150,7 @@ func TestV13ManyProjectsStillVirtualize(t *testing.T) {
 	h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(280, 900), a.drawSidebar)
 	a.window = h.Master()
 	a.window.SetStyle(makeStyle(a.p, 13))
+	waitSidebar(t, a)
 	if commands := h.Frame(true); commands > 450 {
 		t.Fatalf("offscreen projects generated %d commands", commands)
 	}
@@ -153,5 +162,51 @@ func TestV13ManyProjectsStillVirtualize(t *testing.T) {
 	a.sidebarLayout()
 	if cache.totalRows != 19999 || cache.starts[1] != 1 {
 		t.Fatal("collapse offsets stale")
+	}
+}
+
+func TestV21LargeHistoryInfoAndPickerDrawAreBounded(t *testing.T) {
+	a := largeSidebar(100000)
+	for id := range a.state.Chats {
+		a.state.Tabs = append(a.state.Tabs, workspace.Tab{ID: id, Kind: workspace.Chat, Target: id})
+	}
+	a.infoViews = map[string]*conversationInfo{"0": {Loaded: true, GoalUnsupported: true}}
+	a.infoCollapsed = map[string]bool{"terminals": true}
+	info := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(360, 900), func(w *nucular.Window) { a.extraInfo(w, a.state.Chats["0"]) })
+	a.window = info.Master()
+	a.window.SetStyle(makeStyle(a.p, 13))
+	waitSidebar(t, a)
+	if n := info.Frame(true); n > 250 {
+		t.Fatalf("info rendered %d commands for 100,000 open chats", n)
+	}
+	rows, _, err := querySidebar(context.Background(), a.sidebarCache.root, "", false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &conversationPicker{rows: rows, root: a.sidebarCache.root, requested: true, ready: true, generation: 1}
+	ed := textEditor("", false)
+	picker := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(600, 500), func(w *nucular.Window) { a.drawConversationPicker(w, p, ed, func(*workspace.Conversation) {}) })
+	picker.Master().SetStyle(makeStyle(a.p, 13))
+	if n := picker.Frame(true); n > 300 {
+		t.Fatalf("picker rendered %d commands for 100,000 chats", n)
+	}
+}
+
+func BenchmarkV21LargeHistoryInfo(b *testing.B) {
+	a := largeSidebar(100000)
+	for id := range a.state.Chats {
+		a.state.Tabs = append(a.state.Tabs, workspace.Tab{ID: id, Kind: workspace.Chat, Target: id})
+	}
+	a.infoViews = map[string]*conversationInfo{"0": {Loaded: true, GoalUnsupported: true}}
+	a.infoCollapsed = map[string]bool{"terminals": true}
+	info := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(360, 900), func(w *nucular.Window) { a.extraInfo(w, a.state.Chats["0"]) })
+	a.window = info.Master()
+	a.window.SetStyle(makeStyle(a.p, 13))
+	waitSidebar(b, a)
+	info.Frame(true)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		info.Frame(true)
 	}
 }

@@ -35,7 +35,7 @@ TEXT ·drawFillOver_SIMD_internal(SB),0,$0-60
 	MOVQ i1+16(FP), R15
 
 	// load adivm to X2, fill all uint32s with it
-	MOVSS advim+40(FP), X2
+	MOVSS adivm+40(FP), X2
 	VBROADCASTSS X2, X2
 
 	// load source pixel to X3
@@ -78,17 +78,17 @@ row_loop_end:
 
 	RET
 
-TEXT ·getCPUID1(SB),$0
+TEXT ·getCPUID1(SB),$0-8
 	MOVQ $1, AX
 	CPUID
-	MOVD DX, ret+0(FP)
-	MOVD CX, ret+4(FP)
+	MOVL DX, edx+0(FP)
+	MOVL CX, ecx+4(FP)
 	RET
 
-TEXT ·getCPUID70(SB),$0
+TEXT ·getCPUID70(SB),$0-8
 	MOVQ $7, AX
 	MOVQ $0, CX
 	CPUID
-	MOVD BX, ret+0(FP)
-	MOVD CX, ret+4(FP)
+	MOVL BX, ebx+0(FP)
+	MOVL CX, ecx+4(FP)
 	RET

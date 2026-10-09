@@ -3,28 +3,34 @@ package ui
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"github.com/aarzilli/nucular/label"
-	"image"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/codex"
 	"github.com/allquixotic/fastrock/internal/settings"
+	"golang.org/x/mobile/event/key"
 )
 
 type settingsItem struct {
-	Name, ID, Description string
-	Enabled               bool
-	Raw                   map[string]any
+	Name, ID, Description                                 string
+	Group, Subtitle, Status, Detail, Error                string
+	Enabled                                               bool
+	ReadOnly, CanInstall, CanRemove, CanLogin, NeedsTrust bool
+	Raw                                                   map[string]any
 }
 
 func (a *App) inspectRPC(title, method string, params any) {
-	a.rpc(method, params, func(raw json.RawMessage) {
+	s := a.settingsView
+	key := "page:" + s.Page + ":details:" + title
+	if s.ActionFeedback[key].Pending {
+		return
+	}
+	setSettingsFeedback(s, key, settingFeedback{Pending: true, Message: "Loading details…"})
+	a.rpcInline(method, params, func(raw json.RawMessage) {
+		setSettingsFeedback(s, key, settingFeedback{})
 		a.work(func() {
 			var data any
 			_ = json.Unmarshal(raw, &data)
@@ -32,16 +38,10 @@ func (a *App) inspectRPC(title, method string, params any) {
 			b, _ := json.MarshalIndent(data, "", "  ")
 			a.post(func() { a.openText(title, string(b)) })
 		})
-	})
+	}, func(err error) { setSettingsFeedback(s, key, settingFeedback{Failed: true, Message: err.Error()}) })
 }
 func (a *App) settingsRequest(method string, params any) {
-	page := a.settingsView.Page
-	a.rpc(method, params, func(raw json.RawMessage) {
-		a.toast = "Saved"
-		if a.settingsView.Page == page {
-			a.loadSettingsPage(page)
-		}
-	})
+	a.settingsRequestAt("page:"+a.settingsView.Page+":"+method, method, params)
 }
 func pluginParams(item settingsItem) map[string]any {
 	p := map[string]any{"pluginName": str(item.Raw, "name")}
@@ -53,21 +53,55 @@ func pluginParams(item settingsItem) map[string]any {
 	return p
 }
 func (a *App) uninstallPlugin(id string) {
-	a.confirm("Uninstall plugin?", "Remove "+id+" and its skills, MCP servers and hooks?", func() { a.settingsRequest("plugin/uninstall", map[string]any{"pluginId": id}) })
+	a.confirm("Uninstall plugin?", "Remove "+id+" and its skills, MCP servers and hooks?", func() {
+		a.settingsRequestAt(settingsRowKey("Plugins", id), "plugin/uninstall", map[string]any{"pluginId": id})
+	})
 }
 func (a *App) login(params map[string]any) {
-	a.rpc("account/login/start", params, func(raw json.RawMessage) {
+	s := a.settingsView
+	method, _ := params["type"].(string)
+	if s == nil || s.LoginBusy || a.client == nil || a.serverPaused {
+		return
+	}
+	if !a.catalog.PolicyLoaded || a.policyLoading {
+		s.LoginError = "Sign-in policy has not loaded. Reload it before signing in."
+		return
+	}
+	if !a.catalog.Policy.LoginAllowed(method, str(a.catalog.Config, "forced_login_method")) {
+		s.LoginError = "This sign-in method is not allowed by organization policy."
+		return
+	}
+	s.LoginGeneration++
+	generation := s.LoginGeneration
+	s.LoginBusy, s.LoginError = true, ""
+	a.rpcInline("account/login/start", params, func(raw json.RawMessage) {
+		if s.LoginGeneration != generation {
+			return
+		}
 		r := codex.Decode(raw)
-		a.settingsView.LoginID = str(r, "loginId")
+		s.LoginID = str(r, "loginId")
 		if url := str(r, "authUrl"); url != "" {
+			s.LoginURL = url
 			a.openURL(url)
 		}
 		if url := str(r, "verificationUrl"); url != "" {
+			s.LoginURL = url
 			a.openURL(url)
 		}
 		if code := str(r, "userCode"); code != "" {
-			a.toast = "Enter sign-in code: " + code
 			a.copyText(code)
+			s.LoginCode = code
+			a.toast = "Enter sign-in code: " + code + " (copied)"
+		}
+		if s.LoginID == "" {
+			s.LoginBusy = false
+			a.refreshAccount()
+			a.refreshUsage()
+			a.refreshConfiguredProvider()
+		}
+	}, func(err error) {
+		if s.LoginGeneration == generation {
+			s.LoginBusy, s.LoginError = false, err.Error()
 		}
 	})
 }
@@ -84,29 +118,8 @@ func (a *App) drawExtraSettings(w *nucular.Window, s *settingsView) {
 	}
 	switch s.Page {
 	case "Account":
-		w.Row(30).Static(150, 140, 100)
-		if w.ButtonText("Sign in with ChatGPT") {
-			a.login(map[string]any{"type": "chatgpt"})
-		}
-		if w.ButtonText("Device code sign-in") {
-			a.login(map[string]any{"type": "chatgptDeviceCode"})
-		}
-		if w.ButtonText("Cancel login") {
-			a.settingsRequest("account/login/cancel", map[string]any{"loginId": s.LoginID})
-		}
-		s.Secret.PasswordChar = '●'
-		a.field(w, "API key", s.Secret, false)
-		w.Row(30).Static(150, 100, 150)
-		if w.ButtonText("Sign in with key") {
-			a.login(map[string]any{"type": "apiKey", "apiKey": text(s.Secret)})
-			setText(s.Secret, "")
-		}
-		if w.ButtonText("Sign out") {
-			a.settingsRequest("account/logout", map[string]any{})
-		}
-		if w.ButtonText("Usage and limits") {
-			a.inspectRPC("Usage limits", "account/rateLimits/read", map[string]any{})
-		}
+		a.drawAccount(w, s)
+		return
 	case "AWS Bedrock":
 		a.bedrockSettings(w, s)
 		return
@@ -123,8 +136,8 @@ func (a *App) drawExtraSettings(w *nucular.Window, s *settingsView) {
 			a.loadSettingsPage(s.Page)
 		}
 		w.Row(28).Dynamic(1)
-		s.Search.Placeholder = "Search plugins"
-		s.Search.Edit(w)
+		s.PluginSearch.Placeholder = "Search plugins"
+		s.PluginSearch.Edit(w)
 		a.field(w, "Plugin name / installed ID", s.Name, false)
 		a.field(w, "Marketplace path (optional)", s.Value, false)
 		w.Row(30).Static(100, 110)
@@ -136,15 +149,7 @@ func (a *App) drawExtraSettings(w *nucular.Window, s *settingsView) {
 			a.settingsRequest("plugin/install", params)
 		}
 		if w.ButtonText("Uninstall") {
-			a.settingsRequest("plugin/uninstall", map[string]any{"pluginId": text(s.Name)})
-		}
-	case "Memories":
-		w.Row(30).Static(180, 130)
-		if w.ButtonText("Reset saved memories…") {
-			a.confirm("Reset memories?", "Clear the memories managed by Codex?", func() { a.settingsRequest("memory/reset", map[string]any{}) })
-		}
-		if w.ButtonText("Learn more") {
-			a.openURL("https://developers.openai.com/codex")
+			a.uninstallPlugin(text(s.Name))
 		}
 	case "Import":
 		a.field(w, "Migration source", s.Name, false)
@@ -183,7 +188,6 @@ func (a *App) drawExtraSettings(w *nucular.Window, s *settingsView) {
 			a.settingsRequest("windowsSandbox/setupStart", map[string]any{"mode": "unelevated", "cwd": a.prefs.WorkingDirectory})
 		}
 	case "Diagnostics":
-		a.field(w, "Configuration key", s.Name, false)
 		w.Row(30).Static(140, 140)
 		if w.ButtonText("Read configuration") {
 			a.inspectRPC("Configuration layers", "config/read", map[string]any{"includeLayers": true, "cwd": a.prefs.WorkingDirectory})
@@ -192,92 +196,21 @@ func (a *App) drawExtraSettings(w *nucular.Window, s *settingsView) {
 			a.openPath(filepath.Join(codexHome(), "log"), false)
 		}
 	}
+	if extensionPage(s.Page) {
+		a.drawExtensionSettings(w, s)
+		return
+	}
+	if s.LoadError != "" {
+		a.drawSettingsError(w, s.LoadError)
+	}
 	for i := range s.Items {
 		item := &s.Items[i]
-		if s.Page == "Plugins" && !strings.Contains(strings.ToLower(item.Name+" "+item.Description), strings.ToLower(text(s.Search))) {
-			continue
-		}
-		w.Row(30).Ratio(.7, .15, .15)
+		w.Row(30).Dynamic(2)
 		w.Label(item.Name, "LC")
-		if menu := w.ContextualOpen(0, image.Pt(240, 115), w.LastWidgetBounds, nil); menu != nil {
-			if path := str(item.Raw, "sourcePath"); path != "" && menu.MenuItem(label.T("Open source")) {
-				a.openFile(path)
-			}
-			if s.Page == "Skills" && menu.MenuItem(label.T("Open skill")) {
-				a.openFile(item.ID)
-			}
-			if s.Page == "MCP servers" && menu.MenuItem(label.T("Remove server…")) {
-				name := item.Name
-				a.confirm("Remove MCP server?", name, func() {
-					a.settingsRequest("config/value/write", map[string]any{"keyPath": "mcp_servers." + configKey(name), "value": nil, "mergeStrategy": "replace"})
-				})
-			}
-			if s.Page == "Hooks" && str(item.Raw, "currentHash") != "" && menu.MenuItem(label.T("Trust current hook…")) {
-				id, hash := item.ID, str(item.Raw, "currentHash")
-				a.confirm("Trust hook?", "Allow the current contents of this hook to run?", func() {
-					a.settingsRequest("config/batchWrite", map[string]any{"edits": []any{map[string]any{"keyPath": "hooks.state", "value": map[string]any{id: map[string]any{"trusted_hash": hash}}, "mergeStrategy": "upsert"}}, "reloadUserConfig": true})
-				})
-			}
-		}
-		switch s.Page {
-		case "Features":
-			on := item.Enabled
-			if w.CheckboxText("Enabled", &on) {
-				a.settingsRequest("experimentalFeature/enablement/set", map[string]any{"enablement": map[string]bool{item.ID: on}})
-			}
-		case "Hooks":
-			if managed, _ := item.Raw["isManaged"].(bool); !managed {
-				on := item.Enabled
-				if w.CheckboxText("Enabled", &on) {
-					a.settingsRequest("config/batchWrite", map[string]any{"edits": []any{map[string]any{"keyPath": "hooks.state", "value": map[string]any{item.ID: map[string]any{"enabled": on}}, "mergeStrategy": "upsert"}}, "reloadUserConfig": true})
-				}
-			} else {
-				w.Label("Managed", "LC")
-			}
-		case "Skills":
-			on := item.Enabled
-			if w.CheckboxText("Enabled", &on) {
-				a.settingsRequest("skills/config/write", map[string]any{"path": item.ID, "enabled": on})
-			}
-		case "MCP servers":
-			enabled := true
-			if value, ok := item.Raw["enabled"].(bool); ok {
-				enabled = value
-			}
-			if w.CheckboxText("Enabled", &enabled) {
-				a.settingsRequest("config/value/write", map[string]any{"keyPath": "mcp_servers." + configKey(item.Name) + ".enabled", "value": enabled, "mergeStrategy": "replace"})
-			}
-			if w.ButtonText("Sign in") {
-				a.rpc("mcpServer/oauth/login", map[string]any{"name": item.Name}, func(raw json.RawMessage) { a.openURL(str(codex.Decode(raw), "authorizationUrl")) })
-			}
-		case "Plugins":
-			installed, _ := item.Raw["installed"].(bool)
-			if installed {
-				on := item.Enabled
-				if w.CheckboxText("Enabled", &on) {
-					a.configWrite("plugins."+configKey(item.ID)+".enabled", on)
-				}
-			} else {
-				w.Label("Available", "LC")
-			}
-			if installed && w.ButtonText("Uninstall…") {
-				a.uninstallPlugin(item.ID)
-			}
-			if !installed && w.ButtonText("Install") {
-				a.settingsRequest("plugin/install", pluginParams(*item))
-			}
-		case "Import":
+		if s.Page == "Import" {
 			on := s.Selected[item.ID]
 			if w.CheckboxText("Import", &on) {
 				s.Selected[item.ID] = on
-			}
-		}
-		if w.ButtonText("Details") {
-			if s.Page == "Plugins" {
-				a.inspectRPC(item.Name, "plugin/read", pluginParams(*item))
-			} else {
-				b, _ := json.MarshalIndent(item.Raw, "", "  ")
-				a.openText(item.Name, string(b))
 			}
 		}
 		if item.Description != "" {
@@ -286,29 +219,14 @@ func (a *App) drawExtraSettings(w *nucular.Window, s *settingsView) {
 	}
 	if len(s.Items) == 0 {
 		w.Row(max(120, w.LayoutAvailableHeight()-10)).Dynamic(1)
-		s.Output.Edit(w)
+		codeEditor(w, s.Output)
 	}
 }
 func settingsItems(page string, data any) []settingsItem {
-	var result []settingsItem
-	if page == "Plugins" {
-		root, _ := data.(map[string]any)
-		markets, _ := root["marketplaces"].([]any)
-		for _, value := range markets {
-			market, _ := value.(map[string]any)
-			plugins, _ := market["plugins"].([]any)
-			for _, value := range plugins {
-				p, _ := value.(map[string]any)
-				p["_marketplacePath"], p["_marketplaceName"] = market["path"], market["name"]
-				on, _ := p["enabled"].(bool)
-				face, _ := p["interface"].(map[string]any)
-				name := fallback(str(face, "displayName"), str(p, "name"))
-				result = append(result, settingsItem{Name: name, ID: str(p, "id"), Description: str(face, "shortDescription"), Enabled: on, Raw: p})
-			}
-		}
-		sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
-		return result
+	if items, ok := extensionItems(page, data); ok {
+		return items
 	}
+	var result []settingsItem
 	var visit func(any)
 	visit = func(v any) {
 		switch x := v.(type) {
@@ -366,19 +284,24 @@ func (a *App) loadSettingsData(page, method string, params any) {
 		return
 	}
 	s := a.settingsView
+	if configurationPage(page) && (s.ConfigWriting || len(s.ConfigQueue) > 0) {
+		return
+	}
 	s.LoadGeneration++
 	generation := s.LoadGeneration
+	server := a.serverGeneration
+	cwd := a.prefs.WorkingDirectory
 	s.Busy = true
+	s.LoadError = ""
 	a.work(func() {
 		ctx, cancel := context.WithTimeout(a.ctx, 45*time.Second)
 		defer cancel()
-		var data any
-		err := c.Call(ctx, method, params, &data)
+		data, err := settingsPayload(ctx, c, page, method, params, cwd)
 		scrub(data)
 		items := settingsItems(page, data)
 		var fields []configField
 		var layers []configLayer
-		if page == "Codex configuration" {
+		if configurationPage(page) {
 			if d, ok := data.(map[string]any); ok {
 				layers = configLayers(d)
 				if conf, ok := d["config"].(map[string]any); ok {
@@ -388,21 +311,25 @@ func (a *App) loadSettingsData(page, method string, params any) {
 		}
 		b, _ := json.MarshalIndent(data, "", "  ")
 		a.post(func() {
-			if s.Page != page || s.LoadGeneration != generation {
+			if s.Page != page || s.LoadGeneration != generation || c != a.client || server != a.serverGeneration {
 				return
 			}
 			s.Busy = false
-			a.report(err)
+			if err != nil {
+				s.LoadError = err.Error()
+			} else {
+				s.LoadError = ""
+			}
 			s.Items = items
-			if d, ok := data.(map[string]any); ok && page == "Codex configuration" {
+			if d, ok := data.(map[string]any); ok && configurationPage(page) {
 				s.ConfigData = d
 				s.Layers = layers
 			}
-			if page == "Codex configuration" {
+			if configurationPage(page) {
 				if d, ok := data.(map[string]any); ok {
 					if conf, ok := d["config"].(map[string]any); ok {
 						_ = conf
-						s.Fields = fields
+						s.Fields = mergeConfigFields(s.Fields, fields)
 					}
 					if layers, ok := d["layers"].([]any); ok {
 						for _, layer := range layers {
@@ -420,7 +347,7 @@ func (a *App) loadSettingsData(page, method string, params any) {
 			}
 			setText(s.Output, string(b))
 		})
-	})
+	}, func() { s.Busy = false; s.LoadError = "The background work queue is full. Retry shortly." })
 }
 func (a *App) keyboardSettings(w *nucular.Window) {
 	if a.recordShortcut != "" {
@@ -429,9 +356,9 @@ func (a *App) keyboardSettings(w *nucular.Window) {
 	for _, action := range shellActions() {
 		w.Row(30).Ratio(.4, .28, .1, .1, .12)
 		w.Label(action.Title, "LC")
-		binding := fmt.Sprintf("%v + %v", action.Mods, action.Code)
+		binding := shortcutLabel(action.Code, action.Mods)
 		if custom, ok := a.prefs.Keymap[action.ID]; ok {
-			binding = fmt.Sprintf("%v + %v", custom.Mods, custom.Code)
+			binding = shortcutLabel(key.Code(custom.Code), key.Modifiers(custom.Mods))
 			if custom.Code == 0 {
 				binding = "Unbound"
 			}
@@ -454,8 +381,7 @@ func (a *App) keyboardSettings(w *nucular.Window) {
 	}
 	w.Row(30).Static(140)
 	if w.ButtonText("Reset all shortcuts") {
-		a.prefs.Keymap = nil
-		a.savePrefs()
+		a.confirm("Reset all shortcuts?", "Restore all keyboard shortcuts to their defaults?", func() { a.prefs.Keymap = nil; a.savePrefs() })
 	}
 }
 func codexHome() string {

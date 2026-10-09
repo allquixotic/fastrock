@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/aarzilli/nucular/internal/windowing"
 	"github.com/hajimehoshi/ebiten/v2"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/image/math/f64"
@@ -40,19 +41,18 @@ func (d *display) NewTexture(sz image.Point) (screen.Texture, error) {
 	return nil, errors.New("nucular uses software buffers, not screen textures")
 }
 func (d *display) NewWindow(o *screen.NewWindowOptions) (screen.Window, error) {
-	w := &window{events: make(chan any, 256), initial: image.Pt(o.Width, o.Height), title: o.Title}
+	w := &window{events: windowing.NewEvents(), initial: image.Pt(o.Width, o.Height), title: o.Title}
 	d.ready <- w
 	return w, nil
 }
 
 type window struct {
-	events           chan any
+	events           *windowing.Events
 	initial          image.Point
 	title            string
 	closed           atomic.Bool
 	mu               sync.Mutex
-	pixels           *image.RGBA
-	dirty            bool
+	surface          windowing.Surface
 	gpu              *ebiten.Image
 	width, height    int
 	cursorX, cursorY int
@@ -87,7 +87,7 @@ func Main(f func(screen.Screen)) {
 					return
 				}
 				w.mu.Lock()
-				dirty := w.dirty
+				dirty := !w.surface.Damage.Empty()
 				w.mu.Unlock()
 				if dirty || w.keyHeld.Load() {
 					ebiten.ScheduleFrame()
@@ -102,24 +102,17 @@ func Main(f func(screen.Screen)) {
 	}
 }
 func (w *window) Send(e any) {
-	select {
-	case w.events <- e:
-	default: // Keep lifecycle and key events lossless.
-		w.events <- e
-	}
+	w.events.Send(e)
 }
 func (w *window) SendFirst(e any) { w.Send(e) }
-func (w *window) NextEvent() any  { return <-w.events }
+func (w *window) NextEvent() any  { return w.events.Next() }
 func (w *window) Release()        { w.closed.Store(true); ebiten.ScheduleFrame() }
 func (w *window) Upload(dp image.Point, src screen.Buffer, sr image.Rectangle) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	sz := image.Pt(max(w.width, dp.X+sr.Dx()), max(w.height, dp.Y+sr.Dy()))
-	if w.pixels == nil || w.pixels.Rect.Size() != sz {
-		w.pixels = image.NewRGBA(image.Rectangle{Max: sz})
-	}
-	draw.Draw(w.pixels, image.Rectangle{Min: dp, Max: dp.Add(sr.Size())}, src.RGBA(), sr.Min, draw.Src)
-	w.dirty = true
+	w.surface.Ensure(sz)
+	w.surface.Upload(dp, src.RGBA(), sr)
 }
 func (w *window) Publish() screen.PublishResult {
 	ebiten.ScheduleFrame()
@@ -128,9 +121,10 @@ func (w *window) Publish() screen.PublishResult {
 func (w *window) Fill(r image.Rectangle, c color.Color, op draw.Op) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.pixels != nil {
-		draw.Draw(w.pixels, r, &image.Uniform{C: c}, image.Point{}, op)
-		w.dirty = true
+	if w.surface.Pixels != nil {
+		r = r.Intersect(w.surface.Pixels.Bounds())
+		draw.Draw(w.surface.Pixels, r, &image.Uniform{C: c}, image.Point{}, op)
+		w.surface.Damage = w.surface.Damage.Union(r)
 	}
 }
 func (w *window) Draw(f64.Aff3, screen.Texture, image.Rectangle, draw.Op, *screen.DrawOptions) {
@@ -233,23 +227,8 @@ func (w *window) Update() error {
 		}
 	}
 	dx, dy := ebiten.Wheel()
-	if dx != 0 {
-		b := mouse.ButtonWheelRight
-		if dx < 0 {
-			b = mouse.ButtonWheelLeft
-		}
-		for n := 0; n < max(1, int(abs(dx))); n++ {
-			w.Send(mouse.Event{X: float32(x), Y: float32(y), Button: b, Direction: mouse.DirStep})
-		}
-	}
-	if dy != 0 {
-		b := mouse.ButtonWheelUp
-		if dy < 0 {
-			b = mouse.ButtonWheelDown
-		}
-		for n := 0; n < max(1, int(abs(dy))); n++ {
-			w.Send(mouse.Event{X: float32(x), Y: float32(y), Button: b, Direction: mouse.DirStep})
-		}
+	if dx != 0 || dy != 0 {
+		w.Send(windowing.Wheel{X: float32(x), Y: float32(y), DeltaX: float32(dx), DeltaY: float32(dy)})
 	}
 	var mods key.Modifiers
 	if ebiten.IsKeyPressed(ebiten.KeyShift) {
@@ -291,12 +270,6 @@ func (w *window) Update() error {
 	}
 	return nil
 }
-func abs(v float64) float64 {
-	if v < 0 {
-		return -v
-	}
-	return v
-}
 
 type game struct{ *window }
 
@@ -304,20 +277,24 @@ func (g *game) Draw(screenImage *ebiten.Image) {
 	w := g.window
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.pixels == nil {
+	if w.surface.Pixels == nil {
 		return
 	}
-	sz := w.pixels.Rect.Size()
+	sz := w.surface.Pixels.Rect.Size()
 	if w.gpu == nil || w.gpu.Bounds().Size() != sz {
 		if w.gpu != nil {
 			w.gpu.Deallocate()
 		}
 		w.gpu = ebiten.NewImage(sz.X, sz.Y)
-		w.dirty = true
+		w.surface.Damage = w.surface.Pixels.Bounds()
 	}
-	if w.dirty {
-		w.gpu.WritePixels(w.pixels.Pix)
-		w.dirty = false
+	if !w.surface.Damage.Empty() {
+		r, pixels := w.surface.PackedDamage()
+		w.gpu.SubImage(r).(*ebiten.Image).WritePixels(pixels)
+		w.surface.Damage = image.Rectangle{}
 	}
-	screenImage.DrawImage(w.gpu, nil)
+	visible := image.Rect(0, 0, w.width, w.height).Intersect(w.gpu.Bounds())
+	if !visible.Empty() {
+		screenImage.DrawImage(w.gpu.SubImage(visible).(*ebiten.Image), nil)
+	}
 }

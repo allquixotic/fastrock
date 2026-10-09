@@ -1,32 +1,43 @@
 package ui
 
 import (
-	"fmt"
 	"github.com/aarzilli/nucular"
 	"github.com/allquixotic/fastrock/internal/platform"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 func (a *App) pasteComposer(v *chatView) {
+	original, at := text(v.Editor), position(v.Editor)
 	a.work(func() {
 		data, err := platform.ClipboardPNG()
 		path, value := "", ""
 		if err == nil && len(data) > 0 {
-			path = filepath.Join(a.store.Dir, fmt.Sprintf("clipboard-%d.png", time.Now().UnixNano()))
-			err = os.WriteFile(path, data, 0600)
+			path, err = storeClipboardImage(a.store.Dir, data)
 		} else if err == nil {
-			value = nucular.ReadClipboardText()
+			value, err = nucular.ReadClipboardTextResult()
 		}
 		a.post(func() {
 			if err != nil {
 				a.report(err)
 				return
 			}
+			owned := false
+			for _, view := range a.chats {
+				if view == v {
+					owned = true
+					break
+				}
+			}
+			if !owned {
+				return
+			}
 			if path != "" {
 				v.Attachments = append(v.Attachments, path)
 			} else {
+				if text(v.Editor) != original {
+					a.toast = "The draft changed while reading the clipboard; paste again to choose the insertion point"
+					return
+				}
+				at.apply(v.Editor)
 				v.Editor.Paste(value)
 			}
 		})

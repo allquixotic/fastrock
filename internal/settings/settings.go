@@ -2,23 +2,53 @@
 package settings
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/zalando/go-keyring"
 )
 
 const Service = "fastrock"
 
+const preferencesSchemaVersion = 1
+
+// RallyFilter keeps the selected reference separate from its display label.
+// Contains filters store text; exact Type filters store a canonical kind.
+type RallyFilter struct {
+	Field    string `json:"field"`
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
+	Label    string `json:"label,omitempty"`
+}
+
 type SavedView struct {
-	Name  string `json:"name"`
-	Page  string `json:"page"`
-	Query string `json:"query,omitempty"`
-	Group string `json:"group,omitempty"`
-	Mode  string `json:"mode,omitempty"`
+	Display          *BoardDisplay `json:"display,omitempty"`
+	Filters          []RallyFilter `json:"filters,omitempty"`
+	CardFields       []string      `json:"cardFields"`
+	Name             string        `json:"name"`
+	Page             string        `json:"page"`
+	Query            string        `json:"query,omitempty"`
+	Group            string        `json:"group,omitempty"`
+	Mode             string        `json:"mode,omitempty"`
+	Search           string        `json:"search,omitempty"`
+	Timebox          string        `json:"timebox,omitempty"`
+	TimeboxName      string        `json:"timeboxName,omitempty"`
+	ReleaseTimebox   string        `json:"releaseTimebox,omitempty"`
+	ReleaseName      string        `json:"releaseName,omitempty"`
+	CurrentIteration bool          `json:"currentIteration,omitempty"`
+	Owner            string        `json:"owner,omitempty"`
+	State            string        `json:"state,omitempty"`
+	Blocked          bool          `json:"blocked,omitempty"`
+	Ready            bool          `json:"ready,omitempty"`
+	Columns          []string      `json:"columns,omitempty"`
+	Sort             string        `json:"sort,omitempty"`
+	Descending       bool          `json:"descending,omitempty"`
 }
 
 type KeyBinding struct {
@@ -26,6 +56,8 @@ type KeyBinding struct {
 	Mods uint32 `json:"modifiers"`
 }
 type Preferences struct {
+	RallyDisplay     *BoardDisplay         `json:"rallyDisplay,omitempty"`
+	SchemaVersion    int                   `json:"schemaVersion,omitempty"`
 	RecentFolders    []string              `json:"recentFolders,omitempty"`
 	Keymap           map[string]KeyBinding `json:"keymap,omitempty"`
 	Theme            string                `json:"theme"`
@@ -46,8 +78,8 @@ type Preferences struct {
 }
 
 func Defaults() Preferences {
-	cwd, _ := os.Getwd()
-	return Preferences{Theme: "dark", FontSize: 13, Sidebar: true, Info: true, EnterSends: true, BusyInput: "queue", AgentMessages: true,
+	cwd, _ := os.UserHomeDir()
+	return Preferences{SchemaVersion: preferencesSchemaVersion, Theme: "dark", FontSize: 13, Sidebar: true, Info: true, EnterSends: true, BusyInput: "queue", AgentMessages: true,
 		RallyEndpoint: "https://rally1.rallydev.com", ProjectChildren: true, WorkingDirectory: cwd}
 }
 
@@ -90,30 +122,82 @@ func (s *Store) Load() (Preferences, error) {
 	if e != nil {
 		return p, e
 	}
+	// Start at the unversioned schema while retaining defaults for fields an
+	// older app did not write. Explicit false/empty values still unmarshal.
+	p.SchemaVersion = 0
+	b = bytes.TrimSpace(b)
+	if len(b) == 0 || b[0] != '{' {
+		return p, fmt.Errorf("settings.json: expected a preferences object")
+	}
 	if e = json.Unmarshal(b, &p); e != nil {
 		return p, fmt.Errorf("settings.json: %w", e)
 	}
-	if p.Theme != "dark" && p.Theme != "light" {
+	return Normalize(p)
+}
+
+// Normalize is shared by disk reads and broker updates. Newer schemas must not
+// be overwritten by an older application that cannot understand their fields.
+func Normalize(p Preferences) (Preferences, error) {
+	if p.SchemaVersion > preferencesSchemaVersion || p.SchemaVersion < 0 {
+		return p, fmt.Errorf("unsupported preferences schema %d", p.SchemaVersion)
+	}
+	for p.SchemaVersion < preferencesSchemaVersion {
+		switch p.SchemaVersion {
+		case 0:
+			migratePreferencesV0(&p)
+		}
+	}
+	if p.Theme != "dark" && p.Theme != "light" && p.Theme != "system" {
 		p.Theme = "dark"
 	}
 	if p.FontSize < 10 || p.FontSize > 24 {
 		p.FontSize = 13
 	}
+	if p.RallyDisplay != nil {
+		p.RallyDisplay = p.RallyDisplay.Copy()
+	}
+	p.Views = append([]SavedView(nil), p.Views...)
+	for i := range p.Views {
+		if p.Views[i].Display != nil {
+			p.Views[i].Display = p.Views[i].Display.Copy()
+		}
+	}
 	return p, nil
 }
-func (s *Store) Save(p Preferences) error { return s.WriteJSON("settings.json", p) }
+
+// The original schema used the same field names. Load supplies defaults for
+// missing fields before this migration; never reset user-selected false values.
+func migratePreferencesV0(p *Preferences) { p.SchemaVersion = 1 }
+
+func (s *Store) Save(p Preferences) error {
+	p, err := Normalize(p)
+	if err != nil {
+		return err
+	}
+	return s.WriteJSON("settings.json", p)
+}
 func (s *Store) WriteJSON(name string, v any) error {
-	b, e := json.MarshalIndent(v, "", "  ")
+	b, e := json.Marshal(v)
 	if e != nil {
 		return e
 	}
-	f, e := os.CreateTemp(s.Dir, ".fastrock-*")
+	if strings.HasPrefix(name, "session") && len(b) > 32<<20 {
+		return fmt.Errorf("session exceeds the 32 MiB recovery limit; export large drafts before closing")
+	}
+	return WriteFileAtomic(filepath.Join(s.Dir, name), b, 0600)
+}
+
+// WriteFileAtomic persists a complete replacement before renaming it. Callers
+// choose permissions explicitly; raw configuration preserves the existing mode.
+func WriteFileAtomic(path string, b []byte, mode os.FileMode) error {
+	dir := filepath.Dir(path)
+	f, e := os.CreateTemp(dir, ".fastrock-*")
 	if e != nil {
 		return e
 	}
 	tmp := f.Name()
 	defer os.Remove(tmp)
-	if e = f.Chmod(0600); e == nil {
+	if e = f.Chmod(mode); e == nil {
 		_, e = f.Write(b)
 	}
 	if e == nil {
@@ -126,7 +210,17 @@ func (s *Store) WriteJSON(name string, v any) error {
 	if e != nil {
 		return e
 	}
-	return os.Rename(tmp, filepath.Join(s.Dir, name))
+	for attempt := 0; attempt < 4; attempt++ {
+		e = os.Rename(tmp, path)
+		if e == nil {
+			return syncDirectory(dir)
+		}
+		if !retryRename(e) {
+			break
+		}
+		time.Sleep(time.Duration(attempt+1) * 25 * time.Millisecond)
+	}
+	return e
 }
 func (s *Store) Token(endpoint string) (string, error) {
 	if v := os.Getenv("FASTROCK_RALLY_TOKEN"); v != "" {

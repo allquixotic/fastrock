@@ -5,11 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 	"sync"
-
-	"github.com/aarzilli/nucular"
 )
 
 // Snapshot of Codex's Apache-2.0 config schema; see THIRD_PARTY_NOTICES.md.
@@ -124,8 +121,8 @@ var configSpecs = sync.OnceValue(func() map[string]*configSpec {
 
 // Called by the settings worker, never by a draw callback.
 func schemaConfigFields(config map[string]any) []configField {
-	fields := configFields(config)
 	specs := configSpecs()
+	fields := typedConfigFields(config, specs)
 	seen := map[string]bool{}
 	for i := range fields {
 		fields[i].Spec = specs[fields[i].Key]
@@ -155,16 +152,32 @@ func schemaConfigFields(config map[string]any) []configField {
 				setText(f.Editor, string(b))
 			}
 		}
+		prepareConfigField(&f)
 		fields = append(fields, f)
 	}
-	sort.Slice(fields, func(i, j int) bool { return fields[i].Key < fields[j].Key })
+	configGroupsSorted(fields)
 	return fields
 }
 
 func configFieldValue(f *configField) (any, error) {
 	var value any
+	if f.Protected {
+		return nil, fmt.Errorf("this table contains protected values; edit config.toml directly")
+	}
+	if strings.TrimSpace(text(f.Editor)) == "" {
+		return nil, nil
+	}
+	if f.Kind == "words" {
+		return splitSettingWords(text(f.Editor))
+	}
+	if f.Kind == "toml" {
+		return tableFieldValue(f)
+	}
 	if f.Kind == "string" {
 		value = text(f.Editor)
+		if value == "" {
+			return nil, nil
+		}
 	} else if err := json.Unmarshal([]byte(text(f.Editor)), &value); err != nil {
 		return nil, err
 	}
@@ -182,23 +195,4 @@ func configFieldValue(f *configField) (any, error) {
 		}
 	}
 	return value, nil
-}
-
-func (a *App) configFieldHelp(f *configField, origin string) {
-	a.window.PopupOpen(f.Key, nucular.WindowTitle|nucular.WindowClosable, dialogBounds(), true, func(w *nucular.Window) {
-		title(w, f.Key, a.p)
-		muted(w, "Source: "+origin, a.p)
-		if f.Spec != nil {
-			w.Row(200).Dynamic(1)
-			w.LabelWrap(f.Spec.Description)
-			muted(w, fmt.Sprintf("Type: %s · Default: %v", f.Spec.Type, f.Spec.Default), a.p)
-		}
-		w.Row(28).Dynamic(2)
-		if w.ButtonText("Copy setting path") {
-			a.copyText(f.Key)
-		}
-		if w.ButtonText("Close") {
-			w.Close()
-		}
-	})
 }

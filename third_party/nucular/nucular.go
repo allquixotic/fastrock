@@ -52,6 +52,7 @@ type Window struct {
 	groupWnd map[string]*Window
 	// update function
 	updateFn      UpdateFn
+	onClose       func()
 	usingSub      bool
 	began         bool
 	rowCtor       rowConstructor
@@ -531,10 +532,10 @@ func (win *Window) specialPanelBegin() {
 	win.first = false
 }
 
-var nk_null_rect = rect.Rect{-8192.0, -8192.0, 16384.0, 16384.0}
+var nk_null_rect = rect.Rect{X: -8192, Y: -8192, W: 16384, H: 16384}
 
 func panelEnd(ctx *context, window *Window) {
-	var footer = rect.Rect{0, 0, 0, 0}
+	var footer = rect.Rect{}
 
 	layout := window.layout
 	style := &ctx.Style
@@ -898,7 +899,7 @@ func panelLayout(ctx *context, win *Window, height int, cols int, cnt int) {
 	layout.Row.Height = height + item_spacing.Y
 	layout.Row.ItemOffset = 0
 	if layout.Flags&WindowDynamic != 0 {
-		win.cmds.FillRect(rect.Rect{layout.Bounds.X, layout.AtY, layout.Bounds.W, height + item_spacing.Y}, 0, style.Background)
+		win.cmds.FillRect(rect.Rect{X: layout.Bounds.X, Y: layout.AtY, W: layout.Bounds.W, H: height + item_spacing.Y}, 0, style.Background)
 	}
 }
 
@@ -911,7 +912,10 @@ const (
 	layoutInvalid
 )
 
+//lint:ignore ST1012 Preserve the public upstream API name.
 var InvalidLayoutErr = errors.New("invalid layout")
+
+//lint:ignore ST1012 Preserve the public upstream API name.
 var UsingSubErr = errors.New("parent window used while populating a sub window")
 
 func layoutWidgetSpace(bounds *rect.Rect, ctx *context, win *Window, modify bool) {
@@ -1301,6 +1305,7 @@ func (win *Window) LayoutFitWidth(id int, minwidth int) {
 	layout.Row.CalcMaxWidth = col.first
 }
 
+//lint:ignore ST1012 Preserve the public upstream API name.
 var WrongLayoutErr = errors.New("Command not available with current layout")
 
 // Sets position and size of the next widgets in a Space row layout
@@ -1356,6 +1361,12 @@ func (win *Window) WidgetBounds() rect.Rect {
 	var bounds rect.Rect
 	win.layoutPeek(&bounds)
 	return bounds
+}
+
+// LayoutNextRowY returns the screen Y coordinate of the next row. Unlike
+// WidgetBounds, it can be queried before the first row has been declared.
+func (win *Window) LayoutNextRowY() int {
+	return win.layout.AtY + win.layout.Row.Height - win.layout.Offset.Y
 }
 
 // Returns remaining available height of win in scaled units.
@@ -2422,12 +2433,9 @@ func progressBehavior(state *nstyle.WidgetStates, in *Input, r rect.Rect, maxval
 }
 
 func doProgress(win *Window, bounds rect.Rect, value int, maxval int, modifiable bool, style *nstyle.Progress, in *Input) int {
-	var prog_scale float64
-	var cursor rect.Rect
-
 	/* calculate progressbar cursor */
-	cursor = padRect(bounds, style.Padding)
-	prog_scale = float64(value) / float64(maxval)
+	cursor := padRect(bounds, style.Padding)
+	prog_scale := float64(value) / float64(maxval)
 	cursor.W = int(float64(cursor.W) * prog_scale)
 
 	/* update progressbar */
@@ -2786,6 +2794,18 @@ func (win *Window) Close() {
 	}
 }
 
+// OnClose installs a callback for dismissal of this popup, including Escape.
+// It runs on the UI owner before the popup is removed.
+func (win *Window) OnClose(f func()) { win.onClose = f }
+
+func (win *Window) closed() {
+	if win.onClose != nil {
+		f := win.onClose
+		win.onClose = nil
+		f()
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 // CONTEXTUAL
 ///////////////////////////////////////////////////////////////////////////////////
@@ -3092,11 +3112,11 @@ func (win *Window) SetClipboard(text string) {
 // GetClipboard requests the clipboard, it will be returned in a subsequent
 // frame in the Input struct
 func (win *Window) GetClipboard() {
-	win.cmds.GetClipboard()
+	win.requestClipboardTarget(command.GetClipboardCmd, win.toplevel, func(value string) { win.ctx.nextClipboard = value; win.ctx.hasNextClipboard = true })
 }
 
 // GetPrimarySelection returns the primary selection, it will be returned in
 // a subsequent frame in the Input struct. Does nothing except on X11
 func (win *Window) GetPrimarySelection() {
-	win.cmds.GetPrimarySelection()
+	win.requestClipboardTarget(command.GetPrimarySelectionCmd, win.toplevel, func(value string) { win.ctx.nextClipboard = value; win.ctx.hasNextClipboard = true })
 }

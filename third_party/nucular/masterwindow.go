@@ -64,7 +64,8 @@ func NewMasterWindowSize(flags WindowFlags, title string, sz image.Point, update
 type WindowWalkFn func(w *Window, title string, data interface{}, docked bool, splitSize int, rect rect.Rect)
 
 type masterWindowCommon struct {
-	ctx *context
+	ctx  *context
+	wake chan struct{}
 
 	layout panel
 
@@ -73,10 +74,14 @@ type masterWindowCommon struct {
 
 	uilock sync.Mutex
 
-	prevCmds []command.Command
+	prevCmds    []command.Command
+	frameDamage image.Rectangle
 }
 
 func (mw *masterWindowCommon) masterWindowCommonInit(ctx *context, flags WindowFlags, updatefn UpdateFn, wnd MasterWindow) {
+	mw.wake = make(chan struct{}, 1)
+	ctx.clipboardResults = make(chan clipboardResult, 64)
+	ctx.clipboardClosed = make(chan struct{})
 	ctx.Input.Mouse.valid = true
 	ctx.DockedWindows.Split.MinSize = 40
 
@@ -144,7 +149,15 @@ func (mw *masterWindowCommon) SetPerf(perf bool) {
 
 // Forces an update of the window.
 func (mw *masterWindowCommon) Changed() {
-	atomic.AddInt32(&mw.ctx.changed, 1)
+	atomic.CompareAndSwapInt32(&mw.ctx.changed, 0, 1)
+	mw.signalUpdate()
+}
+
+func (mw *masterWindowCommon) signalUpdate() {
+	select {
+	case mw.wake <- struct{}{}:
+	default:
+	}
 }
 
 func (mw *masterWindowCommon) Lock() {
@@ -198,42 +211,13 @@ func (w *masterWindowCommon) dumpFrame(wimg *image.RGBA, t0, t1, te time.Time, n
 
 // compares cmds to the last draw frame, returns true if there is a change
 func (w *masterWindowCommon) drawChanged() bool {
-
 	contextAllCommands(w.ctx)
 	w.ctx.Reset()
-
 	cmds := w.ctx.cmds
-
-	if len(cmds) != len(w.prevCmds) {
-		return true
+	if len(cmds) > 0 && cmds[0].Kind == command.RectFilledCmd {
+		cmds[0].RectFilled.Color.A = 0xff
 	}
-
-	for i := range cmds {
-		if cmds[i].Kind != w.prevCmds[i].Kind {
-			return true
-		}
-
-		cmd := &cmds[i]
-		pcmd := &w.prevCmds[i]
-
-		switch cmds[i].Kind {
-		case command.ScissorCmd, command.LineCmd, command.TriangleFilledCmd, command.CircleFilledCmd, command.ImageCmd, command.TextCmd, command.CursorCmd:
-			if *pcmd != *cmd {
-				return true
-			}
-
-		case command.RectFilledCmd:
-			if i == 0 {
-				cmd.RectFilled.Color.A = 0xff
-			}
-			if *pcmd != *cmd {
-				return true
-			}
-
-		default:
-			panic(UnknownCommandErr)
-		}
-	}
-
-	return false
+	var effects bool
+	w.frameDamage, effects = commandDamage(w.prevCmds, cmds, w.ctx.Windows[0].Bounds.Rectangle())
+	return !w.frameDamage.Empty() || effects
 }

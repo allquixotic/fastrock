@@ -100,7 +100,7 @@ func (dwh *drawableWindowHeader) Draw(z *nstyle.Style, out *command.Buffer) {
 		}
 	} else {
 		/* draw dynamic window body */
-		out.FillRect(rect.Rect{dwh.Bounds.X, dwh.Bounds.Y, dwh.Bounds.W, dwh.RowHeight + style.Padding.Y}, 0, style.Background)
+		out.FillRect(rect.Rect{X: dwh.Bounds.X, Y: dwh.Bounds.Y, W: dwh.Bounds.W, H: dwh.RowHeight + style.Padding.Y}, 0, style.Background)
 	}
 
 	if dwh.HeaderActive {
@@ -867,7 +867,7 @@ func drawComboSymbol(win *Window, state nstyle.WidgetStates, header rect.Rect, i
 		out.FillRect(shrinkRect(header, 1), 0, background.Data.Color)
 	}
 	{
-		var bounds = rect.Rect{0, 0, 0, 0}
+		var bounds = rect.Rect{}
 		var content rect.Rect
 		var button rect.Rect
 		var sym label.SymbolType
@@ -1001,7 +1001,7 @@ func drawComboImage(win *Window, state nstyle.WidgetStates, header rect.Rect, is
 		out.FillRect(shrinkRect(header, 1), 0, background.Data.Color)
 	}
 	{
-		var bounds = rect.Rect{0, 0, 0, 0}
+		var bounds = rect.Rect{}
 		var content rect.Rect
 		var button rect.Rect
 		var sym label.SymbolType

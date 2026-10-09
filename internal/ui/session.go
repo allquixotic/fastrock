@@ -2,8 +2,9 @@ package ui
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
-	"path/filepath"
 	"slices"
 	"time"
 
@@ -14,72 +15,76 @@ import (
 
 // Only local presentation state and unsent drafts live here. Codex owns history.
 type session struct {
-	Mailbox   map[string][]mailMessage
-	Documents []tabTransfer
-	Tabs      []workspace.Tab
-	Active    string
-	Counter   int
-	Chats     map[string]*workspace.Conversation
+	SchemaVersion int `json:"schemaVersion,omitempty"`
+	Mailbox       map[string][]mailMessage
+	Documents     []tabTransfer
+	Tabs          []workspace.Tab
+	Active        string
+	Counter       int
+	Chats         map[string]*workspace.Conversation
 }
 
-func (a *App) loadSession() {
-	b, err := os.ReadFile(filepath.Join(a.store.Dir, "session.json"))
-	if err != nil {
+const sessionSchemaVersion = 3 // validated records and document presentation
+
+type loadedSessions struct {
+	primary *session
+	extras  []session
+	paths   []string
+	blocked bool
+	problem string
+}
+
+func (a *App) applySessions(loaded loadedSessions) {
+	a.sessionLoading = false
+	a.sessionBlocked, a.persistenceError = loaded.blocked, loaded.problem
+	if loaded.primary == nil {
 		return
 	}
-	var s session
-	if json.Unmarshal(b, &s) != nil {
-		return
-	}
-	a.state.Tabs, a.state.Active, a.state.Counter = s.Tabs, s.Active, s.Counter
-	a.mailbox = s.Mailbox
-	for id, c := range s.Chats {
-		if c == nil || id != c.ID {
-			continue
+	primary := loaded.primary
+	a.state.Tabs, a.state.Active, a.state.Counter = primary.Tabs, primary.Active, primary.Counter
+	a.mailbox = primary.Mailbox
+	all := append([]session{*primary}, loaded.extras...)
+	for i, s := range all {
+		for id, c := range s.Chats {
+			if c == nil || id != c.ID {
+				continue
+			}
+			c.Status, c.TurnID = "idle", ""
+			c.QueuePaused = true
+			for j := range c.Outbox {
+				c.Outbox[j].Status = "unconfirmed"
+			}
+			for j := range c.Queue {
+				if c.Queue[j].Status == "pending" {
+					c.Queue[j].Status = "unconfirmed"
+				}
+			}
+			a.state.Chats[id] = c
+			a.invalidateSidebar(id)
+			a.rememberDraft(id)
 		}
-		c.Status, c.TurnID = "idle", ""
-		a.state.Chats[id] = c
-		a.rememberDraft(id)
-	}
-	for _, doc := range s.Documents {
-		a.installTransfer(doc)
-	}
-	a.state.Active = s.Active
-	// Pop-outs from the preceding run rejoin the primary workspace on restart.
-	paths, _ := filepath.Glob(filepath.Join(a.store.Dir, "session-popout-*.json"))
-	for _, path := range paths {
-		if data, err := os.ReadFile(path); err == nil {
-			var extra session
-			if json.Unmarshal(data, &extra) == nil {
-				a.importedSessions = append(a.importedSessions, path)
-				for id, c := range extra.Chats {
-					if c != nil {
-						a.state.Chats[id] = c
-						a.rememberDraft(id)
-					}
+		if i > 0 {
+			for _, t := range s.Tabs {
+				found := false
+				for _, prior := range a.state.Tabs {
+					found = found || prior.ID == t.ID
 				}
-				for _, t := range extra.Tabs {
-					found := false
-					for _, prior := range a.state.Tabs {
-						if prior.ID == t.ID {
-							found = true
-							break
-						}
-					}
-					if !found {
-						a.state.Tabs = append(a.state.Tabs, t)
-					}
-				}
-				for _, doc := range extra.Documents {
-					a.installTransfer(doc)
+				if !found {
+					a.state.Tabs = append(a.state.Tabs, t)
 				}
 			}
 		}
+		for _, doc := range s.Documents {
+			a.installTransfer(doc)
+		}
 	}
-	a.state.Active = s.Active
+	a.importedSessions = append(a.importedSessions, loaded.paths...)
+	a.state.Active = primary.Active
 }
+func (a *App) loadSession() { a.applySessions(readSessions(a.store.Dir)) }
 func (a *App) sessionSnapshot() session {
-	s := session{Mailbox: map[string][]mailMessage{}, Tabs: append([]workspace.Tab(nil), a.state.Tabs...), Active: a.state.Active, Counter: a.state.Counter, Chats: map[string]*workspace.Conversation{}}
+	a.checkpointEpoch++
+	s := session{SchemaVersion: sessionSchemaVersion, Mailbox: map[string][]mailMessage{}, Active: a.state.Active, Counter: a.state.Counter, Chats: map[string]*workspace.Conversation{}}
 	for id, messages := range a.mailbox {
 		s.Mailbox[id] = append([]mailMessage(nil), messages...)
 	}
@@ -100,46 +105,104 @@ func (a *App) sessionSnapshot() session {
 		if c == nil || c.Ephemeral {
 			continue
 		}
-		local := *c
-		local.Queue = cloneQueue(c.Queue)
-		local.DraftAttachments = append([]string(nil), c.DraftAttachments...)
-		local.Blocks, local.TurnID, local.Status = nil, "", "idle"
-		if v := a.chats[id]; v != nil {
-			local.Draft = text(v.Editor)
-			local.DraftAttachments = append([]string(nil), v.Attachments...)
-		}
-		s.Chats[id] = &local
+		s.Chats[id] = a.checkpointConversation(c)
 	}
 	s.Tabs = nil
 	for _, t := range a.state.Tabs {
 		if c := a.state.Chats[t.Target]; c != nil && c.Ephemeral {
 			continue
 		}
+		if t.Kind == workspace.File {
+			if f := a.files[t.ID]; f != nil && f.Virtual {
+				continue
+			}
+		}
 		s.Tabs = append(s.Tabs, t)
 		if t.Kind == workspace.Rally || t.Kind == workspace.File {
-			doc := a.tabSnapshot(t)
-			doc.Chat = nil
-			if doc.File != nil && !doc.File.Virtual {
-				doc.File.Text = ""
-				doc.File.TextLoaded = false
-			}
-			s.Documents = append(s.Documents, doc)
+			s.Documents = append(s.Documents, a.checkpointDocument(t))
+		}
+	}
+	for id := range a.chatCheckpoints {
+		if s.Chats[id] == nil {
+			delete(a.chatCheckpoints, id)
+		}
+	}
+	for id := range a.documentCheckpoints {
+		if a.documentCheckpoints[id].observed != a.checkpointEpoch {
+			delete(a.documentCheckpoints, id)
 		}
 	}
 	return s
 }
-func (a *App) saveSession() {
-	if a.store.WriteJSON(a.sessionFile(), a.sessionSnapshot()) == nil {
-		a.removeImportedSessions()
+func (a *App) saveSession() error {
+	snapshot := a.sessionSnapshot()
+	var err error
+	if a.sessionBlocked {
+		err = fmt.Errorf("original session is unreadable")
+	} else {
+		err = writeSessionFile(a.store, a.sessionFile(), snapshot)
 	}
+	if err == nil {
+		a.removeImportedSessions()
+		return nil
+	}
+	// A failed final flush must leave a durable, discoverable recovery copy.
+	data, encodeErr := json.MarshalIndent(snapshot, "", "  ")
+	if encodeErr == nil {
+		if f, createErr := os.CreateTemp("", "fastrock-session-recovery-*.json"); createErr == nil {
+			_ = f.Chmod(0600)
+			_, writeErr := f.Write(data)
+			syncErr := f.Sync()
+			closeErr := f.Close()
+			if writeErr == nil && syncErr == nil && closeErr == nil {
+				return fmt.Errorf("could not save the session: %w. Drafts were preserved at %s", err, f.Name())
+			}
+			_ = os.Remove(f.Name())
+		}
+	}
+	return fmt.Errorf("could not save the session or a recovery copy: %w", err)
 }
 func (a *App) checkpoint() {
-	if time.Since(a.lastCheckpoint) < time.Second {
+	if a.sessionBlocked || a.sessionLoading || a.sessions == nil {
+		return
+	}
+	if elapsed := time.Since(a.lastCheckpoint); elapsed < 100*time.Millisecond {
+		if a.checkpointObserveTimer == nil {
+			a.checkpointObserveTimer = time.AfterFunc(100*time.Millisecond-elapsed, func() {
+				a.post(func() { a.checkpointObserveTimer = nil; a.lastCheckpoint = time.Time{} })
+			})
+		}
 		return
 	}
 	a.lastCheckpoint = time.Now()
 	a.publishThreads()
 	snapshot := a.sessionSnapshot()
+	if sameSessionCheckpoint(a.pendingCheckpoint, &snapshot) {
+		return
+	}
+	a.pendingCheckpoint = &snapshot
+	a.checkpointGeneration++
+	generation := a.checkpointGeneration
+	if a.checkpointTimer != nil {
+		a.checkpointTimer.Stop()
+	}
+	if sameSessionCheckpoint(a.publishedCheckpoint, &snapshot) {
+		return
+	}
+	a.checkpointTimer = time.AfterFunc(300*time.Millisecond, func() {
+		a.post(func() {
+			if generation == a.checkpointGeneration {
+				a.publishCheckpoint()
+			}
+		})
+	})
+}
+
+func (a *App) publishCheckpoint() {
+	if a.pendingCheckpoint == nil || a.sessions == nil {
+		return
+	}
+	snapshot := *a.pendingCheckpoint
 	select {
 	case a.sessions <- snapshot:
 	default:
@@ -150,16 +213,18 @@ func (a *App) checkpoint() {
 		select {
 		case a.sessions <- snapshot:
 		default:
+			return
 		}
 	}
-
+	a.publishedCheckpoint = a.pendingCheckpoint
 }
+
 func (a *App) publishThreads() {
 	rows := []codex.OpenThread{}
 	for _, tab := range a.state.Tabs {
 		if tab.Kind == workspace.Chat {
 			if c := a.state.Chats[tab.Target]; c != nil {
-				rows = append(rows, codex.OpenThread{ID: c.ID, Title: c.Title, Cwd: c.Cwd, Status: c.Status, AcceptsMessages: !c.NoMessages && !c.EphemeralLost})
+				rows = append(rows, codex.OpenThread{ID: c.ID, Title: c.Title, Cwd: c.Cwd, Status: c.Status, AcceptsMessages: !c.NoMessages && !c.EphemeralLost, Permissions: deliveryScope(c)})
 			}
 		}
 	}
@@ -197,17 +262,22 @@ func (a *App) reconnect() {
 	}
 	a.connecting = true
 	a.status = "Connecting Codex…"
-	cwd := a.prefs.WorkingDirectory
 	a.work(func() {
 		c, err := codex.Dial(a.ctx, a.connection.Address, a.connection.Token)
 		a.post(func() {
 			a.connecting = false
 			if err != nil {
 				a.report(err)
+				a.serverError = err.Error()
 				a.status = "Codex disconnected"
 				return
 			}
 			a.client = c
+			a.serverError, a.startedProvider = "", ""
+			a.serverGeneration++
+			a.catalog.PolicyLoaded = false
+			a.serverPaused, a.serverStarting = false, false
+			a.resetInfoConnection()
 			a.openThreads = nil
 			a.publishThreads()
 			a.status = c.Version + " · Connected"
@@ -220,7 +290,8 @@ func (a *App) reconnect() {
 			}
 			a.restoreDocuments()
 			go a.consume(c)
-			a.work(func() { a.loadCatalog(c, cwd); a.loadThreads(c, false) })
+			a.refreshCatalog()
+			a.requestThreads(false, "")
 		})
 	})
 }
@@ -252,6 +323,11 @@ func cloneQueue(in []workspace.Draft) []workspace.Draft {
 }
 func (a *App) removeImportedSessions() {
 	for _, path := range a.importedSessions {
+		// Remove the backup first so a consumed window cannot reappear on
+		// the next startup solely from its last-good snapshot.
+		if err := os.Remove(path + ".bak"); err != nil && !os.IsNotExist(err) {
+			continue
+		}
 		_ = os.Remove(path)
 	}
 	a.importedSessions = nil
@@ -282,7 +358,7 @@ func (a *App) forgetFolder(folder string) {
 
 func (a *App) rememberDraft(id string) {
 	c := a.state.Chats[id]
-	if c == nil || (c.Draft == "" && len(c.DraftAttachments) == 0 && len(c.Queue) == 0) {
+	if c == nil || (c.Draft == "" && len(c.DraftAttachments) == 0 && len(c.Queue) == 0 && len(c.Outbox) == 0 && c.EditQueue == "") {
 		delete(a.draftChats, id)
 		return
 	}
@@ -290,4 +366,17 @@ func (a *App) rememberDraft(id string) {
 		a.draftChats = make(map[string]bool)
 	}
 	a.draftChats[id] = true
+}
+
+func readSessionFile(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, (32<<20)+1))
+	if err == nil && len(data) > 32<<20 {
+		return nil, fmt.Errorf("session exceeds 32 MiB limit")
+	}
+	return data, err
 }

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"math/rand/v2"
 	"time"
 
 	"github.com/allquixotic/fastrock/internal/rally"
@@ -12,18 +13,42 @@ const rallyWindowItems = 2048
 
 // Stream only lightweight card fields. Full HTML and collections are loaded
 // when an artifact is opened. The window advances only on viewport demand.
-const cardFields = "ObjectID,FormattedID,Name,ScheduleState,State,Owner,Iteration,Release,Project,Feature,Parent,PlanEstimate,Estimate,ToDo,Actuals,Blocked,Ready,Tasks,LastUpdateDate,Rank"
+const cardFields = "ObjectID,FormattedID,Name,ScheduleState,State,Owner,Iteration,Release,Project,Feature,Parent,PlanEstimate,Estimate,ToDo,Actuals,Blocked,Ready,Tasks,TaskStatus,TaskRemainingTotal,Discussion,Priority,LastUpdateDate,DragAndDropRank"
 
 func (a *App) requestRallyPage(v *rallyView, start int, replace bool) {
-	if v.Closed || v.Loading || a.rallyClient == nil {
+	if v.Closed || v.Loading || a.rallyClient == nil || v.Spec.ID == "customviews" {
+		return
+	}
+	priorTimebox := v.Timebox
+	if !a.prepareRallyPreset(v) {
+		return
+	}
+	if !replace && v.Timebox != priorTimebox {
+		// Crossing an iteration boundary starts a new result set. A continuation
+		// cursor from the old iteration must never append to the new one.
+		a.refreshRallyItems(v)
+		return
+	}
+	if _, err := a.structuredFilterExpression(v); err != nil {
+		v.Error = err.Error()
+		return
+	}
+	if len(v.PendingCards) > 0 {
+		v.boardRefreshQueued = true
 		return
 	}
 	c := a.rallyClient
 	q := a.rallyQuery(v)
 	q.Start = max(1, start)
 	q.PageSize = rallyPageSize
-	q.Fetch = cardFields
+	q.Fetch = rallyFetch(v)
+	kind := v.Spec.QueryKind()
+	count := rallyPageSize
+	if replace && q.Start == v.Start {
+		count = max(rallyPageSize, len(v.Items), v.RestoreCount)
+	}
 	appliedSearch := text(v.Search)
+	appliedFilters := v.quickFilterSignature()
 	generation := v.Generation
 	v.Loading = true
 	v.Evicted = false
@@ -31,7 +56,7 @@ func (a *App) requestRallyPage(v *rallyView, start int, replace bool) {
 	v.cancel = cancel
 	a.work(func() {
 		defer cancel()
-		page, err := c.CachedQuery(ctx, v.Spec.Kind, q, replace)
+		page, err := loadRallyWindow(ctx, c, kind, q, count, replace)
 		// Expensive text/card projection stays on the worker. The UI swaps an
 		// immutable batch at a frame boundary.
 		projection := make([]string, len(page.Results))
@@ -45,16 +70,23 @@ func (a *App) requestRallyPage(v *rallyView, start int, replace bool) {
 			v.Loading = false
 			v.cancel = nil
 			if err != nil {
-				v.Error = err.Error()
+				v.Error = rallyErrorMessage(err)
+				v.CredentialError = rallyCredentialError(err)
 				v.Failures++
-				v.RetryAfter = time.Now().Add(time.Duration(5*(1<<min(v.Failures-1, 6))) * time.Second)
+				base := time.Duration(5*(1<<min(v.Failures-1, 6))) * time.Second
+				v.RetryAfter = time.Now().Add(base*9/10 + time.Duration(rand.Int64N(int64(base/5)+1)))
 				return
 			}
 			v.Error = ""
+			v.CredentialError = false
+			v.boardPlacements = nil
+			v.RestoreCount = 0
 			v.Failures = 0
 			v.RetryAfter = time.Time{}
 			v.Total = page.Total
+			v.Page = min(v.Page, max(1, (v.Total+v.PageSize-1)/v.PageSize))
 			v.AppliedSearch = appliedSearch
+			v.AppliedFilters = appliedFilters
 			prepend := !replace && q.Start < v.Start
 			if replace {
 				v.Items = append([]rally.Object(nil), page.Results...)
@@ -70,7 +102,7 @@ func (a *App) requestRallyPage(v *rallyView, start int, replace bool) {
 					v.scrollAdjustment = map[string]int{}
 				}
 				for _, o := range page.Results {
-					v.scrollAdjustment[o.String(rally.StateField(v.Spec.Kind))] -= 206
+					v.scrollAdjustment[o.String(v.stateField())]--
 				}
 			} else {
 				v.Items = append(v.Items, page.Results...)
@@ -91,7 +123,7 @@ func (a *App) requestRallyPage(v *rallyView, start int, replace bool) {
 						v.scrollAdjustment = map[string]int{}
 					}
 					for _, o := range v.Items[:drop] {
-						v.scrollAdjustment[o.String(rally.StateField(v.Spec.Kind))] += 206
+						v.scrollAdjustment[o.String(v.stateField())]++
 					}
 					clear(v.Items[:drop])
 					v.Items = append([]rally.Object(nil), v.Items[drop:]...)
@@ -100,12 +132,46 @@ func (a *App) requestRallyPage(v *rallyView, start int, replace bool) {
 				}
 			}
 			v.Refreshed = time.Now()
+			v.RefreshAt = v.Refreshed.Add(time.Duration(55+rand.IntN(11)) * time.Second)
 
 			v.filterSource = nil
+			if len(v.Items) > 0 {
+				v.filterSource = &v.Items[0]
+			}
+			v.filterGeneration = v.Generation
+			v.filterValid = false
 			v.cardSource = nil
 			v.boardPrepared = false
 		})
-	})
+	}, func() { v.Loading = false; v.cancel = nil; v.Error = errWorkQueueFull.Error(); cancel() })
+}
+
+// Refresh the entire resident range, including when it spans the server's
+// maximum page size. Publish only after every page succeeds, retaining the old
+// window on failure. Ordinary demand loading still requests exactly one page.
+func loadRallyWindow(ctx context.Context, c *rally.Client, kind string, q rally.Query, count int, fresh bool) (rally.Page, error) {
+	q.Start = max(1, q.Start)
+	start := q.Start
+	q.PageSize = min(2000, count)
+	page, err := c.CachedQuery(ctx, kind, q, fresh)
+	if err != nil || !fresh || count <= rallyPageSize || count <= len(page.Results) {
+		return page, err
+	}
+	page.Results = append([]rally.Object(nil), page.Results...)
+	for len(page.Results) < count && q.Start+len(page.Results) <= page.Total {
+		q.Start = start + len(page.Results)
+		q.PageSize = min(2000, count-len(page.Results))
+		next, err := c.CachedQuery(ctx, kind, q, true)
+		if err != nil {
+			return rally.Page{}, err
+		}
+		if len(next.Results) == 0 {
+			break
+		}
+		page.Results = append(page.Results, next.Results...)
+		page.Total = next.Total
+	}
+	return page, nil
 }
 func (a *App) needRallyPage(v *rallyView) {
 	if v.More && !v.Loading && time.Now().After(v.RetryAfter) {
@@ -115,5 +181,22 @@ func (a *App) needRallyPage(v *rallyView) {
 func (a *App) previousRallyPage(v *rallyView) {
 	if v.Start > 1 && !v.Loading && time.Now().After(v.RetryAfter) {
 		a.requestRallyPage(v, max(1, v.Start-rallyPageSize), false)
+	}
+}
+
+// Table pages use absolute result offsets even when the resident window moves.
+func (v *rallyView) tableRange(count int) (start, end int, resident bool) {
+	start = (max(1, v.Page)-1)*v.PageSize - (max(1, v.Start) - 1)
+	if start < 0 || start >= count {
+		return 0, 0, count == 0 && v.Total == 0
+	}
+	end = min(start+v.PageSize, count)
+	expected := min(v.PageSize, max(0, v.Total-(v.Page-1)*v.PageSize))
+	return start, end, end-start >= expected
+}
+func (a *App) rallyTablePage(v *rallyView, page int) {
+	v.Page = max(1, page)
+	if _, _, resident := v.tableRange(len(v.Items)); !resident {
+		a.requestRallyPage(v, (v.Page-1)*v.PageSize+1, true)
 	}
 }

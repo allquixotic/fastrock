@@ -92,7 +92,7 @@ func TestTokenNeverSentToOtherOriginOrOutsideWSAPI(t *testing.T) {
 	var leaked atomic.Int32
 	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { leaked.Add(1) }))
 	defer other.Close()
-	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, other.URL, 302) }))
+	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, other.URL, http.StatusFound) }))
 	defer redirect.Close()
 	c, _ = rally.New(redirect.URL, "supersecret", nil)
 	if _, e := c.Get(context.Background(), "user/1"); e == nil {

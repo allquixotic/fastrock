@@ -29,9 +29,13 @@ func drain(t *testing.T, a *App, done func() bool) {
 func TestRallyLoadIsDemandDrivenAndBounded(t *testing.T) {
 	var calls atomic.Int64
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != rally.WSAPI+"artifact" {
+			fmt.Fprint(w, `{"QueryResult":{"Results":[],"TotalResultCount":0}}`)
+			return
+		}
 		calls.Add(1)
 		start := r.URL.Query().Get("start")
-		fmt.Fprintf(w, `{"QueryResult":{"Results":[{"_ref":"/item/%s","Name":"Card","FormattedID":"US%s"}],"StartIndex":%s,"TotalResultCount":10000,"PageSize":128}}`, start, start, start)
+		fmt.Fprintf(w, `{"QueryResult":{"Results":[{"_ref":"/slm/webservice/v2.0/hierarchicalrequirement/%s","Name":"Card","FormattedID":"US%s"}],"StartIndex":%s,"TotalResultCount":10000,"PageSize":128}}`, start, start, start)
 	}))
 	defer s.Close()
 	client, _ := rally.New(s.URL, "test", nil)
@@ -57,9 +61,11 @@ func TestTabTransferKeepsFormattedDraftAndQueue(t *testing.T) {
 	tabID := a.state.Open(workspace.Rally, "Team Board", "", "teamboard")
 	v := newRallyView(rally.FindPage("teamboard"))
 	v.Detail = makeDetail(rally.Object{"Name": "Story", "Description": "<p>original</p>"}, "HierarchicalRequirement", false)
+	v.Detail.Rich["Description"].ensureEditor()
 	setText(v.Detail.Rich["Description"].editor, "Unsaved 🚀")
 	a.rallyViews[tabID] = v
 	transfer := a.tabSnapshot(*a.state.Current())
+	v.Detail.Rich["Description"].ensureEditor()
 	setText(v.Detail.Rich["Description"].editor, "later edit")
 	b := &App{ctx: ctx, state: workspace.NewState(), chats: map[string]*chatView{}, files: map[string]*fileView{}, rallyViews: map[string]*rallyView{}, prefs: settings.Defaults()}
 	b.installTransfer(transfer)
@@ -113,7 +119,7 @@ func TestRallyFailureBackoff(t *testing.T) {
 	v := newRallyView(rally.FindPage("teamboard"))
 	a.refreshRally(v)
 	drain(t, a, func() bool { return !v.Loading })
-	if v.Failures != 1 || time.Until(v.RetryAfter) < 4*time.Second {
+	if v.Failures != 1 || time.Until(v.RetryAfter) < 4*time.Second || time.Until(v.RetryAfter) > 6*time.Second {
 		t.Fatal("failed refresh can spin")
 	}
 }
@@ -133,7 +139,7 @@ func TestRallyResidentWindowDoesNotMutatePageCache(t *testing.T) {
 	q := a.rallyQuery(v)
 	q.Start = 1
 	q.PageSize = rallyPageSize
-	q.Fetch = cardFields
+	q.Fetch = rallyFetch(v)
 	page, err := client.CachedQuery(ctx, v.Spec.Kind, q, false)
 	if err != nil {
 		t.Fatal(err)

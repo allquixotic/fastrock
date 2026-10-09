@@ -2,7 +2,7 @@
 
 A native Go/nucular desktop workspace for Codex conversations and Rally work.
 Windows 11 x64 is the primary target; macOS builds use the same application code.
-Dark mode is the default. Light mode and font size are in Settings.
+Dark mode is the default. System, light and dark themes and font size are in Settings.
 The status bar starts hidden; restore it from View and close it with its × icon.
 
 The shell follows the Codex GUI layout: horizontal document tabs, a conversation-only
@@ -33,7 +33,7 @@ make check         # vet and headless tests, no GUI launched
 
 On Windows, `powershell -ExecutionPolicy Bypass -File dev/build.ps1` produces
 `build/fastrock.exe`. Run it from a terminal whose PATH includes Codex, or arrange
-that PATH for your desktop login. The generated macOS app bundle is unsigned.
+that PATH for your desktop login. The `make mac` development bundle is unsigned; release packaging signs and notarizes it. Local `make` builds report a `dev-<checkout>` version (including a dirty marker). The development macOS bundle uses numeric version `0.0.0`; release packaging fills both bundle version fields with the validated release version.
 No GUI tests are run on macOS.
 
 ## Updates and installation
@@ -52,7 +52,7 @@ is loaded through Codex. Use the horizontal tabs to switch conversations, files,
 Rally pages and Settings; Ctrl/Cmd+T opens a new document tab. The sidebar contains
 only conversations. Streaming responses, expandable reasoning/tool output,
 image attachments, plan mode, queue/edit/delete, steer, interrupt, resume, fork,
-rename, archive and Markdown export are connected to app-server.
+rename, archive, structured review targets and Markdown export are connected to app-server. Conversation history pages load as you approach the end of the sidebar.
 
 Fastrock inherits the installed Codex environment, account, configuration,
 provider, model catalog, MCP servers and skills. It has no second API key or model
@@ -61,7 +61,7 @@ app-server catalog. **GPT-6.1-Sol Ultrafast with AWS Bedrock** is available when
 installed Codex and its provider advertise that tier. If they do not, Fastrock
 explains the mismatch and keeps other available configurations usable. It never
 silently substitutes a provider or speed. Settings supports account sign-in, provider setup, MCP/skills/plugins/hooks,
-keyboard bindings, and Codex configuration through its API. Local model discovery
+keyboard bindings, memory controls and Common/Codex configuration through its API. Local model discovery
 and downloads use the configured local server; all inference still goes through
 Codex. Restart Codex from Settings to apply provider changes across open windows.
 
@@ -75,8 +75,8 @@ filters, column selection, grouping and private saved views control the data.
 
 Open Team Board, Backlog, User Stories, Iteration Status, Tasks, Defects, quality,
 portfolio, planning, timeline or report pages from Rally navigation or the command
-palette. Boards and tables display real WSAPI results. Charts compute counts and
-estimates from the current selection; they do not invent historical metrics.
+palette. Boards and tables display real WSAPI results. Charts compute partial counts and
+estimates from the loaded result window; they do not invent historical metrics.
 Work-item details support creation, editing, deletion, comments, tasks, children,
 attachments, revision history and schema-driven fields, including `c_*` fields.
 The Team Board has unified cards with owners, iterations, estimates and ready/blocked
@@ -111,7 +111,7 @@ Useful environment variables for isolated testing:
 - `FASTROCK_RALLY_TOKEN`: token override for fixtures or a secret-injecting launcher.
 - `CODEX_HOME`: standard Codex setting, inherited without modification.
 - `FASTROCK_CODEX_INTEGRATION=1`: enable the installed-CLI integration test.
-- `FASTROCK_AUTOMATION`: Windows-only local UI smoke scenario JSON.
+- `FASTROCK_AUTOMATION`: Windows-only local UI smoke scenario JSON; requires a build with `-tags=fastrock_automation`.
 
 ```sh
 go run ./cmd/mock-rally       # loopback :18081, token mock-token
@@ -141,6 +141,13 @@ Rally boards load pages as the viewport needs them. There is no story-count
 setting. Refresh remains available above board and detail views. The working
 set retains at most 2,048 lightweight cards per view and 24 MiB of cached API
 pages; idle views and transcripts are evicted under memory pressure. Fastrock
-measures aggregate resident memory across its windows separately from Codex.
+measures aggregate native process memory across its windows separately from Codex: physical footprint on macOS and private committed bytes on Windows.
 
 See [interaction coverage](docs/INTERACTIONS.md) for the source audit and remaining parity work.
+
+
+Review status: [the 540-item assessment](docs/REVIEW-ASSESSMENT.md) records fixes,
+disagreements and remaining work. Rally charts/planning summarize only loaded
+items. Board lanes use scoped workflow metadata; some named Home/report pages
+still share generic content. Native Windows interaction/DPI testing of this
+review patch remains outstanding; headless checks do not establish GUI parity.

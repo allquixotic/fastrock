@@ -8,13 +8,12 @@ import (
 	"image/draw"
 	"math"
 	"os"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/aarzilli/nucular/command"
 	"github.com/aarzilli/nucular/font"
-	"github.com/aarzilli/nucular/internal/clipboard"
+	"github.com/aarzilli/nucular/internal/windowing"
 	"github.com/aarzilli/nucular/label"
 	"github.com/aarzilli/nucular/rect"
 
@@ -31,9 +30,6 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
-var clipboardStarted bool = false
-var clipboardMu sync.Mutex
-
 type masterWindow struct {
 	masterWindowCommon
 
@@ -42,12 +38,14 @@ type masterWindow struct {
 	wnd    screen.Window
 	wndb   screen.Buffer
 	bounds image.Rectangle
+	damage image.Rectangle
 
 	paintEvent *paint.Event
 	sizeEvent  *size.Event
 
-	initialSize image.Point
-	onClose     func()
+	initialSize      image.Point
+	onClose          func()
+	onCloseRequested func() bool
 
 	// window is focused
 	Focus bool
@@ -67,13 +65,6 @@ func NewMasterWindowOptions(flags WindowFlags, opts NewWindowOptions, updatefn U
 
 	wnd.Title = opts.Title
 	wnd.initialSize = opts.Size
-
-	clipboardMu.Lock()
-	if !clipboardStarted {
-		clipboardStarted = true
-		clipboard.Start()
-	}
-	clipboardMu.Unlock()
 
 	return wnd
 }
@@ -98,11 +89,17 @@ func (mw *masterWindow) OnClose(onClose func()) {
 	mw.onClose = onClose
 }
 
+// OnCloseRequested can veto a native close while the application confirms
+// running work. It executes on the same locked UI owner as event dispatch.
+func (mw *masterWindow) OnCloseRequested(check func() bool) {
+	mw.onCloseRequested = check
+}
+
 func (mw *masterWindow) main(s screen.Screen) {
 	var err error
 	mw.screen = s
 	width, height := mw.ctx.scale(mw.initialSize.X), mw.ctx.scale(mw.initialSize.Y)
-	mw.wnd, err = s.NewWindow(&screen.NewWindowOptions{width, height, mw.Title})
+	mw.wnd, err = s.NewWindow(&screen.NewWindowOptions{Width: width, Height: height, Title: mw.Title})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not create window: %v", err)
 		return
@@ -124,12 +121,16 @@ func (mw *masterWindow) main(s screen.Screen) {
 }
 
 func (w *masterWindow) handleEventLocked(ei interface{}) bool {
+	defer w.signalUpdate()
 	switch e := ei.(type) {
 	case paint.Event:
 		w.paintEvent = &e
 
 	case lifecycle.Event:
 		if e.Crosses(lifecycle.StageDead) == lifecycle.CrossOn || e.To == lifecycle.StageDead || w.closing {
+			if !w.closing && w.onCloseRequested != nil && !w.onCloseRequested() {
+				return true
+			}
 			w.closing = true
 			w.closeLocked()
 			return false
@@ -156,6 +157,11 @@ func (w *masterWindow) handleEventLocked(ei interface{}) bool {
 		}
 	case size.Event:
 		w.sizeEvent = &e
+	case windowing.Wheel:
+		w.ctx.Input.Mouse.Pos = image.Pt(int(e.X), int(e.Y))
+		w.ctx.Input.Mouse.ScrollDelta += e.DeltaY
+		w.ctx.Input.Mouse.ScrollDeltaX += e.DeltaX
+		atomic.StoreInt32(&w.ctx.changed, 2)
 
 	case mouse.Event:
 		changed := atomic.LoadInt32(&w.ctx.changed)
@@ -208,13 +214,22 @@ func (w *masterWindow) handleEventLocked(ei interface{}) bool {
 }
 
 func (w *masterWindow) updater() {
+	w.uilock.Lock()
+	closed := w.closing
+	w.uilock.Unlock()
+	if closed {
+		return
+	}
 	var stopped bool
 	var down bool
+	var repeat <-chan time.Time
+	timer := time.NewTimer(time.Hour)
+	timer.Stop()
+	defer timer.Stop()
 	for {
-		if down {
-			time.Sleep(10 * time.Millisecond)
-		} else {
-			time.Sleep(20 * time.Millisecond)
+		select {
+		case <-w.wake:
+		case <-repeat:
 		}
 		func() {
 			w.uilock.Lock()
@@ -236,17 +251,7 @@ func (w *masterWindow) updater() {
 				sz := w.sizeEvent.Size()
 				w.sizeEvent = nil
 				if sz.X > 0 && sz.Y > 0 {
-					bb := w.wndb.Bounds()
-					if sz.X <= bb.Dx() && sz.Y <= bb.Dy() {
-						w.bounds = w.wndb.Bounds()
-						w.bounds.Max.Y = w.bounds.Min.Y + sz.Y
-						w.bounds.Max.X = w.bounds.Min.X + sz.X
-					} else {
-						if w.wndb != nil {
-							w.wndb.Release()
-						}
-						w.setupBuffer(sz)
-					}
+					w.setupBuffer(sz)
 					w.prevCmds = w.prevCmds[:0]
 					if changed := atomic.LoadInt32(&w.ctx.changed); changed < 2 {
 						atomic.StoreInt32(&w.ctx.changed, 2)
@@ -261,19 +266,26 @@ func (w *masterWindow) updater() {
 			} else if forceUpdate {
 				w.updateLocked()
 			} else {
-				down = false
-				for _, btn := range w.ctx.Input.Mouse.Buttons {
-					if btn.Down {
-						down = true
-					}
-				}
 				if down {
 					w.updateLocked()
 				}
 			}
+			down = false
+			for _, btn := range w.ctx.Input.Mouse.Buttons {
+				down = down || btn.Down
+			}
+			if atomic.LoadInt32(&w.ctx.changed) > 0 {
+				w.signalUpdate()
+			}
 		}()
 		if stopped {
 			return
+		}
+		timer.Stop()
+		repeat = nil
+		if down {
+			timer.Reset(16 * time.Millisecond)
+			repeat = timer.C
 		}
 	}
 }
@@ -331,13 +343,22 @@ func (w *masterWindow) updateLocked() {
 		w.dumpFrame(w.wndb.RGBA(), t0, t1, te, nprimitives)
 	}
 	if nprimitives > 0 {
-		w.wnd.Upload(w.bounds.Min, w.wndb, w.bounds)
-		w.wnd.Publish()
+		if w.Perf || dumpFrame {
+			w.damage = w.bounds
+		}
+		if !w.damage.Empty() {
+			w.wnd.Upload(w.damage.Min, w.wndb, w.damage)
+			w.wnd.Publish()
+		}
 	}
 }
 
 func (w *masterWindow) closeLocked() {
 	w.closing = true
+	if w.ctx.clipboardClosed != nil {
+		close(w.ctx.clipboardClosed)
+	}
+	clear(w.ctx.clipboardTargets)
 	if w.wndb != nil {
 		w.wndb.Release()
 	}
@@ -357,34 +378,54 @@ func (mw *masterWindow) Closed() bool {
 }
 
 func (w *masterWindow) setupBuffer(sz image.Point) {
-	var err error
-	oldb := w.wndb
-	w.wndb, err = w.screen.NewBuffer(sz)
+	var oldSize image.Point
+	if w.wndb != nil {
+		oldSize = w.wndb.Size()
+	}
+	capacity := windowing.Capacity(oldSize, sz)
+	if capacity == oldSize {
+		w.bounds = image.Rectangle{Max: sz}
+		return
+	}
+	next, err := w.screen.NewBuffer(capacity)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not setup buffer: %v", err)
-		w.wndb = oldb
+		return
 	}
-	w.bounds = w.wndb.Bounds()
+	if w.wndb != nil {
+		w.wndb.Release()
+	}
+	w.wndb = next
+	w.bounds = image.Rectangle{Max: sz}
 }
 
 func (w *masterWindow) draw() int {
 	if !w.drawChanged() {
 		return 0
 	}
+	w.damage = w.frameDamage
+	if w.Perf || dumpFrame {
+		w.damage = w.bounds
+	}
 
 	w.prevCmds = append(w.prevCmds[:0], w.ctx.cmds...)
 
-	return w.ctx.Draw(w.wndb.RGBA())
+	return w.ctx.DrawDamage(w.wndb.RGBA(), w.damage)
 }
 
-var cnt = 0
 var ln, frect, frectover, brrect, frrect, ftri, circ, fcirc, txt int
 
 func (ctx *context) Draw(wimg *image.RGBA) int {
+	return ctx.DrawDamage(wimg, wimg.Bounds())
+}
+
+func (ctx *context) DrawDamage(wimg *image.RGBA, damage image.Rectangle) int {
+	defer ctx.discardUndrawnClipboardTargets()
 	var txttim, tritim, brecttim, frecttim, frectovertim, frrecttim time.Duration
 	var t0 time.Time
 
-	img := wimg
+	img := wimg.SubImage(damage).(*image.RGBA)
+	rasterClip := wimg.Bounds()
 
 	var painter *myRGBAPainter
 	var rasterizer *raster.Rasterizer
@@ -400,8 +441,8 @@ func (ctx *context) Draw(wimg *image.RGBA) int {
 	}
 
 	setupRasterizer := func() {
-		rasterizer = raster.NewRasterizer(img.Bounds().Dx(), img.Bounds().Dy())
-		painter = &myRGBAPainter{Image: img}
+		rasterizer = raster.NewRasterizer(rasterClip.Dx(), rasterClip.Dy())
+		painter = &myRGBAPainter{Image: img, Origin: rasterClip.Min}
 	}
 
 	if ctx.cmdstim != nil {
@@ -415,9 +456,19 @@ func (ctx *context) Draw(wimg *image.RGBA) int {
 			t0 = time.Now()
 		}
 		icmd := &ctx.cmds[i]
+		// Keep scissor and clipboard transitions even if no pixels are dirty.
+		// Border pairing still affects the next rectangle's alpha handling.
+		if icmd.Kind >= command.LineCmd && icmd.Kind <= command.TextCmd && commandBounds(icmd).Intersect(img.Bounds()).Empty() {
+			if icmd.Kind == command.RectFilledCmd {
+				ok, _ := borderOptimize(icmd, ctx.cmds, i+1)
+				transparentBorderOptimization = ok && ctx.cmds[i+1].RectFilled.Color.A != 0xff
+			}
+			continue
+		}
 		switch icmd.Kind {
 		case command.ScissorCmd:
-			img = wimg.SubImage(icmd.Rectangle()).(*image.RGBA)
+			rasterClip = wimg.Bounds().Intersect(icmd.Rectangle())
+			img = wimg.SubImage(rasterClip.Intersect(damage)).(*image.RGBA)
 			painter = nil
 			rasterizer = nil
 
@@ -449,8 +500,8 @@ func (ctx *context) Draw(wimg *image.RGBA) int {
 				rasterizer.UseNonZeroWinding = true
 
 				var p raster.Path
-				p.Start(fixed.P(cmd.Begin.X-img.Bounds().Min.X, cmd.Begin.Y-img.Bounds().Min.Y))
-				p.Add1(fixed.P(cmd.End.X-img.Bounds().Min.X, cmd.End.Y-img.Bounds().Min.Y))
+				p.Start(fixed.P(cmd.Begin.X-rasterClip.Min.X, cmd.Begin.Y-rasterClip.Min.Y))
+				p.Add1(fixed.P(cmd.End.X-rasterClip.Min.X, cmd.End.Y-rasterClip.Min.Y))
 
 				rasterizer.Clear()
 				rasterizer.AddStroke(p, fixed.I(int(cmd.LineThickness)), nil, nil)
@@ -554,17 +605,23 @@ func (ctx *context) Draw(wimg *image.RGBA) int {
 
 				rangle := math.Pi / 2
 
-				if rasterizer == nil {
-					setupRasterizer()
+				radius := int(cmd.Rounding)
+				if ctx.shapeMasks.get(radius, radius, 0) != nil {
+					origins := [4]image.Point{image.Pt(icmd.X, icmd.Y), image.Pt(icmd.X+icmd.W-radius, icmd.Y), image.Pt(icmd.X+icmd.W-radius, icmd.Y+icmd.H-radius), image.Pt(icmd.X, icmd.Y+icmd.H-radius)}
+					for corner, origin := range origins {
+						mask := ctx.shapeMasks.get(radius, radius, corner)
+						draw.DrawMask(img, image.Rectangle{Min: origin, Max: origin.Add(mask.Bounds().Size())}, colimg, image.Point{}, mask, image.Point{}, draw.Over)
+					}
+				} else {
+					if rasterizer == nil {
+						setupRasterizer()
+					}
+					minx, miny := rasterClip.Min.X, rasterClip.Min.Y
+					roundAngle(icmd.X+icmd.W-radius-minx, icmd.Y+radius-miny, cmd.Rounding, -math.Pi/2, rangle, cmd.Color)
+					roundAngle(icmd.X+icmd.W-radius-minx, icmd.Y+icmd.H-radius-miny, cmd.Rounding, 0, rangle, cmd.Color)
+					roundAngle(icmd.X+radius-minx, icmd.Y+icmd.H-radius-miny, cmd.Rounding, math.Pi/2, rangle, cmd.Color)
+					roundAngle(icmd.X+radius-minx, icmd.Y+radius-miny, cmd.Rounding, math.Pi, rangle, cmd.Color)
 				}
-
-				minx := img.Bounds().Min.X
-				miny := img.Bounds().Min.Y
-
-				roundAngle(icmd.X+icmd.W-int(cmd.Rounding)-minx, icmd.Y+int(cmd.Rounding)-miny, cmd.Rounding, -math.Pi/2, rangle, cmd.Color)
-				roundAngle(icmd.X+icmd.W-int(cmd.Rounding)-minx, icmd.Y+icmd.H-int(cmd.Rounding)-miny, cmd.Rounding, 0, rangle, cmd.Color)
-				roundAngle(icmd.X+int(cmd.Rounding)-minx, icmd.Y+icmd.H-int(cmd.Rounding)-miny, cmd.Rounding, math.Pi/2, rangle, cmd.Color)
-				roundAngle(icmd.X+int(cmd.Rounding)-minx, icmd.Y+int(cmd.Rounding)-miny, cmd.Rounding, math.Pi, rangle, cmd.Color)
 			}
 
 			if perfUpdate {
@@ -592,8 +649,8 @@ func (ctx *context) Draw(wimg *image.RGBA) int {
 			if rasterizer == nil {
 				setupRasterizer()
 			}
-			minx := img.Bounds().Min.X
-			miny := img.Bounds().Min.Y
+			minx := rasterClip.Min.X
+			miny := rasterClip.Min.Y
 			rasterizer.Clear()
 			rasterizer.Start(fixed.P(cmd.A.X-minx, cmd.A.Y-miny))
 			rasterizer.Add1(fixed.P(cmd.B.X-minx, cmd.B.Y-miny))
@@ -608,11 +665,16 @@ func (ctx *context) Draw(wimg *image.RGBA) int {
 			}
 
 		case command.CircleFilledCmd:
+			if mask := ctx.shapeMasks.get(icmd.W, icmd.H, -1); mask != nil {
+				draw.DrawMask(img, icmd.Rectangle(), image.NewUniform(icmd.CircleFilled.Color), image.Point{}, mask, image.Point{}, draw.Over)
+				fcirc++
+				continue
+			}
 			if rasterizer == nil {
 				setupRasterizer()
 			}
 			rasterizer.Clear()
-			startp := traceArc(rasterizer, float64(icmd.X-img.Bounds().Min.X)+float64(icmd.W/2), float64(icmd.Y-img.Bounds().Min.Y)+float64(icmd.H/2), float64(icmd.W/2), float64(icmd.H/2), 0, -math.Pi*2, true)
+			startp := traceArc(rasterizer, float64(icmd.X-rasterClip.Min.X)+float64(icmd.W/2), float64(icmd.Y-rasterClip.Min.Y)+float64(icmd.H/2), float64(icmd.W/2), float64(icmd.H/2), 0, -math.Pi*2, true)
 			rasterizer.Add1(startp) // closes path
 			painter.SetColor(icmd.CircleFilled.Color)
 			rasterizer.Rasterize(painter)
@@ -648,16 +710,8 @@ func (ctx *context) Draw(wimg *image.RGBA) int {
 		case command.CursorCmd:
 			// not supported by shiny
 
-		case command.SetClipboardCmd:
-			clipboard.Set(icmd.Text.String)
-		case command.GetClipboardCmd:
-			ctx.nextClipboard = clipboard.Get()
-			ctx.hasNextClipboard = true
-			ctx.trashFrame = true
-		case command.GetPrimarySelectionCmd:
-			ctx.nextClipboard = clipboard.GetPrimary()
-			ctx.hasNextClipboard = true
-			ctx.trashFrame = true
+		case command.SetClipboardCmd, command.GetClipboardCmd, command.GetPrimarySelectionCmd:
+			ctx.requestClipboard(*icmd)
 		default:
 			panic(UnknownCommandErr)
 		}
@@ -671,8 +725,7 @@ func (ctx *context) Draw(wimg *image.RGBA) int {
 		fmt.Printf("triangle: %0.4fms text: %0.4fms brect: %0.4fms frect: %0.4fms frectover: %0.4fms frrect %0.4f\n", tritim.Seconds()*1000, txttim.Seconds()*1000, brecttim.Seconds()*1000, frecttim.Seconds()*1000, frectovertim.Seconds()*1000, frrecttim.Seconds()*1000)
 	}
 
-	cnt++
-	if perfUpdate /*&& (cnt%100) == 0*/ {
+	if perfUpdate {
 		fmt.Printf("ln %d, frect %d, frectover %d, frrect %d, brrect %d, ftri %d, circ %d, fcirc %d, txt %d\n", ln, frect, frectover, frrect, brrect, ftri, circ, fcirc, txt)
 		ln, frect, frectover, frrect, brrect, ftri, circ, fcirc, txt = 0, 0, 0, 0, 0, 0, 0, 0, 0
 	}
@@ -757,7 +810,8 @@ func traceArc(t *raster.Rasterizer, x, y, rx, ry, start, angle float64, first bo
 }
 
 type myRGBAPainter struct {
-	Image *image.RGBA
+	Image  *image.RGBA
+	Origin image.Point
 	// cr, cg, cb and ca are the 16-bit color to paint the spans.
 	cr, cg, cb, ca uint32
 }
@@ -773,9 +827,9 @@ func (r *myRGBAPainter) Paint(ss []raster.Span, done bool) {
 	cg8 := uint8(r.cg >> 8)
 	cb8 := uint8(r.cb >> 8)
 	for _, s := range ss {
-		s.Y += b.Min.Y
-		s.X0 += b.Min.X
-		s.X1 += b.Min.X
+		s.Y += r.Origin.Y
+		s.X0 += r.Origin.X
+		s.X1 += r.Origin.X
 		if s.Y < b.Min.Y {
 			continue
 		}

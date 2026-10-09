@@ -2,10 +2,5 @@
 
 package platform
 
-import "runtime"
-
-func ResidentMemory() uint64 {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	return m.Sys - m.HeapReleased
-}
+// Other platforms report the Go runtime's retained allocation estimate.
+func ProcessMemoryBytes() uint64 { return managedMemoryBytes() }
