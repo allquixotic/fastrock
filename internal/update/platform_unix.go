@@ -11,7 +11,8 @@ import (
 	"time"
 )
 
-func detach(cmd *exec.Cmd) { cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} }
+func detach(cmd *exec.Cmd)    { cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} }
+func detachApp(cmd *exec.Cmd) { detach(cmd) }
 func waitProcess(pid int, timeout time.Duration) error {
 	until := time.Now().Add(timeout)
 	for time.Now().Before(until) {

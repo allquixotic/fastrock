@@ -1,13 +1,47 @@
 package update
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
+
+func TestV77WindowsDetachedWindowVisibility(t *testing.T) {
+	if mode := os.Getenv("FASTROCK_DETACH_TEST_MODE"); mode != "" {
+		var info syscall.StartupInfo
+		syscall.GetStartupInfo(&info)
+		hidden := info.Flags&syscall.STARTF_USESHOWWINDOW != 0 && info.ShowWindow == syscall.SW_HIDE
+		if hidden != (mode == "helper") {
+			t.Fatalf("%s startup hidden = %v; flags = %#x, ShowWindow = %d", mode, hidden, info.Flags, info.ShowWindow)
+		}
+		return
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"app", "helper"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, exe, "-test.run=^TestV77WindowsDetachedWindowVisibility$")
+			cmd.Env = append(os.Environ(), "FASTROCK_DETACH_TEST_MODE="+mode)
+			if mode == "app" {
+				detachApp(cmd)
+			} else {
+				detach(cmd)
+			}
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("%s child failed: %v\n%s", mode, err, output)
+			}
+		})
+	}
+}
 
 func TestV15WindowsWaitsForExecutableExit(t *testing.T) {
 	if os.Getenv("FASTROCK_UPDATE_TEST_CHILD") == "yes" {

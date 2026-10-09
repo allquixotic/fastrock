@@ -17,6 +17,11 @@ import (
 func detach(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
 }
+func detachApp(cmd *exec.Cmd) {
+	detach(cmd)
+	// SW_HIDE also hides the GUI's first ShowWindow call, preventing presentation.
+	cmd.SysProcAttr.HideWindow = false
+}
 func waitProcess(pid int, timeout time.Duration) error {
 	h, e := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(pid))
 	if e != nil {

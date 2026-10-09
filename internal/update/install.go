@@ -34,7 +34,7 @@ func startApp(target string) error {
 	cmd := exec.Command(exe)
 	cmd.Env = cleanEnvironment()
 	cmd.Dir = filepath.Dir(target)
-	detach(cmd)
+	detachApp(cmd)
 	if e := cmd.Start(); e != nil {
 		return e
 	}

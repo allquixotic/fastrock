@@ -43,6 +43,14 @@ C compiler or administrator installation is used. Settings and credentials stay
 in their existing per-user locations. A failed initial install/shortcut operation
 is reported; the downloaded binary remains usable.
 
+Versions before 0.1.3 can hide the managed window during installation relaunch or
+post-update restart. Version 0.1.3 launches the GUI visibly while keeping the
+update helper hidden. If an older managed copy cannot open to update itself,
+close its Fastrock processes and replace
+`%LOCALAPPDATA%\Programs\Fastrock\fastrock.exe` with the executable extracted from
+the latest official Windows ZIP. Launch that managed executable. Preferences,
+credentials and Codex data remain in their existing locations.
+
 macOS releases contain `Fastrock.app` in a DMG with an Applications link. Drag the
 app into `/Applications`, or `~/Applications` when the system folder is not
 writable. Updates need write permission to that app's parent directory and never
@@ -58,6 +66,15 @@ tests, and publishes:
 - `fastrock-darwin-arm64.zip` and `.dmg`
 - `fastrock-darwin-amd64.zip` and `.dmg`
 - `SHA256SUMS`
+
+Before tagging a Windows startup change, run the native release-path smoke in an
+interactive Windows session using a fresh fixture directory. Copy a
+release-stamped executable and `codex.exe` built from `dev/startup-fixture.go` into
+that directory, then run `dev/windows-relaunch.ps1 -Root DIRECTORY`. It checks
+both first installation and relaunch into an existing installation, a painted
+window before Codex starts, idle CPU and clean shutdown. It isolates application
+state and restores the user's Start menu shortcut. It also works with an
+executable extracted from a published release; no automation build tag is needed.
 
 On a provisioned Mac:
 
