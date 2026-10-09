@@ -362,6 +362,10 @@ func TestV55PresetQueueRejectionIsRetryable(t *testing.T) {
 func TestV55CreateSendsContextualDefaults(t *testing.T) {
 	body := make(chan rally.Object, 1)
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && (r.URL.Path == rally.WSAPI+"artifact" || r.URL.Path == rally.WSAPI+"typedefinition") {
+			fmt.Fprint(w, `{"QueryResult":{"Results":[],"TotalResultCount":0}}`)
+			return
+		}
 		var envelope map[string]rally.Object
 		if r.Method != http.MethodPost || r.URL.Path != rally.WSAPI+"hierarchicalrequirement/create" {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL)
@@ -382,7 +386,7 @@ func TestV55CreateSendsContextualDefaults(t *testing.T) {
 	v := newRallyView(rally.FindPage("teamboard"))
 	v.Detail = d
 	a.saveDetail(v)
-	drain(t, a, func() bool { return !d.Saving })
+	drain(t, a, func() bool { return !d.Saving && !v.Loading })
 	if d.Error != "" || d.New {
 		t.Fatal("create failed", d.Error)
 	}

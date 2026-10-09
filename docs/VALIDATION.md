@@ -172,3 +172,15 @@ Windows mouse checks pass. The full Windows fixture also passes filtering,
 rich-text save/reopen, child-task navigation, chat and Rally assistant checks.
 Updated screenshots are in
 `build/rally-row-screenshots/`; both release binaries verify static FLTK linkage.
+
+## Initial-release CI follow-up (2026-10-09)
+
+The first GitHub run exposed Unix-only fixture paths in delivery permissions and
+thread creation, a Windows filename suggestion that lost a drive-like prefix,
+and a create fixture that rejected the expected background board/schema refresh.
+Fixtures now use native absolute paths and serve the read-only refresh routes;
+filename suggestions parse normalized separators consistently across hosts.
+
+The full headless suite passed locally. The complete `internal/codex` and
+`internal/ui` test binaries passed on Windows, and the affected tests passed
+with the race detector on macOS. No GUI was launched on the Mac.

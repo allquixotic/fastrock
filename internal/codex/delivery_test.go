@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -73,7 +74,8 @@ func newDeliveryFixture(t *testing.T) *deliveryFixture {
 	}
 	t.Cleanup(target.Close)
 	scope := PermissionScope{Approval: "on-request", Sandbox: "workspace-write", Roots: "[]"}
-	f := &deliveryFixture{b: b, source: source, target: target, server: server, ctx: ctx, from: OpenThread{ID: "a", Title: "Review", Cwd: "/repo", Status: "running", AcceptsMessages: true, Permissions: scope}, to: OpenThread{ID: "b", Title: "Build", Cwd: "/repo", Status: "running", AcceptsMessages: true, Permissions: scope}}
+	cwd := t.TempDir()
+	f := &deliveryFixture{b: b, source: source, target: target, server: server, ctx: ctx, from: OpenThread{ID: "a", Title: "Review", Cwd: cwd, Status: "running", AcceptsMessages: true, Permissions: scope}, to: OpenThread{ID: "b", Title: "Build", Cwd: cwd, Status: "running", AcceptsMessages: true, Permissions: scope}}
 	f.publish(t)
 	return f
 }
@@ -124,20 +126,25 @@ func (f *deliveryFixture) answer(t *testing.T, r DeliveryRequest, choice string)
 	}
 }
 func TestV42DeliveryPermissionScopes(t *testing.T) {
-	same := OpenThread{Cwd: "/repo", Permissions: PermissionScope{Approval: "on-request", Sandbox: "workspace-write", Roots: `["/shared"]`}}
+	base := t.TempDir()
+	cwd, shared := filepath.Join(base, "repo"), filepath.Join(base, "shared")
+	roots := func(path string) string { return string(raw([]string{path})) }
+	same := OpenThread{Cwd: cwd, Permissions: PermissionScope{Approval: "on-request", Sandbox: "workspace-write", Roots: roots(shared)}}
 	for _, tc := range []struct {
 		name     string
 		from, to OpenThread
 		want     string
 	}{
 		{"same", same, same, ""},
-		{"subfolder", same, OpenThread{Cwd: "/repo/sub", Permissions: PermissionScope{Approval: "untrusted", Sandbox: "workspace-write", Roots: `["/shared/cache"]`}}, ""},
-		{"outside", same, OpenThread{Cwd: "/other", Permissions: same.Permissions}, "can write"},
+		{"subfolder", same, OpenThread{Cwd: filepath.Join(cwd, "sub"), Permissions: PermissionScope{Approval: "untrusted", Sandbox: "workspace-write", Roots: roots(filepath.Join(shared, "cache"))}}, ""},
+		{"outside", same, OpenThread{Cwd: filepath.Join(base, "other"), Permissions: same.Permissions}, "can write"},
+		{"sibling prefix", same, OpenThread{Cwd: cwd + "-other", Permissions: same.Permissions}, "can write"},
+		{"relative", same, OpenThread{Cwd: "relative", Permissions: same.Permissions}, "can write"},
 		{"unknown", same, OpenThread{}, "not known"},
 		{"full", same, OpenThread{Permissions: PermissionScope{Approval: "never", Sandbox: "danger-full-access"}}, "broader filesystem"},
 		{"network", OpenThread{Permissions: PermissionScope{Approval: "on-request", Sandbox: "read-only"}}, OpenThread{Permissions: PermissionScope{Approval: "on-request", Sandbox: "read-only", Network: true}}, "network"},
 		{"approval", OpenThread{Permissions: PermissionScope{Approval: "untrusted", Sandbox: "read-only"}}, OpenThread{Permissions: PermissionScope{Approval: "never", Sandbox: "read-only"}}, "less often"},
-		{"malformed roots", same, OpenThread{Cwd: "/repo", Permissions: PermissionScope{Approval: "on-request", Sandbox: "workspace-write", Roots: "oops"}}, "not known"},
+		{"malformed roots", same, OpenThread{Cwd: cwd, Permissions: PermissionScope{Approval: "on-request", Sandbox: "workspace-write", Roots: "oops"}}, "not known"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := DeliveryEscalation(tc.from, tc.to)
@@ -351,7 +358,7 @@ func TestV42DeliveryCardsNeverFollowResolution(t *testing.T) {
 		}
 		deliveryNext(t, f.ctx, f.target, "fastrock/deliveryRequest", nil)
 		row := f.to
-		row.Cwd = fmt.Sprintf("/repo/changed-%d", i)
+		row.Cwd = filepath.Join(f.from.Cwd, fmt.Sprintf("changed-%d", i))
 		var wg sync.WaitGroup
 		errors := make(chan error, 2)
 		wg.Go(func() {

@@ -221,7 +221,7 @@ func TestV30FileTransferRetainsWatchAndEvictedText(t *testing.T) {
 func TestV30TextSaveNamesAndAtomicResult(t *testing.T) {
 	for input, want := range map[string]string{
 		"Notes": "Notes.md", "/tmp/example.txt": "example.txt", `C:\Users\test\report.md`: "report.md",
-		"CON": "_CON.md", "COM1.txt": "_COM1.txt", "  ..  ": "document.md", "a:*?b": "a___b.md",
+		"CON": "_CON.md", "COM1.txt": "_COM1.txt", "  ..  ": "document.md", "a:*?b": "a___b.md", "A:notes": "A_notes.md",
 	} {
 		if got := suggestedTextName(input); got != want {
 			t.Errorf("%q => %q, want %q", input, got, want)

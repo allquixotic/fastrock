@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"image"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -202,7 +203,7 @@ func TestV48ShellRPCFixture(t *testing.T) {
 		var rpcError *codex.RPCError
 		if m.Method == "thread/start" {
 			count++
-			if str(codex.Decode(m.Params), "cwd") == "/fail" {
+			if filepath.Base(str(codex.Decode(m.Params), "cwd")) == "fail" {
 				rpcError = &codex.RPCError{Code: -32000, Message: "fixture start failed"}
 			} else {
 				result = map[string]any{"thread": map[string]any{"id": fmt.Sprint("thread-", count)}}
@@ -255,7 +256,7 @@ func TestV48NewThreadLifecycle(t *testing.T) {
 		t.Fatal("duplicate start or lost origin/focus", a.state.Tabs)
 	}
 	start = a.state.OpenNew()
-	a.newThread("/fail")
+	a.newThread(filepath.Join(t.TempDir(), "fail"))
 	drain(t, a, func() bool { return !a.newThreadPending })
 	if a.state.Current().ID != start || a.state.Current().Kind != workspace.New {
 		t.Fatal("failure consumed start page")

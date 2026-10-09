@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"path/filepath"
+	"path"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -11,7 +11,9 @@ import (
 )
 
 func suggestedTextName(title string) string {
-	name := filepath.Base(strings.ReplaceAll(title, "\\", "/"))
+	// Titles may contain Windows drive syntax even on another host. Split only
+	// normalized separators so a colon in ordinary text does not drop a prefix.
+	name := path.Base(strings.ReplaceAll(title, "\\", "/"))
 	name = strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) || strings.ContainsRune(`<>:"/\|?*`, r) {
 			return '_'
@@ -22,11 +24,11 @@ func suggestedTextName(title string) string {
 	if name == "" {
 		name = "document"
 	}
-	ext := strings.ToLower(filepath.Ext(name))
+	ext := strings.ToLower(path.Ext(name))
 	if ext != ".md" && ext != ".markdown" && ext != ".txt" {
 		ext = ".md"
 	} else {
-		name = strings.TrimSuffix(name, filepath.Ext(name))
+		name = strings.TrimSuffix(name, path.Ext(name))
 	}
 	base := strings.ToUpper(strings.SplitN(name, ".", 2)[0])
 	if base == "CON" || base == "PRN" || base == "AUX" || base == "NUL" ||
