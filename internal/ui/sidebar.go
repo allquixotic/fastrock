@@ -2,6 +2,7 @@ package ui
 
 import (
 	"path/filepath"
+	"sort"
 
 	"github.com/aarzilli/nucular"
 
@@ -13,15 +14,18 @@ type sidebarFolder struct {
 	rows        []*workspace.Conversation
 }
 type sidebarCache struct {
-	signature uint64
-	query     string
-	archived  bool
-	ready     bool
-	folders   []sidebarFolder
-	count     int
+	starts      []int
+	totalRows   int
+	layoutReady bool
+	signature   uint64
+	query       string
+	archived    bool
+	ready       bool
+	folders     []sidebarFolder
+	count       int
 }
 
-func (a *App) invalidateSidebar() { a.sidebarCache.ready = false }
+func (a *App) invalidateSidebar() { a.sidebarCache.ready = false; a.sidebarCache.layoutReady = false }
 
 func (a *App) sidebarFolders() []sidebarFolder {
 	query := text(a.sidebarSearch)
@@ -34,6 +38,7 @@ func (a *App) sidebarFolders() []sidebarFolder {
 	clear(c.folders)
 	c.folders = c.folders[:0]
 	c.count = 0
+	c.layoutReady = false
 	rows := a.state.Sidebar(query, a.archived)
 	byPath := make(map[string]int)
 	for _, row := range rows {
@@ -61,4 +66,37 @@ func sidebarSkip(w *nucular.Window, count, stride, spacing int) {
 		w.RowScaled(count*stride - spacing).Dynamic(1)
 		w.Spacing(1)
 	}
+}
+
+// Prefix row offsets make even a large number of projects cheap to scroll.
+// Collapse changes rebuild one small index, not a flattened copy of history.
+func (a *App) sidebarLayout() *sidebarCache {
+	c := &a.sidebarCache
+	if c.layoutReady {
+		return c
+	}
+	if cap(c.starts) < len(c.folders)+1 {
+		c.starts = make([]int, len(c.folders)+1)
+	} else {
+		c.starts = c.starts[:len(c.folders)+1]
+	}
+	n := 0
+	for i, f := range c.folders {
+		c.starts[i] = n
+		n++
+		if !a.collapsed[f.path] {
+			n += len(f.rows)
+		}
+	}
+	c.starts[len(c.folders)] = n
+	c.totalRows = n
+	c.layoutReady = true
+	return c
+}
+func (a *App) collapseFolder(path string, collapsed bool) {
+	a.collapsed[path] = collapsed
+	a.sidebarCache.layoutReady = false
+}
+func (c *sidebarCache) folderAt(row int) int {
+	return sort.Search(len(c.folders), func(i int) bool { return c.starts[i+1] > row })
 }

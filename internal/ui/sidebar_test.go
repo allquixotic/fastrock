@@ -30,11 +30,11 @@ func TestV13SidebarVirtualizationAndInvalidation(t *testing.T) {
 	if commands > 450 {
 		t.Fatalf("offscreen rows generated %d commands", commands)
 	}
-	a.collapsed["/large-project"] = true
+	a.collapseFolder("/large-project", true)
 	if collapsed := h.Frame(true); collapsed >= commands {
 		t.Fatalf("collapse did not remove rows: %d >= %d", collapsed, commands)
 	}
-	a.collapsed["/large-project"] = false
+	a.collapseFolder("/large-project", false)
 	if restored := h.Frame(true); restored != commands {
 		t.Fatalf("expand changed row extent: %d != %d", restored, commands)
 	}
@@ -77,7 +77,7 @@ func BenchmarkV13SidebarToggleAndRender(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for b.Loop() {
-				a.collapsed["/large-project"] = !a.collapsed["/large-project"]
+				a.collapseFolder("/large-project", !a.collapsed["/large-project"])
 				h.Frame(true)
 			}
 		})
@@ -132,4 +132,26 @@ func TestV14StatusCloseFitsWindow(t *testing.T) {
 		t.Fatalf("close outside window: %d,%d %dx%d", x, y, width, height)
 	}
 	t.Logf("close bounds: %d,%d %dx%d", x, y, width, height)
+}
+
+func TestV13ManyProjectsStillVirtualize(t *testing.T) {
+	a := largeSidebar(10000)
+	for id, c := range a.state.Chats {
+		c.Cwd = "/project-" + id
+	}
+	h := nucular.NewHeadlessHarness(nucular.WindowNoScrollbar, image.Pt(280, 900), a.drawSidebar)
+	a.window = h.Master()
+	a.window.SetStyle(makeStyle(a.p, 13))
+	if commands := h.Frame(true); commands > 450 {
+		t.Fatalf("offscreen projects generated %d commands", commands)
+	}
+	cache := a.sidebarLayout()
+	if cache.totalRows != 20000 || cache.folderAt(19999) != 9999 {
+		t.Fatal("incorrect project row index")
+	}
+	a.collapseFolder(cache.folders[0].path, true)
+	a.sidebarLayout()
+	if cache.totalRows != 19999 || cache.starts[1] != 1 {
+		t.Fatal("collapse offsets stale")
+	}
 }

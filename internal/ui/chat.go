@@ -247,37 +247,42 @@ func (a *App) drawSidebar(w *nucular.Window) {
 	spacing := w.Master().Style().GroupWindow.Spacing.Y
 	rowHeight := int(28 * w.Master().Style().Scaling)
 	stride := rowHeight + spacing
-	for _, folder := range a.sidebarFolders() {
-		w.RowScaled(rowHeight).Dynamic(1)
-		if folderRow(w, folder.title, !a.collapsed[folder.path], a.p) {
-			a.collapsed[folder.path] = !a.collapsed[folder.path]
+	a.sidebarFolders()
+	cache := a.sidebarLayout()
+	top := w.WidgetBounds().Y
+	first, last := sidebarVisible(top, w.Bounds.Y, w.Bounds.Y+w.Bounds.H, stride, cache.totalRows)
+	sidebarSkip(w, first, stride, spacing)
+	folderIndex := cache.folderAt(first)
+	for row := first; row < last; row++ {
+		for folderIndex < len(cache.folders) && row >= cache.starts[folderIndex+1] {
+			folderIndex++
 		}
-		a.folderContext(w, folder.path)
-		if a.collapsed[folder.path] {
+		folder := cache.folders[folderIndex]
+		w.RowScaled(rowHeight).Dynamic(1)
+		if row == cache.starts[folderIndex] {
+			if folderRow(w, folder.title, !a.collapsed[folder.path], a.p) {
+				a.collapseFolder(folder.path, !a.collapsed[folder.path])
+			}
+			a.folderContext(w, folder.path)
 			continue
 		}
-		top := w.WidgetBounds().Y
-		first, last := sidebarVisible(top, w.Bounds.Y, w.Bounds.Y+w.Bounds.H, stride, len(folder.rows))
-		sidebarSkip(w, first, stride, spacing)
-		for _, c := range folder.rows[first:last] {
-			w.RowScaled(rowHeight).Dynamic(1)
-			var dot color.RGBA
-			if c.Busy() {
-				dot = a.p.Accent
-			} else if c.Status == "error" {
-				dot = a.p.Danger
-			}
-			active := false
-			if tab := a.state.Current(); tab != nil {
-				active = tab.Target == c.ID
-			}
-			if flatRow(w, c.Title, "", active, dot, a.p) {
-				a.resumeThread(c.ID)
-			}
-			a.sidebarContext(w, c)
+		c := folder.rows[row-cache.starts[folderIndex]-1]
+		var dot color.RGBA
+		if c.Busy() {
+			dot = a.p.Accent
+		} else if c.Status == "error" {
+			dot = a.p.Danger
 		}
-		sidebarSkip(w, len(folder.rows)-last, stride, spacing)
+		active := false
+		if tab := a.state.Current(); tab != nil {
+			active = tab.Target == c.ID
+		}
+		if flatRow(w, c.Title, "", active, dot, a.p) {
+			a.resumeThread(c.ID)
+		}
+		a.sidebarContext(w, c)
 	}
+	sidebarSkip(w, cache.totalRows-last, stride, spacing)
 	if a.sidebarCache.count == 0 {
 		muted(w, "No conversations", a.p)
 	}

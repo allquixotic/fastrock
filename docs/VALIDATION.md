@@ -96,6 +96,8 @@ deterministic or local data. Detailed interaction coverage is in
 
 - Headless regression renders an expanded 100,000-conversation folder, checks
   bounded draw commands, collapse/reopen, changed title search and archive scope.
+  A separate 10,000-project fixture verifies that offscreen headers also stay
+  outside the rendered row set.
   Its alternating collapse/expand software-render benchmark on this Mac measured
   0.059–0.065 ms/frame for both 100 and 100,000 rows (prior implementation:
   6.33 ms for 100,000). Full-window sidebar toggle plus Rally redraw: 0.30 ms. This is not a Mac GUI test.
