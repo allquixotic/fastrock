@@ -40,12 +40,20 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.27.2'
-      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
+      - id: msys2
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
         with:
           msystem: UCRT64
           install: mingw-w64-ucrt-x86_64-gcc
-      - shell: pwsh
-        run: '"C:\msys64\ucrt64\bin" >> $env:GITHUB_PATH'
+      - name: Select UCRT64 compilers
+        shell: pwsh
+        env:
+          MSYS2_ROOT: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $bin = Join-Path $env:MSYS2_ROOT 'ucrt64\bin'
+          $bin >> $env:GITHUB_PATH
+          "CC=$bin\gcc.exe" >> $env:GITHUB_ENV
+          "CXX=$bin\g++.exe" >> $env:GITHUB_ENV
       - run: go run dev/package.go -os windows -arch amd64 -version '${{ github.ref_name }}' -phase build
       - name: Azure login for Artifact Signing (OIDC)
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0

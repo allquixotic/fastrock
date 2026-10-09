@@ -184,3 +184,8 @@ filename suggestions parse normalized separators consistently across hosts.
 The full headless suite passed locally. The complete `internal/codex` and
 `internal/ui` test binaries passed on Windows, and the affected tests passed
 with the race detector on macOS. No GUI was launched on the Mac.
+
+The Windows compile then exposed a hardcoded MSYS2 location: GitHub selected
+its preinstalled MinGW compiler and failed to link FLTK's UCRT archives. Both
+workflows now use the setup action's reported installation directory for PATH,
+CC and CXX. The native Windows build and import check verify this configuration.

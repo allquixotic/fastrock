@@ -21,7 +21,8 @@ compile, or replace Codex. A missing/obsolete/incompatible CLI produces a startu
 error with an Exit button. `fastrock --doctor` checks the CLI without opening a GUI.
 
 Use **Go 1.27.2** and **`CGO_ENABLED=1`**. macOS needs the Xcode command-line
-tools; Windows needs MinGW-w64 GCC/G++ on PATH. `go-fltk` supplies pinned static
+tools; Windows needs MinGW-w64 UCRT GCC/G++ on PATH (MSYS2's `ucrt64/bin`,
+with `CC` and `CXX` selecting its `gcc.exe` and `g++.exe`). `go-fltk` supplies pinned static
 FLTK archives, linked into the main executable. No FLTK DLL/dylib, Rust compiler,
 or embedded browser is required. Windows builds also link the compiler runtimes
 statically. `dev/check-linkage.go` checks the final executable's imports.
