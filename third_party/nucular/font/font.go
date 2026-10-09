@@ -57,6 +57,7 @@ func newFaceIntl(ttf []byte, size int) (*truetype.Font, Face, error) {
 		if err != nil {
 			return nil, Face{}, err
 		}
+		fontsMap[key] = fnt
 	}
 
 	return fnt, Face{truetype.NewFace(fnt, &truetype.Options{Size: float64(size), Hinting: font.HintingFull, DPI: 72})}, nil

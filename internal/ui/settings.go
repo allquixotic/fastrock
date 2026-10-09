@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"strconv"
 	"strings"
 
@@ -37,7 +38,7 @@ func (a *App) drawSettings(w *nucular.Window) {
 	if nav := w.GroupBegin("settings-nav", nucular.WindowNoHScrollbar); nav != nil {
 		for _, page := range []string{"Appearance", "Rally", "Models", "Codex configuration", "Account", "MCP servers", "Skills", "Keyboard", "About"} {
 			nav.Row(30).Dynamic(1)
-			if button(nav, page, s.Page == page, a.p) {
+			if flatRow(nav, page, "", s.Page == page, color.RGBA{}, a.p) {
 				s.Page = page
 				setText(s.Output, "")
 				a.loadSettingsPage(page)

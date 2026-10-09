@@ -2065,6 +2065,10 @@ func doScrollbarv(win *Window, scroll, scrollwheel_bounds rect.Rect, offset floa
 }
 
 func doScrollbarh(win *Window, scroll rect.Rect, offset float64, target float64, step float64, button_pixel_inc float64, style *nstyle.Scrollbar, in *Input, font font.Face) float64 {
+	if in.Mouse.ScrollDeltaX != 0 && in.Mouse.HoveringRect(win.Bounds) {
+		offset = clampFloat(0, offset+float64(in.Mouse.ScrollDeltaX)*40, maxFloat(0, target-float64(scroll.W)))
+		in.Mouse.ScrollDeltaX = 0
+	}
 	var cursor rect.Rect
 	var scroll_step float64
 	var scroll_offset float64

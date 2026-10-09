@@ -1,3 +1,4 @@
+//go:build (linux && !android) || freebsd
 // +build linux,!android freebsd
 
 package clipboard

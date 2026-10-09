@@ -135,7 +135,7 @@ func (ctx *context) processKeyEvent(e key.Event, textbuffer *bytes.Buffer) {
 		ctx.Input.Keyboard.events = append(ctx.Input.Keyboard.events, KeyboardEvent{kind: keyboardEventKey, key: e})
 	}
 	evinText := func() {
-		if e.Modifiers == 0 || e.Modifiers == key.ModShift {
+		if e.Rune > 0 && (e.Modifiers == 0 || e.Modifiers == key.ModShift) {
 			io.WriteString(textbuffer, string(e.Rune))
 		}
 
@@ -222,6 +222,7 @@ func (ctx *context) Reset() {
 	in.Mouse.Buttons[mouse.ButtonMiddle].Clicked = false
 	in.Mouse.Buttons[mouse.ButtonRight].Clicked = false
 	in.Mouse.ScrollDelta = 0
+	in.Mouse.ScrollDeltaX = 0
 	in.Mouse.Prev.X = in.Mouse.Pos.X
 	in.Mouse.Prev.Y = in.Mouse.Pos.Y
 	in.Mouse.Delta = image.Point{}

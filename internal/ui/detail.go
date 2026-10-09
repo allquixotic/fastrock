@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/aarzilli/nucular"
+	"github.com/aarzilli/nucular/font"
 	"github.com/allquixotic/fastrock/internal/assistant"
 	"github.com/allquixotic/fastrock/internal/rally"
+	"golang.org/x/image/font/gofont/goregular"
 )
 
 type detailView struct {
@@ -21,16 +23,23 @@ type detailView struct {
 	New             bool
 	Tab             string
 	Editors         map[string]*nucular.TextEditor
+	Rich            map[string]*richEditor
+	CommentRich     *richEditor
+	ItemRich        map[string]*richEditor
 	Fields          []rally.Field
 	States          []rally.Object
 	Items           []rally.Object
 	Loading, Saving bool
 	Error           string
-	Comment         *nucular.TextEditor
+	titleFont       font.Face
+	titleSize       int
 }
 
 func makeDetail(o rally.Object, kind string, isNew bool) *detailView {
-	d := &detailView{Original: o.Clone(), Kind: kind, New: isNew, Tab: "Details", Editors: map[string]*nucular.TextEditor{}, Comment: textEditor("", true)}
+	if canonical, ok := rally.CanonicalKind(kind); ok {
+		kind = canonical
+	}
+	d := &detailView{Rich: map[string]*richEditor{}, CommentRich: newRichEditor(""), ItemRich: map[string]*richEditor{}, Original: o.Clone(), Kind: kind, New: isNew, Tab: "Details", Editors: map[string]*nucular.TextEditor{}}
 	for _, k := range []string{"Name", "Description", "Notes", "AcceptanceCriteria", "BlockedReason", "PlanEstimate", "Estimate", "ToDo", "Actuals", "Priority", "Severity", "FormattedID", "Owner", "Iteration", "Release", "Project", "Feature", "Parent", "State", "ScheduleState", "Blocked", "Ready", "LastVerdict"} {
 		value := o.String(k)
 		if k == "State" && o.Ref(k) != "" {
@@ -40,6 +49,9 @@ func makeDetail(o rally.Object, kind string, isNew bool) *detailView {
 			value = strconv.FormatBool(o.Bool(k))
 		}
 		d.Editors[k] = textEditor(value, k == "Description" || k == "Notes" || k == "AcceptanceCriteria")
+	}
+	for _, key := range []string{"Description", "Notes", "AcceptanceCriteria"} {
+		d.Rich[key] = newRichEditor(o.String(key))
 	}
 	for k := range o {
 		if strings.HasPrefix(k, "c_") {
@@ -123,7 +135,7 @@ func (a *App) drawDetail(w *nucular.Window, v *rallyView) {
 	}
 	w.Row(31).Dynamic(7)
 	for _, tab := range []string{"Details", "Tasks", "Discussions", "Attachments", "Revisions", "Children", "More fields"} {
-		if button(w, tab, d.Tab == tab, a.p) {
+		if sectionTab(w, tab, d.Tab == tab, a.p) {
 			d.Tab = tab
 			if tab != "Details" && tab != "More fields" {
 				a.loadCollection(d)
@@ -195,14 +207,48 @@ func (a *App) detailFields(w *nucular.Window, d *detailView) {
 					setText(ed, strconv.FormatBool(value))
 				}
 			} else {
-				a.field(w, caption, ed, f.AttributeType == "TEXT")
+				if r := d.Rich[f.Name]; r != nil {
+					a.richField(w, caption, r, 220)
+				} else {
+					a.field(w, caption, ed, f.AttributeType == "TEXT")
+				}
 			}
 		}
 		return
 	}
-	a.field(w, "Name", d.Editors["Name"], false)
-	w.Row(30).Static(130, 150, 120, 150)
-	w.Label("Schedule state", "LC")
+	if d.titleSize != a.prefs.FontSize {
+		d.titleSize = a.prefs.FontSize
+		d.titleFont, _ = font.NewFace(goregular.TTF, d.titleSize+5)
+	}
+	oldFont := w.Master().Style().Font
+	w.Master().Style().Font = d.titleFont
+	w.Row(40).Dynamic(1)
+	d.Editors["Name"].Edit(w)
+	w.Master().Style().Font = oldFont
+	width := w.LayoutAvailableWidth()
+	if width < 720 {
+		a.detailMetadata(w, d)
+		for _, field := range []string{"Description", "AcceptanceCriteria", "Notes"} {
+			a.richField(w, field, d.Rich[field], 240)
+		}
+		return
+	}
+	w.Row(max(420, w.LayoutAvailableHeight()-6)).Static(width-290, 280)
+	if content := w.GroupBegin("artifact-content", nucular.WindowNoHScrollbar); content != nil {
+		for _, field := range []string{"Description", "AcceptanceCriteria", "Notes"} {
+			a.richField(content, field, d.Rich[field], 260)
+		}
+		content.GroupEnd()
+	}
+	if properties := w.GroupBegin("artifact-properties", nucular.WindowNoHScrollbar); properties != nil {
+		a.detailMetadata(properties, d)
+		properties.GroupEnd()
+	}
+}
+func (a *App) detailMetadata(w *nucular.Window, d *detailView) {
+	w.Row(28).Dynamic(1)
+	w.Label("State", "LC")
+	w.Row(30).Dynamic(1)
 	field := rally.StateField(d.Kind)
 	stateEditor := d.Editors[field]
 	if stateEditor == nil {
@@ -237,6 +283,7 @@ func (a *App) detailFields(w *nucular.Window, d *detailView) {
 			setText(stateEditor, values[next])
 		}
 	}
+	w.Row(28).Dynamic(2)
 	blocked := text(d.Editors["Blocked"]) == "true"
 	if w.CheckboxText("Blocked", &blocked) {
 		setText(d.Editors["Blocked"], strconv.FormatBool(blocked))
@@ -279,13 +326,21 @@ func (a *App) detailFields(w *nucular.Window, d *detailView) {
 		a.field(w, field, d.Editors[field], false)
 	}
 	a.field(w, "BlockedReason", d.Editors["BlockedReason"], false)
-	for _, field := range []string{"Description", "Notes", "AcceptanceCriteria"} {
-		a.field(w, field, d.Editors[field], true)
-	}
+
 }
 func (a *App) field(w *nucular.Window, name string, ed *nucular.TextEditor, multiline bool) {
 	if ed == nil {
 		return
+	}
+	switch name {
+	case "PlanEstimate":
+		name = "Plan estimate"
+	case "BlockedReason":
+		name = "Blocked reason"
+	case "ToDo":
+		name = "To do"
+	case "AcceptanceCriteria":
+		name = "Acceptance criteria"
 	}
 	title(w, name, a.p)
 	height := 30
@@ -295,7 +350,18 @@ func (a *App) field(w *nucular.Window, name string, ed *nucular.TextEditor, mult
 	w.Row(height).Dynamic(1)
 	ed.Edit(w)
 }
+func (d *detailView) syncRich() {
+	for key, r := range d.Rich {
+		if r != nil {
+			value := r.html()
+			if value != text(d.Editors[key]) {
+				setText(d.Editors[key], value)
+			}
+		}
+	}
+}
 func (d *detailView) dirty() bool {
+	d.syncRich()
 	for k, e := range d.Editors {
 		original := d.Original.String(k)
 		if k == "Blocked" || k == "Ready" {
@@ -311,6 +377,7 @@ func (d *detailView) dirty() bool {
 	return false
 }
 func (d *detailView) changes() (rally.Object, error) {
+	d.syncRich()
 	result := rally.Object{}
 fields:
 	for k, ed := range d.Editors {
@@ -491,12 +558,11 @@ func (a *App) loadCollection(d *detailView) {
 }
 func (a *App) detailCollection(w *nucular.Window, v *rallyView, d *detailView) {
 	if d.Tab == "Discussions" {
-		w.Row(75).Dynamic(1)
-		d.Comment.Edit(w)
+		a.richField(w, "Add to discussion", d.CommentRich, 140)
 		w.Row(28).Static(140)
-		if primary(w, "Add comment", a.p) && strings.TrimSpace(text(d.Comment)) != "" {
+		if primary(w, "Add comment", a.p) && strings.TrimSpace(string(d.CommentRich.doc.Text)) != "" {
 			c := a.rallyClient
-			comment := text(d.Comment)
+			comment := d.CommentRich.html()
 			a.work(func() {
 				ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
 				defer cancel()
@@ -505,7 +571,7 @@ func (a *App) detailCollection(w *nucular.Window, v *rallyView, d *detailView) {
 					if e != nil {
 						d.Error = e.Error()
 					} else {
-						setText(d.Comment, "")
+						d.CommentRich = newRichEditor("")
 						a.loadCollection(d)
 					}
 				})
@@ -568,8 +634,14 @@ func (a *App) detailCollection(w *nucular.Window, v *rallyView, d *detailView) {
 	for _, o := range d.Items {
 		if d.Tab == "Discussions" || d.Tab == "Revisions" {
 			title(w, fallback(o.String("User"), o.String("CreationDate")), a.p)
-			w.Row(90).Dynamic(1)
-			w.LabelWrap(fallback(o.String("Text"), o.String("Description")))
+			id := o.String("_ref")
+			r := d.ItemRich[id]
+			if r == nil {
+				r = newRichEditor(fallback(o.String("Text"), o.String("Description")))
+				r.mode = "Preview"
+				d.ItemRich[id] = r
+			}
+			a.richField(w, "", r, 120)
 		} else {
 			w.Row(33).Dynamic(1)
 			if w.ButtonText(o.ID() + "  " + o.String("Name")) {
@@ -629,6 +701,9 @@ func (a *App) applyPlan(v *rallyView, p assistant.Plan) {
 func mergeSchemaEditors(d *detailView, fields []rally.Field) {
 	d.Fields = fields
 	for _, f := range fields {
+		if !f.ReadOnly && f.AttributeType == "TEXT" && d.Rich[f.Name] == nil {
+			d.Rich[f.Name] = newRichEditor(d.Original.String(f.Name))
+		}
 		if f.ReadOnly || f.AttributeType == "COLLECTION" || d.Editors[f.Name] != nil {
 			continue
 		}

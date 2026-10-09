@@ -15,6 +15,7 @@ No fixture records are loaded by the application.
 - `workspace`: document tabs, conversation state and independent prompt queues.
 - `settings`: atomic JSON preferences/session writes and the OS credential vault.
 - `platform`: file/folder dialogs, URL opening and Windows screenshot capture.
+- `richtext`: Unicode document/format spans, HTML parsing/serialization and undo history.
 - `ui`: nucular presentation. Network work runs in goroutines and posts results
   to the UI loop; presentation state is owned by that loop.
 
@@ -22,6 +23,17 @@ The shell keeps the Codex GUI's top document strip, conversation sidebar, chat
 workspace, details panel and Settings navigation. Rally uses a separate native
 navigation/toolbar within its document. The layouts share theme tokens and fonts.
 The original browser app is a design reference, not an embedded runtime.
+
+The vendored nucular software renderer presents RGBA frames through a small
+Ebitengine 2.10 adapter. Native input is translated into nucular events; frames are uploaded only when
+changed, and idle windows use event-driven presentation. Both desktop
+platforms compile without CGo. File dialogs, clipboard and screenshots use system
+APIs directly; macOS file selection retains the system AppleScript dialog.
+
+The board caches projections, search text, group/column membership and wrapped card
+titles. Changes to the data generation, filter, grouping, sort or width invalidate the
+relevant caches. Sidebar grouping is cached separately from live conversation status.
+Font measurement uses a bounded typed cache, and editor UTF-8 snapshots are reused.
 
 ## Deliberate limits
 

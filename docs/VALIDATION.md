@@ -1,31 +1,69 @@
 # Validation
 
-The automated suite checks WSAPI scopes/pagination, CRUD and custom fields,
-metadata, token/redirect containment, bounded cancellation, no mutation retries,
-JSON-RPC correlation and shutdown, version rejection, model/speed gating, proposal
-review/revision conflicts, conversation tab/queue isolation, persistence and
-presentation models. `go test` does not open the GUI.
-
-The opt-in integration test launches the installed Codex 0.162.0 app-server with a
-temporary mock provider. It streams a response and calls native Rally query/view
-tools through Codex's current code-mode protocol. No real model or Rally account
-is contacted.
-
-Windows 11 native smoke coverage: startup, dark/light boards, artifact detail,
-conversation streaming, Rally assistant tools and orderly shutdown. The scenario
-uses the complete official Codex 0.162.0 binary distribution and loopback fixtures.
-`dev/windows-smoke.ps1` is reproducible in a signed-in Windows desktop session.
-Screenshot capture is Windows-only. macOS validation is compile/headless only.
-
-Build with Go 1.26.0. Both the default Gio path and Go 1.27.2 Windows output exposed
-blank-window problems on the validation host. The verified Windows configuration
-uses nucular's Shiny renderer and Go 1.26.0; those choices are pinned and documented.
-
 ## Verified on 2026-10-09
 
-- Go 1.26.0: `go vet ./...` and `go test -race ./...` passed.
-- The installed Codex 0.162.0 integration test passed with native Rally tools.
-- Windows 11 x64: the packaged GUI passed the smoke scenario, and screenshots
-  confirmed visible boards, details, conversation output, and the Rally assistant.
-- Windows-native UI and Rally unit tests passed; macOS arm64 compiled successfully.
-- No GUI was launched or tested on macOS.
+Fastrock builds with **Go 1.27.2 and `CGO_ENABLED=0`** for Windows amd64,
+macOS arm64 and macOS amd64. `go list -deps` reports no `CgoFiles` in either
+the Windows or macOS application dependency graph. The vendored nucular
+software renderer uses Ebitengine 2.10.0 for native presentation.
+
+`make check` passes root vet/tests and the vendored nucular tests with the
+`nucular_headless` tag. This tag disables native windows. The tests cover
+WSAPI scopes/pagination, CRUD/custom fields, metadata, token/redirect containment,
+cancellation, mutation retries, JSON-RPC correlation/shutdown, version rejection,
+model/speed gating, proposal conflicts, conversation/queue isolation, persistence,
+rich HTML editing and cache invalidation. Windows-targeted vet also passes.
+
+Windows 11 x64 desktop validation uses the complete official Codex 0.162.0
+distribution and loopback Rally/model fixtures. No real model or Rally account
+is contacted. The installed-CLI integration test also passes on Windows, including
+streaming and native Rally tools through Codex code mode. Coverage includes:
+
+- Dark/light boards, search result counts, story and child task details.
+- Rich HTML edits saved through WSAPI and retained after reopening.
+- Physical keyboard Select All, bold formatting, typing, clipboard copy and Ctrl+S.
+- Integrated tab closing, Ctrl+T/Ctrl+W, tab reordering and board drag-and-drop
+  followed by an assertion of the persisted Rally state.
+- Native open, save and folder dialogs opening and cancelling successfully.
+- Conversation streaming, Rally assistant tools and orderly shutdown.
+
+`dev/windows-smoke.ps1` runs the main UI scenario from a signed-in Windows
+desktop session and writes screenshots plus assertions into its test directory.
+Screenshots and other generated validation files are excluded from Git.
+No GUI was launched or tested on macOS; macOS verification is compile/headless only.
+
+## Go 1.27.2 investigation
+
+The previous validation notes attributed a Windows blank-window problem to
+Go 1.27.2 and pinned Go 1.26. A controlled retest of the unmodified previous
+Shiny implementation built with Go 1.27.2 passed on the same Windows host.
+That does **not** substantiate a Go compiler/runtime defect. The earlier version
+attribution was too strong; the historical intermittent failure was not reproduced.
+
+The replacement desktop adapter, Go 1.27.2 builds, native input, screenshots and
+shutdown have been validated together. Gio is removed. Fastrock no longer uses
+PowerShell/C# compilation for Windows dialogs or screenshot capture.
+
+## Allocation measurements
+
+The repeated 1,000-story filter benchmark, on the same Apple M5 Max and Go 1.27.2:
+
+| Operation | Before | After |
+| --- | --- | --- |
+| Unchanged board filter | 99,731 ns, 104,193 B, 2,001 allocations | 7.6 ns, 0 B, 0 allocations |
+| Unchanged 3,600-character editor snapshot | — | 1,851 ns, 0 B, 0 allocations |
+| Cached font measurement | — | 16.5 ns, 0 B, 0 allocations |
+
+These measure reuse after the first calculation, **not** initial filtering or
+whole-frame rendering. Tests also assert zero allocations when reusing board
+layout/sidebar grouping and during coalesced edits with sufficient text capacity.
+The UI caches parsed search text, group membership, card wrapping and font widths;
+rich-text undo storage is bounded and discarded snapshots release their references.
+
+Reproduce the measurements without opening a window:
+
+```sh
+CGO_ENABLED=0 GOTOOLCHAIN=go1.27.2 go test -tags=nucular_headless \
+  -run '^$' -bench 'Benchmark(BoardFilter|EditorSnapshot|FontWidthCached)$' \
+  -benchmem ./internal/ui
+```

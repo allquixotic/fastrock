@@ -2,7 +2,6 @@ param([string]$Root = $PSScriptRoot, [string]$Binary = 'fastrock.exe')
 $ErrorActionPreference = 'Stop'
 Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like "$Root\*" -and ($_.Name -like 'fastrock*.exe' -or $_.Name -like 'mock-*.exe') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Start-Sleep -Milliseconds 1200
-if (Test-Path "$Root\mock-model-next.exe") { Copy-Item -Force "$Root\mock-model-next.exe" "$Root\mock-model.exe" }
 Remove-Item "$Root\smoke.json.result", "$Root\0*.png" -Force -ErrorAction SilentlyContinue
 if (Test-Path "$Root\fastrock-home\session.json") { Remove-Item "$Root\fastrock-home\session.json" -Force }
 New-Item -ItemType Directory -Force "$Root\codex-home", "$Root\fastrock-home" | Out-Null
@@ -31,6 +30,9 @@ $steps = @(
     @{action='wait'; milliseconds=3500},
     @{action='rally'; value='teamboard'},
     @{action='wait'; milliseconds=3500},
+    @{action='filter'; value='US1001'},
+    @{action='assert_count'; value='1'},
+    @{action='filter'; value=''},
     @{action='snapshot'; path="$Root\01-board-dark.png"},
     @{action='theme'; value='light'},
     @{action='wait'; milliseconds=500},
@@ -39,6 +41,20 @@ $steps = @(
     @{action='item'; value='US1001'},
     @{action='wait'; milliseconds=1500},
     @{action='snapshot'; path="$Root\03-detail.png"},
+    @{action='description'; value='Updated rich text from the native editor'},
+    @{action='format_description'},
+    @{action='assert_html'; value='<strong>Updated rich text from the native editor</strong>'},
+    @{action='save_item'},
+    @{action='wait'; milliseconds=1200},
+    @{action='back'},
+    @{action='item'; value='US1001'},
+    @{action='wait'; milliseconds=1200},
+    @{action='assert_html'; value='<strong>Updated rich text from the native editor</strong>'},
+    @{action='detail_tab'; value='Tasks'},
+    @{action='wait'; milliseconds=800},
+    @{action='open_first_child'},
+    @{action='wait'; milliseconds=1000},
+    @{action='snapshot'; path="$Root\03-task-detail.png"},
     @{action='new_chat'; value=$Root},
     @{action='wait'; milliseconds=2000},
     @{action='send'; value='hello'},

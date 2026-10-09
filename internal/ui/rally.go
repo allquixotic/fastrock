@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/aarzilli/nucular"
-	"github.com/aarzilli/nucular/style"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 )
@@ -31,10 +30,36 @@ type rallyView struct {
 	Detail                                  *detailView
 	Columns                                 []string
 	ShowFields                              bool
+	filterCache                             []rally.Object
+	filterSource                            *rally.Object
+	filterGeneration                        int
+	filterText, filterOwner, filterState    string
+	filterBlocked, filterReady              bool
+	filterRevision                          uint64
+	filterSearch                            []string
+	filterSort                              string
+	filterDesc                              bool
+	OnlyBlocked, OnlyReady                  bool
+	OwnerFilter, StateFilter                string
+	cards                                   map[string]*boardCard
+	cardSource                              *rally.Object
+	cardGeneration                          int
+	dragCard                                string
+	dragCardX, dragCardY                    int
+	cardDragging                            bool
+	ownerOptions, stateOptions              []string
+	boardGroups                             []boardGroup
+	boardWidths                             []int
+	boardRevision                           uint64
+	boardGrouping                           string
+	boardPrepared                           bool
 }
 
 func newRallyView(s rally.PageSpec) *rallyView {
-	return &rallyView{Spec: s, Mode: s.Mode, Group: "None", Query: textEditor("", false), Search: textEditor("", false), Selected: map[string]bool{}, Page: 1, PageSize: 25, Columns: []string{"FormattedID", "Name", "ScheduleState", "PlanEstimate", "Owner", "Iteration"}, Sort: "Rank"}
+	v := &rallyView{Spec: s, Mode: s.Mode, Group: "None", Query: textEditor("", false), Search: textEditor("", false), Selected: map[string]bool{}, Page: 1, PageSize: 25, Columns: []string{"FormattedID", "Name", "ScheduleState", "PlanEstimate", "Owner", "Iteration"}, Sort: "Rank"}
+	v.Search.Placeholder = "Search ID, title, owner, description"
+	v.Query.Placeholder = "Advanced WSAPI query"
+	return v
 }
 func (a *App) rallyQuery(v *rallyView) rally.Query {
 	q := rally.Query{Expression: text(v.Query), Workspace: a.prefs.RallyWorkspace, Project: a.prefs.RallyProject, Parents: a.prefs.ProjectParents, Children: a.prefs.ProjectChildren, Order: v.Sort + " ASC"}
@@ -192,6 +217,22 @@ func (a *App) drawRally(w *nucular.Window, v *rallyView) {
 		a.exportRally(v)
 	}
 	if v.Filters {
+		v.prepareCards()
+		w.Row(28).Static(100, 100, 200, 180)
+		w.CheckboxText("Blocked", &v.OnlyBlocked)
+		w.CheckboxText("Ready", &v.OnlyReady)
+		owners := v.ownerOptions
+		if n := w.ComboSimple(owners, index(owners, fallback(v.OwnerFilter, "All owners")), 28); n == 0 {
+			v.OwnerFilter = ""
+		} else {
+			v.OwnerFilter = owners[n]
+		}
+		states := v.stateOptions
+		if n := w.ComboSimple(states, index(states, fallback(v.StateFilter, "All states")), 28); n == 0 {
+			v.StateFilter = ""
+		} else {
+			v.StateFilter = states[n]
+		}
 		w.Row(30).Ratio(.78, .1, .12)
 		v.Query.Edit(w)
 		if w.ButtonText("Apply") {
@@ -201,6 +242,8 @@ func (a *App) drawRally(w *nucular.Window, v *rallyView) {
 			setText(v.Query, "")
 			setText(v.Search, "")
 			v.Timebox = ""
+			v.OwnerFilter, v.StateFilter = "", ""
+			v.OnlyBlocked, v.OnlyReady = false, false
 			a.refreshRally(v)
 		}
 		muted(w, `WSAPI query, e.g. (Blocked = true) or (Owner.UserName = "name@example.com")`, a.p)
@@ -260,7 +303,7 @@ func (a *App) drawRally(w *nucular.Window, v *rallyView) {
 	}
 	h := max(150, w.LayoutAvailableHeight()-38)
 	w.Row(h).Dynamic(1)
-	if body := w.GroupBegin("rally-content-"+v.Spec.ID, nucular.WindowNoHScrollbar); body != nil {
+	if body := w.GroupBegin("rally-content-"+v.Spec.ID, 0); body != nil {
 		switch v.Mode {
 		case "board":
 			a.board(body, v, items)
@@ -338,12 +381,47 @@ func (a *App) rallyNav(w *nucular.Window, v *rallyView) {
 	}
 }
 func (v *rallyView) filtered() []rally.Object {
-	search := strings.ToLower(text(v.Search))
-	out := make([]rally.Object, 0, len(v.Items))
-	for _, o := range v.Items {
-		if search == "" || strings.Contains(strings.ToLower(o.ID()+" "+o.String("Name")+" "+o.String("Owner")), search) {
-			out = append(out, o)
+	var source *rally.Object
+	if len(v.Items) > 0 {
+		source = &v.Items[0]
+	}
+	queryText := text(v.Search)
+	changed := source != v.filterSource || v.Generation != v.filterGeneration || len(v.filterSearch) != len(v.Items)
+	if !changed && queryText == v.filterText && v.OwnerFilter == v.filterOwner && v.StateFilter == v.filterState && v.OnlyBlocked == v.filterBlocked && v.OnlyReady == v.filterReady && v.Sort == v.filterSort && v.Descending == v.filterDesc {
+		return v.filterCache
+	}
+	if changed {
+		v.filterSearch = make([]string, len(v.Items))
+		for i, o := range v.Items {
+			v.filterSearch[i] = strings.ToLower(o.ID() + " " + o.String("Name") + " " + o.String("Owner") + " " + plainHTML(o.String("Description")))
 		}
+		v.filterSource = source
+		v.filterGeneration = v.Generation
+	}
+	v.filterText, v.filterOwner, v.filterState = queryText, v.OwnerFilter, v.StateFilter
+	v.filterBlocked, v.filterReady = v.OnlyBlocked, v.OnlyReady
+	v.filterRevision++
+	v.filterSort = v.Sort
+	v.filterDesc = v.Descending
+	query := strings.ToLower(queryText)
+	out := v.filterCache[:0]
+	for i, o := range v.Items {
+		if query != "" && !strings.Contains(v.filterSearch[i], query) {
+			continue
+		}
+		if v.OnlyBlocked && !o.Bool("Blocked") {
+			continue
+		}
+		if v.OnlyReady && !o.Bool("Ready") {
+			continue
+		}
+		if v.OwnerFilter != "" && fallback(o.String("Owner"), "Unassigned") != v.OwnerFilter {
+			continue
+		}
+		if v.StateFilter != "" && o.String(rally.StateField(v.Spec.Kind)) != v.StateFilter {
+			continue
+		}
+		out = append(out, o)
 	}
 	if v.Sort != "Rank" {
 		sort.SliceStable(out, func(i, j int) bool {
@@ -354,6 +432,7 @@ func (v *rallyView) filtered() []rally.Object {
 			return a < b
 		})
 	}
+	v.filterCache = out
 	return out
 }
 func (a *App) table(w *nucular.Window, v *rallyView, items []rally.Object) {
@@ -438,89 +517,7 @@ func (a *App) table(w *nucular.Window, v *rallyView, items []rally.Object) {
 	}
 }
 func (a *App) board(w *nucular.Window, v *rallyView, items []rally.Object) {
-	field := rally.StateField(v.Spec.Kind)
-	columns := rally.States(v.Spec.Kind)
-	for _, o := range items {
-		state := o.String(field)
-		if state == "" {
-			state = columns[0]
-		}
-		if !contains(columns, state) {
-			columns = append(columns, state)
-		}
-	}
-	groups := []string{""}
-	if v.Group != "None" {
-		groups = nil
-		for _, o := range items {
-			g := fallback(o.String(v.Group), "Unassigned")
-			if !contains(groups, g) {
-				groups = append(groups, g)
-			}
-		}
-		sort.Strings(groups)
-	}
-	for _, group := range groups {
-		if group != "" {
-			title(w, group, a.p)
-		}
-		height := max(200, w.LayoutAvailableHeight()-12)
-		if len(groups) > 1 {
-			height = 350
-		}
-		w.Row(height).Dynamic(len(columns))
-		for _, column := range columns {
-			gw := w.GroupBegin("board-"+group+column, nucular.WindowNoHScrollbar)
-			if gw == nil {
-				continue
-			}
-			subset := []rally.Object{}
-			for _, o := range items {
-				state := fallback(o.String(field), columns[0])
-				if state == column && (group == "" || fallback(o.String(v.Group), "Unassigned") == group) {
-					subset = append(subset, o)
-				}
-			}
-			gw.Row(30).Dynamic(1)
-			gw.LabelColored(fmt.Sprintf("%s  %d", column, len(subset)), "LC", stateColor(column, a.p))
-			if v.ExitAgreements {
-				muted(gw, "Review acceptance criteria before advancing.", a.p)
-			}
-			if v.Rules {
-				muted(gw, "Use the state control to move work.", a.p)
-			}
-			for _, o := range subset {
-				old := gw.Master().Style().Button
-				b := old
-				b.Normal = style.MakeItemColor(a.p.Alt)
-				if o.Bool("Blocked") {
-					b.BorderColor = a.p.Danger
-				}
-				gw.Master().Style().Button = b
-				gw.Row(30).Dynamic(1)
-				hit := gw.ButtonText(o.ID() + "   " + fmt.Sprintf("%g pts", o.Number("PlanEstimate")))
-				gw.Row(78).Dynamic(1)
-				hit = wrapButton(gw, o.String("Name"), a.p) || hit
-				gw.Master().Style().Button = old
-				gw.Row(23).Dynamic(1)
-				gw.LabelColored(fallback(o.String("Owner"), "Unassigned"), "LC", a.p.Muted)
-				gw.Row(25).Ratio(.8, .2)
-				selected := v.Selected[o.String("_ref")]
-				if gw.CheckboxText(fallback(o.String("Iteration"), "No iteration"), &selected) {
-					v.Selected[o.String("_ref")] = selected
-				}
-				if gw.ButtonText("…") {
-					hit = true
-				}
-				if hit {
-					a.openArtifact(v, o)
-				}
-				gw.Row(8).Dynamic(1)
-				gw.Spacing(1)
-			}
-			gw.GroupEnd()
-		}
-	}
+	a.drawTeamBoard(w, v, items)
 }
 func (a *App) metrics(w *nucular.Window, items []rally.Object, kind string) {
 	counts := map[string]int{}

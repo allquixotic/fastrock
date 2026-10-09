@@ -1,4 +1,4 @@
-// +build !windows,!linux,!freebsd android
+//go:build (!windows && !darwin && !linux && !freebsd) || android
 
 package clipboard
 

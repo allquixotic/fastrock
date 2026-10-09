@@ -1,24 +1,82 @@
 package platform
 
 import (
-	"encoding/base64"
-	"encoding/binary"
+	"fmt"
+	"image"
+	"image/png"
 	"os"
-	"os/exec"
-	"strconv"
 	"syscall"
-	"unicode/utf16"
+	"unsafe"
 )
 
+// Screenshot captures this process's visible window with Win32/GDI. It is used
+// only by opt-in Windows validation; it needs no PowerShell or C# compiler.
 func Screenshot(path string) error {
-	script := `Add-Type -AssemblyName System.Drawing; Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class ShotWin { [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h,out R r); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags); public struct R { public int L,T,Rt,B; } }'; $p=Get-Process -Id $env:FASTROCK_SHOT_PID; $h=$p.MainWindowHandle; [ShotWin]::SetWindowPos($h,[IntPtr](-1),0,0,0,0,3) | Out-Null; [ShotWin]::SetForegroundWindow($h) | Out-Null; Start-Sleep -Milliseconds 350; $r=New-Object ShotWin+R; [ShotWin]::GetWindowRect($h,[ref]$r) | Out-Null; $b=New-Object Drawing.Bitmap(($r.Rt-$r.L),($r.B-$r.T)); $g=[Drawing.Graphics]::FromImage($b); $g.CopyFromScreen($r.L,$r.T,0,0,$b.Size); $b.Save($env:FASTROCK_SHOT_PATH,[Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $b.Dispose(); [ShotWin]::SetWindowPos($h,[IntPtr](-2),0,0,0,0,3) | Out-Null`
-	units := utf16.Encode([]rune(script))
-	b := make([]byte, 2*len(units))
-	for i, u := range units {
-		binary.LittleEndian.PutUint16(b[2*i:], u)
+	user := syscall.NewLazyDLL("user32.dll")
+	gdi := syscall.NewLazyDLL("gdi32.dll")
+	var hwnd uintptr
+	cb := syscall.NewCallback(func(h, unused uintptr) uintptr {
+		var pid uint32
+		user.NewProc("GetWindowThreadProcessId").Call(h, uintptr(unsafe.Pointer(&pid)))
+		visible, _, _ := user.NewProc("IsWindowVisible").Call(h)
+		if int(pid) == os.Getpid() && visible != 0 {
+			hwnd = h
+			return 0
+		}
+		return 1
+	})
+	user.NewProc("EnumWindows").Call(cb, 0)
+	if hwnd == 0 {
+		return fmt.Errorf("capture: no visible Fastrock window")
 	}
-	c := exec.Command("powershell.exe", "-NoProfile", "-EncodedCommand", base64.StdEncoding.EncodeToString(b))
-	c.Env = append(os.Environ(), "FASTROCK_SHOT_PID="+strconv.Itoa(os.Getpid()), "FASTROCK_SHOT_PATH="+path)
-	c.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
-	return c.Run()
+	var bounds struct{ Left, Top, Right, Bottom int32 }
+	ok, _, e := user.NewProc("GetWindowRect").Call(hwnd, uintptr(unsafe.Pointer(&bounds)))
+	if ok == 0 {
+		return fmt.Errorf("capture window bounds: %w", e)
+	}
+	width, height := int(bounds.Right-bounds.Left), int(bounds.Bottom-bounds.Top)
+	if width <= 0 || height <= 0 || width*height > 32_000_000 {
+		return fmt.Errorf("capture: invalid dimensions %dx%d", width, height)
+	}
+	dc, _, e := user.NewProc("GetDC").Call(0)
+	if dc == 0 {
+		return e
+	}
+	defer user.NewProc("ReleaseDC").Call(0, dc)
+	memory, _, e := gdi.NewProc("CreateCompatibleDC").Call(dc)
+	if memory == 0 {
+		return e
+	}
+	defer gdi.NewProc("DeleteDC").Call(memory)
+	info := struct {
+		Size                   uint32
+		Width, Height          int32
+		Planes, Bits           uint16
+		Compression, ImageSize uint32
+		XPels, YPels           int32
+		Used, Important        uint32
+	}{Size: 40, Width: int32(width), Height: -int32(height), Planes: 1, Bits: 32}
+	var pixels unsafe.Pointer
+	bitmap, _, e := gdi.NewProc("CreateDIBSection").Call(dc, uintptr(unsafe.Pointer(&info)), 0, uintptr(unsafe.Pointer(&pixels)), 0, 0)
+	if bitmap == 0 {
+		return e
+	}
+	defer gdi.NewProc("DeleteObject").Call(bitmap)
+	old, _, _ := gdi.NewProc("SelectObject").Call(memory, bitmap)
+	defer gdi.NewProc("SelectObject").Call(memory, old)
+	ok, _, e = gdi.NewProc("BitBlt").Call(memory, 0, 0, uintptr(width), uintptr(height), dc, uintptr(bounds.Left), uintptr(bounds.Top), 0x40cc0020)
+	if ok == 0 {
+		return e
+	}
+	data := unsafe.Slice((*byte)(pixels), width*height*4)
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for i := 0; i < len(data); i += 4 {
+		img.Pix[i], img.Pix[i+1], img.Pix[i+2], img.Pix[i+3] = data[i+2], data[i+1], data[i], 255
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return png.Encode(f, img)
 }

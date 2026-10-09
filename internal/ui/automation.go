@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/allquixotic/fastrock/internal/platform"
+	"github.com/allquixotic/fastrock/internal/richtext"
 )
 
 type automationStep struct {
@@ -60,7 +62,67 @@ func (a *App) startAutomation() {
 			}
 			done := make(chan struct{})
 			a.post(func() {
+				var v *rallyView
+				if tab := a.state.Current(); tab != nil {
+					v = a.rallyViews[tab.ID]
+				}
+				fail := func(message string) { log += "FAIL: " + message + "\n"; a.exitCode = 1 }
 				switch step.Action {
+				case "filter":
+					if v != nil {
+						setText(v.Search, step.Value)
+					}
+				case "assert_count":
+					n, _ := strconv.Atoi(step.Value)
+					if v == nil || len(v.filtered()) != n {
+						fail("unexpected filter count")
+					}
+				case "assert_tabs":
+					titles := make([]string, len(a.state.Tabs))
+					for i, tab := range a.state.Tabs {
+						titles[i] = tab.Title
+					}
+					if strings.Join(titles, "|") != step.Value {
+						fail("unexpected document tabs: " + strings.Join(titles, "|"))
+					}
+				case "assert_state":
+					if v == nil || len(v.filtered()) != 1 || v.filtered()[0].String("ScheduleState") != step.Value {
+						fail("unexpected board state")
+					}
+				case "description":
+					if v != nil && v.Detail != nil {
+						r := v.Detail.Rich["Description"]
+						setText(r.editor, step.Value)
+						r.sync()
+					}
+				case "format_description":
+					if v != nil && v.Detail != nil {
+						r := v.Detail.Rich["Description"]
+						r.doc.Toggle(0, len(r.doc.Text), richtext.Bold)
+					}
+				case "assert_html":
+					if v == nil || v.Detail == nil || !strings.Contains(v.Detail.Rich["Description"].html(), step.Value) {
+						fail("formatted HTML missing")
+					}
+				case "save_item":
+					if v != nil && v.Detail != nil {
+						a.saveDetail(v)
+					}
+				case "back":
+					if v != nil {
+						v.Detail = nil
+					}
+				case "detail_tab":
+					if v != nil && v.Detail != nil {
+						v.Detail.Tab = step.Value
+						a.loadCollection(v.Detail)
+					}
+				case "open_first_child":
+					if v != nil && v.Detail != nil && len(v.Detail.Items) > 0 {
+						a.openArtifact(v, v.Detail.Items[0])
+					} else {
+						fail("no child work item")
+					}
 				case "rally":
 					a.openRally(step.Value)
 				case "theme":

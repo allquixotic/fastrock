@@ -1,14 +1,15 @@
 package ui
 
 import (
+	"image"
+	"image/color"
+
 	"github.com/aarzilli/nucular"
 	"github.com/aarzilli/nucular/font"
 	"github.com/aarzilli/nucular/label"
 	"github.com/aarzilli/nucular/style"
 	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/mobile/event/mouse"
-	"image"
-	"image/color"
 )
 
 type palette struct{ Window, Surface, Alt, Sunken, Hover, Selected, Border, Text, Muted, Faint, Accent, Success, Warning, Danger color.RGBA }
@@ -39,7 +40,7 @@ func makeStyle(p palette, size int) *style.Style {
 	s.NormalWindow.Spacing = image.Pt(0, 0)
 	s.GroupWindow.Padding = image.Pt(10, 8)
 	s.GroupWindow.Spacing = image.Pt(6, 6)
-	s.GroupWindow.Border = 1
+	s.GroupWindow.Border = 0
 	return s
 }
 func textEditor(value string, multiline bool) *nucular.TextEditor {
@@ -53,7 +54,7 @@ func text(ed *nucular.TextEditor) string {
 	if ed == nil {
 		return ""
 	}
-	return string(ed.Buffer)
+	return ed.Snapshot()
 }
 func setText(ed *nucular.TextEditor, value string) {
 	ed.Buffer = []rune(value)

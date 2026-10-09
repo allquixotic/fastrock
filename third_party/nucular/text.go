@@ -35,6 +35,11 @@ const (
 // &TextEditor{}, store it somewhere then in the update function call
 // the Edit method passing the window to it.
 type TextEditor struct {
+	textSnapshot string
+	Placeholder  string
+	// PaintText optionally draws formatted text while selection, hit testing and editing stay native.
+	PaintText func(*command.Buffer, rect.Rect, []rune, int, font.Face, color.RGBA, bool)
+
 	win            *Window
 	propertyStatus propertyStatus
 	Cursor         int
@@ -544,12 +549,16 @@ func (edit *TextEditor) Text(text []rune) {
 
 func (state *TextEditor) key(e *KeyboardEvent, font font.Face, row_height int, area_height int) {
 	readOnly := state.Flags&EditReadOnly != 0
+	shortcutModifier := key.ModControl
+	if runtime.GOOS == "darwin" {
+		shortcutModifier = key.ModMeta
+	}
 	switch {
-	case !readOnly && e.HandleKey(key.CodeZ, key.ModControl):
+	case !readOnly && e.HandleKey(key.CodeZ, shortcutModifier):
 		state.DoUndo()
 		state.HasPreferredX = false
 
-	case !readOnly && e.HandleKey(key.CodeZ, key.ModControl|key.ModShift):
+	case !readOnly && e.HandleKey(key.CodeZ, shortcutModifier|key.ModShift):
 		state.DoRedo()
 		state.HasPreferredX = false
 
@@ -663,10 +672,8 @@ func (state *TextEditor) key(e *KeyboardEvent, font font.Face, row_height int, a
 		state.Cursor = start
 		state.HasPreferredX = false
 
-	case e.HandleKey(key.CodeA, key.ModControl):
-		state.clamp()
-		state.moveToFirst()
-		state.Cursor = state.tonl(state.Cursor-1, -1)
+	case e.HandleKey(key.CodeA, shortcutModifier):
+		state.SelectAll()
 		state.HasPreferredX = false
 
 	case e.HandleKey(key.CodeEnd, key.ModControl|key.ModShift):
@@ -1020,7 +1027,11 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 			out.FillRect(lblrect, 0, background)
 		}
 		edit.drawchunks = append(edit.drawchunks, drawchunk{lblrect, start + textOffset, index + textOffset})
-		widgetText(out, lblrect, getText(start, index), &txt, "LC", f)
+		if edit.PaintText != nil && edit.PasswordChar == 0 {
+			edit.PaintText(out, lblrect, text[start:index], start+textOffset, f, foreground, is_selected)
+		} else {
+			widgetText(out, lblrect, getText(start, index), &txt, "LC", f)
+		}
 
 		pos_x = x_margin
 
@@ -1040,7 +1051,11 @@ func (edit *TextEditor) editDrawText(out *command.Buffer, style *nstyle.Edit, po
 			out.FillRect(lblrect, 0, background)
 		}
 		edit.drawchunks = append(edit.drawchunks, drawchunk{lblrect, start + textOffset, index + textOffset})
-		widgetText(out, lblrect, getText(start, index), &txt, "LC", f)
+		if edit.PaintText != nil && edit.PasswordChar == 0 {
+			edit.PaintText(out, lblrect, text[start:index], start+textOffset, f, foreground, is_selected)
+		} else {
+			widgetText(out, lblrect, getText(start, index), &txt, "LC", f)
+		}
 
 		pos_x += lblrect.W
 
@@ -1466,6 +1481,10 @@ func (d *drawableTextEditor) Draw(z *nstyle.Style, out *command.Buffer) {
 	}
 
 	startPos := image.Point{area.X - edit.Scrollbar.X, area.Y - edit.Scrollbar.Y}
+	if len(edit.Buffer) == 0 && edit.Placeholder != "" {
+		muted := color.RGBA{uint8((int(text_color.R) + int(background_color.R)) / 2), uint8((int(text_color.G) + int(background_color.G)) / 2), uint8((int(text_color.B) + int(background_color.B)) / 2), 255}
+		out.DrawText(rect.Rect{X: area.X, Y: area.Y, W: area.W, H: row_height}, edit.Placeholder, font, muted)
+	}
 	pos := startPos
 	x_margin := pos.X
 	if edit.SelectStart == edit.SelectEnd {
@@ -1698,4 +1717,22 @@ func (edit *TextEditor) Edit(win *Window) EditEvents {
 
 	ev := edit.doEdit(bounds, &style.Edit, in, cut, copy, paste)
 	return ev
+}
+
+// Snapshot returns cached UTF-8, including changes made directly to Buffer.
+func (ed *TextEditor) Snapshot() string {
+	i := 0
+	same := true
+	for _, r := range ed.textSnapshot {
+		if i >= len(ed.Buffer) || ed.Buffer[i] != r {
+			same = false
+			break
+		}
+		i++
+	}
+	if same && i == len(ed.Buffer) {
+		return ed.textSnapshot
+	}
+	ed.textSnapshot = string(ed.Buffer)
+	return ed.textSnapshot
 }

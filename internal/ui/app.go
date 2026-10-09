@@ -5,17 +5,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"image"
+	"image/color"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/aarzilli/nucular"
+	"github.com/aarzilli/nucular/label"
 	"github.com/allquixotic/fastrock/internal/codex"
 	"github.com/allquixotic/fastrock/internal/platform"
 	"github.com/allquixotic/fastrock/internal/rally"
 	"github.com/allquixotic/fastrock/internal/settings"
 	"github.com/allquixotic/fastrock/internal/workspace"
+	"golang.org/x/mobile/event/mouse"
 )
 
 type App struct {
@@ -51,6 +55,12 @@ type App struct {
 	lastCheckpoint                                    time.Time
 	historyCursor                                     map[bool]string
 	connecting                                        bool
+	dragTab                                           string
+	dragTabX                                          int
+	dragTabMoving                                     bool
+	tabWidths                                         []int
+	visibleTab                                        string
+	sidebarCache                                      sidebarCache
 }
 type approval struct {
 	Message   codex.Message
@@ -84,6 +94,7 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences)
 	a.loadSession()
 	a.p = colors(prefs.Theme == "light")
 	a.sidebarSearch = textEditor("", false)
+	a.sidebarSearch.Placeholder = "Search conversations"
 	a.newFolder = textEditor(prefs.WorkingDirectory, false)
 	a.paletteSearch = textEditor("", false)
 	if len(a.state.Tabs) == 0 {
@@ -100,7 +111,7 @@ func Run(ctx context.Context, store *settings.Store, prefs settings.Preferences)
 		if a.client != nil {
 			a.client.Close()
 		}
-		// Gio owns the process main loop on desktop platforms.
+		// Ebitengine owns the process main loop on desktop platforms.
 		os.Exit(a.exitCode)
 	})
 	a.work(func() {
@@ -395,42 +406,140 @@ func (a *App) draw(w *nucular.Window) {
 	}
 }
 func (a *App) drawTabs(w *nucular.Window) {
-	w.Row(47).Static(38, max(400, w.LayoutAvailableWidth()-180), 38, 92)
-	if button(w, "=", a.prefs.Sidebar, a.p) {
+	w.Row(38).Static(36, max(100, w.LayoutAvailableWidth()-184), 30, 30, 88)
+	if iconButton(w, "sidebar", a.prefs.Sidebar, a.p) {
 		a.prefs.Sidebar = !a.prefs.Sidebar
 		a.savePrefs()
 	}
-	if strip := w.GroupBegin("tabs", 0); strip != nil {
-		widths := []int{}
-		for range a.state.Tabs {
-			widths = append(widths, 150, 25)
+	oldGroup := w.Master().Style().GroupWindow
+	w.Master().Style().GroupWindow.Padding = image.Pt(0, 2)
+	w.Master().Style().GroupWindow.Spacing = image.Pt(0, 0)
+	if strip := w.GroupBegin("tabs", nucular.WindowNoScrollbar); strip != nil {
+		count := len(a.state.Tabs)
+		width := min(240, max(84, strip.LayoutAvailableWidth()/max(1, count)))
+		if cap(a.tabWidths) < count {
+			a.tabWidths = make([]int, count)
+		} else {
+			a.tabWidths = a.tabWidths[:count]
 		}
-		widths = append(widths, 30)
-		strip.Row(26).Static(widths...)
-		closeID := ""
-		for _, t := range a.state.Tabs {
-			if button(strip, t.Title, t.ID == a.state.Active, a.p) {
+		for i := range a.tabWidths {
+			a.tabWidths[i] = width
+		}
+		maxScroll := max(0, count*width-strip.LayoutAvailableWidth())
+		if in := strip.Input(); in.Mouse.HoveringRect(strip.Bounds) && (in.Mouse.ScrollDelta != 0 || in.Mouse.ScrollDeltaX != 0) {
+			strip.Scrollbar.X = min(maxScroll, max(0, strip.Scrollbar.X+int(in.Mouse.ScrollDeltaX-in.Mouse.ScrollDelta)*60))
+		}
+		if a.visibleTab != a.state.Active {
+			for i, t := range a.state.Tabs {
+				if t.ID == a.state.Active {
+					left, right := i*width, (i+1)*width
+					if left < strip.Scrollbar.X {
+						strip.Scrollbar.X = left
+					}
+					if right > strip.Scrollbar.X+strip.LayoutAvailableWidth() {
+						strip.Scrollbar.X = right - strip.LayoutAvailableWidth()
+					}
+				}
+			}
+			a.visibleTab = a.state.Active
+		}
+		strip.Scrollbar.X = min(maxScroll, max(0, strip.Scrollbar.X))
+		strip.Row(34).Static(a.tabWidths...)
+		closeID, keepID, moveID := "", "", ""
+		keepRight, moveBy := -1, 0
+		wasDragging := a.dragTabMoving
+		for i, t := range a.state.Tabs {
+			var dot color.RGBA
+			if c := a.state.Chats[t.Target]; c != nil {
+				dot = a.p.Faint
+				if c.Busy() {
+					dot = a.p.Accent
+				}
+				if c.Status == "error" {
+					dot = a.p.Danger
+				}
+			}
+			activate, close, b := documentTab(strip, t.Title, t.ID == a.state.Active, dot, a.p)
+			in := strip.Input()
+			if in.Mouse.IsClickDownInRect(mouse.ButtonLeft, b, true) {
+				a.dragTab = t.ID
+				a.dragTabX = in.Mouse.Pos.X
+			}
+			if a.dragTab == t.ID && in.Mouse.Down(mouse.ButtonLeft) && absInt(in.Mouse.Pos.X-a.dragTabX) > 6 {
+				a.dragTabMoving = true
+			}
+			if a.dragTabMoving && in.Mouse.Released(mouse.ButtonLeft) && in.Mouse.HoveringRect(b) {
+				from := 0
+				for j := range a.state.Tabs {
+					if a.state.Tabs[j].ID == a.dragTab {
+						from = j
+					}
+				}
+				moveID, moveBy = a.dragTab, i-from
+			}
+			if b.W > 0 && b.H > 0 {
+				if menu := strip.ContextualOpen(0, image.Pt(180, 100), b, nil); menu != nil {
+					menu.Row(28).Dynamic(1)
+					if menu.MenuItem(label.T("Close tab")) {
+						closeID = t.ID
+					}
+					if menu.MenuItem(label.T("Close other tabs")) {
+						keepID = t.ID
+					}
+					if menu.MenuItem(label.T("Close tabs to right")) {
+						keepRight = i
+					}
+				}
+			}
+			if activate && !a.dragTabMoving && !wasDragging {
 				a.state.Active = t.ID
 			}
-			if strip.ButtonText("×") {
+			if close {
 				closeID = t.ID
 			}
 		}
-		if strip.ButtonText("+") {
-			a.state.Open(workspace.New, "New tab", "", "")
+		if moveID != "" {
+			a.state.Move(moveID, moveBy)
+			a.state.Active = moveID
+		}
+		if keepID != "" {
+			for _, t := range a.state.Tabs {
+				if t.ID == keepID {
+					a.state.Tabs = []workspace.Tab{t}
+					a.state.Active = t.ID
+					break
+				}
+			}
+		} else if keepRight >= 0 {
+			a.state.Tabs = a.state.Tabs[:keepRight+1]
+			a.state.Active = a.state.Tabs[keepRight].ID
 		}
 		if closeID != "" {
 			a.state.Close(closeID)
 		}
+		if strip.Input().Mouse.Released(mouse.ButtonLeft) {
+			a.dragTab = ""
+			a.dragTabMoving = false
+		}
 		strip.GroupEnd()
 	}
-	if button(w, "i", a.prefs.Info, a.p) {
+	w.Master().Style().GroupWindow = oldGroup
+	if iconButton(w, "plus", false, a.p) {
+		a.state.Open(workspace.New, "New tab", "", "")
+	}
+	if iconButton(w, "i", a.prefs.Info, a.p) {
 		a.prefs.Info = !a.prefs.Info
 		a.savePrefs()
 	}
 	if w.ButtonText("Settings") {
 		a.openSettings()
 	}
+}
+func absInt(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
 }
 func (a *App) drawNew(w *nucular.Window) {
 	w.Row(60).Dynamic(1)

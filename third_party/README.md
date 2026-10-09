@@ -4,21 +4,27 @@ Source: https://github.com/aarzilli/nucular
 Commit: 58b808aa577248d4d3d0cd7af89ea4a3d0dc5d43
 License: MIT (see nucular/LICENSE).
 
-Local patch: select nucular's existing Shiny software renderer on Windows by
-changing build constraints in shiny.go, gio.go, and gio_windows.go. macOS keeps
-Gio. This avoids the blank output observed with Gio on the Windows validation
-host. Use the pinned Go 1.26.0 build scripts; Go 1.27.2 also produced blank output
-with Shiny in that environment. No widget API changes.
+The fork retains nucular's widgets, layout, input, and software rasterizer. The desktop
+presentation adapter in `internal/ebitenscreen` implements the small Shiny `screen`
+interface using Ebitengine **2.10.0**. Windows and macOS now use the same path with
+**Go 1.27.2 and CGO_ENABLED=0**. Gio and its dependencies have been removed. The
+adapter supports software buffers; texture APIs fail explicitly because nucular does
+not use them. Ebitengine is responsible for native windows and GPU presentation.
 
-Additional patch: repair wrapped-label height/padding handling so a one-line label
-and the last wrapped line render, and expose `WrapText` to reserve the measured
-height in the application. Regression tests are in `text_wrap_test.go`.
-The upstream SIMD benchmark test is restricted to amd64, matching its assembly
-implementation, so the wrapping tests can run on macOS arm64 without a GUI.
+Changes from upstream:
 
-Upstream whitespace in the workflow, documentation example and assembly was
-normalized without changing behavior. The unused Windows Gio file is retained
-with an `ignore` build constraint.
+- Integrated tab, board and formatting widgets live in the application, without
+  altering nucular's general widget behavior.
+- `TextEditor.Snapshot` caches UTF-8 without allocating on unchanged text;
+  `PaintText` allows formatted runs with native cursor, selection and scrolling.
+  A placeholder field gives empty search/composer editors a visible hint.
+- Parsed TrueType fonts are actually inserted into the existing font cache.
+  A bounded typed width cache avoids interface boxing and linked-list allocations.
+- Pure Go Windows clipboard uses movable global memory and bounded UTF-16 reads;
+  macOS clipboard uses NSPasteboard through purego, without a compiler or subprocess.
+- The `nucular_headless` build tag excludes the desktop driver during unit tests.
+- Wrapped-label height and padding fixes plus `WrapText` retain the previous patch.
+  SIMD tests remain amd64-only, matching their assembly implementation.
 
-The rich-text style tests were updated for upstream's embedded `TextStyle.Flags`
-and parameterless link callback. Both module test suites run in `make check` and CI.
+The upstream license and source notices are retained. Ebitengine and purego are
+Apache-2.0; see their pinned modules for copyright and license text.

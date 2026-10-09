@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"path/filepath"
 	"strings"
 	"time"
@@ -151,59 +152,52 @@ func (a *App) resumeThread(id string) {
 func (a *App) drawSidebar(w *nucular.Window) {
 	w.Row(28).Ratio(.72, .28)
 	w.LabelColored("CONVERSATIONS", "LC", a.p.Muted)
-	if w.ButtonText("+") {
+	if iconButton(w, "plus", false, a.p) {
 		a.newThread(a.prefs.WorkingDirectory)
 	}
 	w.Row(28).Dynamic(1)
 	a.sidebarSearch.Edit(w)
 	w.Row(26).Dynamic(2)
-	if button(w, "Recent", !a.archived, a.p) {
+	if flatRow(w, "Recent", "", !a.archived, color.RGBA{}, a.p) {
 		a.archived = false
 	}
-	if button(w, "Archived", a.archived, a.p) {
+	if flatRow(w, "Archived", "", a.archived, color.RGBA{}, a.p) {
 		a.archived = true
 		if a.client != nil {
 			client := a.client
 			a.work(func() { a.loadThreads(client, true) })
 		}
 	}
-	rows := a.state.Sidebar(text(a.sidebarSearch), a.archived)
-	folders := []string{}
-	byFolder := map[string][]*workspace.Conversation{}
-	for _, c := range rows {
-		if _, ok := byFolder[c.Cwd]; !ok {
-			folders = append(folders, c.Cwd)
-		}
-		byFolder[c.Cwd] = append(byFolder[c.Cwd], c)
-	}
-	for _, folder := range folders {
+	for _, folder := range a.sidebarFolders() {
 		w.Row(28).Dynamic(1)
-		arrow := "- "
-		if a.collapsed[folder] {
-			arrow = "+ "
+		arrow := "v  "
+		if a.collapsed[folder.path] {
+			arrow = ">  "
 		}
-		if w.ButtonText(arrow + filepath.Base(folder)) {
-			a.collapsed[folder] = !a.collapsed[folder]
+		if flatRow(w, arrow+folder.title, "", false, color.RGBA{}, a.p) {
+			a.collapsed[folder.path] = !a.collapsed[folder.path]
 		}
-		if a.collapsed[folder] {
+		if a.collapsed[folder.path] {
 			continue
 		}
-		for _, c := range byFolder[folder] {
-			w.Row(30).Dynamic(1)
-			status := ""
+		for _, c := range folder.rows {
+			w.Row(28).Dynamic(1)
+			var dot color.RGBA
 			if c.Busy() {
-				status = "● "
+				dot = a.p.Accent
+			} else if c.Status == "error" {
+				dot = a.p.Danger
 			}
 			active := false
 			if tab := a.state.Current(); tab != nil {
 				active = tab.Target == c.ID
 			}
-			if button(w, status+cut(c.Title, 27), active, a.p) {
+			if flatRow(w, c.Title, "", active, dot, a.p) {
 				a.resumeThread(c.ID)
 			}
 		}
 	}
-	if len(rows) == 0 {
+	if a.sidebarCache.count == 0 {
 		muted(w, "No conversations", a.p)
 	}
 	if cursor := a.historyCursor[a.archived]; cursor != "" && a.client != nil {
@@ -215,7 +209,7 @@ func (a *App) drawSidebar(w *nucular.Window) {
 		}
 	}
 	w.Row(26).Dynamic(1)
-	if w.ButtonText("Refresh history") {
+	if flatRow(w, "Refresh history", "", false, color.RGBA{}, a.p) {
 		if a.client != nil {
 			client := a.client
 			archived := a.archived

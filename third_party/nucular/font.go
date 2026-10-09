@@ -2,6 +2,7 @@ package nucular
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/aarzilli/nucular/command"
 	"github.com/aarzilli/nucular/font"
@@ -9,22 +10,22 @@ import (
 
 	ifont "golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
-
-	"github.com/hashicorp/golang-lru"
 )
 
-var fontWidthCache *lru.Cache
-var fontWidthCacheSize int
-
-func init() {
-	fontWidthCacheSize = 256
-	fontWidthCache, _ = lru.New(256)
-}
+// A bounded typed FIFO avoids interface boxing and linked-list nodes on the hot
+// measurement path. All access, including cache misses, is serialized.
+var widthMu sync.Mutex
+var widthValues = make(map[fontWidthCacheKey]int, 2048)
+var widthKeys = make([]fontWidthCacheKey, 2048)
+var widthNext int
 
 func ChangeFontWidthCache(size int) {
-	if size > fontWidthCacheSize {
-		fontWidthCacheSize = size
-		fontWidthCache, _ = lru.New(fontWidthCacheSize)
+	widthMu.Lock()
+	defer widthMu.Unlock()
+	if size > len(widthKeys) {
+		widthValues = make(map[fontWidthCacheKey]int, size)
+		widthKeys = make([]fontWidthCacheKey, size)
+		widthNext = 0
 	}
 }
 
@@ -34,6 +35,8 @@ type fontWidthCacheKey struct {
 }
 
 func FontWidth(f font.Face, str string) int {
+	widthMu.Lock()
+	defer widthMu.Unlock()
 	maxw := 0
 	for {
 		newline := strings.Index(str, "\n")
@@ -44,13 +47,15 @@ func FontWidth(f font.Face, str string) int {
 
 		k := fontWidthCacheKey{f, line}
 
-		var w int
-		if val, ok := fontWidthCache.Get(k); ok {
-			w = val.(int)
-		} else {
+		w, ok := widthValues[k]
+		if !ok {
 			d := ifont.Drawer{Face: f.Face}
 			w = d.MeasureString(line).Ceil()
-			fontWidthCache.Add(k, w)
+			delete(widthValues, widthKeys[widthNext])
+			k.string = strings.Clone(line)
+			widthValues[k] = w
+			widthKeys[widthNext] = k
+			widthNext = (widthNext + 1) % len(widthKeys)
 		}
 
 		if w > maxw {

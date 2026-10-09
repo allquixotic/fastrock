@@ -1,5 +1,3 @@
-//go:build nucular_shiny || windows
-
 package nucular
 
 import (
@@ -20,7 +18,6 @@ import (
 	"github.com/aarzilli/nucular/label"
 	"github.com/aarzilli/nucular/rect"
 
-	"golang.org/x/exp/shiny/driver"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
@@ -83,7 +80,7 @@ func NewMasterWindowOptions(flags WindowFlags, opts NewWindowOptions, updatefn U
 
 // Shows window, runs event loop
 func (mw *masterWindow) Main() {
-	driver.Main(mw.main)
+	runDriver(mw.main)
 	if mw.onClose != nil {
 		mw.onClose()
 	}
@@ -172,6 +169,10 @@ func (w *masterWindow) handleEventLocked(ei interface{}) bool {
 				w.ctx.Input.Mouse.ScrollDelta++
 			case mouse.ButtonWheelDown:
 				w.ctx.Input.Mouse.ScrollDelta--
+			case mouse.ButtonWheelLeft:
+				w.ctx.Input.Mouse.ScrollDeltaX--
+			case mouse.ButtonWheelRight:
+				w.ctx.Input.Mouse.ScrollDeltaX++
 			}
 		case mouse.DirPress, mouse.DirRelease:
 			down := e.Direction == mouse.DirPress

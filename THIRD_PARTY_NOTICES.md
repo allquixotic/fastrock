@@ -12,5 +12,8 @@ its copyright and license accompany the module in `golang.org/x/image/font/gofon
 Go module dependencies retain their respective licenses. `go list -m all` lists
 exact versions, also pinned by go.mod and go.sum.
 
+Ebitengine 2.10 and purego 0.11 provide the native desktop adapter and are
+Apache-2.0 licensed. Their pinned modules include their copyright/license notices.
+
 Codex is a separate user-installed application. It is not bundled with Fastrock.
 No Python or Rust code is compiled into Fastrock.

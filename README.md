@@ -19,20 +19,20 @@ both the version and app-server initialization. It does not download, bundle,
 compile, or replace Codex. A missing/obsolete/incompatible CLI produces a startup
 error with an Exit button. `fastrock --doctor` checks the CLI without opening a GUI.
 
-Use the pinned **Go 1.26.0** toolchain through the build scripts. Go 1.27.2 produced
-blank Windows windows during validation. The local nucular fork selects its
-software renderer on Windows; macOS uses Gio. See [the fork notes](third_party/README.md).
+Use **Go 1.27.2**. Both Windows and macOS build with **`CGO_ENABLED=0`**;
+no C compiler, Xcode toolchain, Rust compiler, or embedded browser is required.
+Our nucular fork retains its native widgets and software renderer, presented
+through Ebitengine 2.10's pure Go desktop driver. See [the fork notes](third_party/README.md).
 
 ```sh
 make windows       # build/fastrock.exe, Windows x64 cross-build
 make mac           # build/Fastrock.app on macOS
-make check         # vet and race tests, no GUI launched
+make check         # vet and headless tests, no GUI launched
 ```
 
 On Windows, `powershell -ExecutionPolicy Bypass -File dev/build.ps1` produces
 `build/fastrock.exe`. Run it from a terminal whose PATH includes Codex, or arrange
-that PATH for your desktop login. macOS compilation requires Xcode Command Line
-Tools. The generated app bundle is unsigned. No GUI tests are run on macOS.
+that PATH for your desktop login. The generated macOS app bundle is unsigned. No GUI tests are run on macOS.
 
 ## Codex conversations
 
@@ -66,6 +66,16 @@ palette. Boards and tables display real WSAPI results. Charts compute counts and
 estimates from the current selection; they do not invent historical metrics.
 Work-item details support creation, editing, deletion, comments, tasks, children,
 attachments, revision history and schema-driven fields, including `c_*` fields.
+The Team Board has unified cards with owners, iterations, estimates and ready/blocked
+status. Drag a card to a state column to move it after checking its current revision.
+Search matches IDs, names, owners and readable descriptions; quick filters include
+owner, state, blocked and ready. Boards scroll horizontally on narrower windows.
+
+Story and task details use a wide content editor with a properties sidebar. Description,
+notes, acceptance criteria, custom HTML fields and discussions support native bold,
+italic, underline, strike, headings, lists, links, preview, HTML source and undo/redo.
+Opening an item preserves its original HTML exactly. Editing normalizes supported
+formatting; use HTML source for complex markup such as embedded media or tables.
 CSV export quotes spreadsheet formula cells. Deletions show a confirmation.
 
 **Ask AI** opens the Rally assistant with the same Codex provider and model catalog.

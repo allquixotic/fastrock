@@ -13,7 +13,7 @@ import (
 
 const (
 	cfUnicodetext = 13
-	gmemFixed     = 0x0000
+	gmemMoveable  = 0x0002
 )
 
 var (
@@ -29,7 +29,7 @@ var (
 	globalFree   = kernel32.NewProc("GlobalFree")
 	globalLock   = kernel32.NewProc("GlobalLock")
 	globalUnlock = kernel32.NewProc("GlobalUnlock")
-	lstrcpy      = kernel32.NewProc("lstrcpyW")
+	globalSize   = kernel32.NewProc("GlobalSize")
 )
 
 func readAll() (string, error) {
@@ -40,7 +40,7 @@ func readAll() (string, error) {
 	defer closeClipboard.Call()
 
 	h, _, err := getClipboardData.Call(cfUnicodetext)
-	if r == 0 {
+	if h == 0 {
 		return "", err
 	}
 
@@ -49,12 +49,13 @@ func readAll() (string, error) {
 		return "", err
 	}
 
-	text := syscall.UTF16ToString((*[1 << 20]uint16)(unsafe.Pointer(l))[:])
-
-	r, _, err = globalUnlock.Call(h)
-	if r == 0 {
-		return "", err
+	size, _, _ := globalSize.Call(h)
+	if size > 32<<20 {
+		globalUnlock.Call(h)
+		return "", fmt.Errorf("clipboard text exceeds 32 MiB")
 	}
+	text := syscall.UTF16ToString(unsafe.Slice((*uint16)(unsafe.Pointer(l)), int(size/2)))
+	globalUnlock.Call(h)
 
 	return text, nil
 }
@@ -73,28 +74,23 @@ func writeAll(text string) error {
 
 	data := syscall.StringToUTF16(text)
 
-	h, _, err := globalAlloc.Call(gmemFixed, uintptr(len(data)*int(unsafe.Sizeof(data[0]))))
+	h, _, err := globalAlloc.Call(gmemMoveable, uintptr(len(data)*int(unsafe.Sizeof(data[0]))))
 	if h == 0 {
 		return err
 	}
 
 	l, _, err := globalLock.Call(h)
 	if l == 0 {
+		globalFree.Call(h)
 		return err
 	}
 
-	r, _, err = lstrcpy.Call(l, uintptr(unsafe.Pointer(&data[0])))
-	if r == 0 {
-		return err
-	}
-
-	r, _, err = globalUnlock.Call(h)
-	if r == 0 {
-		return err
-	}
+	copy(unsafe.Slice((*uint16)(unsafe.Pointer(l)), len(data)), data)
+	globalUnlock.Call(h)
 
 	r, _, err = setClipboardData.Call(cfUnicodetext, h)
 	if r == 0 {
+		globalFree.Call(h)
 		return err
 	}
 	return nil

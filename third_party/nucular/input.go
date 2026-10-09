@@ -17,13 +17,14 @@ type mouseButton struct {
 }
 
 type MouseInput struct {
-	valid       bool
-	clip        rect.Rect
-	Buttons     [4]mouseButton
-	Pos         image.Point
-	Prev        image.Point
-	Delta       image.Point
-	ScrollDelta float32
+	valid        bool
+	clip         rect.Rect
+	Buttons      [4]mouseButton
+	Pos          image.Point
+	Prev         image.Point
+	Delta        image.Point
+	ScrollDelta  float32
+	ScrollDeltaX float32
 }
 
 type KeyboardInput struct {
