@@ -74,6 +74,8 @@ and saved its incremental cache. Its source precedes the final Save-and-continue
 fix; alpha.3 passed both fixture modes on `games` with 82 requests/13 writes.
 The acceptance receipts explicitly record their modes, and CI retains evidence
 even on failure.
+The final alpha.3 hosted run 38039008786 also passed 667 Windows Rust tests,
+the complete 82-request/13-write callback fixture suite, packaging and cache save.
 
 HTTP and pure Rust tests also exercise complete collection paging, full-query
 CSV scope and formula neutralization, malformed or changing pages, reference and
@@ -91,7 +93,7 @@ timeouts, cancellations, bounded frames/events and disconnect cleanup.
 
 ## Scope and distribution
 
-This is an unsigned Windows x64 alpha. It requires installed Codex CLI 0.162.0 or
+The alpha.3 recorded above is an unsigned Windows x64 alpha. It requires installed Codex CLI 0.162.0 or
 newer; the installed CLI owns inference and configuration. `games` did not have
 Codex on its interactive PATH, so its UI tests used the explicit external-process
 fixture. The real installed CLI was checked read-only on the Mac.
@@ -106,3 +108,48 @@ atomic, and batch outcomes deliberately describe partial success.
 Free space remained approximately 2.1 TiB on the Mac and 3.06 TB on `games`.
 No cleanup was needed; useful incremental caches were retained. The build policy
 and disk-space practice are persistent in AGENTS.md and docs/releases.md.
+
+## Signed CI release: alpha.4
+
+[v0.2.0-alpha.4](https://github.com/allquixotic/fastrock/releases/tag/v0.2.0-alpha.4)
+was built, signed, verified, attested and published by
+[CI run 38048069773](https://github.com/allquixotic/fastrock/actions/runs/38048069773),
+source `32ab8aeb93dcd7401c32fc3392a19178daf01286`. The port was pushed directly
+to main with existing history preserved. Future releases use this CI workflow;
+PRs and locally published release binaries are excluded by AGENTS.md.
+
+The build job used this Mac's persistent incremental cache and completed in
+5m26s, including both platform binaries and 676 passing headless Rust tests.
+Every invocation reported an unoptimized profile. The Windows job did no Rust
+compilation and published its signed ZIP immediately after its checks. CI did
+not archive the multi-GB build cache or compress binary artifacts/packages.
+
+Windows Authenticode status was Valid for
+`CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US`, certificate SHA-1
+`59DE4BFCDD5B9C3B31CB3C591B2755BDA0969F07`, with Microsoft RFC 3161 timestamping.
+The exact signed executable SHA-256 is
+`72a87578ba6fbe0ed6beaeb258c2c269c1ccd5ba711aeb42f8417a3714103d3f`.
+CI's native callback suite passed 82 requests/13 fixture writes on those bytes.
+The downloaded published ZIP was independently checked against its SHA-256,
+BUILD.json and GitHub attestation. On `games`, the extracted executable's
+Authenticode signature was independently Valid, and the full physical mouse
+suite passed 82 requests/13 writes, including native user-picker clicks.
+ZIP SHA-256:
+`bb37e4d65de22c81cebfa8b557df4f67df6c037d2518da009c45f98234b93b31`.
+
+The Apple Silicon Mac app and uncompressed DMG use Developer ID Application
+SHA-1 `9A3CFFC04D3472208A62C48E707EA6D4261998A1`, team `B6XDYNLMPU`, secure
+timestamps and hardened runtime, without JIT entitlements. Its dependencies
+were Apple system libraries only. Apple notarization submissions were:
+
+- App: `87b0224b-f985-410b-bbd9-cd1312993a7f` — Accepted; log inspected.
+- DMG: `32f269db-b4bf-464c-a4c0-1d5e4b12a8dc` — Accepted; log inspected.
+
+CI stapled/validated the app before creating the DMG, then signed/notarized/
+stapled/validated the DMG. Gatekeeper accepted the app, DMG and mounted app.
+The final published DMG's checksum and GitHub attestation were independently
+verified after download. DMG SHA-256:
+`73a0092a79359158f1fbd0a70045fdd1cac5662b0ff467bf7888eace3a0c27c7`.
+No Mac GUI was launched. Both temporary CI runners removed their registrations;
+the useful incremental cache was retained. Mac free space was about 2.4 TiB;
+`games` about 3.06 TB. No cleanup was required.

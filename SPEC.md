@@ -97,9 +97,11 @@ T20|x|Native Rally pages/boards/tables/filter/saved-view UI|V18,V20,V21
 T21|x|Native details/rich fields/relations/attachments/conflicts/bulk editing|V19,V20
 T22|x|Port scoped assistant tools/proposals/human Apply|V17,V19,V20
 T23|x|Complete fixture/headless/Windows interaction checks and prerelease|V15,V16,V17,V18,V19,V20,V21,V22
-T24|~|Land port directly on main; fast cached CI signs/verifies/publishes Windows and Mac prerelease|V15,V22,V23,I.distribution
+T24|x|Land port directly on main; fast cached CI signs/verifies/publishes Windows and Mac prerelease|V15,V22,V23,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
+
+Signed release acceptance: v0.2.0-alpha.4, source 32ab8aeb93dcd7401c32fc3392a19178daf01286, CI 38048069773 all jobs passed. Build 5m26s; 676 headless tests; signed Windows callback + games physical mouse each 82 requests/13 fixture writes; expected Authenticode publisher/timestamp; Mac pinned Developer ID, both Apple logs Accepted, app/DMG stapling and mounted Gatekeeper passed. Published checksums + attestations independently verified. Direct main push; temporary runners removed; no Mac GUI or real Rally writes. Full receipt: docs/PORT-VERIFICATION.md.
 
 ## §B BUGS
 id|date|cause|fix
