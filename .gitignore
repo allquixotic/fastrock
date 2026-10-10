@@ -1,7 +1,11 @@
-/build/
-*.exe
-*.test
-coverage.out
+/target/
+/.upstream/
+/dist/
+*.pdb
 .DS_Store
-/ignore/
+__pycache__/
+*.py[cod]
+/.patched/
+
+/build/
 /dist/

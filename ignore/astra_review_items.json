@@ -1,0 +1,590 @@
+[
+  {
+    "id": "A001",
+    "line": 1,
+    "section": "",
+    "text": "[ui/info.go:L97](/Users/sean/dev/codex/fastrock/internal/ui/info.go:97) **P1 \u00b7 Responsiveness:** Replace the information panel\u2019s per-frame `a.state.Sidebar(\"\", false)` call and complete \u201cOther conversations\u201d loop with a cached, searchable, virtualized model, preferably limited initially to open/recent chats. This path sorts and constructs rows for the entire loaded history even after the main sidebar has been optimized. Include the information panel in the 100,000-conversation fixture. (SPEC V4, V13.)"
+  },
+  {
+    "id": "A002",
+    "line": 3,
+    "section": "",
+    "text": "[ui/detail.go:L62](/Users/sean/dev/codex/fastrock/internal/ui/detail.go:62) **P1 \u00b7 Draft preservation:** Make a work item read-only until its full object is available, or merge the response using an editor revision. `openArtifact` immediately exposes editable projection fields and later replaces the complete `detailView`; text entered during a slow load can disappear. Publish the artifact before optional schema/state metadata finishes, with a separate metadata-loading indicator. (SPEC I.rich, V7, V10.)"
+  },
+  {
+    "id": "A003",
+    "line": 5,
+    "section": "",
+    "text": "[ui/detail.go:L461](/Users/sean/dev/codex/fastrock/internal/ui/detail.go:461) **P1 \u00b7 Draft preservation:** Give saves an operation ID and captured edit revision; guard `saveDetail` itself against loading and duplicate saves, including Ctrl/Cmd+S. Its success callback unconditionally replaces `v.Detail`, so typing while saving or navigating to another item can lose work or reopen the previous item. Update the saved baseline while retaining later edits, and apply the result only to the originating document. (SPEC V3, V7, V10.)"
+  },
+  {
+    "id": "A004",
+    "line": 7,
+    "section": "",
+    "text": "[ui/detail.go:L367](/Users/sean/dev/codex/fastrock/internal/ui/detail.go:367) **P1 \u00b7 Draft preservation:** Include `CommentRich` in dirty-state detection and centralize all detail navigation through the same unsaved-work guard. Opening a task/child directly calls `openArtifact`, while `dirty()` checks only field editors; an unsubmitted discussion or parent edit can be lost. Offer Save, Discard, and Keep editing, retain a parent/child back stack, and show an unsaved indicator like [the reference detail header](/Users/sean/dev/codex/fastrock/ignore/index.html:1988). (SPEC I.windows, I.rich, V7.)"
+  },
+  {
+    "id": "A005",
+    "line": 9,
+    "section": "",
+    "text": "[ui/detail.go:L664](/Users/sean/dev/codex/fastrock/internal/ui/detail.go:664) **P1 \u00b7 Selection correctness:** Store selected artifact identities and reviewed revisions independently of the resident page window. The selection count includes all entries in `v.Selected`, but bulk updates/deletes iterate only `v.Items`; scrolling past eviction or changing filters can make the reported selection differ from the items actually changed. Show the exact affected IDs before applying, distinguish visible selection from all matching results, and remove deselected map entries. (SPEC I.board, V6, V8.)"
+  },
+  {
+    "id": "A006",
+    "line": 11,
+    "section": "",
+    "text": "[ui/lifecycle.go:L87](/Users/sean/dev/codex/fastrock/internal/ui/lifecycle.go:87) **P1 \u00b7 Memory:** Clear `filterSource` and `cardSource` when evicting Rally items: both point into the item slice and can keep its backing array and object maps reachable after `Items` is nil. Also release clean detail collections, `ItemRich`, and obsolete lane metadata, preserving a lightweight artifact locator for reload. Verify reclaimed live bytes after GC, rather than merely checking that public slices are empty. (SPEC I.performance, V7.)"
+  },
+  {
+    "id": "A007",
+    "line": 13,
+    "section": "",
+    "text": "[ui/transcript.go:L285](/Users/sean/dev/codex/fastrock/internal/ui/transcript.go:285) **P1 \u00b7 Memory:** Add byte-accounted eviction to `chatView.Layouts` and prune entries when transcript blocks are trimmed, replaced, or closed. The map retains text, plain selection text, and line/run arrays for every layout ever visited in a surviving chat; `TrimTranscript` does not prune it. Bound pending layouts too, and release old selection-layout references when the selection ends. (SPEC I.performance, V7, V10.)"
+  },
+  {
+    "id": "A008",
+    "line": 15,
+    "section": "",
+    "text": "[codex/broker.go:L467](/Users/sean/dev/codex/fastrock/internal/codex/broker.go:467) **P1 \u00b7 Cross-window responsiveness:** Give each peer a bounded outbound queue and independent writer instead of synchronously sending every notification to every window. A slow peer can currently hold the shared event loop for its five-second write deadline and delay healthy windows. Subscribe windows to needed thread streams, retain lightweight global status updates, and make overflow trigger explicit resynchronization without dropping approvals or completion events. (SPEC I.codex, I.windows, V4, V7.)"
+  },
+  {
+    "id": "A009",
+    "line": 17,
+    "section": "",
+    "text": "[ui/chat.go:L421](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:421) **P1 \u00b7 Message recovery:** Retain each submitted prompt and its attachments as a pending outbox entry until acceptance is known. A failed send restores text only if the composer is still empty, so starting a new draft while the request is pending can lose the failed prompt. Present Retry/Edit/Discard for that entry and reconcile ambiguous timeouts by message ID before retrying. (SPEC I.codex, I.persistence, V3, V7.)"
+  },
+  {
+    "id": "A010",
+    "line": 19,
+    "section": "",
+    "text": "[ui/chat.go:L807](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:807) **P1 \u00b7 Queue editing:** Preserve the current composer draft when entering queued-message editing, load and edit the queued attachments, and restore the draft on cancel. Keep \u201cSend now\u201d entries until the operation is accepted; it currently deletes before `startTurn` can refuse or fail. Suspend automatic dispatch of the item being edited and make edit/save/cancel controls explicit while a turn is running. (SPEC I.interactions, I.persistence, V3, V7.)"
+  },
+  {
+    "id": "A011",
+    "line": 21,
+    "section": "",
+    "text": "[ui/chat.go:L206](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:206) **P1 \u00b7 Error recovery:** Keep a failed conversation view with a visible Retry action and backoff instead of deleting `a.chats[id]`. The active-document draw path resumes whenever that entry is absent, so a persistent resume error can become a request-per-redraw loop. Associate retries with a connection generation and retain the draft independently of the failed history load. (SPEC I.codex, V4, V10.)"
+  },
+  {
+    "id": "A012",
+    "line": 23,
+    "section": "",
+    "text": "[ui/app.go:L173](/Users/sean/dev/codex/fastrock/internal/ui/app.go:173) **P1 \u00b7 Persistence:** Advance the session writer\u2019s `last` snapshot only after `WriteJSON` succeeds, surface failures, and retry the latest dirty snapshot with bounded backoff. Currently a failed write is ignored after the deduplication key is advanced, so an unchanged draft may never be retried during that run. Provide a persistent \u201cdrafts not saved\u201d state and a recovery/export path if shutdown persistence also fails. (SPEC I.persistence, V7.)"
+  },
+  {
+    "id": "A013",
+    "line": 25,
+    "section": "",
+    "text": "[ui/popout.go:L186](/Users/sean/dev/codex/fastrock/internal/ui/popout.go:186) **P1 \u00b7 Restored details:** Restore schema metadata, allowed states, and every saved editor key before making a transferred/restored detail editable. `installTransfer` recreates only editors known to `makeDetail` and does not restore `Fields` or `States`, so schema-added fields absent from the original object can be omitted and validation/pickers lose context. Rehydrate metadata asynchronously without replacing restored edits. (SPEC I.windows, I.rich, V3, V9.)"
+  },
+  {
+    "id": "A014",
+    "line": 27,
+    "section": "",
+    "text": "[ui/app.go:L276](/Users/sean/dev/codex/fastrock/internal/ui/app.go:276) **P2 \u00b7 Work scheduling:** Replace unrestricted `go f()` dispatch with small, bounded queues for reads, layout, and explicit writes. Assign document lifetime contexts and generation tokens, cancel read/layout work on close or superseding input, and prioritize active input and approvals. Bound queued bytes as well as job counts; the 512-callback channel does not bound memory held by goroutines blocked while posting. (SPEC V4, V5, V7, V10.)"
+  },
+  {
+    "id": "A015",
+    "line": 29,
+    "section": "",
+    "text": "[ui/app.go:L285](/Users/sean/dev/codex/fastrock/internal/ui/app.go:285) **P2 \u00b7 UI-thread work:** Add typed RPC helpers that decode and prepare immutable results on workers before posting a small state update. `rpcResult` posts raw JSON and executes arbitrary `done` callbacks inside `draw`; several callbacks decode JSON, build editors, or format data there. Measure each callback separately because the four-millisecond drain deadline cannot interrupt a single expensive callback. (SPEC V4.)"
+  },
+  {
+    "id": "A016",
+    "line": 31,
+    "section": "",
+    "text": "[ui/stream.go:L35](/Users/sean/dev/codex/fastrock/internal/ui/stream.go:35) **P2 \u00b7 Board preparation:** Publish a versioned page projection that includes reusable search strings and card data. The worker builds `projection`, but publication clears `filterSource`, so `filtered()` immediately rebuilds all search strings; `prepareCards` and `prepareBoardLayout` also rebuild on the UI thread. Reuse worker projections, update only added/removed records, and prepare filter/sort/group results outside drawing. (SPEC I.board, V4.)"
+  },
+  {
+    "id": "A017",
+    "line": 33,
+    "section": "",
+    "text": "[ui/board.go:L129](/Users/sean/dev/codex/fastrock/internal/ui/board.go:129) **P2 \u00b7 Virtualization:** Virtualize the outer swimlane groups as well as cards within each lane, and cache group heights and maximum lane length. The renderer still walks every group/lane each frame. Apply viewport indexing to timelines, planning rows, detail collections, and large diff file lists, which likewise iterate their full resident contents. Stress many distinct owners/groups, not only a large single lane. (SPEC I.board, V4.)"
+  },
+  {
+    "id": "A018",
+    "line": 35,
+    "section": "",
+    "text": "[ui/chat.go:L719](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:719) **P2 \u00b7 Transcript responsiveness:** Maintain a block-height index and binary-search the visible range before requesting layouts. The current loop visits every retained block and schedules Markdown layout even for folded or offscreen blocks; a visible long block then iterates every line. Defer folded bodies, virtualize lines inside large messages, and preserve a message/line scroll anchor as asynchronous heights arrive. (SPEC I.interactions, V4.)"
+  },
+  {
+    "id": "A019",
+    "line": 37,
+    "section": "",
+    "text": "[ui/chat.go:L443](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:443) **P2 \u00b7 Streaming:** Coalesce consecutive text/output deltas by thread and item before publishing them to the UI, while preserving protocol event order. Incrementally update the unfinished Markdown suffix and reuse completed blocks instead of reparsing the entire growing message for each layout cycle. Prioritize active visible content, allow one superseding layout per item, and record queue latency under simultaneous streams. (SPEC I.codex, V4, V7.)"
+  },
+  {
+    "id": "A020",
+    "line": 39,
+    "section": "",
+    "text": "[ui/assistant.go:L207](/Users/sean/dev/codex/fastrock/internal/ui/assistant.go:207) **P2 \u00b7 Rally assistant performance:** Move the assistant onto the chat transcript\u2019s bounded block storage and asynchronous layout system. `s.Transcript += delta` repeatedly copies a growing string, and `markdown()` splits, wraps, and renders the full accumulated text on each draw. Add incremental history loading and a per-view render budget while preserving the Codex-owned full conversation. (SPEC I.ai, I.performance, V4, V7.)"
+  },
+  {
+    "id": "A021",
+    "line": 41,
+    "section": "",
+    "text": "[ui/sidebar.go:L30](/Users/sean/dev/codex/fastrock/internal/ui/sidebar.go:30) **P2 \u00b7 Cold sidebar latency:** Build search/group/sort snapshots outside the draw callback and update affected metadata incrementally. Warm grouping is cached, but a keystroke, title update, turn transition, or history-page insertion invokes `State.Sidebar` across the entire history and sorts it again. Preserve the prior model during preparation and publish only the latest search generation. (SPEC I.navigation-polish, V4, V13.)"
+  },
+  {
+    "id": "A022",
+    "line": 43,
+    "section": "",
+    "text": "[ui/richtext.go:L242](/Users/sean/dev/codex/fastrock/internal/ui/richtext.go:242) **P2 \u00b7 Editor responsiveness:** Synchronize rich text once per editor revision instead of calling `Document.Sync` from every paint run as well as before and after editing. Its unchanged check compares whole rune slices; repeated calls make even unchanged rendering proportional to document length times visible runs. Add native editor edit notifications or revision counters and update changed text spans directly. (SPEC I.rich, V4.)"
+  },
+  {
+    "id": "A023",
+    "line": 45,
+    "section": "",
+    "text": "[ui/session.go:L136](/Users/sean/dev/codex/fastrock/internal/ui/session.go:136) **P2 \u00b7 Checkpoint cost:** Track dirty document revisions and checkpoint only changed state after a short debounce. Every eligible draw currently clones queues, detail objects, and rich-text snapshots for all open documents before the background writer can deduplicate them. Reuse immutable unchanged snapshots, prepare large serialization off-thread, and keep an explicit final-flush barrier. (SPEC I.persistence, V4, V7.)"
+  },
+  {
+    "id": "A024",
+    "line": 47,
+    "section": "",
+    "text": "[ui/widgets.go:L23](/Users/sean/dev/codex/fastrock/internal/ui/widgets.go:23) **P2 \u00b7 Text measurement:** Replace repeated remove-one-rune-and-remeasure ellipsizing with measured glyph advances or a bounded search, and cache the result by text revision, font, and width. Long titles can otherwise cause quadratic measurement work and fill the font-width cache with successively shorter prefixes. Truncate at grapheme boundaries and retain the full text in a tooltip. (SPEC V4, I.navigation-polish.)"
+  },
+  {
+    "id": "A025",
+    "line": 49,
+    "section": "",
+    "text": "[third_party/nucular/font.go:L37](/Users/sean/dev/codex/fastrock/third_party/nucular/font.go:37) **P2 \u00b7 Font contention:** Profile and remove the global font-width mutex from the interaction-critical path; cache misses hold it throughout measurement while layout workers also use it. Use worker-owned measurement faces/caches with safe font ownership, a stable font identity, and byte limits for long keys. Reuse fonts per size instead of creating a new face for each transcript layout. (SPEC I.performance, V4.)"
+  },
+  {
+    "id": "A026",
+    "line": 51,
+    "section": "",
+    "text": "[ui/app.go:L440](/Users/sean/dev/codex/fastrock/internal/ui/app.go:440) **P2 \u00b7 Metadata loading:** Replace four sequential `All(fetch=true)` scope loads with bounded projected queries, cached workspace metadata, and paginated searchable pickers. Reload only project-dependent timeboxes when the project changes; cancel superseded loads and preserve successful prior results when one request fails. Reuse prepared label/ref arrays instead of rebuilding every user, project, iteration, and release option on each frame. (SPEC I.rally, V4, V5, V7.)"
+  },
+  {
+    "id": "A027",
+    "line": 53,
+    "section": "",
+    "text": "[ui/detail.go:L73](/Users/sean/dev/codex/fastrock/internal/ui/detail.go:73) **P2 \u00b7 Detail metadata:** Cache field schemas and state catalogs by endpoint, workspace, and artifact type, with explicit invalidation. Opening any item currently refetches fields and all `State` objects before publishing the full detail; a story does not need every portfolio state. Fetch the artifact and required metadata concurrently within the shared request limit, and show metadata failures alongside the affected picker. (SPEC I.rally, V4, V5.)"
+  },
+  {
+    "id": "A028",
+    "line": 55,
+    "section": "",
+    "text": "[rally/cache.go:L31](/Users/sean/dev/codex/fastrock/internal/rally/cache.go:31) **P2 \u00b7 Aggregate memory and requests:** Move Rally cache ownership, metadata reuse, and request admission into the shared background service. Each window currently creates its own client, 24 MiB cache, and four-slot page limiter; direct `Get`, `All`, collection, and AI queries bypass that page limiter. Enforce aggregate byte/concurrency budgets and prioritize foreground reads. If persistent caching is later justified, replace retained memory with bounded disk-backed queries rather than duplicating it. (SPEC I.performance, V5, V7.)"
+  },
+  {
+    "id": "A029",
+    "line": 57,
+    "section": "",
+    "text": "[ui/lifecycle.go:L65](/Users/sean/dev/codex/fastrock/internal/ui/lifecycle.go:65) **P2 \u00b7 Memory-pressure policy:** Use an application-wide budget with per-window minimums, recent-use weighting, and high/low watermarks. The current threshold can clear inactive views and force GC every ten seconds while pressure persists, producing reload/GC churn. Track Go live bytes, runtime overhead, RSS, private committed memory, and render-surface estimates separately; reduce prefetch and reconstructible caches before requesting scavenging. (SPEC I.performance, V7.)"
+  },
+  {
+    "id": "A030",
+    "line": 59,
+    "section": "",
+    "text": "[internal/richtext/document.go:L41](/Users/sean/dev/codex/fastrock/internal/richtext/document.go:41) **P2 \u00b7 Rich-text memory:** Store formatting as spans and undo as edit operations or structurally shared chunks instead of a `Format` value per rune plus full-document snapshots. Budget history across all editors, account for the pinned initial snapshot, and lazily create source/editor buffers for unopened fields. Retain unsaved content and exact unchanged HTML while shedding only reconstructible representations. (SPEC I.rich, I.performance, V7, V9.)"
+  },
+  {
+    "id": "A031",
+    "line": 61,
+    "section": "",
+    "text": "[ui/files.go:L318](/Users/sean/dev/codex/fastrock/internal/ui/files.go:318) **P2 \u00b7 Large diffs:** Bound `git diff` output while reading from the process, rather than collecting unbounded `cmd.Output()` and truncating later. Keep a single text backing store, lazily create per-file render models, cache line counts, and virtualize hunk rows. Provide an explicit continuation/external-view route when a diff exceeds the presentation budget. (SPEC I.operations, V4, V7.)"
+  },
+  {
+    "id": "A032",
+    "line": 63,
+    "section": "",
+    "text": "[ui/lifecycle.go:L21](/Users/sean/dev/codex/fastrock/internal/ui/lifecycle.go:21) **P2 \u00b7 Lifecycle cleanup:** Add one disposal path per document that removes reconstructible `infoViews`, suggestion jobs, layout jobs, expansion state, and obsolete subscriptions. Closing a chat currently releases its transcript but leaves separately keyed information state; asynchronous callbacks can also keep discarded views alive until they finish. Preserve drafts, queues, and pending approvals through explicit owners rather than retaining an entire view. (SPEC V7, V10.)"
+  },
+  {
+    "id": "A033",
+    "line": 65,
+    "section": "",
+    "text": "[ui/clipboard.go:L12](/Users/sean/dev/codex/fastrock/internal/ui/clipboard.go:12) **P2 \u00b7 Attachment lifecycle:** Put pasted images in an owned attachment store with size limits and reference tracking across drafts, queues, in-flight sends, and restored sessions. `clipboard-*.png` files are currently created in the settings directory without a cleanup path. Collect unreferenced files after acknowledged sends/removal, retain referenced files across restart, and preserve the originating editor/selection when asynchronous paste completes. (SPEC I.persistence, I.interactions, V7.)"
+  },
+  {
+    "id": "A034",
+    "line": 67,
+    "section": "",
+    "text": "[codex/client.go:L189](/Users/sean/dev/codex/fastrock/internal/codex/client.go:189) **P2 \u00b7 Cancellation:** Make writes cancellation-aware and propagate cancelled request lifetimes through the broker. `Call` checks its context only after acquiring the writer and writing, while the broker independently runs forwarded calls for up to two minutes after a caller may have timed out. Use a bounded writer queue and peer-linked contexts, with protocol-supported cancellation where available and explicit handling of uncertain mutation outcomes. (SPEC I.codex, V4, V10.)"
+  },
+  {
+    "id": "A035",
+    "line": 69,
+    "section": "",
+    "text": "[third_party/nucular/internal/ebitenscreen/screen.go:L114](/Users/sean/dev/codex/fastrock/third_party/nucular/internal/ebitenscreen/screen.go:114) **P2 \u00b7 Rendering cost:** Measure dirty-region rasterization, CPU copies, GPU uploads, and presentation independently, then restrict uploads/copies to damaged areas when that improves measured cost. A changed frame currently copies pixels into another RGBA buffer and uploads the full texture under a mutex. Release oversized surfaces on shrink/minimize where practical and include multiple high-DPI windows in the aggregate budget. (SPEC I.performance, V4, V7.)"
+  },
+  {
+    "id": "A036",
+    "line": 71,
+    "section": "",
+    "text": "[third_party/nucular/internal/ebitenscreen/screen.go:L104](/Users/sean/dev/codex/fastrock/third_party/nucular/internal/ebitenscreen/screen.go:104) **P2 \u00b7 Native input:** Coalesce pointer-motion and redundant paint events before the event channel fills, reserving lossless ordered delivery for key/button/lifecycle transitions. Preserve fractional wheel deltas instead of turning every nonzero delta into at least one whole step. Measure pointer-to-present and typing latency with native Windows input, including touchpad scrolling, key repeat, and simultaneous streaming. (SPEC I.interactions, V4, V12.)"
+  },
+  {
+    "id": "A037",
+    "line": 73,
+    "section": "",
+    "text": "[third_party/nucular/shiny.go:L651](/Users/sean/dev/codex/fastrock/third_party/nucular/shiny.go:651) **P2 \u00b7 Clipboard responsiveness:** Move operating-system clipboard reads/writes out of the software-render command loop into an ordered platform service, publishing paste results against the original editor revision. Generic editors still execute clipboard calls during rendering even though composer image paste has a worker path. Show failure feedback and avoid treating an unavailable clipboard as a successful empty paste. (SPEC I.operations, V4.)"
+  },
+  {
+    "id": "A038",
+    "line": 75,
+    "section": "",
+    "text": "[ui/stream.go:L15](/Users/sean/dev/codex/fastrock/internal/ui/stream.go:15) **P1 \u00b7 Rally field correctness:** Derive lightweight fetch projections from the current artifact type, visible fields, sort/group keys, and page requirements. The fixed `cardFields` omits fields that other views consume, including timeline dates and `Discussion`; selecting a column cannot make absent values appear. Fetch newly required fields in bounded batches, distinguish unavailable values from zero/empty values, and invalidate projections when the field set changes. (SPEC I.rally, I.board, V5.)"
+  },
+  {
+    "id": "A039",
+    "line": 77,
+    "section": "",
+    "text": "[ui/rally.go:L596](/Users/sean/dev/codex/fastrock/internal/ui/rally.go:596) **P1 \u00b7 Rally reporting accuracy:** Separate statistics for the resident card window from statistics for the complete filtered scope. Metrics, chart buckets, and planning totals currently operate on `Items`, so scrolling/eviction can change reported totals without any server-side change. Label partial aggregates explicitly, use supported aggregate queries or bounded background accumulation for full-scope results, and sort chart categories deterministically. Capacity and historical charts should display real supporting data or a clear unavailable state. (SPEC I.rally, V6, V11; reference [dashboard and charts](/Users/sean/dev/codex/fastrock/ignore/index.html:1966).)"
+  },
+  {
+    "id": "A040",
+    "line": 79,
+    "section": "",
+    "text": "[ui/actions.go:L96](/Users/sean/dev/codex/fastrock/internal/ui/actions.go:96) **P1 \u00b7 Rally export completeness:** Make CSV export scope explicit and support exporting the complete matching query by streaming pages to a worker-owned file. Export currently snapshots `v.filtered()`, which contains only resident records. Include the chosen columns with the correct fetched values, preserve the query/sort snapshot throughout export, support cancellation, and report rows written and any truncation/failure before presenting the result as complete. (SPEC I.rally, V4, V6.)"
+  },
+  {
+    "id": "A041",
+    "line": 81,
+    "section": "",
+    "text": "[ui/stream.go:L41](/Users/sean/dev/codex/fastrock/internal/ui/stream.go:41) **P2 \u00b7 Progressive board navigation:** Track whether each visible lane/group has additional results, rather than presenting a single globally ranked page window as a complete board. With skewed state distributions, the first pages can contain no cards from some matching lanes. Use bounded lane-aware demand loading or clearly marked incomplete lanes, preserving the aggregate card/cache limits; a lane should expose loading, retry, and further-results affordances without requiring traversal of unrelated cards. (SPEC I.board, V5, V6.)"
+  },
+  {
+    "id": "A042",
+    "line": 83,
+    "section": "",
+    "text": "[ui/stream.go:L56](/Users/sean/dev/codex/fastrock/internal/ui/stream.go:56) **P1 \u00b7 Rally refresh and scroll stability:** Refresh a resident window around its visible artifact anchors instead of replacing it with one 128-record page. Preserve each lane/group's top artifact and offset through prepend, eviction, sorting, and refresh; the current state-keyed adjustment and constant card stride do not identify grouped lanes or account for font scaling. Retain stale cards during failure, show refresh freshness locally, and jitter automatic refresh schedules across views/windows. (SPEC I.board, I.refresh, V5.)"
+  },
+  {
+    "id": "A043",
+    "line": 85,
+    "section": "",
+    "text": "[rally/catalog.go:L43](/Users/sean/dev/codex/fastrock/internal/rally/catalog.go:43) **P1 \u00b7 Rally workflow schema:** Build lane order, legal transitions, and bulk completion choices from the selected artifact type's actual field schema and state references. `States` hardcodes one workflow per kind, drag/drop supplies a raw state string, and bulk Complete always supplies `Completed`, which is not a universal terminal state or a portfolio state reference. Show valid choices, expose per-item transition errors, and keep revision checks for each explicit mutation. (SPEC I.rally, I.board, V8.)"
+  },
+  {
+    "id": "A044",
+    "line": 87,
+    "section": "",
+    "text": "[ui/rally.go:L192](/Users/sean/dev/codex/fastrock/internal/ui/rally.go:192) **P2 \u00b7 Saved-view completeness:** Persist and restore search, quick filters, timebox, columns/card fields, sort direction, grouping, mode, and display density along with the raw query. Standard View currently leaves several of these settings active, while Save view records only query/group/mode. Add a dirty indicator, Save/Revert, rename/delete, and an unambiguous reset to the standard baseline. (SPEC I.persistence, I.rally; reference [saved-view controls](/Users/sean/dev/codex/fastrock/ignore/index.html:1862).)"
+  },
+  {
+    "id": "A045",
+    "line": 89,
+    "section": "",
+    "text": "[ui/rally.go:L263](/Users/sean/dev/codex/fastrock/internal/ui/rally.go:263) **P2 \u00b7 Rally filter usability:** Add the reference's readable field/operator/value builder and removable filter chips, retaining raw WSAPI as an advanced option. Populate owner/state choices from stable scoped metadata or a server facet source, not the already filtered resident cards; use owner references rather than display-name equality. Preserve selected values while options load and include supported Type, Team, Tags, Iteration, Release, and custom-field filters. (SPEC I.rally, I.board; reference [filter builder](/Users/sean/dev/codex/fastrock/ignore/index.html:1887).)"
+  },
+  {
+    "id": "A046",
+    "line": 91,
+    "section": "",
+    "text": "[ui/rally.go:L93](/Users/sean/dev/codex/fastrock/internal/ui/rally.go:93) **P2 \u00b7 Rally search consistency:** Define one visible search contract for formatted ID, name, owner, and readable rich text. The server searches raw `Description`, while the local pass strips HTML and usually lacks that field in its projection; results can disappear or disagree as pages arrive. Keep server-confirmed matches when the local projection cannot evaluate a field, distinguish preview filtering from the completed query, and retain a clear query-in-progress/empty/error state. (SPEC I.board, I.refresh, V5.)"
+  },
+  {
+    "id": "A047",
+    "line": 93,
+    "section": "",
+    "text": "[rally/catalog.go:L6](/Users/sean/dev/codex/fastrock/internal/rally/catalog.go:6) **P2 \u00b7 Rally page semantics:** Give catalog pages the distinct data and interactions their names promise. My Work Items needs an explicit current-user predicate; Team Board/Backlog need the reference's supported mixed artifact types; Timeboxes needs an Iteration/Release choice; Portfolio Items needs supported hierarchy levels; planning/report pages need their actual planning/report inputs. Several named pages currently reuse the same story query and primitive renderer. Use schema/capability-aware behavior and explicit limitations instead of treating a renamed generic view as parity. (SPEC I.rally, V11; reference [page-specific item selection](/Users/sean/dev/codex/fastrock/ignore/index.html:1841).)"
+  },
+  {
+    "id": "A048",
+    "line": 95,
+    "section": "",
+    "text": "[ui/rally.go:L367](/Users/sean/dev/codex/fastrock/internal/ui/rally.go:367) **P1 \u00b7 Rally list navigation:** Track the requested logical page/anchor independently of the resident array. Next at the end currently requests more data without advancing when it arrives; prepending can similarly leave Previous on the wrong slice, and filters can leave `Page` beyond the new result count. Resolve pending navigation after publication, clamp/reset positions on query changes, and show loading/failure without requiring repeated clicks. Keep the SPEC's prohibition on user-facing page-size/story-count controls. (SPEC I.board, V5, V6.)"
+  },
+  {
+    "id": "A049",
+    "line": 97,
+    "section": "",
+    "text": "[ui/rally.go:L454](/Users/sean/dev/codex/fastrock/internal/ui/rally.go:454) **P2 \u00b7 Rally sorting and grouping:** Use schema-typed comparators for numbers, dates, booleans, nulls, and references; string comparison currently sorts numeric values such as 10 before 2. Apply a stable secondary identity/rank key, maintain contiguous groups independently of the chosen intra-group sort, and make client ordering agree with the server query across page boundaries. Display the active sort direction and group counts with their loaded/total meaning. (SPEC I.board; reference [table sorting/grouping](/Users/sean/dev/codex/fastrock/ignore/index.html:1934).)"
+  },
+  {
+    "id": "A050",
+    "line": 99,
+    "section": "",
+    "text": "[ui/rally.go:L512](/Users/sean/dev/codex/fastrock/internal/ui/rally.go:512) **P2 \u00b7 Rally table interactions:** Make Show Fields govern all supported table types instead of overriding the selection for Task/Project, display schema labels, and add the reference's contextual inline edits, hierarchy expansion, parent/feature links, and clickable task/discussion counts. Preserve draft/conflict handling for inline writes and expose a useful empty state with Clear filters/Add item actions. (SPEC I.rally, I.board, V8, V11; reference [table cells and hierarchy](/Users/sean/dev/codex/fastrock/ignore/index.html:1942).)"
+  },
+  {
+    "id": "A051",
+    "line": 101,
+    "section": "",
+    "text": "[ui/board.go:L229](/Users/sean/dev/codex/fastrock/internal/ui/board.go:229) **P2 \u00b7 Rally card fidelity:** Rework the fixed-height card into the reference's hierarchy: artifact type icon/color and ID, readable title, owner avatar/name, selected metadata, blocked/ready affordances, and a footer with estimate plus task progress/to-do and discussion shortcuts. Apply Show Fields to cards, use type-appropriate estimate fields, and disclose clipped titles with expansion or a tooltip. Cache title layout by font/scale as well as width so changing font size cannot reuse stale wrapping. (SPEC I.board, I.navigation-polish; reference [card layout/actions](/Users/sean/dev/codex/fastrock/ignore/index.html:1899).)"
+  },
+  {
+    "id": "A052",
+    "line": 103,
+    "section": "",
+    "text": "[ui/rally.go:L178](/Users/sean/dev/codex/fastrock/internal/ui/rally.go:178) **P2 \u00b7 Rally responsive layout:** Replace long fixed-width toolbar rows with measured wrapping/overflow and consolidate the stacked navigation rows so the board retains useful height in a small window. Keep section/page selection, project scope, timebox, saved view, and Refresh identifiable; distinguish iteration and release names in the timebox picker. Add card density and collapsible swimlanes/columns as display preferences without exposing a result-count control. (SPEC I.board, I.navigation-polish, V14; reference [page and board chrome](/Users/sean/dev/codex/fastrock/ignore/index.html:1862).)"
+  },
+  {
+    "id": "A053",
+    "line": 105,
+    "section": "",
+    "text": "[ui/rally.go:L340](/Users/sean/dev/codex/fastrock/internal/ui/rally.go:340) **P2 \u00b7 Rally rule controls:** Connect Show Work Rules based on State to actual rendered content; `Rules` currently has no consumer. Replace the generic exit-agreement sentence with available configured state guidance, and expose WIP/rule violations and add-in-state actions when backed by real data. If guidance is unavailable, explain that state rather than displaying invented agreements or an inert toggle. (SPEC I.board, V11; reference [lane headers, rules, and add actions](/Users/sean/dev/codex/fastrock/ignore/index.html:1914).)"
+  },
+  {
+    "id": "A054",
+    "line": 107,
+    "section": "",
+    "text": "[ui/detail.go:L113](/Users/sean/dev/codex/fastrock/internal/ui/detail.go:113) **P2 \u00b7 Rally detail presentation:** Match the reference's prominent ID/editable title, visible unsaved state, contextual actions, icon/count tabs, and main-content/property-column hierarchy. Prioritize the description and task rollup, use meaningful property labels, and provide parent/feature reference pickers rather than requiring raw object text in More fields. Offer the type-appropriate related collections that the schema supports instead of the same seven generic text tabs for every artifact. (SPEC I.rally, I.rich, V11; reference [detail header, tabs, and properties](/Users/sean/dev/codex/fastrock/ignore/index.html:1983).)"
+  },
+  {
+    "id": "A055",
+    "line": 109,
+    "section": "",
+    "text": "[ui/rally.go:L118](/Users/sean/dev/codex/fastrock/internal/ui/rally.go:118) **P1 \u00b7 Detail refresh correctness:** Make Refresh in a detail view re-read that artifact and its active collection, not only the underlying board page. A clean detail should receive the latest revision; a dirty detail should retain edits and show that a newer server version exists, with a deliberate reload/compare action. Refresh errors and retries should be visible beside the detail being refreshed. (SPEC I.refresh, V5, V8.)"
+  },
+  {
+    "id": "A056",
+    "line": 111,
+    "section": "",
+    "text": "[ui/detail.go:L514](/Users/sean/dev/codex/fastrock/internal/ui/detail.go:514) **P1 \u00b7 Collection loading:** Replace all-at-once discussion loading and the silent first-2,000 limit on other collections with bounded progressive pages and explicit continuation. Give each artifact/collection request a generation and cancellation context: checking only the selected tab string does not reject an old A\u2192B\u2192A response. Separate loading/error state per collection and release obsolete rich-text projections when switching tabs. (SPEC I.rally, I.performance, V4, V5, V10.)"
+  },
+  {
+    "id": "A057",
+    "line": 113,
+    "section": "",
+    "text": "[ui/detail.go:L563](/Users/sean/dev/codex/fastrock/internal/ui/detail.go:563) **P1 \u00b7 Detail mutation feedback:** Give Add comment, Create task, Upload attachment, and Delete an explicit pending state that prevents duplicate clicks. Snapshot the submitted editor revision and clear only that version on success so text typed during the request survives; retain the detail until deletion succeeds and provide recoverable failure feedback. Use the attachment's detected/declared MIME type, show transfer progress, and never automatically retry an uncertain write. (SPEC I.rally, I.persistence, V8.)"
+  },
+  {
+    "id": "A058",
+    "line": 115,
+    "section": "",
+    "text": "[ui/detail.go:L383](/Users/sean/dev/codex/fastrock/internal/ui/detail.go:383) **P2 \u00b7 Schema-driven field validation:** Validate the final value of every changed required field, including clearing a previously populated field. Parse integer fields as integers, reject non-finite numbers, validate dates and reference types, and display errors beside the field before sending a mutation. The current required check depends on the original value being nil and integer handling shares floating-point parsing. (SPEC I.rally, V8, V11.)"
+  },
+  {
+    "id": "A059",
+    "line": 117,
+    "section": "",
+    "text": "[ui/richtext.go:L86](/Users/sean/dev/codex/fastrock/internal/ui/richtext.go:86) **P1 \u00b7 Rich HTML preservation:** Detect unsupported structures and show an explicit warning before formatted edits would discard or flatten them. Preserve original HTML until a real supported edit, retain source access, and make conversion loss reviewable for tables, images, unsupported styles, and nested structures. Showing a simplified preview must not imply that saving it preserves every structure in the original. (SPEC I.rich, V9; reference [rich description editor](/Users/sean/dev/codex/fastrock/ignore/index.html:1990).)"
+  },
+  {
+    "id": "A060",
+    "line": 119,
+    "section": "",
+    "text": "[ui/richtext.go:L242](/Users/sean/dev/codex/fastrock/internal/ui/richtext.go:242) **P2 \u00b7 Rich-text readability:** Use actual bold/italic/monospace font faces and heading metrics rather than overstrike bold or underline as a code substitute. Match list indentation, quote treatment, link affordances, paragraph spacing, and code backgrounds to the reference, with hit-testing/caret geometry derived from the same measurements as painting. Keep selection and keyboard navigation reliable across mixed fonts and Unicode grapheme sequences. (SPEC I.rich, V9; reference [detail typography and proportions](/Users/sean/dev/codex/fastrock/ignore/index.html:500).)"
+  },
+  {
+    "id": "A061",
+    "line": 121,
+    "section": "",
+    "text": "[ui/richtext.go:L86](/Users/sean/dev/codex/fastrock/internal/ui/richtext.go:86) **P2 \u00b7 Rich-editor mode continuity:** Preserve undo/redo, selection, scroll, and the dirty baseline across formatted/source/preview switches. Replacing the rich document with a newly parsed document for source edits should not silently discard the shared edit history. Define a bounded transaction history for source-to-rich changes and keep preview read-only without losing the editor's insertion point. (SPEC I.rich, I.persistence, V9.)"
+  },
+  {
+    "id": "A062",
+    "line": 123,
+    "section": "",
+    "text": "[ui/assistant.go:L26](/Users/sean/dev/codex/fastrock/internal/ui/assistant.go:26) **P1 \u00b7 Rally AI context freshness:** Rebuild the assistant's scoped query context when search, filters, timebox, artifact type, or active detail changes, and show the scope being used. Existing assistants are refreshed for project/workspace flags but can retain an earlier query within the same project. Snapshot context at submission, attach it to the proposal, and require revalidation if the user changes scope before applying mutations. (SPEC I.ai, V5, V8.)"
+  },
+  {
+    "id": "A063",
+    "line": 125,
+    "section": "",
+    "text": "[ui/assistant.go:L105](/Users/sean/dev/codex/fastrock/internal/ui/assistant.go:105) **P1 \u00b7 AI proposal review:** Replace the clipped JSON proposal line with a scrollable per-artifact preview showing ID/title, operation, old\u2192new values, and rich-field differences. Prepare that presentation once per proposal instead of marshaling it every draw. Keep the proposal and a per-item outcome ledger through Apply, identifying completed, conflicting, failed, and unattempted items; do not clear the review state before the result is known. (SPEC I.ai, V4, V8.)"
+  },
+  {
+    "id": "A064",
+    "line": 127,
+    "section": "",
+    "text": "[ui/assistant.go:L247](/Users/sean/dev/codex/fastrock/internal/ui/assistant.go:247) **P2 \u00b7 AI tool result accuracy:** Complete a view-changing tool only after the UI acknowledges that the requested change was applied or refused. The current Show callback can return success before the posted UI action discovers unsaved details and declines the navigation. Also mark bounded query results as partial and expose continuation when supported, so the assistant cannot present the first result page as the entire scoped population. (SPEC I.ai, V5, V8.)"
+  },
+  {
+    "id": "A065",
+    "line": 129,
+    "section": "",
+    "text": "[ui/chat.go:L42](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:42) **P2 \u00b7 Conversation search completeness:** Search the installed Codex history service with the supported search parameter and a cancellable, debounced request, maintaining a cursor/generation for each search and archive mode. Local sidebar search only considers previously loaded metadata, while `thread/list` loads 100 records at a time without a search term; older matching chats remain invisible until unrelated pages are loaded. Show loading, empty, retry, and partial-result states without discarding open chats or drafts. (SPEC I.interactions, I.codex; reference [server-side sidebar search](/Users/sean/dev/codex/codex-rs/gui/src/sidebar.rs:554).)"
+  },
+  {
+    "id": "A066",
+    "line": 131,
+    "section": "",
+    "text": "[ui/chat.go:L719](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:719) **P2 \u00b7 Access to older conversation history:** Make Load older retrieve evicted Codex-owned history rather than only increasing the number of retained blocks displayed. Keep a bounded local window and use the installed protocol's supported history access; if paging is unavailable, provide a bounded re-read or an explicit saved-transcript path. Full-conversation export should read that history in a worker, while a resident-only export must identify its scope. (SPEC I.codex, I.interactions, I.performance; export path [actions.go](/Users/sean/dev/codex/fastrock/internal/ui/actions.go:81).)"
+  },
+  {
+    "id": "A067",
+    "line": 133,
+    "section": "",
+    "text": "[workspace/state.go:L119](/Users/sean/dev/codex/fastrock/internal/workspace/state.go:119) **P1 \u00b7 Transcript memory bounds:** Enforce block and transcript byte budgets on every insertion, replacement, completion, and resume path. `TrimTranscript` does nothing when the newest block alone exceeds its budget, and `upsertItem` replaces existing text without trimming or clearing obsolete stream backing storage. Truncate reconstructible output at UTF-8 boundaries with a visible full-history action, and prune corresponding layout/selection state; never apply output limits to unsent drafts or approvals. (SPEC I.performance, V7; replacement path [chat.go](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:639).)"
+  },
+  {
+    "id": "A068",
+    "line": 135,
+    "section": "",
+    "text": "[ui/chat.go:L576](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:576) **P2 \u00b7 Codex transcript card parity:** Preserve structured item data instead of flattening commands, file changes, MCP calls, and agent actions into generic text/JSON blocks. Render the reference's distinct status cards with command/cwd/exit status, file counts and change summaries, tool arguments/results, plan progress, and navigable agents as applicable. Keep details collapsible and lazily formatted, with clear pending/success/failure states and contextual actions. (SPEC I.interactions, V11; reference [transcript block model](/Users/sean/dev/codex/codex-rs/gui/ui/transcript.slint:18).)"
+  },
+  {
+    "id": "A069",
+    "line": 137,
+    "section": "",
+    "text": "[ui/transcript.go:L97](/Users/sean/dev/codex/fastrock/internal/ui/transcript.go:97) **P2 \u00b7 Transcript typography and Markdown:** Produce compact display runs directly from the Markdown syntax tree to avoid the intermediate HTML string and per-rune rich document. Preserve code whitespace with a monospace face, render table structure/alignment from actual nodes rather than splitting text on tabs, and use a readable maximum message width. Match the reference's paragraph spacing and restrained contextual controls instead of dedicating permanent space to every transcript action. (SPEC I.interactions, V4, V7; reference [transcript layout](/Users/sean/dev/codex/codex-rs/gui/ui/transcript.slint:111).)"
+  },
+  {
+    "id": "A070",
+    "line": 139,
+    "section": "",
+    "text": "[ui/app.go:L527](/Users/sean/dev/codex/fastrock/internal/ui/app.go:527) **P2 \u00b7 Adaptive Codex shell:** Replace the fixed 255-pixel side panels and forced 360-pixel center with measured minimums, user-adjustable widths, and the reference's drawer/overlay behavior below docking thresholds. Opening both panels in a small window must leave all composer actions reachable; preserve focus and panel intent while resizing or moving between monitors. (SPEC I.shell, I.interactions; reference [dock thresholds](/Users/sean/dev/codex/codex-rs/gui/ui/app.slint:865) and [drawer layout](/Users/sean/dev/codex/codex-rs/gui/ui/app.slint:1044).)"
+  },
+  {
+    "id": "A071",
+    "line": 141,
+    "section": "",
+    "text": "[ui/chat.go:L839](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:839) **P2 \u00b7 Composer layout:** Let the draft editor grow with content up to a bounded height, then scroll internally. Reflow or overflow the fixed-width model/effort/speed/action row, group draft controls into the reference's composer container, and anchor a bounded suggestion overlay near the caret so suggestions do not push the transcript around. Keep queue/steer/send state explicit and expose tooltips for compact controls. (SPEC I.interactions; reference [composer sizing](/Users/sean/dev/codex/codex-rs/gui/ui/composer.slint:99) and [narrow layout](/Users/sean/dev/codex/codex-rs/gui/ui/composer.slint:628).)"
+  },
+  {
+    "id": "A072",
+    "line": 143,
+    "section": "",
+    "text": "[ui/chat.go:L903](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:903) **P2 \u00b7 Attachment usability:** Validate attachment type/readability before submission and distinguish image attachments from file mentions; the send path currently turns every selected attachment path into `localImage`. Add bounded lazy thumbnails, filename/type/error details, keyboard removal, and a compact overflow count for many attachments. Preserve original files and draft ownership during asynchronous thumbnail/paste work. (SPEC I.interactions, I.persistence; reference [attachment chips](/Users/sean/dev/codex/codex-rs/gui/ui/composer.slint:426).)"
+  },
+  {
+    "id": "A073",
+    "line": 145,
+    "section": "",
+    "text": "[ui/suggestions.go:L63](/Users/sean/dev/codex/fastrock/internal/ui/suggestions.go:63) **P2 \u00b7 Completion request cost:** Cancel the previous timer/request before starting a new suggestion query, including when focus leaves the editor or the token becomes empty. The current code replaces `SuggestCancel` without invoking it, allowing obsolete debounce timers and skill-list calls to run. Cache enabled skills per workspace/config generation, retain bounded results, and use a request generation in addition to query text so an old identical query cannot publish after a context change. (SPEC I.interactions, V4, V10.)"
+  },
+  {
+    "id": "A074",
+    "line": 147,
+    "section": "",
+    "text": "[ui/actions.go:L261](/Users/sean/dev/codex/fastrock/internal/ui/actions.go:261) **P2 \u00b7 Keyboard action precedence:** Route keys through the focused editor/popup before global actions. Match the reference's Enter-to-accept and Escape-to-dismiss completion behavior; currently only arrows/Tab are handled before Enter can send the draft. Resolve rich-editor formatting shortcuts versus global sidebar shortcuts, expose the active binding in menus/tooltips, and ensure Escape closes the current transient interaction before interrupting a turn. (SPEC I.interactions, V11; reference [completion key handling](/Users/sean/dev/codex/codex-rs/gui/ui/composer.slint:579).)"
+  },
+  {
+    "id": "A075",
+    "line": 149,
+    "section": "",
+    "text": "[ui/chat.go:L842](/Users/sean/dev/codex/fastrock/internal/ui/chat.go:842) **P1 \u00b7 Preserve model configuration:** Represent an unknown/unavailable model, effort, or speed as that explicit value with an actionable explanation until the user chooses a replacement. The model picker can display the first catalog entry for an unmatched model, the effort picker assigns the first effort while drawing, and a model change can reset speed to default without explaining it. Reconcile catalogs against the active configuration context, and keep draft/chat preferences unchanged by rendering or transient discovery failures. (SPEC I.codex, V2.)"
+  },
+  {
+    "id": "A076",
+    "line": 151,
+    "section": "",
+    "text": "[ui/app.go:L313](/Users/sean/dev/codex/fastrock/internal/ui/app.go:313) **P1 \u00b7 Recoverable Codex discovery:** Distinguish a failed fundamental protocol handshake from transient catalog/account/config discovery failures. `loadCatalog` labels every error as incompatible and enters the fatal exit path. Reserve that path for verified missing/incompatible CLI conditions; otherwise retain the workspace/drafts, show a retryable diagnostic with the failing operation, and disable only actions whose capabilities remain unknown. (SPEC \u00a7C installed-CLI/capability requirements, I.operations, V2.)"
+  },
+  {
+    "id": "A077",
+    "line": 153,
+    "section": "",
+    "text": "[ui/approvals.go:L88](/Users/sean/dev/codex/fastrock/internal/ui/approvals.go:88) **P2 \u00b7 Approval presentation:** Prepare a typed approval view once on receipt and size it to the active request within a bounded scroll area. Put the relevant command, target directory, permission scope, network context, or file patch directly in the card instead of hiding the decisive details behind a JSON document. Keep choices and explanatory text visible together at narrow widths, with request-specific keyboard focus and clear thread identity. (SPEC I.interactions, V4, V11; reference [approval card layout](/Users/sean/dev/codex/codex-rs/gui/ui/approvals.slint:355).)"
+  },
+  {
+    "id": "A078",
+    "line": 155,
+    "section": "",
+    "text": "[ui/approvals.go:L183](/Users/sean/dev/codex/fastrock/internal/ui/approvals.go:183) **P1 \u00b7 Approval delivery state:** Retain an approval in a submitting state until its response has been handed to the intended server connection successfully. It is currently removed before `Respond`, leaving only a toast if delivery fails. Preserve request/connection identity across reconnect and pop-out, distinguish known failure from uncertain delivery, and offer appropriate recovery without automatically replaying an execution approval. (SPEC I.codex, I.windows, V7, V8.)"
+  },
+  {
+    "id": "A079",
+    "line": 157,
+    "section": "",
+    "text": "[workspace/state.go:L34](/Users/sean/dev/codex/fastrock/internal/workspace/state.go:34) **P2 \u00b7 Conversation attention states:** Track unread completion, waiting for approval/input, and failure separately from generic running/idle state, and carry these states into tabs, sidebar rows, and information cards across windows. Add the original app's configurable native notification delivery, focusing the correct document when activated and suppressing duplicate notifications for the same event. (SPEC I.shell, I.interactions, V11; reference [tab unread state](/Users/sean/dev/codex/codex-rs/gui/ui/app.slint:44) and [sidebar status model](/Users/sean/dev/codex/codex-rs/gui/ui/sidebar.slint:15).)"
+  },
+  {
+    "id": "A080",
+    "line": 159,
+    "section": "",
+    "text": "[ui/diff.go:L20](/Users/sean/dev/codex/fastrock/internal/ui/diff.go:20) **P2 \u00b7 Native diff fidelity:** Parse patches into file/hunk/line records with old/new line numbers, file status and addition/deletion counts, then add the reference's intraline emphasis and navigable hunk/file anchors. Handle quoted paths, renames, deletions, binary patches, and truncation explicitly; coloring text by its first character cannot express these distinctions. Virtualize parsed rows and retain collapse/selection state without allocating a full editor per file. (SPEC I.interactions, I.performance, T7; reference [diff rows](/Users/sean/dev/codex/codex-rs/gui/ui/files_diff.slint:137).)"
+  },
+  {
+    "id": "A081",
+    "line": 161,
+    "section": "",
+    "text": "[ui/files.go:L53](/Users/sean/dev/codex/fastrock/internal/ui/files.go:53) **P2 \u00b7 Progressive file continuity:** Preserve cursor, selection, find state, and viewport anchors whenever another page replaces the read-only editor or a file is reconstructed after eviction. Avoid repeatedly copying the entire loaded prefix when appending a page. Distinguish Copy/Save loaded text from copying/saving the complete file, and resolve line links beyond the resident limit through a bounded file window or an explicit limitation instead of landing silently at the loaded buffer's end. (SPEC I.interactions, I.shell, V4, V7.)"
+  },
+  {
+    "id": "A082",
+    "line": 163,
+    "section": "",
+    "text": "[ui/settings_extra.go:L74](/Users/sean/dev/codex/fastrock/internal/ui/settings_extra.go:74) **P2 \u00b7 Settings presentation:** Replace raw-response-dependent account, usage, feature, import, and diagnostic flows with the corresponding native summary cards and labeled controls from the original GUI. Keep raw data as an optional diagnostic view; show pending/success/error state beside each action, render usage/reset information clearly, and expose configuration origin, inheritance, read-only reasons, and field help without requiring users to interpret protocol JSON. (SPEC I.interactions, V11; reference inventory [INTERACTIONS.md](/Users/sean/dev/codex/fastrock/docs/INTERACTIONS.md:14).)"
+  },
+  {
+    "id": "A083",
+    "line": 165,
+    "section": "",
+    "text": "[ui/configuration.go:L115](/Users/sean/dev/codex/fastrock/internal/ui/configuration.go:115) **P2 \u00b7 Configuration edit continuity:** Preserve independent unsaved settings edits when one key is applied or reset. Use per-field edit revisions and a staged change summary; a page reload after one successful write should not replace unrelated newer input. Present version conflicts with the effective/source values and explicit reload/reapply choices, retaining unknown keys and installed-CLI capability differences. (SPEC I.interactions, I.persistence, V2.)"
+  },
+  {
+    "id": "A084",
+    "line": 167,
+    "section": "",
+    "text": "[ui/settings.go:L79](/Users/sean/dev/codex/fastrock/internal/ui/settings.go:79) **P2 \u00b7 Appearance preferences:** Add automatic system-theme following with persistent Dark/Light overrides, and propagate native theme changes through all windows and cached rich/transcript layouts. Reconcile the original renderer preference with Fastrock's single pure-Go backend using accurate backend information and an explicit parity decision; do not present an inert renderer selector. (SPEC \u00a7C pure-Go constraint, I.interactions, T7; reference [appearance preferences](/Users/sean/dev/codex/codex-rs/gui/ui/settings_app.slint:75).)"
+  },
+  {
+    "id": "A085",
+    "line": 169,
+    "section": "",
+    "text": "[third_party/nucular/internal/ebitenscreen/screen.go:L148](/Users/sean/dev/codex/fastrock/third_party/nucular/internal/ebitenscreen/screen.go:148) **P2 \u00b7 DPI and geometry:** Establish one device-independent coordinate model for native window size, layout, font metrics, hit-testing, scroll offsets, and bitmap surfaces. The adapter's fixed `PixelsPerPt` and scattered fixed geometry need verification against actual Windows scaling; invalidate dependent caches on monitor/font changes. Compare the reference at multiple window widths, supported font sizes, and 100\u2013200% scaling using Windows fixtures, including mixed-DPI window moves. (SPEC I.interactions, V12, T7.)"
+  },
+  {
+    "id": "A086",
+    "line": 171,
+    "section": "",
+    "text": "[ui/popout.go:L51](/Users/sean/dev/codex/fastrock/internal/ui/popout.go:51) **P2 \u00b7 Complete document transfers:** Expand transfer snapshots to preserve Rally sort/direction, saved-view identity, display toggles, selected artifacts, resident-window anchors, and rich-editor selection/scroll; also preserve chat block expansion and queue-edit identity. Current payloads carry only a subset of visible document state, so a successful move can still reset the user's working context. Keep reconstruction separate from acknowledged ownership transfer and avoid duplicating service requests. (SPEC I.shell, I.windows, V3, V7.)"
+  },
+  {
+    "id": "A087",
+    "line": 173,
+    "section": "",
+    "text": "[ui/session.go:L48](/Users/sean/dev/codex/fastrock/internal/ui/session.go:48) **P2 \u00b7 Window restoration:** Persist native window bounds, panel widths, tab-to-window membership, and the active document per window, then restore the saved arrangement with bounds clamped to available monitors. Pop-out sessions currently rejoin the primary workspace on restart, which loses window organization even when their drafts survive. Restore queued work paused and provide a deliberate recovery path if one saved window cannot be recreated. (SPEC I.windows, I.persistence.)"
+  },
+  {
+    "id": "A088",
+    "line": 175,
+    "section": "",
+    "text": "[ui/popout.go:L402](/Users/sean/dev/codex/fastrock/internal/ui/popout.go:402) **P1 \u00b7 Shared preference consistency:** Give shared preferences one authoritative writer with revisions and field-level updates instead of broadcasting whole snapshots that multiple windows can overwrite concurrently. Apply received changes through the same feature hooks as local edits: refresh all font faces/layout caches, reconnect changed Rally endpoints safely, invalidate scope metadata, and reconcile view/keymap changes. The current remote update replaces `a.prefs` and style but omits those dependent transitions. (SPEC I.windows, I.persistence, V5, V10.)"
+  },
+  {
+    "id": "A089",
+    "line": 177,
+    "section": "",
+    "text": "[ui/actions.go:L25](/Users/sean/dev/codex/fastrock/internal/ui/actions.go:25) **P2 \u00b7 Dialog placement:** Compute modal bounds from the current native window and scale instead of fixed screen coordinates, then clamp them with scrolling for long content. Apply the same helper to input/confirm dialogs, the Rally assistant, and transcript dialogs; a narrow pop-out should never hide the affirmative/cancel controls outside the client area. Restore focus to the invoking control when a modal closes. (SPEC I.interactions, I.windows, T7.)"
+  },
+  {
+    "id": "A090",
+    "line": 179,
+    "section": "",
+    "text": "[ui/widgets.go:L23](/Users/sean/dev/codex/fastrock/internal/ui/widgets.go:23) **P2 \u00b7 Keyboard and accessibility coverage:** Give custom cards, rows, tabs, icons, and drag targets a shared focus model with visible focus rings, keyboard activation/context menus, accessible names/roles/states, and native accessibility exposure where supported by the pure-Go platform layer. Offer keyboard alternatives for card movement and tab reordering, preserve focus after asynchronous list updates, and verify IME, combining characters, and screen-reader navigation on Windows. (SPEC I.interactions, I.rich, V9, V11, V12.)"
+  },
+  {
+    "id": "A091",
+    "line": 181,
+    "section": "",
+    "text": "[ui/app.go:L515](/Users/sean/dev/codex/fastrock/internal/ui/app.go:515) **P2 \u00b7 Actionable feedback:** Replace the single fixed-height toast string with bounded, copyable, multiline feedback tied to the operation and document. Persistent failures should retain Retry/Details where meaningful; routine success messages should expire without permanently shrinking the workspace. Surface background save, refresh, transfer, and configuration errors even when the optional footer is hidden, and avoid moving the user's content each time a status changes. (SPEC I.operations, I.refresh, I.navigation-polish.)"
+  },
+  {
+    "id": "A092",
+    "line": 183,
+    "section": "",
+    "text": "[rally/cache.go:L37](/Users/sean/dev/codex/fastrock/internal/rally/cache.go:37) **P1 \u00b7 Shared fetch cancellation:** Separate an in-flight query's lifetime from its first caller's context, with waiter cancellation and cancellation of the underlying request when no consumers remain. Currently cancelling the initiating view can fail another view that joined the same flight, and `fresh` can join an older request. Carry invalidation epochs through publication as well as cache insertion so a response begun before an edit cannot repopulate a view with obsolete state. (SPEC I.refresh, V5, V8.)"
+  },
+  {
+    "id": "A093",
+    "line": 185,
+    "section": "",
+    "text": "[ui/app.go:L276](/Users/sean/dev/codex/fastrock/internal/ui/app.go:276) **P2 \u00b7 Feature boundaries:** Separate chat, Rally, file, settings, and window-transfer controllers from the immediate-mode drawing functions. Give each controller typed commands/results, explicit loading/saving/error states, a lifecycle context, and immutable worker snapshots; make one UI owner apply state transitions. Replace repeated untyped map extraction at feature boundaries with validated protocol DTOs so missing fields and invalid variants become recoverable errors rather than empty labels or zero values. (SPEC I.codex, I.rally, V4, V5, V10.)"
+  },
+  {
+    "id": "A094",
+    "line": 187,
+    "section": "",
+    "text": "[ui/actions.go:L213](/Users/sean/dev/codex/fastrock/internal/ui/actions.go:213) **P2 \u00b7 Shared action architecture:** Define an action registry containing identity, label, enabled reason, focused-context precedence, shortcut, and handler, and use it for menus, toolbar buttons, keyboard settings, and contextual actions. Duplicate dispatch logic makes it easy for a button and its shortcut to differ on loading, dirty, or pending state. Validate bindings against the same registry and make unavailable actions explain the missing prerequisite. (SPEC I.interactions, V11.)"
+  },
+  {
+    "id": "A095",
+    "line": 189,
+    "section": "",
+    "text": "[ui/session.go:L25](/Users/sean/dev/codex/fastrock/internal/ui/session.go:25) **P1 \u00b7 Persistence recovery:** Version session/transfer schemas and add bounded reads, validation, migration, and a recoverable last-known-good backup. `loadSession` currently reads an arbitrary-size file and silently abandons restoration on JSON errors. Report partial recovery without overwriting recoverable drafts, distinguish malformed documents from the entire workspace, and test interrupted writes and older schemas while preserving paused queues. (SPEC I.persistence, V7, V10.)"
+  },
+  {
+    "id": "A096",
+    "line": 191,
+    "section": "",
+    "text": "[internal/ui](/Users/sean/dev/codex/fastrock/internal/ui) **P2 \u00b7 Performance evidence:** Extend fixtures beyond a warm sidebar benchmark to cold metadata rebuilds, the information panel with 100,000 conversations, rapid query changes, grouped/skewed boards, large rich documents, long single messages, resize/font changes, and repeated multi-window open/close. Measure input-to-present latency and frame percentiles separately from draw callback time, plus aggregate RSS/private committed memory, retained heap, cache bytes, and outstanding jobs after reclamation. Keep deterministic operation/row-count assertions alongside platform measurements. (SPEC I.performance, V4, V7, V12, V13.)"
+  },
+  {
+    "id": "A097",
+    "line": 193,
+    "section": "",
+    "text": "[internal/ui](/Users/sean/dev/codex/fastrock/internal/ui) **P2 \u00b7 Race and recovery fixtures:** Add focused deterministic scenarios for delayed/reversed responses, detail typing during load/save, duplicate clicks, A\u2192B\u2192A collection changes, filter changes at the last list page, first-caller cancellation of shared fetches, queue-edit/send failures, approval delivery failure, and settings edits in multiple windows. Use real 128-record pages with sparse lanes and custom state/reference schemas; verify visible state and preserved user input after each transition, with no production Rally writes or paid inference. (SPEC V5, V7, V8, V10, V12.)"
+  },
+  {
+    "id": "A098",
+    "line": 195,
+    "section": "",
+    "text": "[docs/INTERACTIONS.md:L14](/Users/sean/dev/codex/fastrock/docs/INTERACTIONS.md:14) **P2 \u00b7 Verifiable parity tracking:** Expand the surface-level audit into a callback/action matrix linking each original Slint/Rust interaction and relevant Rally reference element to its Fastrock handler, state transitions, visual acceptance criteria, and fixture evidence. Track incomplete presentation and behavior separately from action reachability, and reconcile task completion claims against unresolved cases. Validate reference screenshots/geometry and native behavior on Windows only, preserving explicit user exclusions and the pure-Go/no-embedded-browser constraints. (SPEC \u00a7G, \u00a7C, T2, T7, V1, V11, V12.)"
+  }
+]

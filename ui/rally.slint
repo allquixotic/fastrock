@@ -1,0 +1,674 @@
+// Rally uses standard Slint controls and layout-managed models. No canvas.
+import { Button, CheckBox, ComboBox, LineEdit, TextEdit, ScrollView, ListView, ProgressIndicator, Palette } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+export struct RallyChoice { label: string, value: string }
+export struct RallyCell { field: string, text: string, kind: string, choices: [string], width: float }
+export struct RallyRow { reference: string, id: string, title: string, kind: string, state: string, group: string, owner: string, iteration: string, estimate: string, status: string, color: color, selected: bool, group-header:bool, cells: [RallyCell], card-fields:[RallyChoice] }
+export struct RallyLane { name: string, value: string, group: string, caption: string, over-limit: bool, collapsed: bool, scroll-y:float, cards: [RallyRow] }
+export struct RallyBoardGroup {name:string,collapsed:bool,lanes:[RallyLane]}
+export struct RallyRichBlock { text:styled-text, heading:int }
+export struct RallyField { name: string, label: string, value: string, plain: string, markdown: string, rich: styled-text, rich-blocks:[RallyRichBlock], kind: string, choices: [RallyChoice], choice-index:int, read-only: bool, required: bool, conflict: bool, comparison: string }
+export struct RallyMetric { label:string, value:string, fraction:float }
+export struct RallyProposal { index: int, selected: bool, caption: string, comparison: string, outcome: string }
+export global RallyState {
+    in-out property <length> table-x;
+    in-out property <length> table-y;
+    in-out property <length> board-x;
+    in-out property <length> board-y;
+    in property <[RallyBoardGroup]> board-groups;
+    in-out property <length> detail-y;
+    in-out property <length> relations-y;
+    in-out property <length> assistant-y;
+    in-out property <string> view-search;
+    in-out property <int> focus-search-revision;
+    in property <bool> view-changed;
+    in property <string> active-view-name;
+    callback open-link(string);
+    callback row-action(string,string);
+    in-out property <bool> row-menu-open;
+    in-out property <string> row-menu-ref;
+    in-out property <string> row-menu-title;
+    callback scrolled(string,float);
+    pure callback view-matches(string,string)->bool;
+    in property <int> revision;
+    in property <bool> connected;
+    in property <bool> busy;
+    in property <bool> loading;
+    in property <string> error;
+    in property <string> freshness;
+    in property <string> title;
+    in property <string> section;
+    in property <[RallyChoice]> pages;
+    in property <int> page-index;
+    in property <[RallyChoice]> projects;
+    in property <[RallyChoice]> workspaces;
+    in property <int> project-index;
+    in property <int> workspace-index;
+    in property <[RallyChoice]> iterations;
+    in property <[RallyChoice]> releases;
+    in property <int> iteration-index;
+    in property <int> release-index;
+    in-out property <bool> parents;
+    in-out property <bool> children: true;
+    in-out property <string> search;
+    in-out property <string> query;
+    in-out property <string> owner;
+    in-out property <string> state;
+    in-out property <bool> blocked;
+    in-out property <bool> ready;
+    in-out property <bool> current-iteration;
+    in property <string> mode;
+    in property <string> group;
+    in property <string> density;
+    in property <[string]> column-options;
+    in property <[string]> columns;
+    in property <[RallyRow]> rows;
+    in property <[RallyLane]> lanes;
+    in property <[RallyChoice]> filter-chips;
+    in property <[RallyChoice]> saved-views;
+    in property <[RallyChoice]> windows;
+    in-out property <bool> widgets;
+    in-out property <bool> exit-agreements;
+    in-out property <bool> rules;
+    in property <[RallyChoice]> hidden-rows;
+    in property <[RallyField]> details;
+    in property <[RallyField]> rich-fields;
+    in property <bool> detail-open;
+    in property <string> detail-title;
+    in property <bool> dirty;
+    in-out property <bool> dirty-guard-open;
+    callback dirty-choice(string);
+    in property <[string]> relation-tabs;
+    in property <string> relation-tab;
+    in property <[RallyRow]> relations;
+    in property <string> relation-summary;
+    in-out property <string> comment;
+    in-out property <string> endpoint;
+    in-out property <string> token;
+    in-out property <bool> settings-open;
+    in-out property <bool> filters-open;
+    in-out property <bool> fields-open;
+    in-out property <bool> display-open;
+    in-out property <string> filter-field: "Iteration";
+    in-out property <string> filter-operator: "is";
+    in-out property <string> filter-value;
+    in-out property <string> view-name;
+    in-out property <string> wip: "0";
+    in-out property <string> age: "3";
+    in-out property <string> color-by: "Work Item";
+    in property <string> summary;
+    in property <[RallyChoice]> totals;
+    in property <string> analytics;
+    in property <[RallyMetric]> metrics;
+    in property <[string]> card-fields;
+    in property <[string]> card-options;
+    in-out property <bool> move-open;
+    in property <string> move-reference;
+    in property <[string]> move-states;
+    in-out property <string> move-state;
+    in property <[string]> move-groups;
+    in-out property <string> move-group;
+    in property <bool> can-previous;
+    in property <bool> can-next;
+    in-out property <bool> picker-open;
+    in property <string> picker-title;
+    in-out property <string> picker-search;
+    in property <[RallyChoice]> picker-choices;
+    in property <string> picker-summary;
+    in property <bool> picker-multiple;
+    in property <bool> assistant-visible;
+    in property <string> assistant-history;
+    in-out property <string> assistant-draft;
+    in property <[string]> models;
+    in-out property <int> model-index;
+    in property <[RallyProposal]> proposal;
+    in property <string> proposal-summary;
+    in property <string> assistant-status;
+    in property <bool> inline-open;
+    in property <RallyField> inline-field;
+    in property <string> inline-title;
+    in property <bool> bulk-open;
+    in property <[RallyField]> bulk-fields;
+    in property <string> bulk-summary;
+    in property <[RallyProposal]> bulk-preview;
+    callback action(string);
+    callback draft(string,string);
+    callback open-page(string);
+    callback scope(string,int);
+    callback set-view(string,string);
+    callback edit(string,string);
+    callback rich-edit(string,string,bool);
+    callback format(string,string,int,int);
+    callback inline(string,string);
+    callback select(string,bool);
+    callback open-item(string);
+    callback move-card(string,string,string,bool);
+    callback drop-card(string,string,string,string,bool);
+    pure callback drag-data(string)->data-transfer;
+    pure callback drop-reference(data-transfer)->string;
+    callback pick-reference(string);
+    callback picker-action(string);
+    callback choose-reference(string);
+    callback conflict(string,bool);
+    callback hide-row(string);
+    callback restore-row(string);
+    callback proposal-selected(int,bool);
+    callback assistant-send();
+    callback bulk-edit(string,string);
+    pure callback row-visible(string,int)->bool;
+    pure callback column-selected(string,int)->bool;
+    pure callback card-selected(string,int)->bool;
+    pure callback choice-labels([RallyChoice])->[string];
+}
+component RowToggle inherits Button { in property <string> row-name; text: "−"; width: 26px; clicked=>{RallyState.hide-row(root.row-name);} }
+component PropertyEditor inherits VerticalLayout {
+    in property <RallyField> field;
+    callback changed(string);
+    spacing: 4px;
+    Text { text: field.label + (field.required ? " *" : ""); color: Theme.text-muted; font-size: Theme.font-size-small; }
+    if field.kind == "boolean": CheckBox { text: field.label; enabled: !field.read-only && !RallyState.busy; checked: field.value == "true"; toggled=>{root.changed(self.checked ? "true":"false");} }
+    if field.kind == "choice": ComboBox {
+        enabled: !field.read-only && !RallyState.busy;
+        model: RallyState.choice-labels(field.choices);
+        current-index:field.choice-index;
+        selected(value)=>{root.changed(field.choices[self.current-index].value);}
+    }
+    if field.kind == "reference" || field.kind == "collection": HorizontalLayout {
+        LineEdit { text: field.value; read-only: true; }
+        Button { text: "Choose…"; enabled: !field.read-only && !RallyState.busy; clicked=>{RallyState.pick-reference(field.name);} }
+        Button { text: "Clear"; enabled: !field.read-only && !RallyState.busy; clicked=>{root.changed(field.kind == "collection" ? "[]" : "");} }
+    }
+    if field.kind != "boolean" && field.kind != "choice" && field.kind != "reference" && field.kind != "collection": LineEdit {
+        text: field.value; read-only: field.read-only; enabled: !RallyState.busy;
+        edited(text)=>{root.changed(text);}
+    }
+    if field.conflict: VerticalLayout {
+        Text { text: "Changed on Rally. Resolve before saving."; color: Theme.danger; wrap: word-wrap; }
+        TextEdit { text: field.comparison; read-only: true; height: 110px; }
+        HorizontalLayout {
+            Button { text: "Keep my edit"; clicked=>{RallyState.conflict(field.name,true);} }
+            Button { text: "Use Rally value"; clicked=>{RallyState.conflict(field.name,false);} }
+        }
+    }
+}
+component ControlRow inherits ScrollView {
+    height:34px;
+    vertical-stretch:0;
+    HorizontalLayout { spacing:4px; @children }
+}
+component RichEditor inherits VerticalLayout {
+    vertical-stretch:0;
+    in property <RallyField> field;
+    property <bool> source;
+    property <bool> preview;
+    spacing: 5px;
+    Text { text: field.label; color: Theme.text; font-weight: 600; }
+    ControlRow {
+        for mark in ["B","I","U","S","H1","H2","• List","1. List","Link"]: Button {
+            text: mark; enabled: !field.read-only && !RallyState.busy;
+            clicked=>{RallyState.format(field.name,mark,input.anchor-position-byte-offset,input.cursor-position-byte-offset);}
+        }
+        CheckBox {text: "HTML source"; checked <=> root.source;}
+        CheckBox {text: "Preview"; checked <=> root.preview;}
+        Button {text:"Undo";clicked=>{RallyState.action("undo-rich");}}
+        Button {text:"Redo";clicked=>{RallyState.action("redo-rich");}}
+    }
+    ScrollView {
+        visible: !root.preview;
+        height: root.preview ? 0px : (field.name == "Description" ? 240px : 160px);
+        input := TextInput {
+            text: root.source ? field.value : field.plain;
+            wrap: word-wrap; width: parent.visible-width;
+            font-size: Theme.font-size; color: Theme.text;
+            read-only: field.read-only || RallyState.busy;
+            edited=>{RallyState.rich-edit(field.name,self.text,root.source);}
+        }
+    }
+    if root.preview: ScrollView {
+        height: 240px;
+        VerticalLayout { for block in field.rich-blocks: StyledText { text:block.text; default-color:Theme.text;default-font-size:block.heading>0 ? Theme.font-size+(4-block.heading)*3px : Theme.font-size;link-clicked(url)=>{RallyState.open-link(url);} } }
+    }
+}
+component RallyCard inherits Rectangle {
+    in property <RallyRow> card;
+    in property <string> lane;
+    in property <string> group;
+    border-width: 1px; border-color: card.color; border-radius: 4px;
+    background: card.selected || target.has-drag ? Theme.selected : Theme.surface;
+    min-height: RallyState.density == "Compact" ? 170px : 210px;
+    target := DropArea {
+        enabled:!RallyState.busy;
+        can-drop(event)=>{ RallyState.drop-reference(event.data) != "" && RallyState.drop-reference(event.data) != card.reference ? DragAction.move : DragAction.none }
+        dropped(event)=>{ RallyState.drop-card(RallyState.drop-reference(event.data),lane,group,card.reference,event.position.y > root.height/2); DragAction.move }
+        DragArea {
+            enabled:!RallyState.busy;allow-move:true; data:RallyState.drag-data(card.reference);
+    VerticalLayout {
+        padding: RallyState.density == "Compact" ? 8px : 12px; spacing: 6px;
+        HorizontalLayout {
+            CheckBox { checked: card.selected; toggled=>{RallyState.select(card.reference,self.checked);} }
+            Button { text: card.kind + " · " + card.id; clicked=>{RallyState.open-item(card.reference);} }
+        }
+        Text { text: card.title; wrap: word-wrap; color: Theme.text; font-size: Theme.font-size; vertical-stretch: 1; }
+        for field in card.card-fields: Text {text:field.label+": "+field.value;color:Theme.text-muted;wrap:word-wrap;}
+        Text { text: card.status; color: Theme.text-muted; wrap: word-wrap; }
+        HorizontalLayout {
+            Button { text: "Move…"; enabled: !RallyState.busy; clicked=>{RallyState.inline(card.reference,"__move");} }
+            Button { text: "Open"; clicked=>{RallyState.open-item(card.reference);} }
+        }
+    }
+        }
+    }
+}
+component RowCell inherits Rectangle {
+    in property <RallyCell> cell;
+    in property <string> reference;
+    min-width: cell.width * 1px;
+    horizontal-stretch: cell.field == "Name" ? 3 : 1;
+    if cell.field == "FormattedID": Button { text: cell.text; clicked=>{RallyState.open-item(reference);} }
+    if cell.field != "FormattedID": VerticalLayout {
+        padding: 4px;
+        Text { text: cell.text; wrap: word-wrap; color: Theme.text; font-size: Theme.font-size; min-height: 30px; }
+    }
+    if cell.kind != "readonly" && cell.field != "FormattedID": TouchArea { clicked=>{RallyState.inline(reference,cell.field);} }
+}
+component RallySearch inherits LineEdit {
+    in property <int> focus-revision:RallyState.focus-search-revision;
+    init=>{if root.focus-revision>0 {self.focus();}}
+    changed focus-revision=>{self.focus();}
+}
+component RallyAssistant inherits Rectangle {
+    background:Theme.surface;clip:true;
+                ScrollView {content-y <=> RallyState.assistant-y;scrolled=>{RallyState.scrolled("",0);}VerticalLayout {padding:8px;spacing:6px;
+                HorizontalLayout {Text {text:"Rally assistant";color:Theme.text;font-weight:600;horizontal-stretch:1;}Button {text:"×";clicked=>{RallyState.action("assistant");}}}
+                TextEdit {text:RallyState.assistant-history;read-only:true;height:160px;}
+                Text {text:RallyState.assistant-status;color:Theme.text-muted;wrap:word-wrap;}
+                ComboBox {model:RallyState.models;current-index <=> RallyState.model-index;}
+                TextEdit {text <=> RallyState.assistant-draft;edited=>{RallyState.draft("assistant",self.text);}placeholder-text:"Ask about scoped Rally work";height:100px;}
+                Button {text:"Send";clicked=>{RallyState.assistant-send();}}
+                if RallyState.proposal.length>0: VerticalLayout {
+                    Text {text:RallyState.proposal-summary;color:Theme.text;wrap:word-wrap;}
+                    ListView {height:180px;for change in RallyState.proposal: VerticalLayout {
+                        CheckBox {text:change.caption;checked:change.selected;toggled=>{RallyState.proposal-selected(change.index,self.checked);}}
+                        Text {text:change.comparison;color:Theme.text-muted;wrap:word-wrap;}
+                        Text {text:change.outcome;color:Theme.text-muted;wrap:word-wrap;}
+                    }}
+                    Button {text:"Apply selected changes";enabled:!RallyState.busy;clicked=>{RallyState.action("apply-proposal");}}
+                }
+                }}
+}
+export component RallyView inherits Rectangle {
+    background:Theme.window-bg;
+    forward-focus: rally-keys;
+    rally-keys := FocusScope {width:parent.width;height:parent.height;
+        key-pressed(event)=>{if event.text=="/"&&!event.modifiers.control&&!event.modifiers.meta {RallyState.action("focus-search");return EventResult.accept;}return EventResult.reject;}
+    property <string> section-choice: RallyState.section;
+    VerticalLayout {
+        spacing: 6px; padding: 8px;
+        // Keep room for the document when the assistant docks below it.
+        ScrollView {
+            height:min(toolbar.preferred-height,root.height*(RallyState.assistant-visible && root.width<1050px ? 0.35 : 0.55));
+            vertical-stretch:0;
+            content-height:toolbar.preferred-height;
+            toolbar := VerticalLayout {
+                width:parent.visible-width;
+                spacing:6px;alignment:start;
+        if RallyState.hidden-rows.length > 0: ControlRow {
+            for row in RallyState.hidden-rows: Button {text:"+ " + row.label;clicked=>{RallyState.restore-row(row.value);}}
+            Button {text:"+ All";clicked=>{RallyState.restore-row("all");}}
+        }
+        if RallyState.row-visible("sections",RallyState.revision): ControlRow {
+            RowToggle {row-name:"sections";}
+            for section in ["Home","Plan","Track","Quality","Portfolio","Reports"]: Button {text:section;clicked=>{RallyState.set-view("section",section);}}
+        }
+        if RallyState.row-visible("pages",RallyState.revision): ControlRow {
+            RowToggle {row-name:"pages";}
+            ComboBox { model: RallyState.choice-labels(RallyState.pages); current-index: RallyState.page-index; selected(value)=>{RallyState.open-page(RallyState.pages[self.current-index].value);} }
+            Text {text:RallyState.title;color:Theme.text;font-weight:600;horizontal-stretch:1;vertical-alignment:center;}
+            Button {text:"Refresh";enabled:RallyState.connected&&!RallyState.loading&&!RallyState.busy;clicked=>{RallyState.action("refresh");}}
+            Button {text:"Ask AI";enabled:RallyState.connected;clicked=>{RallyState.action("assistant");}}
+            Button {text:"Rally Settings";clicked=>{RallyState.settings-open=!RallyState.settings-open;}}
+            Button {text:"New window";enabled:!RallyState.busy;clicked=>{RallyState.action("popout");}}
+            if RallyState.windows.length>0: ComboBox {model:RallyState.choice-labels(RallyState.windows);selected(value)=>{RallyState.set-view("transfer",RallyState.windows[self.current-index].value);}}
+        }
+        if RallyState.row-visible("project",RallyState.revision): ControlRow {
+            RowToggle {row-name:"project";}
+            ComboBox {model:RallyState.choice-labels(RallyState.projects);current-index:RallyState.project-index;selected(value)=>{RallyState.scope("project",self.current-index);}}
+            CheckBox {text:"↑ Parents";checked <=> RallyState.parents;toggled=>{RallyState.action("scope");}}
+            CheckBox {text:"↓ Children";checked <=> RallyState.children;toggled=>{RallyState.action("scope");}}
+        }
+        if RallyState.row-visible("freshness",RallyState.revision): ControlRow {
+            RowToggle {row-name:"freshness";}
+            Text {text:RallyState.loading ? "Loading Rally…" : RallyState.freshness;color:Theme.text-muted;horizontal-stretch:1;vertical-alignment:center;}
+            if RallyState.loading: Button {text:"Cancel";clicked=>{RallyState.action("cancel-load");}}
+        }
+        if RallyState.error != "": HorizontalLayout {
+            Text {text:RallyState.error;color:Theme.danger;wrap:word-wrap;horizontal-stretch:1;}
+            Button {text:"Retry";clicked=>{RallyState.action("refresh");}}
+        }
+        if RallyState.settings-open || !RallyState.connected: VerticalLayout {
+            Text {text:"Rally connection";color:Theme.text;font-weight:600;}
+            HorizontalLayout {
+                LineEdit {text <=> RallyState.endpoint;placeholder-text:"https://rally1.rallydev.com";horizontal-stretch:2;}
+                LineEdit {text <=> RallyState.token;input-type:password;placeholder-text:"API token (OS vault)";horizontal-stretch:1;}
+                Button {text:"Save and connect";enabled:!RallyState.busy;clicked=>{RallyState.action("connect");}}
+            }
+            HorizontalLayout {
+                ComboBox {model:RallyState.choice-labels(RallyState.workspaces);current-index:RallyState.workspace-index;selected(value)=>{RallyState.scope("workspace",self.current-index);}}
+                Text {text:"Tokens stay in Windows Credential Manager or macOS Keychain.";color:Theme.text-muted;wrap:word-wrap;}
+            }
+        }
+        if !RallyState.detail-open && RallyState.connected && RallyState.title != "Custom Views": VerticalLayout {
+            spacing:4px;
+            if RallyState.row-visible("saved-view",RallyState.revision): ControlRow {
+                RowToggle {row-name:"saved-view";}
+                ComboBox {model:RallyState.choice-labels(RallyState.saved-views);selected(value)=>{RallyState.set-view("saved",RallyState.saved-views[self.current-index].value);}}
+                LineEdit {text <=> RallyState.view-name;placeholder-text:"Private view name";}
+                Button {text:"Save view";clicked=>{RallyState.action("save-view");}}
+                Button {text:"View actions…";clicked=>{RallyState.action("saved-manager");}}
+                if RallyState.active-view-name!="": Text {text:RallyState.active-view-name+(RallyState.view-changed?" · changed":"");color:Theme.text-muted;}
+                if RallyState.view-changed: Button {text:"Reset view";clicked=>{RallyState.action("reset-view");}}
+            }
+            if RallyState.row-visible("timeboxes",RallyState.revision): ControlRow {
+                RowToggle {row-name:"timeboxes";}
+                ComboBox {model:RallyState.choice-labels(RallyState.iterations);current-index:RallyState.iteration-index;selected(value)=>{RallyState.scope("iteration",self.current-index);}}
+                ComboBox {model:RallyState.choice-labels(RallyState.releases);current-index:RallyState.release-index;selected(value)=>{RallyState.scope("release",self.current-index);}}
+                CheckBox {text:"Current iteration";checked <=> RallyState.current-iteration;toggled=>{RallyState.action("query");}}
+            }
+            if RallyState.row-visible("view-actions",RallyState.revision): ControlRow {
+                RowToggle {row-name:"view-actions";}
+                Button {text:"+ New item";enabled:!RallyState.busy;clicked=>{RallyState.action("create");}}
+                Button {text:"Edit selected";enabled:!RallyState.busy;clicked=>{RallyState.action("bulk");}}
+                Button {text:"Export CSV";clicked=>{RallyState.action("export");}}
+                Button {text:"Undo move";enabled:!RallyState.busy;clicked=>{RallyState.action("undo-move");}}
+            }
+            if RallyState.row-visible("modes",RallyState.revision): ControlRow {
+                RowToggle {row-name:"modes";}
+                for mode in ["List","Board","Metrics","Charts","Planning","Timeline"]: Button {text:mode;clicked=>{RallyState.set-view("mode",mode);}}
+                ComboBox {model:["None","Owner","Iteration","Release","ScheduleState","Feature","Project"];current-value:RallyState.group;selected(value)=>{RallyState.set-view("group",value);}}
+                ComboBox {model:["Comfortable","Compact"];current-value:RallyState.density;selected(value)=>{RallyState.set-view("density",value);}}
+                Button {text:"Page settings";clicked=>{RallyState.display-open=!RallyState.display-open;}}
+            }
+            if RallyState.row-visible("search",RallyState.revision): ControlRow {
+                RowToggle {row-name:"search";}
+                RallySearch {text <=> RallyState.search;placeholder-text:"Search ID, title, owner, description";edited(text)=>{RallyState.action("search");}}
+                LineEdit {text <=> RallyState.owner;placeholder-text:"Owner / Unassigned";accepted=>{RallyState.action("query");}}
+                LineEdit {text <=> RallyState.state;placeholder-text:"State";accepted=>{RallyState.action("query");}}
+                CheckBox {text:"Blocked";checked <=> RallyState.blocked;toggled=>{RallyState.action("query");}}
+                CheckBox {text:"Ready";checked <=> RallyState.ready;toggled=>{RallyState.action("query");}}
+                Button {text:"Filters";clicked=>{RallyState.filters-open=!RallyState.filters-open;}}
+                Button {text:"Fields";clicked=>{RallyState.fields-open=!RallyState.fields-open;}}
+            }
+            if RallyState.filter-chips.length>0 && RallyState.row-visible("filter-chips",RallyState.revision): ControlRow {
+                RowToggle {row-name:"filter-chips";}
+                for chip in RallyState.filter-chips: Button {text:chip.label+" ×";clicked=>{RallyState.set-view("remove-filter",chip.value);}}
+                Button {text:"Clear all";clicked=>{RallyState.action("clear-filters");}}
+            }
+            if RallyState.filters-open: VerticalLayout {
+                HorizontalLayout {
+                    ComboBox {model:["Iteration","Release","Project","Tags","Type"];current-value <=> RallyState.filter-field;}
+                    ComboBox {model:["is","is not","contains"];current-value <=> RallyState.filter-operator;}
+                    LineEdit {text <=> RallyState.filter-value;placeholder-text:"Value or reference";}
+                    Button {text:"Choose…";clicked=>{RallyState.pick-reference("__filter");}}
+                    Button {text:"Add filter";clicked=>{RallyState.action("add-filter");}}
+                }
+                HorizontalLayout {
+                    LineEdit {text <=> RallyState.query;edited(text)=>{RallyState.draft("query",text);}placeholder-text:"Advanced WSAPI query";accepted=>{RallyState.action("query");}}
+                    Button {text:"Apply query";clicked=>{RallyState.action("query");}}
+                }
+            }
+            if RallyState.fields-open: ScrollView {
+                height:100px;
+                HorizontalLayout {
+                    VerticalLayout {Text {text:"Table columns";color:Theme.text;} for field in RallyState.column-options: CheckBox {text:field;checked:RallyState.column-selected(field,RallyState.revision);toggled=>{RallyState.set-view("column",field);}}}
+                    VerticalLayout {Text {text:"Card fields";color:Theme.text;} for field in RallyState.card-options: CheckBox {text:field;checked:RallyState.card-selected(field,RallyState.revision);toggled=>{RallyState.set-view("card-field",field);}}}
+                }
+            }
+            if RallyState.mode=="board" && RallyState.row-visible("widgets",RallyState.revision): ControlRow {
+                RowToggle {row-name:"widgets";}
+                CheckBox {text:"Show widgets";checked <=> RallyState.widgets;toggled=>{RallyState.set-view("widgets",self.checked?"true":"false");}}
+                CheckBox {text:"Exit agreements";checked <=> RallyState.exit-agreements;toggled=>{RallyState.set-view("exit-agreements",self.checked?"true":"false");}}
+                CheckBox {text:"Rules";checked <=> RallyState.rules;toggled=>{RallyState.set-view("rules",self.checked?"true":"false");}}
+            }
+            if RallyState.widgets && RallyState.mode=="board": ControlRow {for metric in RallyState.metrics: Text {text:metric.label+": "+metric.value;color:Theme.text-muted;}}
+            if RallyState.rules && RallyState.mode=="board": Text {text:"Moves use workflow states and relative rank. WIP limits warn; totals cover loaded work.";color:Theme.text-muted;wrap:word-wrap;}
+            if RallyState.exit-agreements && RallyState.mode=="board": Text {text:"Exit agreements follow this workspace's workflow. Reload the item and review its required fields before advancing.";color:Theme.text-muted;wrap:word-wrap;}
+            if RallyState.display-open: ControlRow {
+                ComboBox {model:["Work Item","Owner","Priority"];current-value <=> RallyState.color-by;}
+                LineEdit {text <=> RallyState.wip;placeholder-text:"WIP limit";}
+                LineEdit {text <=> RallyState.age;placeholder-text:"Age days";}
+                Button {text:"Apply page settings";clicked=>{RallyState.action("display");}}
+                Button {text:"Cancel";clicked=>{RallyState.display-open=false;}}
+            }
+        }
+            }
+        }
+        content := HorizontalLayout {
+            vertical-stretch:1;spacing:8px;
+            main := Rectangle {
+                horizontal-stretch:3;min-width:0px;clip:true;
+                if RallyState.detail-open: VerticalLayout {
+                    spacing:6px;
+                    HorizontalLayout {
+                        Button {text:"← Back";enabled:!RallyState.busy;clicked=>{RallyState.action("detail-back");}}
+                        Text {text:RallyState.detail-title+(RallyState.dirty?" · unsaved":"");color:Theme.text;font-weight:600;horizontal-stretch:1;vertical-alignment:center;}
+                        Button {text:"Reload item";enabled:!RallyState.busy;clicked=>{RallyState.action("detail-reload");}}
+                        Button {text:"Delete";enabled:!RallyState.busy;clicked=>{RallyState.action("detail-delete");}}
+                        Button {text:"Save";enabled:!RallyState.busy;clicked=>{RallyState.action("detail-save");}}
+                    }
+                    ComboBox {model:RallyState.relation-tabs;current-value:RallyState.relation-tab;selected(value)=>{RallyState.set-view("relation",value);}}
+                    if RallyState.relation-tab == "Details" || RallyState.relation-tab == "More fields": ScrollView {
+                        content-y <=> RallyState.detail-y;scrolled=>{RallyState.scrolled("",0);}
+                        VerticalLayout {
+                            spacing:8px;
+                            if root.width >= 1000px: HorizontalLayout {
+                                spacing:12px;
+                                VerticalLayout {horizontal-stretch:3;alignment:start;for field in RallyState.rich-fields: RichEditor {field:field;}}
+                                VerticalLayout {horizontal-stretch:1;min-width:260px;alignment:start;for field in RallyState.details: PropertyEditor {field:field;changed(value)=>{RallyState.edit(field.name,value);}}}
+                            }
+                            if root.width < 1000px: VerticalLayout {
+                                spacing:12px;alignment:start;
+                                for field in RallyState.rich-fields: RichEditor {field:field;}
+                                for field in RallyState.details: PropertyEditor {field:field;changed(value)=>{RallyState.edit(field.name,value);}}
+                            }
+                        }
+                    }
+                    if RallyState.relation-tab != "Details" && RallyState.relation-tab != "More fields": VerticalLayout {
+                        HorizontalLayout {
+                            Text {text:RallyState.relation-summary;color:Theme.text-muted;horizontal-stretch:1;}
+                            Button {text:"Previous";clicked=>{RallyState.action("relation-previous");}}
+                            Button {text:"Next";clicked=>{RallyState.action("relation-next");}}
+                            Button {text:"Retry";clicked=>{RallyState.action("relation-reload");}}
+                            if RallyState.relation-tab == "Tasks" || RallyState.relation-tab == "Children": Button {text:"+ Create";clicked=>{RallyState.action("relation-create");}}
+                            if RallyState.relation-tab == "Attachments": Button {text:"Upload";clicked=>{RallyState.action("attachment-upload");}}
+                        }
+                        ListView {content-y <=> RallyState.relations-y;scrolled=>{RallyState.scrolled("",0);}for row in RallyState.relations: VerticalLayout {
+                            Text {text:row.title;color:Theme.text;wrap:word-wrap;}
+                            HorizontalLayout {
+                                Button {text:row.id;clicked=>{RallyState.open-item(row.reference);}}
+                                if RallyState.relation-tab == "Attachments": Button {text:"Download";clicked=>{RallyState.action("attachment-download:"+row.reference);}}
+                                if RallyState.relation-tab == "Attachments": Button {text:"Delete";clicked=>{RallyState.action("attachment-delete:"+row.reference);}}
+                            }
+                        }}
+                        if RallyState.relation-tab == "Discussions": HorizontalLayout {
+                            TextEdit {text <=> RallyState.comment;edited=>{RallyState.draft("comment",self.text); }placeholder-text:"Write discussion (HTML supported)";height:100px;}
+                            Button {text:"Post comment";enabled:!RallyState.busy;clicked=>{RallyState.action("comment");}}
+                        }
+                    }
+                }
+                if !RallyState.detail-open && RallyState.title == "Custom Views": VerticalLayout {
+                    HorizontalLayout {
+                        LineEdit {text <=> RallyState.view-name;placeholder-text:"View name";}
+                        Button {text:"Add";clicked=>{RallyState.action("save-view");}}
+                    }
+                    LineEdit {text <=> RallyState.view-search;placeholder-text:"Search saved views";}
+                    ListView {for view in RallyState.saved-views: VerticalLayout {if RallyState.view-matches(view.label,RallyState.view-search): HorizontalLayout {
+                        Text {text:view.label;color:Theme.text;horizontal-stretch:1;}
+                        Button {text:"Open";clicked=>{RallyState.set-view("saved",view.value);}}
+                        Button {text:"Rename";clicked=>{RallyState.set-view("rename-view",view.value);}}
+                        Button {text:"Copy";clicked=>{RallyState.set-view("copy-view",view.value);}}
+                        Button {text:"Delete";clicked=>{RallyState.set-view("delete-view",view.value);}}
+                    }}}
+                }
+                if !RallyState.detail-open && RallyState.title != "Custom Views" && RallyState.mode == "list": ScrollView {
+                    content-x <=> RallyState.table-x;scrolled=>{RallyState.scrolled("",0);}
+                    VerticalLayout {
+                    width:max(parent.visible-width,RallyState.columns.length*100px+180px);
+                    height:parent.visible-height;
+                    header := HorizontalLayout {
+                        Button {text:"☑";width:38px;clicked=>{RallyState.action("select-all");}}
+                        for column in RallyState.columns: Button {text:column;min-width:column=="Name"?220px:100px;horizontal-stretch:column=="Name"?3:1;clicked=>{RallyState.set-view("sort",column);}}
+                        Rectangle {width:34px;}
+                    }
+                    ListView {content-y <=> RallyState.table-y;scrolled=>{RallyState.scrolled("",0);}for row in RallyState.rows: VerticalLayout {
+                        if row.group-header: Text {text:row.title;color:Theme.text;font-weight:600;min-height:32px;}
+                        if !row.group-header: HorizontalLayout {
+                            CheckBox {checked:row.selected;toggled=>{RallyState.select(row.reference,self.checked);}width:38px;}
+                            for cell in row.cells: RowCell {cell:cell;reference:row.reference;}
+                            Button {text:"⋮";width:34px;clicked=>{RallyState.row-action(row.reference,"menu");}}
+                        }
+                    }}
+                }
+                }
+                if !RallyState.detail-open && RallyState.title != "Custom Views" && RallyState.mode == "board": board := ScrollView {
+                    content-x <=> RallyState.board-x;content-y <=> RallyState.board-y;scrolled=>{RallyState.scrolled("",0);}
+                    VerticalLayout {spacing:10px;
+                        for group in RallyState.board-groups: VerticalLayout {
+                            if group.name!="": Button {text:group.name+(group.collapsed?" · collapsed":"");clicked=>{RallyState.set-view("collapse","__group|"+group.name);}}
+                            if !group.collapsed: HorizontalLayout {spacing:10px;height:max(300px,board.visible-height - (group.name!=""?44px:0px));
+                                for lane in group.lanes: VerticalLayout {
+                                    width:lane.collapsed?120px:280px;spacing:6px;
+                                    DropArea {
+                                        height:34px;enabled:!RallyState.busy;
+                                        can-drop(event)=>{RallyState.drop-reference(event.data)!="" ? DragAction.move : DragAction.none}
+                                        dropped(event)=>{RallyState.drop-card(RallyState.drop-reference(event.data),lane.value,lane.group,"",true);DragAction.move}
+                                        Button {text:lane.caption;clicked=>{RallyState.set-view("collapse",lane.group+"|"+lane.value);}}
+                                    }
+                                    Button {text:"+ Add in "+lane.name;enabled:!RallyState.busy;clicked=>{RallyState.set-view("create-state",lane.value);}}
+                                    if !lane.collapsed: ListView {content-y:lane.scroll-y*1px;scrolled=>{RallyState.scrolled(lane.group+"|"+lane.value,self.content-y/1px);}for card in lane.cards: RallyCard {card:card;lane:lane.value;group:lane.group;}}
+                                }
+                            }
+                        }
+                    }
+                }
+                if !RallyState.detail-open && RallyState.mode != "list" && RallyState.mode != "board": ListView {
+                    for metric in RallyState.metrics: VerticalLayout {
+                        spacing:6px;padding:8px;
+                        Text {text:metric.label;color:Theme.text;font-weight:600;wrap:word-wrap;}
+                        Text {text:metric.value;color:Theme.text-muted;wrap:word-wrap;}
+                        if RallyState.mode!="timeline": ProgressIndicator {progress:metric.fraction;height:8px;}
+                    }
+                }
+            }
+            if RallyState.assistant-visible && root.width>=1050px: RallyAssistant {width:340px;}
+
+        }
+        if RallyState.assistant-visible && root.width<1050px: RallyAssistant {height:min(260px,root.height*0.3);}
+        if !RallyState.detail-open && RallyState.totals.length>0 && RallyState.row-visible("summary",RallyState.revision): ControlRow {for total in RallyState.totals: Text {text:total.label+" Σ "+total.value;color:Theme.text-muted;}}
+        if !RallyState.detail-open && RallyState.row-visible("summary",RallyState.revision): ControlRow {
+            RowToggle {row-name:"summary";}
+            Text {text:RallyState.summary;color:Theme.text-muted;horizontal-stretch:1;vertical-alignment:center;}
+            Button {text:"Previous";enabled:RallyState.can-previous&&!RallyState.loading;clicked=>{RallyState.action("previous");}}
+            Button {text:"Next / Load more";enabled:RallyState.can-next&&!RallyState.loading;clicked=>{RallyState.action("next");}}
+        }
+    }
+    if RallyState.row-menu-open: Rectangle {
+        background:#0008;
+        VerticalLayout {alignment:center;Rectangle {background:Theme.surface;width:min(root.width - 32px,420px);VerticalLayout {padding:16px;spacing:8px;
+            Text {text:RallyState.row-menu-title;color:Theme.text;font-weight:600;}
+            Button {text:"Open work item";clicked=>{RallyState.row-action(RallyState.row-menu-ref,"open");}}
+            Button {text:"Copy ID";clicked=>{RallyState.row-action(RallyState.row-menu-ref,"copy");}}
+            Button {text:"Open in Rally";clicked=>{RallyState.row-action(RallyState.row-menu-ref,"browser");}}
+            Button {text:"Move / rank…";clicked=>{RallyState.row-action(RallyState.row-menu-ref,"move");}}
+            Button {text:"Cancel";clicked=>{RallyState.row-menu-open=false;}}
+        }}}
+    }
+    if RallyState.inline-open: Rectangle {
+        background:#0008;
+        VerticalLayout {alignment:center;
+            Rectangle {background:Theme.surface;width:min(root.width - 32px,620px);border-radius:8px;
+                VerticalLayout {padding:16px;spacing:10px;
+                    Text {text:RallyState.inline-title;color:Theme.text;font-weight:600;}
+                    PropertyEditor {field:RallyState.inline-field;changed(value)=>{RallyState.edit(RallyState.inline-field.name,value);}}
+                    HorizontalLayout {
+                        Button {text:"Save";enabled:!RallyState.busy;clicked=>{RallyState.action("inline-save");}}
+                        Button {text:"Full editor";clicked=>{RallyState.action("inline-full");}}
+                        Button {text:"Cancel";enabled:!RallyState.busy;clicked=>{RallyState.action("inline-cancel");}}
+                    }
+                }
+            }
+        }
+    }
+    if RallyState.bulk-open: Rectangle {
+        background:#0008;
+        VerticalLayout {alignment:center;
+            Rectangle {background:Theme.surface;width:min(root.width - 32px,750px);height:min(root.height - 32px,600px);
+                VerticalLayout {padding:16px;spacing:8px;
+                    Text {text:"Edit selected work";color:Theme.text;font-weight:600;}
+                    ScrollView {vertical-stretch:2;VerticalLayout {spacing:8px;for field in RallyState.bulk-fields: PropertyEditor {field:field;changed(value)=>{RallyState.bulk-edit(field.name,value);}}}}
+                    Text {text:RallyState.bulk-summary;color:Theme.text;wrap:word-wrap;}
+                    ListView {height:130px;for change in RallyState.bulk-preview: VerticalLayout {Text {text:change.caption;color:Theme.text;}Text {text:change.comparison;color:Theme.text-muted;wrap:word-wrap;}}}
+                    HorizontalLayout {
+                        Button {text:"Review";enabled:!RallyState.busy;clicked=>{RallyState.action("bulk-review");}}
+                        Button {text:"Apply reviewed changes";enabled:!RallyState.busy;clicked=>{RallyState.action("bulk-apply");}}
+                        Button {text:"Cancel";enabled:!RallyState.busy;clicked=>{RallyState.action("bulk-cancel");}}
+                    }
+                }
+            }
+        }
+    }
+    if RallyState.picker-open: Rectangle {
+        background:#0008;
+        VerticalLayout {alignment:center;
+            Rectangle {background:Theme.surface;width:min(root.width - 32px,620px);height:min(root.height - 32px,500px);
+                VerticalLayout {padding:16px;spacing:8px;
+                    Text {text:RallyState.picker-title;color:Theme.text;font-weight:600;}
+                    LineEdit {text <=> RallyState.picker-search;placeholder-text:"Search names";edited(text)=>{RallyState.picker-action("search");}}
+                    ListView {for choice in RallyState.picker-choices: Button {text:choice.label;clicked=>{RallyState.choose-reference(choice.value);}}}
+                    Text {text:RallyState.picker-summary;color:Theme.text-muted;}
+                    HorizontalLayout {
+                        Button {text:"Previous";clicked=>{RallyState.picker-action("previous");}}
+                        Button {text:"Next";clicked=>{RallyState.picker-action("next");}}
+                        Button {text:"Clear";clicked=>{RallyState.choose-reference("");}}
+                        Button {text:"Done";clicked=>{RallyState.picker-action("done");}}
+                    }
+                }
+            }
+        }
+    }
+    if RallyState.move-open: Rectangle {
+        background:#0008;
+        VerticalLayout {alignment:center;
+            Rectangle {background:Theme.surface;width:min(root.width - 32px,520px);height:220px;
+                VerticalLayout {padding:16px;spacing:10px;
+                    Text {text:"Move work item";color:Theme.text;font-weight:600;}
+                    ComboBox {model:RallyState.move-states;current-value <=> RallyState.move-state;}
+                    ComboBox {model:RallyState.move-groups;current-value <=> RallyState.move-group;}
+                    HorizontalLayout {
+                        Button {text:"Move";enabled:!RallyState.busy;clicked=>{RallyState.move-card(RallyState.move-reference,RallyState.move-state,RallyState.move-group,true);RallyState.move-open=false;}}
+                        Button {text:"Cancel";clicked=>{RallyState.move-open=false;}}
+                    }
+                }
+            }
+        }
+    }
+
+    if RallyState.dirty-guard-open: Rectangle {
+        background:#0008;
+        VerticalLayout {alignment:center;
+            Rectangle {background:Theme.surface;width:min(root.width - 32px,520px);height:240px;
+                VerticalLayout {padding:16px;spacing:12px;
+                    Text {text:"Unsaved Rally edits";font-weight:600;color:Theme.text;}
+                    Text {text:"Save this item and discussion before leaving, discard the draft, or continue editing.";wrap:word-wrap;color:Theme.text;}
+                    Text {text:RallyState.error;color:Theme.danger;wrap:word-wrap;}
+                    HorizontalLayout {
+                        Button {text:"Save and continue";enabled:!RallyState.busy;clicked=>{RallyState.dirty-choice("save");}}
+                        Button {text:"Discard";enabled:!RallyState.busy;clicked=>{RallyState.dirty-choice("discard");}}
+                        Button {text:"Cancel";enabled:!RallyState.busy;clicked=>{RallyState.dirty-choice("cancel");}}
+                    }
+                }
+            }
+        }
+    }
+
+    }
+}

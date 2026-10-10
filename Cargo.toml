@@ -1,0 +1,286 @@
+[package]
+name = "fastrock"
+version = "0.2.0-alpha.1"
+edition = "2024"
+license = "Apache-2.0"
+build = "build.rs"
+autobins = false
+repository = "https://github.com/allquixotic/fastrock"
+description = "Native Slint Codex and Rally workspace using external Codex"
+
+[[bin]]
+name = "fastrock"
+path = "src/main.rs"
+
+[lib]
+name = "codex_gui"
+path = "src/lib.rs"
+doctest = false
+
+[lints]
+workspace = true
+
+[dependencies]
+unicode-segmentation = "1.12"
+anyhow = { workspace = true }
+arboard = { workspace = true }
+base64 = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+codex-ansi-escape = { workspace = true }
+codex-app-server-protocol = { workspace = true }
+codex-async-utils = { workspace = true }
+codex-aws-auth = { workspace = true }
+codex-http-client = { workspace = true }
+codex-model-provider-info = { workspace = true }
+codex-config = { workspace = true }
+codex-exec-server = { workspace = true }
+codex-context-fragments = { workspace = true }
+codex-feedback = { workspace = true }
+codex-file-search = { workspace = true }
+codex-git-utils = { workspace = true }
+codex-login = { workspace = true }
+codex-protocol = { workspace = true }
+codex-utils-absolute-path = { workspace = true }
+codex-utils-cli = { workspace = true }
+codex-utils-home-dir = { workspace = true }
+codex-utils-path-uri = { workspace = true }
+codex-worktree = { workspace = true }
+dirs = { workspace = true }
+# `std::fs::canonicalize` without Windows `\\?\` verbatim prefixes.
+dunce = { workspace = true }
+futures = { workspace = true }
+image = { workspace = true, features = ["png", "jpeg", "gif", "webp"] }
+# Version matches Slint: native glyph hit-testing and renderer invalidation.
+i-slint-core = { version = "=1.18.1", features = ["shared-parley"] }
+notify-rust = { workspace = true }
+pulldown-cmark = { workspace = true }
+rfd = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+shlex = { workspace = true }
+similar = { workspace = true }
+slint = { workspace = true, features = [
+    "std",
+    "compat-1-18",
+    "backend-winit",
+    "renderer-software",
+    "accessibility",
+    "raw-window-handle-06",
+    # File drops from the OS reach the app only as winit window events
+    # (`composer::drop`), and so do focus, theme, and (macOS) termination
+    # requests (`lib.rs`, `platform.rs`); the slint version is pinned exactly
+    # in the workspace.
+    "unstable-winit-030",
+    # Resolves fontconfig's `monospace` family on Linux (`app.rs`).
+    "unstable-fontique-011",
+] }
+thiserror = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
+csv = "1"
+chrono = { version = "0.4", features = ["serde"] }
+tokio-tungstenite = { version = "0.28", features = ["rustls-tls-native-roots"] }
+tokio = { workspace = true, features = [
+    "process",
+    "io-util",
+    "net",
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "time",
+] }
+toml = { workspace = true }
+toml_edit = { workspace = true }
+url = { workspace = true }
+tracing = { workspace = true, features = ["log"] }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+uuid = { workspace = true, features = ["v4", "v7"] }
+webbrowser = { workspace = true }
+
+# Slint's font discovery links fontconfig at build time unless it is loaded
+# with dlopen; dlopen keeps Linux builds free of system -dev packages.
+[target.'cfg(target_os = "linux")'.dependencies]
+i-slint-common = { version = "=1.18.1", features = ["fontconfig-dlopen"] }
+# Probes for OpenGL libraries before choosing the renderer (`platform.rs`).
+libc = { workspace = true }
+
+# Intercepts `terminate:` (Cmd+Q, Dock › Quit) on winit's app delegate.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.3"
+libc = { workspace = true }
+
+# Attaches to the parent console for `--help` and argument errors.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_System_Console", "Win32_UI_WindowsAndMessaging", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
+
+[package.metadata.cargo-shear]
+# Only enabled for its `fontconfig-dlopen` feature (see above).
+ignored = ["i-slint-common"]
+
+[build-dependencies]
+slint-build = { workspace = true, features = ["compat-1-18"] }
+
+[dev-dependencies]
+wiremock = "0.6"
+codex-model-provider-info = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }
+
+[workspace]
+members = []
+default-members = ["."]
+resolver = "2"
+
+[workspace.dependencies]
+codex-exec-server = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-code-mode-host = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-http-client = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-otel-trace-websocket = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-windows-sandbox = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-utils-process = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-utils-pty = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-model-provider-info = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+anyhow = "1"
+arboard = { version = "3", features = ["wayland-data-control"] }
+base64 = "0.22.1"
+clap = "4"
+codex-ansi-escape = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-app-server-protocol = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-async-utils = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-aws-auth = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-config = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-context-fragments = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-feedback = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-file-search = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-git-utils = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-login = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-protocol = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-utils-absolute-path = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-utils-cli = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-utils-home-dir = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-utils-path-uri = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+codex-worktree = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
+dirs = "6"
+dunce = "1.0.4"
+futures = { version = "0.3", default-features = false }
+image = { version = "^0.25.9", default-features = false }
+notify-rust = "4.18"
+pulldown-cmark = { version = "0.10", default-features = false }
+rfd = "0.17.2"
+serde = { version = "1", features = ["rc"] }
+serde_json = "1"
+shlex = "1.3.0"
+similar = "2.7.0"
+slint = { version = "=1.18.1", default-features = false }
+thiserror = "2.0.17"
+tokio = "1"
+toml = "0.9.5"
+toml_edit = "0.24.0"
+url = "2"
+tracing = "0.1.44"
+tracing-appender = "0.2.3"
+tracing-subscriber = "0.3.22"
+uuid = "1"
+webbrowser = "1.2.2"
+libc = "0.2.182"
+windows-sys = "0.61.2"
+slint-build = { version = "=1.18.1", default-features = false }
+pretty_assertions = "1.4.1"
+tempfile = "3.23.0"
+
+[workspace.lints.rust]
+
+[workspace.lints.clippy]
+await_holding_invalid_type = "deny"
+await_holding_lock = "deny"
+disallowed_methods = "deny"
+expect_used = "deny"
+identity_op = "deny"
+manual_clamp = "deny"
+manual_filter = "deny"
+manual_find = "deny"
+manual_flatten = "deny"
+manual_map = "deny"
+manual_memcpy = "deny"
+manual_non_exhaustive = "deny"
+manual_ok_or = "deny"
+manual_range_contains = "deny"
+manual_retain = "deny"
+manual_strip = "deny"
+manual_try_fold = "deny"
+manual_unwrap_or = "deny"
+needless_borrow = "deny"
+needless_borrowed_reference = "deny"
+needless_collect = "deny"
+needless_late_init = "deny"
+needless_option_as_deref = "deny"
+needless_question_mark = "deny"
+needless_update = "deny"
+redundant_clone = "deny"
+redundant_closure = "deny"
+redundant_closure_for_method_calls = "deny"
+redundant_static_lifetimes = "deny"
+trivially_copy_pass_by_ref = "deny"
+uninlined_format_args = "deny"
+unnecessary_filter_map = "deny"
+unnecessary_lazy_evaluations = "deny"
+unnecessary_sort_by = "deny"
+unnecessary_to_owned = "deny"
+unwrap_used = "deny"
+
+[profile.dev]
+opt-level = 0
+debug = 0
+split-debuginfo = "off"
+strip = "none"
+lto = false
+codegen-units = 256
+incremental = true
+panic = "abort"
+overflow-checks = false
+debug-assertions = false
+
+[profile.release]
+opt-level = 0
+debug = 0
+split-debuginfo = "off"
+strip = "none"
+lto = false
+codegen-units = 256
+incremental = true
+panic = "abort"
+overflow-checks = false
+debug-assertions = false
+
+[profile.test]
+debug-assertions = false
+overflow-checks = false
+opt-level = 0
+debug = 0
+split-debuginfo = "off"
+strip = "none"
+lto = false
+codegen-units = 256
+incremental = true
+
+[profile.dev.build-override]
+opt-level = 0
+debug = 0
+codegen-units = 256
+
+[profile.release.build-override]
+opt-level = 0
+debug = 0
+codegen-units = 256
+
+[patch.crates-io]
+i-slint-core = { path = "third_party/slint/i-slint-core" }
+crossterm = { git = "https://github.com/openai-oss-forks/crossterm", rev = "ed1cdab335221515706178d68495bba2aed1924f" }
+tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "0e5b2d73aa18dd9f0a50ee9ff199d5aef7594186" }
+tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "4fffad30fe373adbdcffab9545e9e9bf4f2fc19f" }
+
+[patch."ssh://git@github.com/openai-oss-forks/tungstenite-rs.git"]
+tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "4fffad30fe373adbdcffab9545e9e9bf4f2fc19f" }
+
+

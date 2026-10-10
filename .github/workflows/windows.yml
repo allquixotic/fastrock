@@ -1,0 +1,75 @@
+name: Fast Windows prerelease
+on:
+  push:
+    branches: [main]
+    tags: ['v*-alpha.*', 'v*-beta.*', 'v*-rc.*']
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fastrock-windows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: windows-latest
+    env:
+      CARGO_HOME: C:/c
+      CARGO_INCREMENTAL: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - run: git config --global core.longpaths true
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.95.0'
+          components: rustfmt
+      - name: Restore dependencies and incremental build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:/c/registry
+            C:/c/git
+            target
+          key: fastrock-windows-1.95-fast-v1-${{ hashFiles('Cargo.lock', 'Cargo.toml', '.cargo/config.toml') }}-${{ github.sha }}
+          restore-keys: |
+            fastrock-windows-1.95-fast-v1-${{ hashFiles('Cargo.lock', 'Cargo.toml', '.cargo/config.toml') }}-
+            fastrock-windows-1.95-fast-v1-
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python dev/check-build-policy.py
+      - run: cargo fmt --all -- --check
+      - run: cargo test --locked --lib
+      - run: cargo build --locked --bin fastrock
+      - name: Fixture-only Rally UI checks
+        run: python dev/windows-rally-smoke.py target/debug/fastrock.exe
+      - name: Package fast build
+        run: python scripts/package-prerelease.py target/debug/fastrock.exe dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastrock-windows-x64-fast
+          path: dist/*
+      - name: Publish tagged prerelease
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $existing = gh release view '${{ github.ref_name }}' --json isPrerelease,assets
+          if ($LASTEXITCODE -eq 0) {
+            $release = $existing | ConvertFrom-Json
+            if (-not $release.isPrerelease) { throw 'Refusing to replace a stable release with test artifacts' }
+            foreach ($asset in Get-ChildItem dist -File) {
+              if ($release.assets.name -notcontains $asset.Name) {
+                gh release upload '${{ github.ref_name }}' $asset.FullName
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              }
+            }
+          } else {
+            gh release create '${{ github.ref_name }}' dist/* --prerelease --verify-tag --title 'Fastrock ${{ github.ref_name }}' --notes 'Rust/Slint test build. Compiled without optimization for rapid iteration. Requires installed Codex CLI 0.162.0 or newer.'
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    permissions:
+      contents: write

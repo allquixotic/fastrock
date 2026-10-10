@@ -1,0 +1,43 @@
+import { TextEdit } from "std-widgets.slint";
+import { Theme, FlatButton } from "theme.slint";
+export global PendingMessageState {
+    in-out property <bool> open;
+    in-out property <string> text;
+    in property <bool> saving;
+    in property <string> error;
+    callback action(string);
+}
+export component PendingMessageEditor inherits Rectangle {
+    visible: PendingMessageState.open;
+    background: #0008;
+    TouchArea { }
+    FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape { PendingMessageState.action("cancel"); }
+            accept
+        }
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: min(640px, parent.width - 32px);
+        height: min(400px, parent.height - 32px);
+        background: Theme.surface;
+        border-radius: Theme.radius;
+        VerticalLayout {
+            padding: Theme.pad-l;
+            spacing: Theme.pad-m;
+            Text { text: "Edit pending message"; color: Theme.text; font-size: Theme.font-size; font-weight: 600; }
+            Text { text: "Changes apply only while this message is still pending."; color: Theme.text-muted; wrap: word-wrap; }
+            TextEdit { text <=> PendingMessageState.text; enabled: !PendingMessageState.saving; init => { self.focus(); } }
+            Text { text: PendingMessageState.error; color: Theme.danger; wrap: word-wrap; visible: self.text != ""; }
+            HorizontalLayout {
+                spacing: Theme.pad-s;
+                FlatButton { text: "Delete"; enabled: !PendingMessageState.saving; clicked => { PendingMessageState.action("delete"); } }
+                Rectangle { horizontal-stretch: 1; }
+                FlatButton { text: "Cancel"; enabled: !PendingMessageState.saving; clicked => { PendingMessageState.action("cancel"); } }
+                FlatButton { text: "Save"; enabled: !PendingMessageState.saving && PendingMessageState.text != ""; clicked => { PendingMessageState.action("save"); } }
+            }
+        }
+    }
+    }
+}

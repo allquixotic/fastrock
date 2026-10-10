@@ -1,0 +1,25 @@
+{
+  "repository": "https://github.com/openai/codex",
+  "tag": "rust-v0.162.0",
+  "revision": "c1382380de69521303b416720a52f42d51af6248",
+  "version": "0.162.0",
+  "rust": "1.95.0",
+  "v8": "150.4.0",
+  "patches": [
+    {
+      "crate": "codex-model-provider",
+      "file": "patches/bedrock-sol-ultrafast.patch",
+      "reason": "Backport upstream 87be737 GPT-6.1 Sol Ultrafast catalog support missing in stable 0.162.0"
+    },
+    {
+      "crate": "codex-core",
+      "file": "patches/pending-steer-core.patch",
+      "reason": "Atomic edit/delete of client-identified steering input before consumption"
+    },
+    {
+      "crate": "codex-app-server",
+      "file": "patches/pending-steer-server.patch",
+      "reason": "Expose pending-steer edits through scoped queue update/delete IDs; no wire schema fork"
+    }
+  ]
+}

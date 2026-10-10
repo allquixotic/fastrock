@@ -1,0 +1,18 @@
+Fastrock
+Copyright 2026 Fastrock contributors
+
+Based on allquixotic/codex-gui be94e52cc21c5d262805e044e75267885bc73a3d.
+Static context-limit hints derived from OpenAI Codex c1382380de69521303b416720a52f42d51af6248; installed external Codex remains authoritative.
+
+Codex GUI
+Copyright 2026 Codex GUI contributors
+
+Independent derivative of OpenAI Codex, licensed under Apache-2.0.
+Original upstream notices follow. Third-party components retain their own licenses.
+
+OpenAI Codex
+Copyright 2025 OpenAI
+
+This project includes code derived from [Ratatui](https://github.com/ratatui/ratatui), licensed under the MIT license.
+Copyright (c) 2016-2022 Florian Dehau
+Copyright (c) 2023-2025 The Ratatui Developers
