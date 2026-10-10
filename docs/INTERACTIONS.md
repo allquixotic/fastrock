@@ -150,3 +150,19 @@ Refresh shows the age of the last successful update and a busy indicator. Pendin
 Applying either Bedrock endpoint clears the prior model so the refreshed catalog can choose a compatible default, including when only the region or credentials change. The operation is single-flight; Runtime environment/profile uses direct configuration rather than Mantle setup. Successful configuration checks GovCloud requirements and offers an explicit restart. Applying the provider does not automatically restart running conversations.
 
 Each Rally control row has a small minus button: sections, pages, team scope, page header, update status, saved view, timeboxes, view actions, display mode, density, search/actions, swimlanes, active filters, filter/field editors, widgets, and totals can be hidden independently. Hidden rows become compact + buttons in a shared restore strip; + All restores them together. Hiding controls preserves their values, and row visibility is shared with other windows and survives restart. Search shortcuts reveal the search row when needed. Buttons fit their captions and wrap in narrow windows. The board starts directly below the tabs without reserving conversation-info space.
+
+
+Rally list Rank displays the position within the current result, continuing across
+pages; Rally's opaque rank token remains internal to sorting. ID links open the
+work item. Clicking a writable Name or scalar cell starts a textbox. State and
+other enumerated fields expose the concrete work item's allowed choices; reference
+fields such as Owner and Iteration open searchable, paged dropdowns loaded in the
+background. Save or Ctrl+S applies the chosen field; Enter also saves textboxes.
+Boolean checkboxes save on toggle. Cancel discards the cell draft. Read-only IDs,
+rich HTML, and collections retain their existing detail-editor behavior. All cell
+writes retain revision and scope checks and send only the edited field.
+
+List rows fit the complete wrapped ID/name using the renderer's font metrics.
+The drawn Actions chevron opens a menu within the application window. Context
+menus and dropdown choices use left-aligned text, fit at either edge, and scroll
+when the available height cannot contain every choice.

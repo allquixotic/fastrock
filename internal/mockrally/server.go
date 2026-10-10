@@ -33,6 +33,7 @@ func New() *Server {
 		fields["_type"] = kind
 		fields["ObjectID"] = id
 		fields["LastUpdateDate"] = "2026-10-01T12:00:00Z"
+		fields["DragAndDropRank"] = fmt.Sprintf("!opaque%08d", id)
 		s.Objects[ref] = fields
 		return fields
 	}
@@ -157,8 +158,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		kind := extractLiteral(r.URL.Query().Get("query"))
 		rows = []rally.Object{{"ObjectID": 800, "TypePath": kind, "Attributes": map[string]any{"_ref": rally.WSAPI + "typedefinition/800/attributes"}}}
 	} else if tail == "typedefinition/800/attributes" {
-		for _, f := range []struct{ name, typ string }{{"Name", "STRING"}, {"Description", "TEXT"}, {"PlanEstimate", "DECIMAL"}, {"c_TeamNote", "STRING"}} {
+		for _, f := range []struct{ name, typ string }{{"Name", "STRING"}, {"Description", "TEXT"}, {"PlanEstimate", "DECIMAL"}, {"c_TeamNote", "STRING"}, {"Blocked", "BOOLEAN"}, {"Ready", "BOOLEAN"}, {"Owner", "OBJECT"}, {"Iteration", "OBJECT"}, {"Release", "OBJECT"}} {
 			rows = append(rows, rally.Object{"ElementName": f.name, "Name": f.name, "AttributeType": f.typ, "Required": f.name == "Name", "ReadOnly": false})
+		}
+		rows = append(rows, rally.Object{"ElementName": "ScheduleState", "Name": "Schedule State", "AttributeType": "STATE", "Required": true, "AllowedValues": map[string]any{"_ref": rally.WSAPI + "attributedefinition/801/allowedvalues"}})
+	} else if tail == "attributedefinition/801/allowedvalues" {
+		for _, name := range []string{"Defined", "In-Progress", "Completed", "Accepted"} {
+			rows = append(rows, rally.Object{"StringValue": name})
 		}
 	} else if strings.HasSuffix(tail, "/tasks") {
 		parent := strings.TrimSuffix(ref, "/tasks")

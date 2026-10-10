@@ -841,8 +841,15 @@ func (a *App) table(w *desktop.Window, v *rallyView, items []rally.Object) {
 	ratios := []float64{.04}
 	for _, k := range columns {
 		width := .12
-		if k == "Name" {
+		switch k {
+		case "Name":
 			width = .35
+		case "Rank":
+			width = .065
+		case "ScheduleState", "State", "Owner":
+			width = .16
+		case "Iteration", "Release":
+			width = .18
 		}
 		ratios = append(ratios, width)
 	}
@@ -929,7 +936,7 @@ func (a *App) table(w *desktop.Window, v *rallyView, items []rally.Object) {
 				layout := &v.tableLinks[linkCount]
 				layout.prepare(fallback(o.String(k), "—"), max(1, widths[i]-2*padding), face)
 				links[i] = layout
-				height = max(height, len(layout.lines)*face.Metrics().Height.Ceil()+2*padding)
+				height = max(height, len(layout.lines)*desktop.FontHeight(face)+2*padding)
 				linkCount++
 			}
 		}
@@ -940,12 +947,13 @@ func (a *App) table(w *desktop.Window, v *rallyView, items []rally.Object) {
 			v.selectItem(o, on)
 		}
 		for i, k := range columns {
-			if a.drawInlineCell(w, v, o, k) {
+			if k != "Name" && a.drawInlineCell(w, v, o, k) {
 				continue
 			}
 			value := o.String(k)
 			if k == "Rank" {
-				value = o.String("DragAndDropRank")
+				// Rank is a position in the current result, not Rally's opaque sort key.
+				value = strconv.Itoa((max(1, v.Page)-1)*v.PageSize + row + 1)
 			}
 			if k == "Tasks" || k == "Discussion" {
 				value = strconv.Itoa(o.Count(k))
@@ -954,8 +962,14 @@ func (a *App) table(w *desktop.Window, v *rallyView, items []rally.Object) {
 				value = "Blocked"
 			}
 			if links[i] != nil {
-				if tableLink(w, links[i], padding, a.p) {
-					a.openArtifact(v, o)
+				if k == "Name" && v.Detail != nil && v.Detail.inlineField == k && v.Detail.Original.String("_ref") == ref {
+					a.drawInlineCell(w, v, o, k)
+				} else if tableLink(w, links[i], padding, a.p) {
+					if _, editable := inlineField(v, o, k); k == "Name" && editable {
+						a.startInline(v, o, k, nil)
+					} else {
+						a.openArtifact(v, o)
+					}
 				}
 			} else {
 				fg := a.p.Text

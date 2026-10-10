@@ -456,7 +456,11 @@ func (d *detailView) dirty() bool {
 	return false
 }
 func (d *detailView) changes() (rally.Object, error) {
-	values := d.values()
+	return d.changesFor(d.values())
+}
+
+// changesFor validates only the supplied fields, shared by full and cell editors.
+func (d *detailView) changesFor(values map[string]string) (rally.Object, error) {
 	result := rally.Object{}
 fields:
 	for k, value := range values {
@@ -544,7 +548,7 @@ fields:
 			result[k] = v
 		}
 	}
-	if strings.TrimSpace(text(d.Editors["Name"])) == "" {
+	if name, exists := values["Name"]; exists && strings.TrimSpace(name) == "" {
 		return nil, fmt.Errorf("Name is required")
 	}
 	for _, f := range d.Fields {
@@ -1094,7 +1098,7 @@ func mergeSchemaEditors(d *detailView, fields []rally.Field) {
 		if f.ReadOnly || f.AttributeType == "COLLECTION" || d.Editors[f.Name] != nil {
 			continue
 		}
-		value := d.Original.String(f.Name)
+		value := d.originalValue(f.Name)
 		if f.AttributeType == "OBJECT" {
 			value = d.Original.Ref(f.Name)
 		}

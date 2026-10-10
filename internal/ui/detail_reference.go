@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +22,9 @@ func (d *detailView) referenceField(name string) bool {
 }
 
 func (d *detailView) originalValue(name string) string {
+	if f, ok := d.schemaField(name); ok && f.AttributeType == "BOOLEAN" {
+		return strconv.FormatBool(d.Original.Bool(name))
+	}
 	if f, ok := d.schemaField(name); ok && editableCollection(f) {
 		value, _ := collectionRefsValue(d.Original[name])
 		return value
@@ -64,27 +68,28 @@ func referenceKinds(d *detailView, f rally.Field) []string {
 }
 
 type referencePicker struct {
-	current         func() bool
-	selected        func(rally.Object)
-	detail          *detailView
-	field           rally.Field
-	editor          *desktop.TextEditor
-	editorRevision  uint64
-	client          *rally.Client
-	workspace       string
-	project         string
-	parents         bool
-	children        bool
-	kinds           []string
-	kind            int
-	search          *desktop.TextEditor
-	appliedSearch   string
-	items           []rally.Object
-	start, total    int
-	generation      uint64
-	loading, closed bool
-	err             string
-	cancel          context.CancelFunc
+	hideInlineStatus bool
+	current          func() bool
+	selected         func(rally.Object)
+	detail           *detailView
+	field            rally.Field
+	editor           *desktop.TextEditor
+	editorRevision   uint64
+	client           *rally.Client
+	workspace        string
+	project          string
+	parents          bool
+	children         bool
+	kinds            []string
+	kind             int
+	search           *desktop.TextEditor
+	appliedSearch    string
+	items            []rally.Object
+	start, total     int
+	generation       uint64
+	loading, closed  bool
+	err              string
+	cancel           context.CancelFunc
 }
 
 func (p *referencePicker) close() {
@@ -131,6 +136,14 @@ func (a *App) detailReference(w *desktop.Window, d *detailView, f rally.Field) {
 }
 
 func (a *App) openReferencePicker(d *detailView, f rally.Field) *referencePicker {
+	p := a.newReferencePicker(d, f)
+	if p != nil && a.window != nil {
+		a.window.PopupOpen("Choose "+detailCaption(f), desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(650, 650), false, func(w *desktop.Window) { a.drawReferencePicker(w, p) })
+	}
+	return p
+}
+
+func (a *App) newReferencePicker(d *detailView, f rally.Field) *referencePicker {
 	if a.rallyClient == nil || d.Editors[f.Name] == nil || f.ReadOnly {
 		return nil
 	}
@@ -145,9 +158,6 @@ func (a *App) openReferencePicker(d *detailView, f rally.Field) *referencePicker
 	p.search.Placeholder = "Search name or ID"
 	d.referencePicker = p
 	a.searchReferences(p, 1)
-	if a.window != nil {
-		a.window.PopupOpen("Choose "+detailCaption(f), desktop.WindowTitle|desktop.WindowClosable, a.modalBounds(650, 650), false, func(w *desktop.Window) { a.drawReferencePicker(w, p) })
-	}
 	return p
 }
 

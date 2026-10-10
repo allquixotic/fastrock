@@ -228,3 +228,27 @@ or recommending an update. Both failed handshakes reap their child processes.
 The regression passes on Windows 11 x64 and under the Go race detector; the
 complete headless suite, Codex package vet and pinned staticcheck also pass.
 No Codex configuration or databases were changed during verification.
+
+## Rally list cells and menus (2026-10-09)
+
+The list displayed Rally's opaque rank token, and wrapped text used a font line
+advance smaller than the Windows glyph ascent/descent. Rank now shows the result
+position across pages; text layout and drawing use the same full glyph height.
+Single-click scalar editing uses the concrete artifact schema and shared field
+validation. State choices and asynchronous reference dropdowns retain the existing
+revision, scope, read-only and single-field write guards. Reference searches keep
+the cell stationary until selection or dismissal.
+
+Menu measurement and placement now cover ordinary menus, contextual menus and
+combos, fitting each axis independently and scrolling oversized choice lists.
+Menu items draw left-aligned text consistently; the Actions control draws its
+chevron without relying on a font glyph.
+
+Regressions `TestV79*`, `TestV80*` and `TestV81*` cover page offsets, short font
+line metrics at 100/125/150/200% scale, typed payloads, first-click state/reference
+choices with the status bar present, edge placement, alignment, and asynchronous
+choice-list growth/scrolling. The full headless suite, full race suite, vet and
+repository-pinned staticcheck pass; the final menu/reference changes also pass
+focused race checks. The complete UI and desktop test binaries pass on Windows.
+Native Windows fixture screenshots and input checks are retained locally under
+`build/board-fixes/`. No GUI ran on macOS; all Rally writes used loopback fixtures.

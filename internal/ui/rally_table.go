@@ -30,7 +30,7 @@ func tableLink(w *desktop.Window, l *tableLinkLayout, padding int, p palette) bo
 		return false
 	}
 	in := w.Input()
-	lineHeight := l.face.Metrics().Height.Ceil()
+	lineHeight := desktop.FontHeight(l.face)
 	y := b.Y + (b.H-len(l.lines)*lineHeight)/2
 	hover := in.Mouse.HoveringRect(b)
 	out.Cursor(b, font.PointerCursor)

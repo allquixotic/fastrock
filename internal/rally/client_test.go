@@ -75,7 +75,7 @@ func TestReadWriteLifecycleAndSchema(t *testing.T) {
 		t.Fatalf("custom fields lost: %v %v", full, e)
 	}
 	fields, e := c.Fields(ctx, "story")
-	if e != nil || len(fields) != 4 {
+	if e != nil || len(fields) != 10 {
 		t.Fatalf("schema: %v %v", fields, e)
 	}
 	if e = c.Delete(ctx, o.String("_ref")); e != nil {

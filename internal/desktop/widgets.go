@@ -41,7 +41,9 @@ type Window struct {
 	moving           bool
 	scaling          bool
 	// trigger rectangle of nonblocking windows
-	header rect.Rect
+	header      rect.Rect
+	popupOrigin image.Point
+	popupSize   image.Point
 	// root of the node tree
 	rootNode *treeNode
 	// current tree node see TreePush/TreePop
@@ -470,40 +472,28 @@ func (win *Window) specialPanelBegin() {
 	win.began = true
 	w := win.Master()
 	ctx := w.context()
-	if win.flags&windowContextual != 0 {
-		prevbody := win.Bounds
-		prevbody.H = win.layout.Height
-		// if the contextual menu ended up with its bottom right corner outside
-		// the main window's bounds and it could be moved to be inside the main
-		// window by popping it a different way do it.
-		// Since the size of the contextual menu is only knowable after displaying
-		// it once this must be done on the second frame.
-		max := ctx.Windows[0].Bounds.Max()
-		if (win.header.H <= 0 || win.header.W <= 0 || win.header.Contains(prevbody.Min())) && ((prevbody.Max().X > max.X) || (prevbody.Max().Y > max.Y)) && (win.Bounds.X-prevbody.W >= 0) && (win.Bounds.Y-prevbody.H >= 0) {
-			win.Bounds.X = win.Bounds.X - prevbody.W
-			win.Bounds.Y = win.Bounds.Y - prevbody.H
+	if win.flags&windowNonblock != 0 && !win.first {
+		viewport := ctx.Windows[0].Bounds
+		width := win.popupSize.X
+		if win.flags&windowHDynamic != 0 {
+			width = win.menuItemWidth + 2*win.style().Padding.X + 2*win.style().Border
 		}
-	}
-
-	if win.flags&windowHDynamic != 0 && !win.first {
-		uw := win.menuItemWidth + 2*win.style().Padding.X + 2*win.style().Border
-		if uw < win.Bounds.W {
-			win.Bounds.W = uw
+		// Measure at the top of the viewport first, then independently fit each
+		// axis. Group bounds and a trigger near the bottom must not clip choices.
+		height := win.layout.AtY - win.layout.Bounds.Y + win.style().Padding.Y + win.style().Spacing.Y + 2*win.style().Border
+		maxHeight := viewport.H
+		if win.flags&windowCombo != 0 && win.popupSize.Y > 0 {
+			maxHeight = min(maxHeight, win.popupSize.Y)
 		}
-	}
-
-	if win.flags&windowCombo != 0 && win.flags&WindowDynamic != 0 {
-		prevbody := win.Bounds
-		prevbody.H = win.layout.Height
-		// If the combo window ends up with the right corner below the
-		// main winodw's lower bound make it non-dynamic and resize it to its
-		// maximum possible size that will show the whole combo box.
-		max := ctx.Windows[0].Bounds.Max()
-		if prevbody.Y+prevbody.H > max.Y {
-			prevbody.H = max.Y - prevbody.Y
-			win.Bounds = prevbody
-			win.flags &= ^windowCombo
+		if height > maxHeight {
+			win.flags = win.flags&^WindowNoScrollbar | WindowNoHScrollbar
 		}
+		width, height = min(width, viewport.W), min(height, maxHeight)
+		x, y := win.popupOrigin.X, win.popupOrigin.Y
+		if y+height > viewport.Y+viewport.H && win.flags&(windowMenu|windowCombo) != 0 {
+			y = win.header.Y - height
+		}
+		win.Bounds = rect.Rect{X: clampInt(viewport.X, x, viewport.X+viewport.W-width), Y: clampInt(viewport.Y, y, viewport.Y+viewport.H-height), W: width, H: height}
 	}
 
 	if win.flags&windowNonblock != 0 && !win.first {
@@ -525,7 +515,7 @@ func (win *Window) specialPanelBegin() {
 		win.layout.Offset = &win.Scrollbar
 	}
 
-	if win.first && (win.flags&windowContextual != 0 || win.flags&windowHDynamic != 0) {
+	if win.first && win.flags&windowNonblock != 0 {
 		ctx.trashFrame = true
 	}
 
@@ -2719,6 +2709,12 @@ func (ctx *context) nonblockOpen(flags WindowFlags, body rect.Rect, header rect.
 	ctx.Windows = append(ctx.Windows, popup)
 	ctx.Input.activateWindow = popup
 
+	popup.popupOrigin = body.Min()
+	popup.popupSize = image.Pt(body.W, body.H)
+	viewport := ctx.Windows[0].Bounds
+	body.W = min(body.W, viewport.W)
+	body.X = clampInt(viewport.X, body.X, viewport.X+viewport.W-body.W)
+	body.Y, body.H = viewport.Y, viewport.H
 	popup.Bounds = body
 	popup.layout = &panel{}
 	popup.flags = flags
@@ -2850,6 +2846,7 @@ func (win *Window) ContextualOpen(flags WindowFlags, size image.Point, trigger_b
 
 // MenuItem adds a menu item
 func (win *Window) MenuItem(lbl label.Label) bool {
+	lbl.Align = "LC"
 	style := &win.ctx.Style
 	state, bounds := win.widgetFitting(style.ContextualButton.Padding)
 	if !state {
@@ -2926,9 +2923,20 @@ func (win *Window) Tooltip(text string) {
 
 // Adds a drop-down list to win.
 func (win *Window) Combo(lbl label.Label, height int, updateFn UpdateFn) *Window {
+	return win.ComboWidth(lbl, 0, height, updateFn)
+}
+
+// ComboWidth gives a dropdown enough room for labels wider than its trigger.
+func (win *Window) ComboWidth(lbl label.Label, width, height int, updateFn UpdateFn) *Window {
 	s, header, _ := win.widget()
 	if !s {
 		return nil
+	}
+
+	if width > 0 {
+		height := min(header.H, max(win.ctx.scale(28), FontHeight(win.ctx.Style.Font)+2*win.ctx.Style.Combo.ContentPadding.Y))
+		header.Y += (header.H - height) / 2
+		header.H = height
 	}
 
 	in := win.inputMaybe(s)
@@ -2969,7 +2977,7 @@ func (win *Window) Combo(lbl label.Label, height int, updateFn UpdateFn) *Window
 
 	var body rect.Rect
 	body.X = header.X
-	body.W = header.W
+	body.W = max(header.W, win.ctx.scale(width))
 	body.Y = header.Y + header.H - 1
 	body.H = height
 

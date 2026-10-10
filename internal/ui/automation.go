@@ -94,6 +94,14 @@ func (a *App) startAutomation() {
 				}
 				fail := func(message string) { log += "FAIL: " + message + "\n"; a.exitCode = 1 }
 				switch step.Action {
+				case "table_columns":
+					if v != nil {
+						v.Columns = strings.Split(step.Value, ",")
+					}
+				case "assert_inline":
+					if v == nil || v.Detail == nil || v.Detail.inlineField != step.Value {
+						fail("inline field did not activate: " + step.Value)
+					}
 				case "retry_codex":
 					a.reconnect()
 				case "assert_codex":

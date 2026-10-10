@@ -17,7 +17,7 @@ func (win *Window) nativeBounds(b rect.Rect) bool {
 }
 
 func (win *Window) nativeButton(lbl label.Label, b rect.Rect, style *nstyle.Button, repeat bool) bool {
-	if !win.nativeBounds(b) || lbl.Kind != label.TextLabel || repeat ||
+	if win.flags&(windowMenu|windowContextual|windowCombo) != 0 || !win.nativeBounds(b) || lbl.Kind != label.TextLabel || repeat ||
 		style.Draw.ButtonText != nil || style.DrawBegin != nil || style.DrawEnd != nil {
 		return false
 	}

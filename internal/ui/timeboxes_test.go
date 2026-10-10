@@ -246,6 +246,7 @@ func TestV69TimeboxControlSelection(t *testing.T) {
 				m := &w.Master().Input().Mouse
 				m.Pos, m.Buttons[mouse.ButtonLeft].ClickedPos = click, click
 				m.Buttons[mouse.ButtonLeft].Clicked = clicking
+				clicking = false // A measurement pass must not inject the same OS click twice.
 				a.drawTimeboxSelectors(w, v)
 			})
 			style := makeStyle(a.p, 13)
