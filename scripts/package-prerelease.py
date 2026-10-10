@@ -17,8 +17,10 @@ metadata = {'source_commit':revision,'source_dirty':dirty,'binary_sha256':hashli
             'minimum_codex_version':'0.162.0', 'source':json.loads((root/'codex-gui-base.json').read_text())}
 with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_STORED) as z:
     z.write(args.binary, 'fastrock.exe')
-    for filename in ['LICENSE','NOTICE','README.md','docs/RALLY-INVENTORY.md','docs/PORT-VERIFICATION.md']:
+    for filename in ['LICENSE','NOTICE','README.md','docs/RALLY-INVENTORY.md','docs/PORT-VERIFICATION.md','docs/gui.md','docs/releases.md']:
         if (root/filename).is_file(): z.write(root/filename, filename)
+    for path in sorted((root/'docs/images').glob('*.png')):
+        z.write(path, path.relative_to(root).as_posix())
     for path in sorted((root/'third_party/slint/i-slint-core/LICENSES').glob('*')):
         if path.is_file(): z.write(path, 'licenses/slint/'+path.name)
     z.writestr('BUILD.json',json.dumps(metadata,indent=2)+'\n')
