@@ -226,3 +226,5 @@ B60|2026-10-10|Hosted OS mouse gesture failed to reach DragArea although Rust te
 B61|2026-10-10|Save-and-continue consumed pending navigation after acknowledgement even when a later draft remained dirty|V19/V20; continue only after clean acknowledgement; retain draft/intent and re-show guard; delayed-navigation fixture asserts editor remains open
 
 B62|2026-10-10|Delayed-navigation fixture reset Name to its acknowledged baseline, so no dirty Save-and-continue path existed|V22; use a distinct delayed title and assert later draft remains in the open editor
+
+B63|2026-10-10|GitHub runner config contains UTF-8 BOM; registration succeeded but plain JSON decode stopped listener startup|V23; read utf-8-sig, verify/resume this offline runner, remove registration after its one job

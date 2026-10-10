@@ -29,14 +29,17 @@ if not (role_dir/'config.sh').exists():
     assert hashlib.sha256(archive.read_bytes()).hexdigest()==release['sha256_checksum']
     with tarfile.open(archive) as source:
         source.extractall(role_dir,filter='data')
-assert not (role_dir/'.runner').exists(),'A runner is already registered here; inspect it first'
-token=api(f'repos/{repo}/actions/runners/registration-token',method='POST')['token']
-registration=subprocess.run([str(role_dir/'config.sh'),'--unattended','--ephemeral','--disableupdate',
-    '--url',f'https://github.com/{repo}','--token',token,'--name',f'fastrock-{args.role}-{os.getpid()}',
-    '--labels',f'fastrock-{args.role}','--work','work'],cwd=role_dir,capture_output=True,text=True)
-del token
-assert registration.returncode==0,'Runner registration failed; credential output withheld'
-runner_id=json.loads((role_dir/'.runner').read_text())['agentId']
+if not (role_dir/'.runner').exists():
+    token=api(f'repos/{repo}/actions/runners/registration-token',method='POST')['token']
+    registration=subprocess.run([str(role_dir/'config.sh'),'--unattended','--ephemeral','--disableupdate',
+        '--url',f'https://github.com/{repo}','--token',token,'--name',f'fastrock-{args.role}-{os.getpid()}',
+        '--labels',f'fastrock-{args.role}','--work','work'],cwd=role_dir,capture_output=True,text=True)
+    del token
+    assert registration.returncode==0,'Runner registration failed; credential output withheld'
+# Runner configuration is UTF-8 with a BOM; resume interrupted registration.
+runner_id=json.loads((role_dir/'.runner').read_text(encoding='utf-8-sig'))['agentId']
+registered=next(runner for runner in api(f'repos/{repo}/actions/runners')['runners'] if runner['id']==runner_id)
+assert registered['status']=='offline' and not registered['busy'],'Runner is already active'
 print(f'Temporary {args.role} runner {runner_id} registered; one release job only.',flush=True)
 env=os.environ.copy()
 env['FASTROCK_BUILD_CACHE']=str(root/'target')
