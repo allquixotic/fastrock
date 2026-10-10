@@ -1,7 +1,7 @@
 name: Fast Windows prerelease
 on:
   push:
-    branches: [main]
+    branches: [main, codex/slint-rally-port]
     tags: ['v*-alpha.*', 'v*-beta.*', 'v*-rc.*']
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -44,7 +44,14 @@ jobs:
       - run: cargo test --locked --lib
       - run: cargo build --locked --bin fastrock
       - name: Fixture-only Rally UI checks
-        run: python dev/windows-rally-smoke.py target/debug/fastrock.exe
+        run: python dev/windows-rally-smoke.py target/debug/fastrock.exe --ci
+      - name: Retain fixture evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rally-fixture-evidence
+          path: build/rally-smoke
+          if-no-files-found: ignore
       - name: Package fast build
         run: python scripts/package-prerelease.py target/debug/fastrock.exe dist
       - uses: actions/upload-artifact@v4

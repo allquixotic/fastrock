@@ -107,6 +107,7 @@ class RallyFixture:
 def main():
     assert os.name=='nt', 'GUI acceptance runs only on Windows'
     binary=Path(sys.argv[1]).resolve()
+    ci_mode='--ci' in sys.argv[2:]
     binary_sha=hashlib.sha256(binary.read_bytes()).hexdigest()
     print("Native executable SHA-256: "+binary_sha,flush=True)
     shutil.rmtree(OUT);OUT.mkdir(parents=True)
@@ -138,6 +139,9 @@ def main():
             {'resize':[900,700]},{'wait':500},snap('narrow'),{'resize':[1600,1050]},{'wait':250},
             rally('action','assistant'),rally('item',fixture.story['_ref']),wait(detail=True),rally('edit','Name','Restored draft'),rally('draft','comment','Unsent discussion'),*dump('restore-before'),
             {'wait':500},{'quit':True}]
+    if ci_mode:
+        gesture=next(i for i,step in enumerate(script) if step.get('rally',[])[:1]==['points'])
+        script[gesture:gesture+2]=[rally('move',fixture.story['_ref'],'In-Progress','',fixture.ref('HierarchicalRequirement',102),'above'),wait(300)]
     scriptpath=OUT/'script.json';scriptpath.write_text(json.dumps(script),encoding='utf-8')
     env=dict(os.environ,FASTROCK_HOME=str(home),CODEX_HOME=str(codex),FASTROCK_CODEX=sys.executable,FASTROCK_CODEX_FIXTURE=str(ROOT/'dev'/'external-codex-fixture.py'),FASTROCK_RALLY_TOKEN=TOKEN,FASTROCK_FIXTURE_ARTIFACT=fixture.story['_ref'],CODEX_GUI_AUTOMATION=str(scriptpath),SLINT_BACKEND='winit-software',RUST_BACKTRACE='1')
     driver_errors=[]
@@ -178,10 +182,13 @@ def main():
     def run():
         with (OUT/'app.log').open('a',encoding='utf-8') as log:
             proc=subprocess.Popen([str(binary)],cwd=ROOT,env=env,stdout=log,stderr=log)
-            driver=threading.Thread(target=drive_drag,args=(proc,),daemon=True);driver.start()
+            driver=None
+            if not ci_mode:
+                driver=threading.Thread(target=drive_drag,args=(proc,),daemon=True);driver.start()
             try: code=proc.wait(timeout=150)
             except subprocess.TimeoutExpired: proc.kill();raise AssertionError('Native automation timeout; inspect app.log')
-            driver.join(timeout=2);assert not driver_errors,driver_errors
+            if driver:driver.join(timeout=2)
+            assert not driver_errors,driver_errors
             assert code==0, f'Native app failed ({code}); inspect app.log'
     try:
         run()
@@ -231,9 +238,10 @@ def main():
         assert any('rankBelow' in r['query'] for r in writes) and any('rankAbove' in r['query'] for r in writes),'Relative ranking/Undo missing'
         assert any(r['path']=='conversationpost/create' for r in writes),'Discussion not posted'
         assert all(r['query'].get('workspace')==fixture.workspace['_ref'] for r in fixture.requests if r['path']=='hierarchicalrequirement' and r['method']=='GET'), 'Scope lost'
-        receipt={'binary_sha256':binary_sha,'requests':len(fixture.requests),'explicit_writes':len(writes),'result':'PASS','native_mouse_drag':True,'native_user_picker_click':True}
+        receipt={'binary_sha256':binary_sha,'requests':len(fixture.requests),'explicit_writes':len(writes),'result':'PASS','native_mouse_drag':not ci_mode,'native_user_picker_click':True,'board_move_mode':'callback' if ci_mode else 'Windows mouse'}
         (OUT/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8')
         print(f'PASS: native Slint list/board/drag/rank/undo/swimlanes/detail/create/relations/rich/discussion/views/bulk/assistant/restart/window-transfer; {len(fixture.requests)} fixture requests, {len(writes)} explicit writes')
+        print('Board move mode: '+receipt['board_move_mode'])
     finally:
         (OUT/'binary.sha256').write_text(binary_sha+'\n');(OUT/'requests.json').write_text(json.dumps(fixture.requests,indent=2),encoding='utf-8');fixture.server.shutdown()
 

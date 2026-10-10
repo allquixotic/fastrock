@@ -215,3 +215,5 @@ B57|2026-10-10|Save replaced entire editor with mutation response, losing omitte
 B58|2026-10-10|Generic validation/session error cleared busy during an unrelated in-flight mutation|V19/V20; preserve busy until owning write callback finishes; delayed-write invalid-input fixture checks busy and retained draft
 
 B59|2026-10-10|Fixture created lower-case _type, hiding new artifacts from its case-sensitive mixed query|V18/V20; use canonical payload type, page beyond retained window, assert created row is present
+
+B60|2026-10-10|Hosted OS mouse gesture failed to reach DragArea although Rust tests/build and remaining native callback scenarios ran|V20/V22; hosted callback mode with honest receipt; retain actual mouse requirement on games and upload failure evidence

@@ -18,6 +18,11 @@ binary. Pushes and PRs upload artifacts. Tags matching `v*-alpha.*`, `v*-beta.*`
 `v*-rc.*` publish GitHub prereleases after those checks succeed. No production
 Rally endpoint or token is used by CI.
 
+Hosted UI checks pass `--ci` to exercise board callbacks without depending on an
+OS pointer gesture. Before publishing locally, run the default suite on `games`
+for real Windows drag coverage. Both modes record their scope in acceptance.json;
+CI retains fixture evidence on failure as well as success.
+
 The cache retains the target directory, including workspace incremental artifacts,
 without changing CARGO_INCREMENTAL. A new tag can restore the default branch's
 cache; GitHub does not share caches between distinct tags. Keep the default branch

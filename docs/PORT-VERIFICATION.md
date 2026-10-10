@@ -63,6 +63,12 @@ human Apply, narrow layouts, restart with unsaved fields/comments, and popout
 plus transfer back with drafts and filters preserved. Assertions inspect the
 corresponding request payloads and persisted state rather than button names alone.
 
+Hosted runners use `--ci` to drive the board move callback rather than an OS mouse
+gesture. The default suite on `games` still requires the real gesture. Alpha.1's
+hosted run passed 675 Windows Rust tests and compilation, then failed its OS-drag
+assertion; the follow-up workflow uses the callback mode and retains fixture
+evidence even on failure. The acceptance receipt explicitly records the mode.
+
 HTTP and pure Rust tests also exercise complete collection paging, full-query
 CSV scope and formula neutralization, malformed or changing pages, reference and
 type guards, token redaction, mutation non-retry, revision conflicts, attachment
