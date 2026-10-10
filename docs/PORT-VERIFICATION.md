@@ -16,9 +16,9 @@ the preserved Go baseline is `f523c6b7ae6f9b6a12ca951845b56d81cb76a879`.
 | `python3 dev/check-build-policy.py` | Passed; dev/release/test and build-script settings, flags and entrypoints checked |
 | `cargo fmt --all -- --check` and `git diff --check` | Passed |
 | `cargo test --locked --lib -- --skip window_runtime::tests` | 676 passed, zero failures, one GUI test filtered out on the Mac |
-| `cargo xwin build --locked --target x86_64-pc-windows-msvc --bin fastrock` | Passed, dev/unoptimized; final incremental build 1 minute 11 seconds |
-| `python dev/windows-rally-smoke.py fastrock.exe`, interactive session on `games` | Passed; 80 fixture requests and 12 explicit writes |
-| `cargo build --locked --bin fastrock`, Mac | Passed, dev/unoptimized; final incremental build 1 minute 32 seconds |
+| `cargo xwin build --locked --target x86_64-pc-windows-msvc --bin fastrock` | Passed, dev/unoptimized; final incremental build 1 minute 20 seconds |
+| `python dev/windows-rally-smoke.py fastrock.exe`, interactive session on `games` | Passed; 82 fixture requests and 13 explicit writes |
+| `cargo build --locked --bin fastrock`, Mac | Passed, dev/unoptimized; final incremental build 1 minute 24 seconds |
 | Installed Mac Codex CLI 0.162.0, read-only stdio initialize/config/model-list | Passed; seven models returned, no inference or Rally writes |
 
 Toolchain: Rust 1.95.0; native Slint 1.18.1 software renderer. Timings describe
@@ -30,7 +30,7 @@ errors remain.
 The exact executable exercised on `games` has SHA-256:
 
 ```text
-6858f4cfb257b90976949d00a8b7198d59efa6133c1dd25664704d9cf0822d5f
+e816033be6f99eeac89271e7a2610f2a0132aa2159e783e2fa42fd6aec6bfe49
 ```
 
 `BUILD.json` inside each package records the source commit, dirty status, binary
@@ -44,7 +44,7 @@ The suite launches the actual Slint executable with a loopback WSAPI fixture and
 an external stdio Codex fixture. It records requests without authorization
 headers and retains screenshots, state dumps, session files, an executable hash
 and `acceptance.json` under `build/rally-smoke` on Windows. The local final copy is
-`build/rally-windows-alpha2-evidence`. These generated outputs are ignored by Git.
+`build/rally-windows-alpha3-evidence`. These generated outputs are ignored by Git.
 
 Coverage includes horizontal document tabs, a chats-only sidebar, list paging,
 300-card board paging, mixed concrete artifact types, vertical Owner swimlanes,
@@ -55,7 +55,8 @@ for closing the picker and supplying a typed reference to bulk review.
 The remaining settled callback scenarios cover typed edit/save, create with the
 Completed-lane default, related Tasks/Attachments/Revisions/Discussions reads,
 posting a discussion, rich HTML source save, sparse mutation responses, late
-edits during a delayed save, retained in-flight write guards on invalid input,
+edits during delayed normal and Save-and-continue saves, retained in-flight write
+guards on invalid input,
 paging to the created artifact, dirty-navigation
 Save/Discard/Cancel, private-view snapshots, unapplied-filter isolation, row
 hide/restore, reviewed bulk updates, an assistant proposal followed by explicit
@@ -65,7 +66,7 @@ corresponding request payloads and persisted state rather than button names alon
 
 Hosted runners use `--ci` to drive the board move callback rather than an OS mouse
 gesture. The default suite on `games` still requires the real gesture. Alpha.1's
-hosted run passed 675 Windows Rust tests and compilation, then failed its OS-drag
+hosted run passed 665 Windows Rust tests and compilation, then failed its OS-drag
 assertion; the follow-up workflow uses the callback mode and retains fixture
 evidence even on failure. The acceptance receipt explicitly records the mode.
 
@@ -97,6 +98,6 @@ without replacing live credentials. Rich source preserves HTML beyond the
 supported native formatting subset. Revision preflight cannot make WSAPI writes
 atomic, and batch outcomes deliberately describe partial success.
 
-Free space remained approximately 2.2 TiB on the Mac and 3.06 TB on `games`.
+Free space remained approximately 2.1 TiB on the Mac and 3.06 TB on `games`.
 No cleanup was needed; useful incremental caches were retained. The build policy
 and disk-space practice are persistent in AGENTS.md and docs/releases.md.

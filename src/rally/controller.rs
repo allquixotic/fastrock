@@ -2386,8 +2386,10 @@ impl AppController {
                         tab.error = error;
                     } else {
                         tab.error.clear();
-                        tab.inline = None;
-                        navigate = tab.pending_navigation.take();
+                        if tab.editor.as_ref().is_none_or(|editor| !editor.dirty()) {
+                            tab.inline = None;
+                            navigate = tab.pending_navigation.take();
+                        }
                     }
                 }
                 if let Some(navigation) = navigate {
@@ -2396,6 +2398,9 @@ impl AppController {
                         .set_dirty_guard_open(false);
                     app.rally_navigate(id, navigation);
                 } else {
+                    app.window
+                        .global::<RallyState>()
+                        .set_dirty_guard_open(false);
                     app.rally_save_session();
                     app.rally_show();
                 }

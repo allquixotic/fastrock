@@ -217,3 +217,7 @@ B58|2026-10-10|Generic validation/session error cleared busy during an unrelated
 B59|2026-10-10|Fixture created lower-case _type, hiding new artifacts from its case-sensitive mixed query|V18/V20; use canonical payload type, page beyond retained window, assert created row is present
 
 B60|2026-10-10|Hosted OS mouse gesture failed to reach DragArea although Rust tests/build and remaining native callback scenarios ran|V20/V22; hosted callback mode with honest receipt; retain actual mouse requirement on games and upload failure evidence
+
+B61|2026-10-10|Save-and-continue consumed pending navigation after acknowledgement even when a later draft remained dirty|V19/V20; continue only after clean acknowledgement; retain draft/intent and re-show guard; delayed-navigation fixture asserts editor remains open
+
+B62|2026-10-10|Delayed-navigation fixture reset Name to its acknowledged baseline, so no dirty Save-and-continue path existed|V22; use a distinct delayed title and assert later draft remains in the open editor
