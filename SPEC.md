@@ -11,7 +11,8 @@ Broader GUI contract: repository `GUI.md`.
 - New Rally UI uses native Slint controls/layouts; horizontal documents, conversation-only sidebar.
 - Track Mac/games free space; clean identified stale build junk only when needed.
 - Native Slint 1.18.1; bound transcript memory; no idle repaint polling.
-- Fastrock alpha: Windows x64 fast ZIP, accurately labeled unsigned; Mac headless builds supported. Imported upstream signed/universal release records are historical, not current-port evidence.
+- Fastrock alpha: signed Windows x64 fast ZIP and signed/notarized/stapled Apple Silicon Mac DMG via CI. Imported upstream universal release records remain historical.
+- Commit/push main directly; no draft PR workflow. CI builds/signs/verifies/publishes releases with persistent incremental caches; no unsigned fallback.
 - Never run GUI tests or launch this project's GUI on Sean's Mac unless the user explicitly says "test the GUI on this Mac"; use Windows hosts.
 - Publish only after fast development verification passes; never add an optimized build pass.
 - Verify GitHub asset digest before deleting local build outputs.
@@ -60,6 +61,7 @@ V19: Writes ! review/revision/scope guards; dirty/conflict drafts retained; batc
 V20: Every inventory capability R01–R22 ! Rust implementation plus named fixture/Windows evidence before marked complete; native Slint UI only. Verify: docs/RALLY-INVENTORY.md ledger and dev/windows-rally-smoke.py.
 V21: Personal settings/views/session ! migrate legacy names and independent snapshots; vault service ! fastrock. Verify: rally::store::tests.
 V22: Windows prerelease ! fast profile, exact source/asset metadata; tests ! fixture-only, software renderer; Mac GUI ! never launched. Verify: workflow/policy audit and Windows smoke.
+V23: Release ! commit/push main, tag, CI only; exact source/run/unsigned input hashes verified before signing; Windows ! expected publisher + RFC3161 timestamp + fixture acceptance of signed bytes; Mac ! pinned Developer ID + Accepted app/DMG logs + stapling + Gatekeeper including mounted app. Cache ! persistent, no per-release archive wait; no PR. Verify: release.yml, signing receipts and GitHub attestations.
 
 ## §T TASKS
 id|status|task|cites
@@ -95,6 +97,7 @@ T20|x|Native Rally pages/boards/tables/filter/saved-view UI|V18,V20,V21
 T21|x|Native details/rich fields/relations/attachments/conflicts/bulk editing|V19,V20
 T22|x|Port scoped assistant tools/proposals/human Apply|V17,V19,V20
 T23|x|Complete fixture/headless/Windows interaction checks and prerelease|V15,V16,V17,V18,V19,V20,V21,V22
+T24|~|Land port directly on main; fast cached CI signs/verifies/publishes Windows and Mac prerelease|V15,V22,V23,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 

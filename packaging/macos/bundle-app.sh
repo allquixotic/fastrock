@@ -9,7 +9,8 @@ set -euo pipefail
 
 binary="$1"
 out_dir="$2"
-version="$3"
+prerelease_version="$3"
+version="${prerelease_version%%-*}"
 shift 3
 bundle_id="com.allquixotic.fastrock"
 while [[ $# -gt 0 ]]; do
@@ -33,6 +34,7 @@ rm -rf "$app"
 mkdir -p "${app}/Contents/MacOS" "${app}/Contents/Resources"
 ditto "$binary" "${app}/Contents/MacOS/fastrock"
 sed -e "s/@VERSION@/${version}/g" -e "s/@BUNDLE_ID@/${bundle_id}/g" \
+    -e "s/@PRERELEASE_VERSION@/${prerelease_version}/g" \
     "${here}/Info.plist.in" > "${app}/Contents/Info.plist"
 
 iconset="$(mktemp -d)/AppIcon.iconset"

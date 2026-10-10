@@ -1,49 +1,64 @@
-# Rapid prereleases
+# Rapid signed prereleases
+
+Commit, push directly to main, then push the matching prerelease tag. Do not create
+PRs or publish locally built release assets. `.github/workflows/release.yml`
+builds, signs, verifies, attests and publishes the Windows x64 ZIP through CI; it
+then adds the signed/notarized Apple Silicon Mac DMG to the same prerelease.
+Tags must match Cargo.toml/Cargo.lock, for example `v0.2.0-alpha.4`. No force pushes.
 
 Every Rust profile favors compile speed: opt-level 0, debug 0, split-debuginfo off,
 LTO false, codegen-units 256, incremental true, strip none. Build dependencies also
 use opt-level 0 and 256 codegen units. No environment override may re-enable
-optimization or debug information. `dev/check-build-policy.py` verifies this policy
+optimization or debug information. `dev/check-build-policy.py` verifies the policy
 before supported scripts and CI. Sean must explicitly authorize any exception.
 
 Build with `cargo build --locked --bin fastrock`; never add an optimization pass.
-`scripts/build-windows.ps1` and `scripts/build-macos.sh` enforce the same settings.
-For Mac-to-Windows testing, use `cargo xwin build --locked --target
-x86_64-pc-windows-msvc --bin fastrock`; its binary is in the target's `debug` folder.
-Do not launch GUI tests on Sean's Mac.
+Mac-to-Windows builds use `cargo xwin build --locked --target
+x86_64-pc-windows-msvc --bin fastrock`. Both use the development profile. The
+software renderer avoids building a second GPU stack. Codex CLI 0.162.0 or newer
+is an external prerequisite, never bundled or silently installed.
 
-`.github/workflows/windows.yml` caches Cargo artifacts, checks policy/formatting,
-runs Rust tests and the fixture-only native UI suite, and packages the development
-binary. Pushes and PRs upload artifacts. Tags matching `v*-alpha.*`, `v*-beta.*` or
-`v*-rc.*` publish GitHub prereleases after those checks succeed. No production
-Rally endpoint or token is used by CI.
+The CI build job runs on this Mac with its persistent Cargo target cache. It
+compiles each platform once, runs headless Rust tests, and uploads only binaries
+and build receipts with compression disabled. It does not archive the multi-GB
+incremental cache on every commit/tag, and Windows CI does not compile again.
+This avoids the previous repeated compile and cache-upload delays. Initial cache
+warming or dependency changes can still take longer.
 
-Hosted UI checks pass `--ci` to exercise board callbacks without depending on an
-OS pointer gesture. Before publishing locally, run the default suite on `games`
-for real Windows drag coverage. Both modes record their scope in acceptance.json;
-CI retains fixture evidence on failure as well as success.
-
-The cache retains the target directory, including workspace incremental artifacts,
-without changing CARGO_INCREMENTAL. A new tag can restore the default branch's
-cache; GitHub does not share caches between distinct tags. Keep the default branch
-cache warm after landing the port. The first hosted build needs to compile its
-dependencies. See [GitHub's cache scope rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache).
-
-To package an already tested binary:
+Start these temporary runners after pushing the tag (two terminals):
 
 ```sh
-python scripts/package-prerelease.py target/debug/fastrock.exe dist
+python3 scripts/start-release-runner.py build
+python3 scripts/start-release-runner.py signing
 ```
 
-The ZIP uses stored entries to avoid compression waits, includes licenses, the
-Rally accounting, source pins and BUILD.json, and gets a SHA-256 sidecar. Packaging
-does not compile or optimize. Windows CRT is static. Codex CLI is an external
-prerequisite, never bundled or silently installed. Current alpha packages are
-unsigned; signing is separate from Rust compilation and must be described accurately.
+They run one trusted release job each and remove their GitHub registrations.
+Only release-tag workflows can use them; the build verifies its source is on
+main. No pull request jobs or Mac GUI tests run. The normal login keychain holds
+the pinned Developer ID identity and AC_NOTARY; no Apple private keys are exported.
+Apple Silicon is the rapid Mac prerelease architecture; imported universal-build
+records under docs/upstream are historical.
+
+Windows CI verifies input hashes/source/run, obtains Azure signing authorization
+through OIDC, and signs fastrock.exe with SHA-256 and an RFC 3161 timestamp. It
+requires the configured Sean McNamara publisher, runs fixture-only Rally UI checks
+on that exact signed executable, then creates a stored ZIP with BUILD.json,
+licenses, source pins and signing evidence. No unsigned fallback is published.
+Hosted UI checks use `--ci` for deterministic board callbacks. The default suite
+on `games` provides physical mouse drag coverage; both record their scope.
+
+Mac CI verifies the arm64 binary and Apple-only dynamic dependencies, signs with
+Developer ID Application SHA-1 `9A3CFFC04D3472208A62C48E707EA6D4261998A1`,
+requires Accepted app and DMG notarization logs, staples the app before building
+an uncompressed DMG, and validates stapling/Gatekeeper on both the DMG and its
+mounted app. No JIT entitlements or embedded Codex runtime are needed.
+
+Both packages have SHA-256 sidecars and GitHub build attestations checked against
+the exact tag/source/workflow before upload. Windows publishes immediately after
+its checks; Mac signing/notarization does not hold up Windows testing. Existing
+asset names are never overwritten. Prior alpha.1–alpha.3 assets remain unsigned;
+alpha.4 and later use this signed CI pipeline.
 
 Check `df -h` on the Mac and `Get-PSDrive C` on games before larger builds. If free
 space becomes low, remove identified inactive build outputs first; retain current
 incremental caches and release evidence. Never stop VMs or unrelated compilers.
-
-Historical codex-gui release/signing notes are preserved under `docs/upstream/`.
-Their signing and test results do not verify Fastrock alpha builds.

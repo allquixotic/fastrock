@@ -1,0 +1,178 @@
+name: Fast signed prerelease
+on:
+  push:
+    tags: ['v*-alpha.*', 'v*-beta.*', 'v*-rc.*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fastrock-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.repository == 'allquixotic/fastrock' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: [self-hosted, macOS, ARM64, fastrock-build]
+    timeout-minutes: 90
+    env:
+      CARGO_INCREMENTAL: '1'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify release source and fast build policy
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          python3 dev/check-build-policy.py
+          python3 -c 'import os,tomllib; assert os.environ["GITHUB_REF_NAME"] == "v" + tomllib.load(open("Cargo.toml","rb"))["package"]["version"]'
+          cargo fmt --all -- --check
+      - name: Compile once per platform using the persistent incremental cache
+        run: bash scripts/build-ci.sh
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: release-inputs
+          path: build/release-inputs/*
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        if: always()
+        with:
+          name: headless-test-evidence
+          path: build/headless-tests.log
+          compression-level: 0
+          if-no-files-found: ignore
+  windows:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    environment: azure-artifact-signing
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-inputs
+          path: build/release-inputs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify unsigned build provenance and policy
+        run: |
+          python dev/check-build-policy.py
+          python scripts/verify-ci-input.py build/release-inputs/fastrock.exe
+      - name: Azure login for Artifact Signing (OIDC)
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_ARTIFACT_SIGNING_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_ARTIFACT_SIGNING_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_ARTIFACT_SIGNING_SUBSCRIPTION_ID }}
+      - name: Sign Windows executable
+        uses: azure/trusted-signing-action@1d365fec12862c4aa68fcac418143d73f0cea293 # v0.5.11
+        with:
+          endpoint: ${{ secrets.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ secrets.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          files: ${{ github.workspace }}/build/release-inputs/fastrock.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+          cache-dependencies: false
+      - name: Require expected publisher and secure timestamp
+        env:
+          FASTROCK_WINDOWS_PUBLISHER: ${{ vars.FASTROCK_WINDOWS_PUBLISHER }}
+        run: ./scripts/verify-windows-signature.ps1 build/release-inputs/fastrock.exe build/windows-signing.json
+      - name: Fixture tests on the exact signed executable
+        run: python dev/windows-rally-smoke.py build/release-inputs/fastrock.exe --ci
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        if: always()
+        with:
+          name: windows-signing-and-rally-evidence
+          path: |
+            build/rally-smoke/
+            build/windows-signing.json
+          compression-level: 0
+          if-no-files-found: ignore
+      - name: Package signed fast build
+        run: python scripts/package-prerelease.py build/release-inputs/fastrock.exe dist --signing-evidence build/windows-signing.json --build-input build/release-inputs/BUILD-INPUT.json
+      - name: Attest final signed Windows package
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*.zip
+      - name: Publish Windows prerelease immediately
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          Copy-Item '${{ steps.provenance.outputs.bundle-path }}' dist/windows-attestation.sigstore.json
+          python scripts/publish-prerelease.py dist
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: signed-windows-release
+          path: dist/*
+          compression-level: 0
+          if-no-files-found: error
+  macos:
+    needs: [build, windows]
+    runs-on: [self-hosted, macOS, ARM64, fastrock-signing]
+    timeout-minutes: 60
+    environment: codesigning
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      NOTARY_PROFILE: AC_NOTARY
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: release-inputs
+          path: build/release-inputs
+      - name: Verify fast build provenance
+        run: |
+          python3 dev/check-build-policy.py
+          python3 scripts/verify-ci-input.py build/release-inputs/fastrock
+          chmod +x build/release-inputs/fastrock
+      - name: Sign, notarize, staple and verify without launching GUI
+        run: python3 scripts/package-macos.py build/release-inputs/fastrock
+      - name: Attest final signed and stapled DMG
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: dist/*.dmg
+      - name: Add signed Mac package to the prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cp '${{ steps.provenance.outputs.bundle-path }}' dist/macos-attestation.sigstore.json
+          python3 scripts/publish-prerelease.py dist
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        if: always()
+        with:
+          name: signed-macos-release-and-evidence
+          path: |
+            dist/*.dmg
+            dist/*.sha256
+            dist/*attestation.sigstore.json
+            dist/macos-signing-evidence/
+          compression-level: 0
+          if-no-files-found: ignore

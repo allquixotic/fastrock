@@ -1,3 +1,4 @@
 self-hosted-runner:
   labels:
-    - codex-gui-signing
+    - fastrock-build
+    - fastrock-signing

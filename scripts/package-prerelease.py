@@ -5,6 +5,8 @@ root = pathlib.Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('binary', type=pathlib.Path)
 parser.add_argument('output', type=pathlib.Path)
+parser.add_argument('--signing-evidence', type=pathlib.Path)
+parser.add_argument('--build-input', type=pathlib.Path)
 args = parser.parse_args()
 assert args.binary.name == 'fastrock.exe' and args.binary.is_file(), 'Expected compiled Windows fastrock.exe'
 version = tomllib.loads((root/'Cargo.toml').read_text())['package']['version']
@@ -15,6 +17,19 @@ dirty=bool(subprocess.check_output(['git','status','--porcelain','--untracked-fi
 metadata = {'source_commit':revision,'source_dirty':dirty,'binary_sha256':hashlib.sha256(args.binary.read_bytes()).hexdigest(),'version':version, 'profile':'dev', 'opt_level':0, 'debug_info':0, 'lto':False,
             'codegen_units':256, 'codex_backend':'installed external codex app-server',
             'minimum_codex_version':'0.162.0', 'source':json.loads((root/'codex-gui-base.json').read_text())}
+if args.signing_evidence:
+    signature=json.loads(args.signing_evidence.read_text(encoding='utf-8-sig'))
+    assert signature['status']=='Valid' and signature['timestamp_publisher']
+    assert signature['binary_sha256']==metadata['binary_sha256']
+    assert signature['source_commit']==revision
+    metadata['signing']=signature
+if args.build_input:
+    build_input=json.loads(args.build_input.read_text())
+    assert build_input['source_commit']==revision and build_input['version']==version
+    assert not dirty
+    metadata['ci_build']=build_input
+if __import__('os').environ.get('GITHUB_ACTIONS')=='true':
+    assert args.signing_evidence and args.build_input, 'CI releases require signature and build evidence'
 with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_STORED) as z:
     z.write(args.binary, 'fastrock.exe')
     for filename in ['LICENSE','NOTICE','README.md','docs/RALLY-INVENTORY.md','docs/PORT-VERIFICATION.md','docs/gui.md','docs/releases.md']:

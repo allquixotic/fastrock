@@ -10,6 +10,10 @@ Inherit installed Codex environment/configuration; never install/update Codex.
 All build profiles prioritize compilation speed: opt-level=0, no LTO, no debug
 information, 256 codegen units, incremental builds, no stripping/packing pass.
 Optimized builds require Sean's explicit authorization. Prereleases use fast builds.
+Always commit, push to main and release through CI; never create PRs.
+Release assets must be built, signed, verified and published by CI. Include Windows
+Authenticode/timestamping and Mac Developer ID/notarization/stapling; no unsigned
+fallback. Temporary Mac runners handle trusted release tags only and run no GUI.
 Windows x64 first; macOS supported. Never launch GUI/tests on Sean's Mac.
 Use games via `ssh games`; read C:\Users\SeanMcNamara\AGENTS.md first.
 Keep network, filesystem and keyring I/O off Slint's UI thread.

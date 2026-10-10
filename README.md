@@ -14,7 +14,9 @@ Codex GUI conversation features remain available through the external protocol.
 ## Test builds
 
 Windows x64 prereleases are available from [Fastrock releases](https://github.com/allquixotic/fastrock/releases).
-Extract the ZIP and run `fastrock.exe`. These builds deliberately have **zero
+Extract the signed ZIP and run `fastrock.exe`. Apple Silicon Macs get a signed,
+notarized and stapled DMG. All release assets are built and published by CI.
+These builds deliberately have **zero
 optimization**, no debug information, no LTO, 256 codegen units and incremental
 compilation. Every profile, including `release`, follows this policy. Optimized
 builds require explicit authorization. The software renderer avoids compiling a
