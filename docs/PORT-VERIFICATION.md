@@ -181,3 +181,37 @@ documented enum response and asserts every Team Board workflow lane survives.
 
 Local headless evidence: `build/alpha5-headless.log`. Signed CI release receipts
 are recorded after publication below.
+
+[v0.2.0-alpha.5](https://github.com/allquixotic/fastrock/releases/tag/v0.2.0-alpha.5)
+was built, signed and published by
+[CI 38077735206](https://github.com/allquixotic/fastrock/actions/runs/38077735206),
+source `311c2e4b1a362744e96b1750c35bd9106ad2aa09`. All three jobs passed.
+Both platform binaries plus 680 headless tests completed in the 4m03s build
+job, using the persistent cache and unoptimized profiles. Windows signed
+fixture acceptance and independent physical mouse acceptance on `games` each
+passed 82 requests / 13 fixture writes, explicitly recording
+`realistic_allowed_value_metadata: true`. All four Team Board workflow lanes
+survived; edit/drag/rank/undo/restart/window-transfer checks also passed.
+
+The downloaded published Windows executable independently verified as Valid
+Authenticode for Sean McNamara, with Microsoft RFC 3161 timestamping.
+Executable SHA-256:
+`abec190c7238ceea15b820be6d5aa74ddda1af01540bec8093bcd43bed420f51`.
+ZIP SHA-256:
+`f3c2b7419f30e47c2fb4f49444235b7d5bbe6fff35bcc933ae18332e569f36fb`.
+
+The Mac app and DMG used pinned Developer ID
+`9A3CFFC04D3472208A62C48E707EA6D4261998A1`, team `B6XDYNLMPU`.
+App submission `2bcc0d2a-06a0-4190-814d-e11fcd555939` and DMG submission
+`bed2a1a4-6f27-40a2-9f4a-a0834ad29081` were Accepted; both retrieved logs
+had no issues. App and DMG stapling validated; Gatekeeper accepted the app,
+DMG and mounted app. Published DMG SHA-256:
+`60fcdc9e210b0e256c864dfb7bff1bb69ea6f66aff1150eee11ffebd5157006d`.
+
+Both downloaded package checksums, Windows BUILD.json and GitHub attestations
+were independently verified against the exact tag/source/workflow. Evidence:
+`build/ci-alpha5-evidence/` (CI logs, signature/notarization records, hosted and
+physical Windows fixture receipts) and `build/ci-alpha5-download/` (published
+bytes and attestations). Both temporary runners deregistered; zero remained.
+No production Rally access/writes or Mac GUI launch occurred. Mac free space
+was about 2.4 TiB, games about 3.06 TB; active incremental caches retained.
