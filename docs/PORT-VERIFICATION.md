@@ -18,6 +18,7 @@ the preserved Go baseline is `f523c6b7ae6f9b6a12ca951845b56d81cb76a879`.
 | `cargo test --locked --lib -- --skip window_runtime::tests` | 676 passed, zero failures, one GUI test filtered out on the Mac |
 | `cargo xwin build --locked --target x86_64-pc-windows-msvc --bin fastrock` | Passed, dev/unoptimized; final incremental build 1 minute 20 seconds |
 | `python dev/windows-rally-smoke.py fastrock.exe`, interactive session on `games` | Passed; 82 fixture requests and 13 explicit writes |
+| Hosted Windows [run 38036468741](https://github.com/allquixotic/fastrock/actions/runs/38036468741), alpha.2 source | 667 Rust tests, compilation, CI-mode fixture acceptance and packaging passed; incremental cache saved |
 | `cargo build --locked --bin fastrock`, Mac | Passed, dev/unoptimized; final incremental build 1 minute 24 seconds |
 | Installed Mac Codex CLI 0.162.0, read-only stdio initialize/config/model-list | Passed; seven models returned, no inference or Rally writes |
 
@@ -67,8 +68,12 @@ corresponding request payloads and persisted state rather than button names alon
 Hosted runners use `--ci` to drive the board move callback rather than an OS mouse
 gesture. The default suite on `games` still requires the real gesture. Alpha.1's
 hosted run passed 665 Windows Rust tests and compilation, then failed its OS-drag
-assertion; the follow-up workflow uses the callback mode and retains fixture
-evidence even on failure. The acceptance receipt explicitly records the mode.
+assertion. The follow-up hosted run passed all 667 Windows Rust tests and the
+callback-mode fixture suite (80 requests/12 writes), then packaged successfully
+and saved its incremental cache. Its source precedes the final Save-and-continue
+fix; alpha.3 passed both fixture modes on `games` with 82 requests/13 writes.
+The acceptance receipts explicitly record their modes, and CI retains evidence
+even on failure.
 
 HTTP and pure Rust tests also exercise complete collection paging, full-query
 CSV scope and formula neutralization, malformed or changing pages, reference and
