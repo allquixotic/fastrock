@@ -62,6 +62,7 @@ V20: Every inventory capability R01–R22 ! Rust implementation plus named fixtu
 V21: Personal settings/views/session ! migrate legacy names and independent snapshots; vault service ! fastrock. Verify: rally::store::tests.
 V22: Windows prerelease ! fast profile, exact source/asset metadata; tests ! fixture-only, software renderer; Mac GUI ! never launched. Verify: workflow/policy audit and Windows smoke.
 V23: Release ! commit/push main, tag, CI only; exact source/run/unsigned input hashes verified before signing; Windows ! expected publisher + RFC3161 timestamp + fixture acceptance of signed bytes; Mac ! pinned Developer ID + Accepted app/DMG logs + stapling + Gatekeeper including mounted app. Cache ! persistent, no per-release archive wait; no PR. Verify: release.yml, signing receipts and GitHub attestations.
+V24: Rally AttributeDefinition AllowedValues ! preserve all enum choices with shared literal "null", JSON null or absent refs; complete first unpaged catalog ! normalize StartIndex=0. Persisted duplicate identities and partial/unexpected pages ! still fail closed. Verify: rally::client::tests::v24_* and realistic Windows metadata fixture; Broadcom KB 57584.
 
 ## §T TASKS
 id|status|task|cites
@@ -98,6 +99,7 @@ T21|x|Native details/rich fields/relations/attachments/conflicts/bulk editing|V1
 T22|x|Port scoped assistant tools/proposals/human Apply|V17,V19,V20
 T23|x|Complete fixture/headless/Windows interaction checks and prerelease|V15,V16,V17,V18,V19,V20,V21,V22
 T24|x|Land port directly on main; fast cached CI signs/verifies/publishes Windows and Mac prerelease|V15,V22,V23,I.distribution
+T25|~|Fix enum metadata mistaken for duplicate Rally records; verify and publish signed prerelease|V17,V18,V23,V24
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 
@@ -230,3 +232,5 @@ B61|2026-10-10|Save-and-continue consumed pending navigation after acknowledgeme
 B62|2026-10-10|Delayed-navigation fixture reset Name to its acknowledged baseline, so no dirty Save-and-continue path existed|V22; use a distinct delayed title and assert later draft remains in the open editor
 
 B63|2026-10-10|GitHub runner config contains UTF-8 BOM; registration succeeded but plain JSON decode stopped listener startup|V23; read utf-8-sig, verify/resume this offline runner, remove registration after its one job
+
+B64|2026-10-10|Generic collection guard treats AllowedAttributeValue _ref="null" as shared object identity; documented unpaged catalog also uses StartIndex=0; simplified fixtures omitted both real WSAPI forms|V24; narrow metadata normalization, retained object guards, headless and Windows regressions

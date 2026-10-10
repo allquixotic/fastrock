@@ -153,3 +153,31 @@ verified after download. DMG SHA-256:
 No Mac GUI was launched. Both temporary CI runners removed their registrations;
 the useful incremental cache was retained. Mac free space was about 2.4 TiB;
 `games` about 3.06 TB. No cleanup was required.
+
+## Rally enum metadata regression: alpha.5
+
+The reported Team Board error matches a client-side metadata bug: a generic
+collection duplicate check treated each built-in enum's literal `_ref: "null"`
+as the same object identity. Board loading queries both artifacts and their
+schema/workflow; the error can therefore originate from dropdown metadata.
+[Broadcom KB 57584](https://knowledge.broadcom.com/external/article/57584/wsapi-api-get-allowedvalues-for-rally.html)
+shows distinct `StringValue` choices with this shared placeholder and complete
+catalog responses using `StartIndex: 0` / `PageSize: 0`. Previous fixtures omitted
+these response forms. No production subscription or token was accessed.
+
+The fix applies only to `AttributeDefinition/<signed nonzero ID>/AllowedValues`.
+It preserves all anonymous choices and normalizes a zero index only for the
+first complete catalog. Duplicate persisted references, partial catalogs,
+ordinary zero-index pages and repeated later pages remain rejected. Existing
+workspace scoping and same-origin reference checks are preserved.
+
+Four named `rally::client::tests::v24_*` regressions cover enum preservation,
+unpaged response handling, real duplicate rejection and Team Board artifact +
+schema + workflow loading. Before the fix, three failed with the duplicate/page
+errors and the persisted-duplicate guard passed. After the fix, all 680 headless
+tests passed; the Mac GUI test was excluded. Fast build policy, formatting,
+Python syntax and diff checks passed. The Windows fixture now returns the
+documented enum response and asserts every Team Board workflow lane survives.
+
+Local headless evidence: `build/alpha5-headless.log`. Signed CI release receipts
+are recorded after publication below.

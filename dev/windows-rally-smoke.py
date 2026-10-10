@@ -55,7 +55,7 @@ class RallyFixture:
         result=[]
         for i,(name,typ,ro,refkind) in enumerate(names):
             o=dict(ElementName=name,Name=name,AttributeType=typ,ReadOnly=ro,Required=name=='Name',AllowedValueType={'TypePath':refkind})
-            if name in ('ScheduleState','State'): o['AllowedValues']={'_ref':self.base+'typedefinition/allowed/'+name}
+            if name in ('ScheduleState','State'): o['AllowedValues']={'_ref':self.base+f'AttributeDefinition/{-12501-i}/AllowedValues'}
             result.append(o)
         return result
     def handle(self,h):
@@ -71,7 +71,11 @@ class RallyFixture:
             rows=[]; kind=path.lower(); expr=q.get('query','')
             if path=='typedefinition': rows=[{'TypePath':'HierarchicalRequirement','Attributes':{'_ref':self.base+'typedefinition/attributes'}}]
             elif path=='typedefinition/attributes': rows=self.schema('HierarchicalRequirement')
-            elif path.startswith('typedefinition/allowed/'): rows=[{'StringValue':v} for v in ['Defined','In-Progress','Completed','Accepted']]
+            elif path.startswith('AttributeDefinition/') and path.endswith('/AllowedValues'):
+                # Real built-in enum metadata (Broadcom KB 57584), including
+                # identical placeholder refs and the unpaged zero-index envelope.
+                rows=[{'_ref':'null','ObjectID':None,'_type':'AllowedAttributeValue','StringValue':v} for v in ['Defined','In-Progress','Completed','Accepted']]
+                return self.respond(h,{'QueryResult':{'Errors':[],'Warnings':[],'Results':rows,'TotalResultCount':len(rows),'StartIndex':0,'PageSize':0}})
             elif path.endswith('/Tags'): rows=[self.tag]
             elif path.endswith('/Milestones'): rows=[self.milestone]
             elif path.endswith('/Tasks'): rows=[self.task]
@@ -240,7 +244,9 @@ def main():
         assert any('rankBelow' in r['query'] for r in writes) and any('rankAbove' in r['query'] for r in writes),'Relative ranking/Undo missing'
         assert any(r['path']=='conversationpost/create' for r in writes),'Discussion not posted'
         assert all(r['query'].get('workspace')==fixture.workspace['_ref'] for r in fixture.requests if r['path']=='hierarchicalrequirement' and r['method']=='GET'), 'Scope lost'
-        receipt={'binary_sha256':binary_sha,'requests':len(fixture.requests),'explicit_writes':len(writes),'result':'PASS','native_mouse_drag':not ci_mode,'native_user_picker_click':True,'board_move_mode':'callback' if ci_mode else 'Windows mouse'}
+        assert any(r['path'].startswith('AttributeDefinition/') and r['path'].endswith('/AllowedValues') and r['query'].get('workspace')==fixture.workspace['_ref'] for r in fixture.requests),'Realistic scoped enum metadata was not loaded'
+        assert [lane['name'] for lane in load('mixed')['lanes']]==['Defined','In-Progress','Completed','Accepted'],'Enum metadata lost Team Board lanes'
+        receipt={'binary_sha256':binary_sha,'requests':len(fixture.requests),'explicit_writes':len(writes),'result':'PASS','native_mouse_drag':not ci_mode,'native_user_picker_click':True,'board_move_mode':'callback' if ci_mode else 'Windows mouse','realistic_allowed_value_metadata':True}
         (OUT/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8')
         print(f'PASS: native Slint list/board/drag/rank/undo/swimlanes/detail/create/relations/rich/discussion/views/bulk/assistant/restart/window-transfer; {len(fixture.requests)} fixture requests, {len(writes)} explicit writes')
         print('Board move mode: '+receipt['board_move_mode'])

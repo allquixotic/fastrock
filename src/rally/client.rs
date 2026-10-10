@@ -322,16 +322,33 @@ impl Client {
                     .context("Invalid Rally result record")
             })
             .collect::<Result<Vec<_>>>()?;
-        let start = result["StartIndex"]
+        let resolved = self.resolve(reference)?;
+        let parts = resolved
+            .path()
+            .strip_prefix(self.base.path())
+            .unwrap_or("")
+            .split('/')
+            .collect::<Vec<_>>();
+        let allowed_values = matches!(parts.as_slice(), [kind, id, field]
+            if kind.eq_ignore_ascii_case("AttributeDefinition")
+                && id.parse::<i64>().is_ok_and(|id| id != 0)
+                && field.eq_ignore_ascii_case("AllowedValues"));
+        let total = result["TotalResultCount"]
+            .as_u64()
+            .unwrap_or(results.len() as u64) as usize;
+        let mut start = result["StartIndex"]
             .as_u64()
             .unwrap_or(q.start.max(1) as u64) as usize;
+        // WSAPI built-in enums may return the complete catalog with zero
+        // pagination metadata. Only that first, complete metadata response
+        // can be normalized; ordinary/partial/repeated pages still fail.
+        if allowed_values && start == 0 && q.start.max(1) == 1 && results.len() == total {
+            start = 1;
+        }
         ensure!(
             start == q.start.max(1),
             "Rally returned an unexpected page; refresh"
         );
-        let total = result["TotalResultCount"]
-            .as_u64()
-            .unwrap_or(results.len() as u64) as usize;
         ensure!(
             !results.is_empty() || start > total || total == 0,
             "Rally returned an incomplete result"
@@ -339,7 +356,12 @@ impl Client {
         let mut seen = std::collections::HashSet::new();
         for row in &results {
             let identity = row.text("_ref");
-            if !identity.is_empty() {
+            // "null" is a placeholder on built-in AllowedAttributeValue
+            // choices, not an object identity (Broadcom KB 57584). Preserve
+            // every choice; retain duplicate guards for persisted objects.
+            if !identity.is_empty()
+                && !(allowed_values && identity == "null" && row.contains_key("StringValue"))
+            {
                 ensure!(seen.insert(identity), "Rally returned duplicate records");
             }
         }
@@ -871,6 +893,190 @@ mod tests {
         Mock, MockServer, ResponseTemplate,
         matchers::{method, path, query_param},
     };
+    // Built-in enums are values, not persisted objects. Real WSAPI responses
+    // use the literal string "null" for every _ref (Broadcom KB 57584).
+    fn enum_rows() -> Value {
+        json!([
+            {"_ref":"null","ObjectID":null,"StringValue":"Defined","_type":"AllowedAttributeValue"},
+            {"_ref":"null","ObjectID":null,"StringValue":"In-Progress","_type":"AllowedAttributeValue"},
+            {"_ref":null,"StringValue":"Completed","_type":"AllowedAttributeValue"},
+            {"StringValue":"Accepted","_type":"AllowedAttributeValue"}
+        ])
+    }
+    #[tokio::test]
+    async fn v24_allowed_value_placeholders_preserve_every_choice() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/slm/webservice/v2.0/AttributeDefinition/-12501/AllowedValues"))
+            .and(query_param("workspace", "workspace/9"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "QueryResult":{"StartIndex":1,"PageSize":2000,"TotalResultCount":4,"Results":enum_rows()}
+            })))
+            .mount(&server).await;
+        let c = Client::new(&server.uri(), "secret".into()).unwrap();
+        let page = c
+            .collection(
+                "AttributeDefinition/-12501/AllowedValues",
+                &Query {
+                    workspace: "workspace/9".into(),
+                    page_size: 2000,
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            page.results
+                .iter()
+                .map(|row| row.text("StringValue"))
+                .collect::<Vec<_>>(),
+            ["Defined", "In-Progress", "Completed", "Accepted"]
+        );
+    }
+    #[tokio::test]
+    async fn v24_zero_index_allowed_values_require_complete_first_catalog() {
+        let server = MockServer::start().await;
+        let c = Client::new(&server.uri(), "secret".into()).unwrap();
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "QueryResult":{"StartIndex":0,"PageSize":0,"TotalResultCount":4,"Results":enum_rows()}
+            })))
+            .mount(&server).await;
+        let reference = "attributedefinition/-12501/allowedvalues";
+        let page = c.collection(reference, &Query::default()).await.unwrap();
+        assert_eq!(page.start, 1);
+        assert_eq!(page.results.len(), 4);
+        assert!(
+            c.collection(
+                reference,
+                &Query {
+                    start: 2,
+                    ..Default::default()
+                }
+            )
+            .await
+            .is_err()
+        );
+        assert!(c.query("Task", &Query::default()).await.is_err());
+        server.reset().await;
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "QueryResult":{"StartIndex":0,"PageSize":0,"TotalResultCount":5,"Results":enum_rows()}
+            })))
+            .mount(&server).await;
+        assert!(c.collection(reference, &Query::default()).await.is_err());
+    }
+    #[tokio::test]
+    async fn v24_real_object_duplicates_still_fail_closed() {
+        let server = MockServer::start().await;
+        let c = Client::new(&server.uri(), "secret".into()).unwrap();
+        for (reference, identity) in [
+            ("task", "task/1"),
+            (
+                "AttributeDefinition/42/AllowedValues",
+                "allowedattributevalue/1",
+            ),
+            ("task", "null"),
+        ] {
+            server.reset().await;
+            Mock::given(method("GET"))
+                .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                    "QueryResult":{"StartIndex":1,"TotalResultCount":2,"Results":[
+                        {"_ref":identity,"StringValue":"First"},
+                        {"_ref":identity,"StringValue":"Second"}
+                    ]}
+                })))
+                .mount(&server)
+                .await;
+            assert!(
+                c.collection(reference, &Query::default())
+                    .await
+                    .unwrap_err()
+                    .to_string()
+                    .contains("duplicate records")
+            );
+        }
+    }
+    #[tokio::test]
+    async fn v24_team_board_loads_realistic_schema_and_workflow() {
+        let server = MockServer::start().await;
+        let c = Client::new(&server.uri(), "secret".into()).unwrap();
+        Mock::given(method("GET"))
+            .and(path("/slm/webservice/v2.0/artifact"))
+            .and(query_param("types", "HierarchicalRequirement,Defect,TestSet,DefectSuite"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "QueryResult":{"StartIndex":1,"TotalResultCount":2,"Results":[
+                    {"_ref":"hierarchicalrequirement/1","_type":"HierarchicalRequirement","ObjectID":1},
+                    {"_ref":"defect/2","_type":"Defect","ObjectID":2}
+                ]}
+            })))
+            .expect(1).mount(&server).await;
+        Mock::given(method("GET"))
+            .and(path("/slm/webservice/v2.0/typedefinition"))
+            .and(query_param("workspace", "workspace/9"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "QueryResult":{"StartIndex":1,"TotalResultCount":1,"Results":[
+                    {"_ref":"typedefinition/10","Attributes":{"_ref":"TypeDefinition/10/Attributes"}}
+                ]}
+            })))
+            .mount(&server).await;
+        Mock::given(method("GET"))
+            .and(path("/slm/webservice/v2.0/TypeDefinition/10/Attributes"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "QueryResult":{"StartIndex":1,"TotalResultCount":1,"Results":[
+                    {"_ref":"attributedefinition/-12501","ElementName":"ScheduleState","AttributeType":"STRING",
+                     "AllowedValues":{"_ref":"AttributeDefinition/-12501/AllowedValues"}}
+                ]}
+            })))
+            .mount(&server).await;
+        Mock::given(method("GET"))
+            .and(path("/slm/webservice/v2.0/AttributeDefinition/-12501/AllowedValues"))
+            .and(query_param("workspace", "workspace/9"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "QueryResult":{"StartIndex":0,"PageSize":0,"TotalResultCount":4,"Results":enum_rows()}
+            })))
+            .mount(&server).await;
+        let q = Query {
+            workspace: "workspace/9".into(),
+            artifact_types: [
+                "HierarchicalRequirement",
+                "Defect",
+                "TestSet",
+                "DefectSuite",
+            ]
+            .map(String::from)
+            .to_vec(),
+            ..Default::default()
+        };
+        assert_eq!(
+            c.cached_query("Artifact", &q, false)
+                .await
+                .unwrap()
+                .results
+                .len(),
+            2
+        );
+        let fields = c
+            .fields("HierarchicalRequirement", &q.workspace)
+            .await
+            .unwrap();
+        let workflow = c
+            .workflow("HierarchicalRequirement", &q.workspace, &fields)
+            .await
+            .unwrap();
+        assert_eq!(
+            workflow.iter().map(|o| o.text("Name")).collect::<Vec<_>>(),
+            ["Defined", "In-Progress", "Completed", "Accepted"]
+        );
+        assert!(
+            server
+                .received_requests()
+                .await
+                .unwrap()
+                .iter()
+                .all(|r| r.method.as_str() == "GET")
+        );
+    }
     #[tokio::test]
     async fn full_export_pages_preserve_scope_and_reject_changed_totals() {
         let server = MockServer::start().await;
