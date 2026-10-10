@@ -213,6 +213,13 @@ while reload is in flight and unsent comments remain. Original revision/connecti
 must still match when Save starts. WSAPI has no atomic compare-and-swap: another
 edit can occur after the preflight read; the UI must not promise atomicity.
 
+Save acknowledgements merge omitted fields with the submitted snapshot, retain
+edits/comments typed while the request ran, and preserve known collection
+membership when a returned summary has the same count. A different count requires
+fresh review. Explicit server nulls take precedence. Reload retrieves complete
+Tags/Milestones before the three-way comparison; validation errors keep an
+in-flight mutation's guard active until its own completion callback.
+
 Supported subtabs: Details, Tasks, Test Cases, Defects, Children (Feature→UserStories),
 Discussions, Revision History, Attachments, More fields. Only schema-supported
 relations appear; Task omits Tasks/Children. Counts show known totals or unknown.
@@ -284,7 +291,7 @@ its detailed behaviors, not merely a same-named button.
 | R11 | schema-driven details/create/save/delete and defaults | schema-driven controller/editor; Windows edit/save and create-in-Completed lane; required/typed tests |
 | R12 | native rich editing/source/preview and exact HTML preservation | native TextInput/StyledText and source/preview; UTF-8/headings/lists/link/HTML-preservation tests and source save |
 | R13 | references, Tags/Milestones, color and validation | native pickers/palette; real User-choice click, complete-selection paging and typed collection/ref validation |
-| R14 | reload three-way conflict handling and dirty navigation | editor three-way merge; conflict/late-edit tests and Windows Save/Discard/Cancel/Save-and-continue |
+| R14 | reload three-way conflict handling and dirty navigation | editor reload/acknowledgement merge; sparse/late-edit/collection-summary tests and Windows delayed-save, write-guard, Save/Discard/Cancel/Save-and-continue |
 | R15 | tasks/children/test cases/defects/discussions/revisions | metadata-driven relations; supported-subtab test and Windows Tasks/Attachments/Revisions/Discussions reads/comment |
 | R16 | attachment upload/download/delete and orphan cleanup | client attachment services + native file dialogs; download/conflicting-delete/orphan-cleanup/5-MiB fixture tests |
 | R17 | bulk edit preview, scope/revision checks and partial outcomes | shared_fields and reviewed plan; Windows two-item bulk preview/apply plus partial-failure/no-retry test |

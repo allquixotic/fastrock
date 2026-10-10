@@ -962,7 +962,6 @@ impl AppController {
     fn rally_error(&mut self, id: TabId, error: impl ToString) {
         if let Some(tab) = self.rally_tab_mut(id) {
             tab.error = error.to_string();
-            tab.busy = false;
             tab.loading = false;
             tab.failures += 1;
         }
@@ -2270,7 +2269,12 @@ impl AppController {
         let reference = e.original.text("_ref");
         let expected = reference.clone();
         self.backend.spawn(async move {
-            let result = client.get(&reference).await;
+            let result = async {
+                let mut object = client.get(&reference).await?;
+                client.complete_selections(&mut object).await?;
+                Ok::<_, anyhow::Error>(object)
+            }
+            .await;
             ui_thread::post(move |app| {
                 if let Some(e) = app
                     .rally_tab_mut(id)
@@ -2325,6 +2329,9 @@ impl AppController {
             .map(|user| user.text("_ref"))
             .unwrap_or_default();
         self.backend.spawn(async move {
+            let acknowledged_fields = fields.clone();
+            let submitted_draft = editor.draft.clone();
+            let submitted_comment = editor.comments.clone();
             let mut saved = None;
             let mut posted = false;
             let mut error = None;
@@ -2369,14 +2376,9 @@ impl AppController {
                     tab.busy = false;
                     if let Some(editor) = tab.editor.as_mut() {
                         if let Some(object) = saved {
-                            editor.original = object.clone();
-                            editor.draft = object;
-                            editor.new = false;
-                            editor.conflicts.clear();
-                            editor.history.clear();
-                            editor.redo.clear();
+                            editor.accept_save(&submitted_draft, &acknowledged_fields, object);
                         }
-                        if posted {
+                        if posted && editor.comments == submitted_comment {
                             editor.comments.clear();
                         }
                     }
@@ -3818,7 +3820,7 @@ impl AppController {
             },
             "dump" => {
                 let path = get(1);
-                let value = json!({"rallyTabs":self.tabs.iter().filter(|tab|matches!(&tab.kind,TabKind::Rally(_))).count(),"connected":state.get_connected(),"busy":state.get_busy(),"loading":state.get_loading(),"error":state.get_error().as_str(),"title":state.get_title().as_str(),"mode":state.get_mode().as_str(),"summary":state.get_summary().as_str(),"detail":state.get_detail_open(),"dirty":state.get_dirty(),"filterDraft":state.get_filter_value().as_str(),"scrollTable":state.get_table_y(),"dirtyGuard":state.get_dirty_guard_open(),"pickerOpen":state.get_picker_open(),"relations":state.get_relations().row_count(),"inline":state.get_inline_open(),"rows":state.get_rows().iter().map(|r|json!({"ref":r.reference.as_str(),"id":r.id.as_str(),"title":r.title.as_str(),"kind":r.kind.as_str(),"selected":r.selected,"cells":r.cells.iter().map(|c|json!({"field":c.field.as_str(),"text":c.text.as_str(),"kind":c.kind.as_str()})).collect::<Vec<_>>()})).collect::<Vec<_>>(),"lanes":state.get_lanes().iter().map(|l|json!({"name":l.name.as_str(),"value":l.value.as_str(),"caption":l.caption.as_str(),"count":l.cards.row_count()})).collect::<Vec<_>>(),"fields":state.get_details().iter().map(|f|json!({"name":f.name.as_str(),"value":f.value.as_str(),"kind":f.kind.as_str(),"conflict":f.conflict})).collect::<Vec<_>>(),"rich":state.get_rich_fields().iter().map(|f|json!({"name":f.name.as_str(),"value":f.value.as_str(),"plain":f.plain.as_str()})).collect::<Vec<_>>(),"views":state.get_saved_views().iter().map(|v|v.label.to_string()).collect::<Vec<_>>(),"assistant":state.get_assistant_history().as_str(),"proposal":state.get_proposal().row_count()});
+                let value = json!({"originalName":self.rally_active_id().and_then(|id|self.rally_tab(id)).and_then(|t|t.editor.as_ref()).map(|e|e.original.text("Name")).unwrap_or_default(),"rallyTabs":self.tabs.iter().filter(|tab|matches!(&tab.kind,TabKind::Rally(_))).count(),"connected":state.get_connected(),"busy":state.get_busy(),"loading":state.get_loading(),"error":state.get_error().as_str(),"title":state.get_title().as_str(),"mode":state.get_mode().as_str(),"summary":state.get_summary().as_str(),"detail":state.get_detail_open(),"dirty":state.get_dirty(),"filterDraft":state.get_filter_value().as_str(),"scrollTable":state.get_table_y(),"dirtyGuard":state.get_dirty_guard_open(),"pickerOpen":state.get_picker_open(),"relations":state.get_relations().row_count(),"inline":state.get_inline_open(),"rows":state.get_rows().iter().map(|r|json!({"ref":r.reference.as_str(),"id":r.id.as_str(),"title":r.title.as_str(),"kind":r.kind.as_str(),"selected":r.selected,"cells":r.cells.iter().map(|c|json!({"field":c.field.as_str(),"text":c.text.as_str(),"kind":c.kind.as_str()})).collect::<Vec<_>>()})).collect::<Vec<_>>(),"lanes":state.get_lanes().iter().map(|l|json!({"name":l.name.as_str(),"value":l.value.as_str(),"caption":l.caption.as_str(),"count":l.cards.row_count()})).collect::<Vec<_>>(),"fields":state.get_details().iter().map(|f|json!({"name":f.name.as_str(),"value":f.value.as_str(),"kind":f.kind.as_str(),"conflict":f.conflict})).collect::<Vec<_>>(),"rich":state.get_rich_fields().iter().map(|f|json!({"name":f.name.as_str(),"value":f.value.as_str(),"plain":f.plain.as_str()})).collect::<Vec<_>>(),"views":state.get_saved_views().iter().map(|v|v.label.to_string()).collect::<Vec<_>>(),"assistant":state.get_assistant_history().as_str(),"proposal":state.get_proposal().row_count()});
                 self.backend.spawn(async move {
                     let _ = tokio::fs::write(path, value.to_string()).await;
                 });

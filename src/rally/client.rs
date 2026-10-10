@@ -516,8 +516,12 @@ impl Client {
             ));
         }
         self.check_revision(before).await?;
-        self.mutate(&before.text("_ref"), kind, fields, &query)
-            .await
+        let returned = self
+            .mutate(&before.text("_ref"), kind, fields.clone(), &query)
+            .await?;
+        Ok(super::editor::acknowledged_object(
+            before, &fields, returned,
+        ))
     }
     pub async fn delete(&self, before: &Object) -> Result<()> {
         if self.reference_kind(&before.text("_ref"))? == "Attachment"

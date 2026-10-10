@@ -93,10 +93,13 @@ class RallyFixture:
             self.objects.pop(ref,None); return self.respond(h,{'OperationResult':{'Errors':[]}})
         fields=next(iter(body.values()),{})
         if path.endswith('/create'):
-            self.serial+=1; kind=path[:-7]; o=self.obj(kind,self.serial,fields.get('Name','Created'),**{k:v for k,v in fields.items() if k!='Name'}); o['FormattedID']='USNEW'
+            self.serial+=1; kind=next(iter(body)); o=self.obj(kind,self.serial,fields.get('Name','Created'),**{k:v for k,v in fields.items() if k!='Name'}); o['FormattedID']='USNEW'
         else:
             o=self.objects[ref]; o.update(fields); o['VersionId']=str(int(o['VersionId'])+1); o['LastUpdateDate']=f'2026-10-10T00:00:{int(o["VersionId"]):02}Z'
-        return self.respond(h,{'OperationResult':{'Errors':[],'Object':o}})
+        if fields.get('Name')=='Delayed acknowledged title':time.sleep(1)
+        # Artifact writes deliberately return a sparse object, as WSAPI may do.
+        returned={k:v for k,v in o.items() if k in ('_ref','_type','ObjectID','FormattedID','VersionId','LastUpdateDate')} if o['_type'].lower() in ('hierarchicalrequirement','defect','testset','defectsuite') else o
+        return self.respond(h,{'OperationResult':{'Errors':[],'Object':returned}})
     @staticmethod
     def respond(h,value,status=200):
         data=json.dumps(value).encode(); h.send_response(status);h.send_header('Content-Type','application/json');h.send_header('Content-Length',str(len(data)));h.end_headers();h.wfile.write(data)
@@ -120,13 +123,14 @@ def main():
             rally('view','mode','board'),wait(128),rally('action','next'),wait(256),rally('action','next'),wait(300),*dump('board'),snap('board'),
             rally('points',str(OUT/'drag-points.json'),'Fixture story 1','Fixture story 2'),{'wait':2500},*dump('dragged'),rally('move',fixture.story['_ref'],'In-Progress','',fixture.ref('HierarchicalRequirement',102),'below'),wait(300),rally('action','undo-move'),wait(300),rally('view','group','Owner'),wait(300),rally('view','card-field','Priority'),wait(300),*dump('swimlanes'),snap('swimlanes'),rally('view','mode','list'),rally('action','refresh'),wait(128),
             rally('item',fixture.story['_ref']),wait(detail=True),*dump('detail'),snap('detail'),
+            rally('edit','Name','Delayed acknowledged title'),rally('action','detail-save'),rally('edit','Name','Late edit kept'),rally('edit','PlanEstimate','not-a-number'),*dump('during-save'),wait(detail=True),*dump('late-save'),
             rally('edit','Name','Native edited title'),wait(detail=True),*dump('dirty'),rally('action','detail-save'),wait(detail=True),*dump('saved'),
             rally('view','relation','Attachments'),{'wait':500},*dump('attachments'),snap('attachments'),rally('view','relation','Tasks'),{'wait':500},*dump('tasks'),rally('view','relation','Revisions'),{'wait':500},*dump('revisions'),rally('view','relation','Discussions'),{'wait':1000},*dump('discussion'),
             rally('draft','comment','Fixture posted comment'),rally('action','comment'),{'wait':1000},
             rally('view','relation','Details'),rally('rich','Description','<h2>Edited heading</h2><p>Native <b>bold</b></p>','source'),rally('action','detail-save'),wait(detail=True),
             rally('edit','Name','Cancelled native draft'),rally('action','detail-back'),{'wait':100},snap('dirty-guard'),rally('dirty-choice','cancel'),wait(detail=True),rally('action','detail-back'),rally('dirty-choice','discard'),wait(128,False),rally('item',fixture.story['_ref']),wait(detail=True),rally('edit','Name','Save then navigate'),rally('action','detail-back'),rally('dirty-choice','save'),wait(128,False),*dump('save-navigate'),
             rally('set','view-name','Native saved view'),rally('action','save-view'),{'wait':500},*dump('views'),
-            rally('set','filter-value','Unapplied filter draft'),rally('set','scroll-table','-120'),rally('open','teamboard'),wait(128,False,tabs=2),rally('action','next'),wait(256),rally('action','next'),wait(303),*dump('mixed'),snap('mixed'),rally('view','create-state','Completed'),wait(detail=True),*dump('new-in-lane'),rally('edit','Name','Native created story'),rally('action','detail-save'),wait(detail=True),*dump('created'),rally('action','detail-back'),wait(303,False),rally('close'),wait(128,False,tabs=1),*dump('independent'),
+            rally('set','filter-value','Unapplied filter draft'),rally('set','scroll-table','-120'),rally('open','teamboard'),wait(128,False,tabs=2),rally('action','next'),wait(256),rally('action','next'),wait(303),*dump('mixed'),snap('mixed'),rally('view','create-state','Completed'),wait(detail=True),*dump('new-in-lane'),rally('edit','Name','Native created story'),rally('action','detail-save'),wait(detail=True),*dump('created'),rally('action','detail-back'),wait(303,False),rally('action','next'),wait(304,False),*dump('created-in-board'),rally('close'),wait(128,False,tabs=1),*dump('independent'),
 
             rally('hide','search'),{'wait':100},rally('restore','all'),rally('select',fixture.story['_ref']),rally('select',fixture.ref('HierarchicalRequirement',102)),rally('action','bulk'),{'wait':500},rally('bulk-edit','Name','Bulk native title'),rally('picker','Owner'),{'wait':500},{'click_text':'Fixture User · fixture'},{'wait':300},*dump('picker-chosen'),rally('action','bulk-review'),{'wait':600},snap('bulk'),rally('action','bulk-apply'),{'wait':1000},rally('action','bulk-cancel'),
             rally('action','assistant'),rally('draft','assistant','Suggest a title change'),rally('send'),{'wait':2000},*dump('proposal'),snap('proposal'),
@@ -187,12 +191,17 @@ def main():
         for name in ('list','board','swimlanes','detail','saved','mixed','independent','picker-chosen','applied','restored','returned'):
             if (OUT/(name+'.json')).exists():assert not load(name)['error'],(name,load(name)['error'])
         assert not load('picker-chosen')['pickerOpen'],'Choosing a User left the picker open'
+        assert load('during-save')['busy'],'Validation cleared an in-flight write guard'
+        assert load('late-save')['dirty'] and any(f['name']=='Name' and f['value']=='Late edit kept' for f in load('late-save')['fields']),'Acknowledgement lost the late draft'
+        assert load('late-save')['originalName']=='Delayed acknowledged title','Sparse response lost acknowledged baseline'
         for name in ('attachments','tasks','revisions'):assert load(name)['relations']==1,(name,load(name)['relations'])
         assert len(load('list')['rows'])==128
         assert any(cell['field']=='ScheduleState' and cell['text']=='In-Progress' for cell in next(row for row in load('dragged')['rows'] if row['ref']==fixture.story['_ref'])['cells']), 'Real native drag did not change the card state'
         assert any(r['method']=='POST' and r['body'].get('HierarchicalRequirement',{}).get('ScheduleState')=='In-Progress' for r in fixture.requests[:next(i for i,r in enumerate(fixture.requests) if r['body'].get('HierarchicalRequirement',{}).get('Name')=='Native edited title')]),'Native drag produced no workflow write'
         assert any(f['name']=='ScheduleState' and f['value']=='Completed' for f in load('new-in-lane')['fields']),'Lane creation lost workflow default'
         assert any(r['path']=='hierarchicalrequirement/create' and r['body']['HierarchicalRequirement']['Name']=='Native created story' for r in fixture.requests),'Native create did not write'
+        assert any(row['title']=='Native created story' for row in load('created-in-board')['rows']),'Sparse create response lost the new artifact in board paging'
+        assert load('created')['originalName']=='Native created story','Sparse create response lost the acknowledged fields'
         assert len(load('board')['rows'])==300,'Board paging skipped records'
         assert len(load('swimlanes')['rows'])==300,'Changing board grouping lost the loaded working set'
         assert set(row['kind'] for row in load('mixed')['rows'])=={'HierarchicalRequirement','Defect','TestSet','DefectSuite'},'Mixed board lost concrete types'

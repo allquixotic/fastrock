@@ -91,6 +91,63 @@ impl Editor {
             self.history.push(std::mem::replace(&mut self.draft, next));
         }
     }
+    /// Accept acknowledged fields without losing omitted data or later edits.
+    pub fn accept_save(&mut self, submitted: &Object, changes: &Object, returned: Object) {
+        let mut acknowledged = acknowledged_object(&self.original, changes, returned);
+        for (key, value) in submitted {
+            if let (Some(reference), Some(remote)) = (
+                value.get("_ref").and_then(Value::as_str),
+                acknowledged.get(key).and_then(Value::as_object),
+            ) {
+                if remote.get("_ref").and_then(Value::as_str) == Some(reference) {
+                    let mut labeled = value.as_object().unwrap().clone();
+                    labeled.extend(remote.clone());
+                    acknowledged.insert(key.clone(), Value::Object(labeled));
+                }
+            }
+        }
+        let latest = std::mem::replace(&mut self.draft, acknowledged.clone());
+        let keys = latest
+            .keys()
+            .chain(submitted.keys())
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        for key in keys {
+            if latest.get(&key) != submitted.get(&key) {
+                if let Some(value) = latest.get(&key) {
+                    self.draft.insert(key, value.clone());
+                } else {
+                    self.draft.remove(&key);
+                }
+            }
+        }
+        self.conflicts.clear();
+        for key in ["Tags", "Milestones"] {
+            if acknowledged
+                .get(key)
+                .is_some_and(|v| v.is_object() && v.get("Count").is_some())
+            {
+                let known = changes.get(key).or_else(|| self.original.get(key));
+                if let Some(known) = known.filter(|v| v.is_array()) {
+                    if latest.get(key) == submitted.get(key) {
+                        self.draft.insert(key.into(), known.clone());
+                    }
+                    self.conflicts.insert(
+                        key.into(),
+                        Conflict {
+                            before: self.original.get(key).cloned().unwrap_or(Value::Null),
+                            local: self.draft.get(key).cloned().unwrap_or(Value::Null),
+                            remote: acknowledged.get(key).cloned().unwrap_or(Value::Null),
+                        },
+                    );
+                }
+            }
+        }
+        self.original = acknowledged;
+        self.new = false;
+        self.history.clear();
+        self.redo.clear();
+    }
     pub fn reload(&mut self, remote: Object) {
         let names = self
             .original
@@ -289,6 +346,25 @@ impl Editor {
         Ok(changes)
     }
 }
+
+pub fn acknowledged_object(before: &Object, changes: &Object, returned: Object) -> Object {
+    let mut result = before.clone();
+    result.extend(changes.clone());
+    for (key, value) in returned {
+        if ["Tags", "Milestones"].contains(&key.as_str()) {
+            if let (Some(known), Some(count)) = (
+                result.get(&key).and_then(Value::as_array),
+                value.get("Count").and_then(Value::as_u64),
+            ) {
+                if count == known.len() as u64 {
+                    continue;
+                }
+            }
+        }
+        result.insert(key, value);
+    }
+    result
+}
 pub fn identity_field(name: &str) -> bool {
     name.starts_with('_')
         || [
@@ -362,6 +438,60 @@ pub fn shared_fields<'a>(schemas: impl IntoIterator<Item = &'a [Field]>) -> Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn v19_sparse_save_preserves_late_edits_html_and_complete_collections() {
+        let before = json!({"Name":"before","Description":"<DIV data-x='1'>Exact HTML</DIV>","Notes":"old","VersionId":"1","Tags":[{"_ref":"tag/5"}]}).as_object().unwrap().clone();
+        let mut editor = Editor::new(before, "Task".into(), false, vec![], String::new());
+        editor.edit("Name", json!("submitted"));
+        let submitted = editor.draft.clone();
+        editor.edit("Name", json!("typed while saving"));
+        editor.comments = "later comment".into();
+        editor.accept_save(
+            &submitted,
+            json!({"Name":"submitted"}).as_object().unwrap(),
+            json!({"VersionId":"2","Notes":null,"Tags":{"Count":1,"_ref":"task/1/Tags"}})
+                .as_object()
+                .unwrap()
+                .clone(),
+        );
+        assert_eq!(editor.original.text("Name"), "submitted");
+        assert_eq!(editor.draft.text("Name"), "typed while saving");
+        assert_eq!(
+            editor.draft.text("Description"),
+            "<DIV data-x='1'>Exact HTML</DIV>"
+        );
+        assert_eq!(editor.draft.get("Notes"), Some(&Value::Null));
+        assert!(editor.draft["Tags"].is_array());
+        assert_eq!(editor.draft.text("VersionId"), "2");
+        assert_eq!(editor.comments, "later comment");
+        assert!(editor.dirty());
+    }
+    #[test]
+    fn v19_changed_collection_summary_requires_fresh_review() {
+        let before = json!({"Name":"before","Tags":[{"_ref":"tag/5"}]})
+            .as_object()
+            .unwrap()
+            .clone();
+        let mut editor = Editor::new(before, "Task".into(), false, vec![], String::new());
+        let submitted = editor.draft.clone();
+        editor.accept_save(
+            &submitted,
+            &Object::new(),
+            json!({"Tags":{"Count":2,"_ref":"task/1/Tags"}})
+                .as_object()
+                .unwrap()
+                .clone(),
+        );
+        assert!(editor.conflicts.contains_key("Tags"));
+        assert!(editor.draft["Tags"].is_array());
+        assert!(editor.dirty());
+        let cleared = acknowledged_object(
+            &editor.draft,
+            &Object::new(),
+            json!({"Tags":null}).as_object().unwrap().clone(),
+        );
+        assert_eq!(cleared.get("Tags"), Some(&Value::Null));
+    }
     #[test]
     fn reload_keeps_local_edits_and_flags_overlap() {
         let mut e = Editor::new(

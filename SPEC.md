@@ -209,3 +209,9 @@ B54|2026-10-10|Changing board group retained later-page cursor, so reload append
 B55|2026-10-10|All toolbar rows plus fixed 260px narrow assistant exhausted the document height at 900x700|V20/V22; bound toolbar height with native ScrollView and size bottom dock to viewport, inspect narrow document/assistant screenshot
 
 B56|2026-10-10|Selected Rust cache action exports CARGO_INCREMENTAL=0 and discards incremental artifacts despite workflow env=1|V15/V22; use ordinary Actions cache for dependencies and full target, retain incremental setting, policy gate checks runtime environment
+
+B57|2026-10-10|Save replaced entire editor with mutation response, losing omitted fields, complete collections and edits typed while request ran; reload omitted selection hydration|V19/V20; merge acknowledged snapshots, preserve late field/comment drafts, hydrate reload selections, fixture sparse responses and delayed writes
+
+B58|2026-10-10|Generic validation/session error cleared busy during an unrelated in-flight mutation|V19/V20; preserve busy until owning write callback finishes; delayed-write invalid-input fixture checks busy and retained draft
+
+B59|2026-10-10|Fixture created lower-case _type, hiding new artifacts from its case-sensitive mixed query|V18/V20; use canonical payload type, page beyond retained window, assert created row is present

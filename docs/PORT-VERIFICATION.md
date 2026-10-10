@@ -1,7 +1,7 @@
 # Rust/Slint port verification
 
 The Windows x64 fast build passed the fixture acceptance suite on `games` on
-2026-10-10. All 674 headless Rust tests passed on the Mac. The Mac executable
+2026-10-10. All 676 headless Rust tests passed on the Mac. The Mac executable
 compiled successfully; no GUI was launched on the Mac.
 
 The original Rally layout and behavior accounting, source-function index and
@@ -15,10 +15,10 @@ the preserved Go baseline is `f523c6b7ae6f9b6a12ca951845b56d81cb76a879`.
 |---|---|
 | `python3 dev/check-build-policy.py` | Passed; dev/release/test and build-script settings, flags and entrypoints checked |
 | `cargo fmt --all -- --check` and `git diff --check` | Passed |
-| `cargo test --locked --lib -- --skip window_runtime::tests` | 674 passed, zero failures, one GUI test filtered out on the Mac |
-| `cargo xwin build --locked --target x86_64-pc-windows-msvc --bin fastrock` | Passed, dev/unoptimized; final incremental build 59.34 seconds |
-| `python dev/windows-rally-smoke.py fastrock.exe`, interactive session on `games` | Passed; 77 fixture requests and 11 explicit writes |
-| `cargo build --locked --bin fastrock`, Mac | Passed, dev/unoptimized; final incremental build 1 minute 6 seconds |
+| `cargo test --locked --lib -- --skip window_runtime::tests` | 676 passed, zero failures, one GUI test filtered out on the Mac |
+| `cargo xwin build --locked --target x86_64-pc-windows-msvc --bin fastrock` | Passed, dev/unoptimized; final incremental build 1 minute 11 seconds |
+| `python dev/windows-rally-smoke.py fastrock.exe`, interactive session on `games` | Passed; 80 fixture requests and 12 explicit writes |
+| `cargo build --locked --bin fastrock`, Mac | Passed, dev/unoptimized; final incremental build 1 minute 32 seconds |
 | Installed Mac Codex CLI 0.162.0, read-only stdio initialize/config/model-list | Passed; seven models returned, no inference or Rally writes |
 
 Toolchain: Rust 1.95.0; native Slint 1.18.1 software renderer. Timings describe
@@ -30,7 +30,7 @@ errors remain.
 The exact executable exercised on `games` has SHA-256:
 
 ```text
-bb923257fed3961be8e875ca9365a926381e80079c2aa12392cbe728a9ed69da
+6858f4cfb257b90976949d00a8b7198d59efa6133c1dd25664704d9cf0822d5f
 ```
 
 `BUILD.json` inside each package records the source commit, dirty status, binary
@@ -44,7 +44,7 @@ The suite launches the actual Slint executable with a loopback WSAPI fixture and
 an external stdio Codex fixture. It records requests without authorization
 headers and retains screenshots, state dumps, session files, an executable hash
 and `acceptance.json` under `build/rally-smoke` on Windows. The local final copy is
-`build/rally-windows-final26-evidence`. These generated outputs are ignored by Git.
+`build/rally-windows-alpha2-evidence`. These generated outputs are ignored by Git.
 
 Coverage includes horizontal document tabs, a chats-only sidebar, list paging,
 300-card board paging, mixed concrete artifact types, vertical Owner swimlanes,
@@ -54,7 +54,9 @@ for closing the picker and supplying a typed reference to bulk review.
 
 The remaining settled callback scenarios cover typed edit/save, create with the
 Completed-lane default, related Tasks/Attachments/Revisions/Discussions reads,
-posting a discussion, rich HTML source save, dirty-navigation
+posting a discussion, rich HTML source save, sparse mutation responses, late
+edits during a delayed save, retained in-flight write guards on invalid input,
+paging to the created artifact, dirty-navigation
 Save/Discard/Cancel, private-view snapshots, unapplied-filter isolation, row
 hide/restore, reviewed bulk updates, an assistant proposal followed by explicit
 human Apply, narrow layouts, restart with unsaved fields/comments, and popout
@@ -65,7 +67,8 @@ HTTP and pure Rust tests also exercise complete collection paging, full-query
 CSV scope and formula neutralization, malformed or changing pages, reference and
 type guards, token redaction, mutation non-retry, revision conflicts, attachment
 size/download/orphan cleanup, stale cache invalidation, three-way merge, partial
-batch outcomes and legacy settings/session migration. Transport tests cover
+batch outcomes, acknowledgement/collection-summary/late-edit merging and legacy
+settings/session migration. Transport tests cover
 timeouts, cancellations, bounded frames/events and disconnect cleanup.
 
 ![Native workflow board](images/rally-board.png)
