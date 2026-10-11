@@ -215,3 +215,75 @@ physical Windows fixture receipts) and `build/ci-alpha5-download/` (published
 bytes and attestations). Both temporary runners deregistered; zero remained.
 No production Rally access/writes or Mac GUI launch occurred. Mac free space
 was about 2.4 TiB, games about 3.06 TB; active incremental caches retained.
+
+## Official optimized 0.2.0
+
+[Fastrock 0.2.0](https://github.com/allquixotic/fastrock/releases/tag/v0.2.0%2Bbuild.1)
+is a published, non-draft, non-prerelease GitHub release marked latest. The
+application version is exactly `0.2.0`; tag `v0.2.0+build.1` identifies the
+packaging correction. Source: `780dfade69930ba2f325f2326f719d927609bf5b`.
+[CI 38101740788](https://github.com/allquixotic/fastrock/actions/runs/38101740788)
+passed all three jobs and published all ten assets.
+
+Sean explicitly authorized `opt-level=1`, full `debug=2`, packed debug symbols,
+`lto="off"`, `strip="none"`, 256 codegen units and incremental compilation for
+this official version. Captured rustc invocations confirm optimization, debug
+information and LTO settings for the application and protocol/config crates.
+`lto="off"` disables local ThinLTO too. Other/default profiles and prereleases
+remain unoptimized and prioritize compile speed.
+
+Initial compilation took 6m28s for Windows and 6m49s for Mac. The first CI run
+passed 680 headless tests but rejected the valid Mac dSYM because Cargo retains
+a hash-suffixed filename inside it. The checker now resolves the DWARF file and
+verifies UUID plus nonempty debug-info/line sections; a hashed-name regression
+covers this case. The original `v0.2.0` tag was preserved. The corrected run
+reused both binaries (0.88s/0.82s Cargo checks), completed its build job in 37s,
+passed all 680 headless tests and four release-policy/symbol tests, and required
+no second optimization pass. Windows signing/testing/publication took 5m56s;
+Mac signing/notarization/publication took 3m42s.
+
+Windows Authenticode and Microsoft RFC 3161 timestamp verification passed in
+CI and independently on `games`. Publisher:
+`CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US`;
+certificate SHA-1 `ADBCA762010281BC5063C83068FD17E37C1EF6D2`.
+Signed executable SHA-256:
+`b0fe734f88abd724fc20549df0d9447fb92e67e0747a71d5a87b62ce48f34ec1`.
+Hosted callback tests and physical mouse tests on the downloaded executable
+each passed 82 requests / 13 fixture writes. The physical run confirms native
+dragging and user-picker clicks; both runs record realistic allowed-value
+metadata and cover the Team Board regression, editing, restart and window
+transfer. The physical swimlane screenshot was also inspected.
+
+The downloaded Windows PDB matches CodeView GUID
+`b202a3cf-ddba-3329-4c4c-44205044422e`, age 1. LLVM independently confirms debug
+information, types, globals and publics are present and the PDB is not stripped.
+The downloaded Mac dSYM matches the signed app inside the published DMG:
+UUID `BED72D69-F3F4-3DEF-BB21-9A9C1FBD0B95` (arm64), with nonempty DWARF info
+and line sections. Symbol manifests identify the same source, workflow run,
+compiler settings and signed executable hashes as the application packages.
+
+Mac Developer ID SHA-1 `9A3CFFC04D3472208A62C48E707EA6D4261998A1`, team
+`B6XDYNLMPU`, was used throughout. Apple accepted app submission
+`21ea83c3-f16b-461d-8953-166df262d5d8` and DMG submission
+`f2e52c47-da77-4968-bf70-b677768b29d4`; both logs have no issues. CI verified
+stapling and Gatekeeper on app, DMG and mounted app. Independent checks of the
+downloaded DMG verified signatures, app/DMG staples and Gatekeeper again.
+Signed Mac executable SHA-256:
+`64a2fb081ec3dd0ebe2f6c57dc981e6d7ba6b92296c99414e532dc0602a8838c`.
+
+All four downloaded packages match their SHA-256 sidecars and GitHub asset
+digests. Their bundled GitHub attestations independently verify against the
+exact source, tag and `.github/workflows/release.yml`:
+
+| Asset | Bytes | SHA-256 |
+| --- | ---: | --- |
+| Windows application ZIP | 65,034,804 | `b5754875a8fecc519f46bee7497cabd863c121664b83c0bcf5be393c981cdc2f` |
+| Windows PDB ZIP | 1,376,967,419 | `4c60adf3a23c047971bad90749865fde7e756a8ebff0aaf83d0ed9a363696e7c` |
+| Mac application DMG | 124,643,821 | `498073ae09abd50d285cf4e36dd538a33725644bbe275ba3279a460a4c25921b` |
+| Mac dSYM ZIP | 1,025,275,158 | `79dd66e95e773de7133814d31d97df268039075461ebc63727b4d92ae2c6e552` |
+
+Evidence is retained in `build/ci-020-evidence/` (CI, signing, symbols,
+attestations and physical fixture receipts) and `build/ci-020-download/`
+(published bytes). Both temporary runners removed their registrations; zero
+remained. No Mac GUI or production Rally calls/writes occurred. Mac free space
+remained about 2.3 TiB and games about 3.06 TB; active caches were retained.

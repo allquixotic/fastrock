@@ -13,7 +13,7 @@ Codex GUI conversation features remain available through the external protocol.
 
 ## Releases
 
-Official **0.2.0** uses basic optimization (`opt-level=1`), full debugging
+[Official **0.2.0**](https://github.com/allquixotic/fastrock/releases/tag/v0.2.0%2Bbuild.1) uses basic optimization (`opt-level=1`), full debugging
 symbols (`debug=2`) and `lto="off"`. Matching Windows PDB and Mac dSYM symbol
 archives are published separately for crash debugging. Development and
 prerelease builds retain the fast settings below.
