@@ -11,6 +11,13 @@ starts `codex app-server` over stdio and inherits its configuration and environm
 inference runtime, app-server, V8, or bundled Codex helper executables. Existing
 Codex GUI conversation features remain available through the external protocol.
 
+## Releases
+
+Official **0.2.0** uses basic optimization (`opt-level=1`), full debugging
+symbols (`debug=2`) and `lto="off"`. Matching Windows PDB and Mac dSYM symbol
+archives are published separately for crash debugging. Development and
+prerelease builds retain the fast settings below.
+
 ## Test builds
 
 Windows x64 prereleases are available from [Fastrock releases](https://github.com/allquixotic/fastrock/releases).
@@ -18,7 +25,8 @@ Extract the signed ZIP and run `fastrock.exe`. Apple Silicon Macs get a signed,
 notarized and stapled DMG. All release assets are built and published by CI.
 These builds deliberately have **zero
 optimization**, no debug information, no LTO, 256 codegen units and incremental
-compilation. Every profile, including `release`, follows this policy. Optimized
+compilation. Default profiles, including `release`, follow this policy; the explicitly
+authorized `official` profile is separate. Optimized
 builds require explicit authorization. The software renderer avoids compiling a
 second GPU stack. See [rapid build/release instructions](docs/releases.md).
 
