@@ -4283,7 +4283,7 @@ dependencies = [
 
 [[package]]
 name = "fastrock"
-version = "0.2.0-alpha.5"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "arboard",

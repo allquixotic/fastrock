@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Developer ID signing and notarization in CI; never launch the GUI."""
 import hashlib,json,os,pathlib,plistlib,shutil,subprocess,sys,tomllib
+from release_config import build_plan, suffix
+from debug_symbols import verify_macos, unpack_dsym, zip_symbols
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 IDENTITY='9A3CFFC04D3472208A62C48E707EA6D4261998A1'
 TEAM='B6XDYNLMPU'
@@ -36,6 +38,7 @@ def main():
     assert sys.platform=='darwin' and os.environ.get('GITHUB_ACTIONS')=='true'
     os.chdir(ROOT)
     version=tomllib.load(open('Cargo.toml','rb'))['package']['version']
+    plan=build_plan(version)
     binary=pathlib.Path(sys.argv[1]).resolve()
     assert IDENTITY in run('security','find-identity','-v','-p','codesigning',capture=True)
     run('xcrun','notarytool','history','--keychain-profile',PROFILE,'--output-format','json',capture=True)
@@ -78,7 +81,7 @@ def main():
     temporary_zip.unlink()
     (stage/'Applications').symlink_to('/Applications')
     shutil.copy2(ROOT/'LICENSE',stage/'LICENSE.txt')
-    dmg=dist/f'fastrock-{version}-macos-arm64-fast.dmg'
+    dmg=dist/f'fastrock-{version}-macos-arm64{suffix(plan)}.dmg'
     assert not dmg.exists(),'Never overwrite a final signed distribution'
     run('hdiutil','create','-volname','Fastrock','-srcfolder',stage,'-format','UDRO',dmg)
     run('codesign','--force','--timestamp','--sign',IDENTITY,dmg)
@@ -105,6 +108,14 @@ def main():
             'identity_sha1':IDENTITY,'team_id':TEAM,'app_submission':app_id,'dmg_submission':dmg_id,
             'status':'Accepted','stapling':'app and DMG validated','gatekeeper':'app, DMG and mounted app accepted',
             'sha256':checksum,'architectures':['arm64'],'binary_sha256':hashlib.sha256(executable.read_bytes()).hexdigest()}
+    if not plan['prerelease']:
+        dsym=unpack_dsym(binary.with_name('fastrock.dSYM.zip'),dist/'debug-symbols')
+        identity=verify_macos(executable,dsym)
+        assert identity==build_input['symbols']['macos']
+        metadata={**build_input,'debug_symbols':identity,'signed_binary_sha256':record['binary_sha256']}
+        zip_symbols(dist/f'fastrock-{version}-macos-arm64-symbols.zip',
+                    [(p,p.relative_to(dsym.parent).as_posix()) for p in sorted(dsym.rglob('*')) if p.is_file()],metadata)
+        record['debug_symbols']=identity
     (evidence/'verification.json').write_text(json.dumps(record,indent=2)+'\n')
     print(json.dumps(record,indent=2),flush=True)
 

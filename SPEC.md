@@ -14,7 +14,7 @@ Broader GUI contract: repository `GUI.md`.
 - Fastrock alpha: signed Windows x64 fast ZIP and signed/notarized/stapled Apple Silicon Mac DMG via CI. Imported upstream universal release records remain historical.
 - Commit/push main directly; no draft PR workflow. CI builds/signs/verifies/publishes releases with persistent incremental caches; no unsigned fallback.
 - Never run GUI tests or launch this project's GUI on Sean's Mac unless the user explicitly says "test the GUI on this Mac"; use Windows hosts.
-- Publish only after fast development verification passes; never add an optimized build pass.
+- Publish only after development verification passes. Explicit 0.2.0 exception: official profile optimizes at level 1 with full debug info, packed symbols, LTO off; fast defaults remain.
 - Verify GitHub asset digest before deleting local build outputs.
 
 ## §I INTERFACES
@@ -53,7 +53,7 @@ V13: Viewing/resuming/reading ! never advance thread activity; user/agent/tool c
 
 V14: Pending-message pencil ! edit or delete local unsent input and server queue entries; preserve non-text attachments; queue update/delete ! atomic backend boundary; consumed input ! never silently rewrite history; failed/racing edits ! retain draft.
 
-V15: All Cargo profiles ! opt-level=0, debug=0, LTO=false, codegen-units=256; build scripts/CI ! no optimization overrides. Verify: dev/check-build-policy.py.
+V15: Default dev/release/test Cargo profiles ! opt-level=0, debug=0, LTO=false, codegen-units=256; build scripts/CI ! no optimization overrides. Verify: dev/check-build-policy.py.
 V16: Startup ! launch installed external Codex after first frame; inherited env/config; process cancellation/restart/disconnect ! retain unsent drafts. Verify: transport::tests plus Windows mock-process smoke.
 V17: Rally tokens ! OS vault only, no logs/prompts/settings; refs ! same-origin WSAPI; HTTP ! loopback only; mutation ! never auto-retry. Verify: rally::client::tests.
 V18: Query/search/filter/preset/types/export ! retain selected scope, paging and loaded-only totals; metadata ! per-workspace/type. Verify: rally::view::tests and fixture integration.
@@ -63,6 +63,8 @@ V21: Personal settings/views/session ! migrate legacy names and independent snap
 V22: Windows prerelease ! fast profile, exact source/asset metadata; tests ! fixture-only, software renderer; Mac GUI ! never launched. Verify: workflow/policy audit and Windows smoke.
 V23: Release ! commit/push main, tag, CI only; exact source/run/unsigned input hashes verified before signing; Windows ! expected publisher + RFC3161 timestamp + fixture acceptance of signed bytes; Mac ! pinned Developer ID + Accepted app/DMG logs + stapling + Gatekeeper including mounted app. Cache ! persistent, no per-release archive wait; no PR. Verify: release.yml, signing receipts and GitHub attestations.
 V24: Rally AttributeDefinition AllowedValues ! preserve all enum choices with shared literal "null", JSON null or absent refs; complete first unpaged catalog ! normalize StartIndex=0. Persisted duplicate identities and partial/unexpected pages ! still fail closed. Verify: rally::client::tests::v24_* and realistic Windows metadata fixture; Broadcom KB 57584.
+
+V25: Explicit stable 0.2.0 ! official profile opt=1, debug=2, packed symbols, LTO="off" (including local ThinLTO), strip=none, 256 codegen units, incremental; build scripts ! fast. Stable tag ! GitHub official/latest release, matching PDB GUID/age and dSYM UUID, symbol archives with hashes/source/run/attestations. Prereleases ! retain V15/V22. Verify: dev/test-release-policy.py, CI receipts, native signed Windows fixture and symbol checks.
 
 ## §T TASKS
 id|status|task|cites
@@ -100,6 +102,7 @@ T22|x|Port scoped assistant tools/proposals/human Apply|V17,V19,V20
 T23|x|Complete fixture/headless/Windows interaction checks and prerelease|V15,V16,V17,V18,V19,V20,V21,V22
 T24|x|Land port directly on main; fast cached CI signs/verifies/publishes Windows and Mac prerelease|V15,V22,V23,I.distribution
 T25|x|Fix enum metadata mistaken for duplicate Rally records; verify and publish signed prerelease|V17,V18,V23,V24
+T26|~|Publish official optimized/debuggable 0.2.0 with LTO off and matching debug symbol archives|V15,V22,V23,V25,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 
@@ -234,3 +237,5 @@ B62|2026-10-10|Delayed-navigation fixture reset Name to its acknowledged baselin
 B63|2026-10-10|GitHub runner config contains UTF-8 BOM; registration succeeded but plain JSON decode stopped listener startup|V23; read utf-8-sig, verify/resume this offline runner, remove registration after its one job
 
 B64|2026-10-10|Generic collection guard treats AllowedAttributeValue _ref="null" as shared object identity; documented unpaged catalog also uses StartIndex=0; simplified fixtures omitted both real WSAPI forms|V24; narrow metadata normalization, retained object guards, headless and Windows regressions
+
+B65|2026-10-10|Symbol fixture linked and deleted temporary object before dsymutil; UUID-only check accepted dSYM without debug sections|V25; retain fixture object, require nonempty DWARF info/line sections and reject empty matching-UUID symbols

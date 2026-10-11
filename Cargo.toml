@@ -1,6 +1,6 @@
 [package]
 name = "fastrock"
-version = "0.2.0-alpha.5"
+version = "0.2.0"
 edition = "2024"
 license = "Apache-2.0"
 build = "build.rs"
@@ -270,6 +270,23 @@ debug = 0
 codegen-units = 256
 
 [profile.release.build-override]
+opt-level = 0
+debug = 0
+codegen-units = 256
+
+# Sean's explicitly authorized 0.2.0 official release: -O with full symbols.
+# "off" disables even LLVM's local ThinLTO, unlike lto = false at opt-level > 0.
+[profile.official]
+inherits = "release"
+opt-level = 1
+debug = 2
+split-debuginfo = "packed"
+lto = "off"
+strip = "none"
+codegen-units = 256
+incremental = true
+
+[profile.official.build-override]
 opt-level = 0
 debug = 0
 codegen-units = 256

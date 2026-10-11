@@ -10,6 +10,9 @@ Inherit installed Codex environment/configuration; never install/update Codex.
 All build profiles prioritize compilation speed: opt-level=0, no LTO, no debug
 information, 256 codegen units, incremental builds, no stripping/packing pass.
 Optimized builds require Sean's explicit authorization. Prereleases use fast builds.
+Explicit exception: official 0.2.0 uses profile official, opt-level=1, debug=2,
+packed PDB/dSYM symbols, lto="off", no stripping; keep 256 codegen units and
+incremental builds. Publish matching verified symbol archives with the release.
 Always commit, push to main and release through CI; never create PRs.
 Release assets must be built, signed, verified and published by CI. Include Windows
 Authenticode/timestamping and Mac Developer ID/notarization/stapling; no unsigned

@@ -1,4 +1,39 @@
-# Rapid signed prereleases
+# Official 0.2.0 and rapid signed prereleases
+
+Sean explicitly authorized the official **0.2.0** build with optimization and
+crash symbols. `cargo build --profile official` selects `opt-level=1`, `debug=2`,
+`split-debuginfo="packed"`, `lto="off"`, `strip="none"`, 256 codegen units and
+incremental compilation. Build scripts/proc macros retain fast settings. Use
+`"off"` because Cargo's `lto=false` can still perform local ThinLTO at nonzero
+optimization levels. Other/default build profiles and prereleases stay fast;
+new stable version optimizations require explicit authorization.
+
+The v0.2.0 tag publishes a normal GitHub release marked latest. CI chooses the
+profile from the version and verifies the declared settings, source and input
+hashes before signing. Application filenames omit `-fast` for this release.
+Separate `fastrock-0.2.0-windows-x64-symbols.zip` and
+`fastrock-0.2.0-macos-arm64-symbols.zip` contain full symbols plus `SYMBOLS.json`.
+They have checksums and attestations alongside the application packages.
+Windows CodeView GUID/age must match the PDB; Mac Mach-O UUID must match the
+dSYM before publication. Missing or mismatched symbols fail the release.
+
+For Windows crash dumps, extract this release's PDB alongside the matching
+`fastrock.exe`, or add its directory to WinDbg's symbol search path. In WinDbg,
+`.sympath+ C:\path\to\symbols`, `.reload /f fastrock.exe`, and `!analyze -v`
+load the matching symbols and inspect the dump. Symbols cover Fastrock and
+compiled Rust dependencies; Windows system symbols are separate. Build-source
+paths in the PDB can be mapped to a checkout of the `source_commit` recorded in
+`SYMBOLS.json`.
+
+For Mac crash reports, preserve the matching `fastrock.dSYM` and executable.
+`dwarfdump --uuid` checks their match. LLDB can load the executable and use
+`target symbols add /path/to/fastrock.dSYM`; `atos` can symbolicate a report's
+addresses using its image load address and the matching dSYM DWARF file.
+Optimization can inline functions or eliminate local variables even with full
+debug information. No stripped/optimized symbol substitute is generated.
+
+## Rapid prereleases
+
 
 Commit, push directly to main, then push the matching prerelease tag. Do not create
 PRs or publish locally built release assets. `.github/workflows/release.yml`
@@ -6,10 +41,9 @@ builds, signs, verifies, attests and publishes the Windows x64 ZIP through CI; i
 then adds the signed/notarized Apple Silicon Mac DMG to the same prerelease.
 Tags must match Cargo.toml/Cargo.lock, for example `v0.2.0-alpha.4`. No force pushes.
 
-Every Rust profile favors compile speed: opt-level 0, debug 0, split-debuginfo off,
+Default dev/release/test profiles favor compile speed: opt-level 0, debug 0, split-debuginfo off,
 LTO false, codegen-units 256, incremental true, strip none. Build dependencies also
-use opt-level 0 and 256 codegen units. No environment override may re-enable
-optimization or debug information. `dev/check-build-policy.py` verifies the policy
+use opt-level 0 and 256 codegen units. Environment overrides may not alter these declared settings. `dev/check-build-policy.py` verifies the policy
 before supported scripts and CI. Sean must explicitly authorize any exception.
 
 Build with `cargo build --locked --bin fastrock`; never add an optimization pass.
