@@ -10,7 +10,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from release_config import build_plan
+from release_config import build_plan, release_tag
 from debug_symbols import verify_windows, verify_macos
 
 
@@ -32,6 +32,16 @@ class ReleasePolicy(unittest.TestCase):
                                     env={**os.environ, name: value}, capture_output=True)
             self.assertNotEqual(result.returncode, 0, name)
 
+    def test_v25_build_metadata_preserves_stable_application_version(self):
+        from unittest.mock import patch
+        for tag in ('v0.2.0', 'v0.2.0+build.1'):
+            with patch.dict(os.environ, GITHUB_REF_NAME=tag):
+                self.assertEqual(release_tag(), tag)
+        for tag in ('main', 'v0.2.1', 'v0.2.0-alpha.1', 'v0.2.0+build.0'):
+            with patch.dict(os.environ, GITHUB_REF_NAME=tag):
+                with self.assertRaises(AssertionError):
+                    release_tag()
+
     @unittest.skipUnless(sys.platform == 'darwin', 'Uses local Apple and LLVM compilers, no GUI')
     def test_v25_real_pe_pdb_and_macho_dsym_match_and_reject_swapped_symbols(self):
         clang = '/opt/homebrew/opt/llvm/bin/clang'
@@ -52,6 +62,9 @@ class ReleasePolicy(unittest.TestCase):
                 subprocess.run(['xcrun', 'clang', str(work / 'mac.o'), '-o', str(work / 'fastrock')], check=True)
                 subprocess.run(['xcrun', 'dsymutil', str(work / 'fastrock')], check=True)
             first, second = root / '1', root / '2'
+            # Cargo retains the hashed link-time filename inside the dSYM.
+            dwarf = first / 'fastrock.dSYM/Contents/Resources/DWARF/fastrock'
+            dwarf.rename(dwarf.with_name('fastrock-cargohash'))
             self.assertEqual(verify_windows(first / 'fastrock.exe', first / 'fastrock.pdb')['format'], 'PDB')
             self.assertEqual(verify_macos(first / 'fastrock', first / 'fastrock.dSYM')['format'], 'dSYM')
             with self.assertRaisesRegex(AssertionError, 'does not match'):

@@ -35,7 +35,7 @@ if not plan['prerelease']:
             if path.is_file(): archive.write(path,path.relative_to(dsym.parent))
 assert subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],text=True)==''
 metadata={'source_commit':os.environ['GITHUB_SHA'], 'source_dirty':False,
-          'workflow_run':os.environ['GITHUB_RUN_ID'], 'version':tomllib.load(open('Cargo.toml','rb'))['package']['version'],
+          'workflow_run':os.environ['GITHUB_RUN_ID'], 'release_tag':os.environ['GITHUB_REF_NAME'], 'version':tomllib.load(open('Cargo.toml','rb'))['package']['version'],
           **plan, 'symbols':symbols,
           'rustc':subprocess.check_output(['rustc','--version'],text=True).strip(),
           'binary_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in root.iterdir() if p.is_file() and p.name!='BUILD-INPUT.json'}}

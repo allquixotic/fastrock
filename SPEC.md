@@ -239,3 +239,5 @@ B63|2026-10-10|GitHub runner config contains UTF-8 BOM; registration succeeded b
 B64|2026-10-10|Generic collection guard treats AllowedAttributeValue _ref="null" as shared object identity; documented unpaged catalog also uses StartIndex=0; simplified fixtures omitted both real WSAPI forms|V24; narrow metadata normalization, retained object guards, headless and Windows regressions
 
 B65|2026-10-10|Symbol fixture linked and deleted temporary object before dsymutil; UUID-only check accepted dSYM without debug sections|V25; retain fixture object, require nonempty DWARF info/line sections and reject empty matching-UUID symbols
+
+B66|2026-10-10|Cargo keeps hash-suffixed link filename inside dSYM after exposing public fastrock binary; filename-based symbol check rejects valid matching UUID|V25; resolve sole DWARF file by UUID and verify sections, hashed-filename regression; preserve failed tag and use stable +build.1 packaging tag

@@ -24,7 +24,7 @@ jobs:
         run: |
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
           python3 dev/check-build-policy.py
-          python3 -c 'import os,tomllib; assert os.environ["GITHUB_REF_NAME"] == "v" + tomllib.load(open("Cargo.toml","rb"))["package"]["version"]'
+          python3 -c 'from scripts.release_config import release_tag; release_tag()'
           cargo fmt --all -- --check
           python3 dev/test-release-policy.py -v
       - name: Compile once per platform using the persistent incremental cache

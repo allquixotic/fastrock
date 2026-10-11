@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """CI-only publication; preserve previously published asset bytes."""
 import json,os,pathlib,subprocess,sys,tomllib
-from release_config import build_plan
+from release_config import build_plan, release_tag
 assert os.environ.get('GITHUB_ACTIONS')=='true','Publish through GitHub Actions only'
 version=tomllib.load(open('Cargo.toml','rb'))['package']['version']
-tag='v'+version
-assert os.environ['GITHUB_REF_NAME']==tag
+tag=release_tag()
 plan=build_plan(version)
 dist=pathlib.Path(sys.argv[1])
 assets=sorted(p for p in dist.iterdir() if p.is_file() and p.name.endswith(('.zip','.dmg','.sha256','.sigstore.json')))

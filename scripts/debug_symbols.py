@@ -98,7 +98,11 @@ def macho_identity(path):
 def verify_macos(binary, dsym):
     binary_ids = macho_identity(binary)
     assert binary_ids == macho_identity(dsym), 'dSYM does not match executable'
-    dwarf = pathlib.Path(dsym) / 'Contents/Resources/DWARF' / pathlib.Path(binary).name
+    # Cargo's public binary is renamed after linking, but the dSYM keeps
+    # the link-time hash suffix (fastrock-<hash>). Identity is the UUID.
+    candidates = [p for p in (pathlib.Path(dsym) / 'Contents/Resources/DWARF').iterdir() if p.is_file()]
+    assert len(candidates) == 1, 'Expected one DWARF file in the native dSYM'
+    dwarf = candidates[0]
     sections = subprocess.check_output(['xcrun', 'otool', '-l', str(dwarf)], text=True)
     for name in ('__debug_info', '__debug_line'):
         match = re.search(r'sectname ' + name + r'\s+segname __DWARF\s+addr \S+\s+size (0x[0-9a-fA-F]+)', sections)

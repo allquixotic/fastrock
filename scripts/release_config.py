@@ -1,5 +1,6 @@
 """Explicit release authorization and effective compiler settings."""
 import pathlib
+import os
 import re
 import tomllib
 
@@ -20,3 +21,12 @@ def build_plan(version=None):
 
 def suffix(plan):
     return '-fast' if plan['prerelease'] else ''
+
+
+def release_tag():
+    plan = build_plan()
+    tag = os.environ['GITHUB_REF_NAME']
+    base = 'v' + plan['version']
+    pattern = re.escape(base) + (r'(?:\+build\.[1-9]\d*)?' if not plan['prerelease'] else '')
+    assert re.fullmatch(pattern, tag), 'Release tag does not match the application version'
+    return tag

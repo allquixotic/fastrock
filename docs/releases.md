@@ -8,7 +8,9 @@ incremental compilation. Build scripts/proc macros retain fast settings. Use
 optimization levels. Other/default build profiles and prereleases stay fast;
 new stable version optimizations require explicit authorization.
 
-The v0.2.0 tag publishes a normal GitHub release marked latest. CI chooses the
+The v0.2.0+build.1 tag publishes a normal GitHub release marked latest.
+The +build.1 suffix identifies a packaging correction, not a prerelease; the
+application version is 0.2.0. The original failed v0.2.0 tag is retained. CI chooses the
 profile from the version and verifies the declared settings, source and input
 hashes before signing. Application filenames omit `-fast` for this release.
 Separate `fastrock-0.2.0-windows-x64-symbols.zip` and
