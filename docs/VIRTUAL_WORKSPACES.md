@@ -69,6 +69,41 @@ workspaces other than the extension's default `--workspace`. vwork's workspace
 binding is a default, not an access boundary. Repositories still use their
 existing Git-backed base data; keep the registered source repositories present.
 
+### Agent tools and global instructions
+
+The vwork setup deliberately disables Goose's Developer and Extension Manager
+extensions. Keep them disabled when routing source operations through vwork.
+An agent recommending Developer merely because it cannot run a shell has missed
+this configuration. vwork supplies virtual file operations and configured
+build/package tasks; it does not supply an arbitrary host shell or access to
+host files such as `%USERPROFILE%\.claude\CLAUDE.md`.
+
+Skill discovery, instruction loading, and tool access are separate. Discovering
+skills under `.claude/skills` does not import `.claude/CLAUDE.md`, make Claude Code
+hooks/subagents available, or grant access to other physical files.
+
+Goose **1.56.0 loads hints independently of Developer**. To supply global rules,
+manually merge the desired instruction text into `AGENTS.md` beside the active
+Goose `config.yaml`, preserving existing rules. The default Windows location is
+`%APPDATA%\Block\goose\config\AGENTS.md`; with `GOOSE_PATH_ROOT`, use
+`<GOOSE_PATH_ROOT>\config\AGENTS.md`. Its default context filenames include
+`AGENTS.md` and `.goosehints`; retain `AGENTS.md` if overriding
+`CONTEXT_FILE_NAMES`. Start a new conversation after setup. This supplies context
+without adding a host filesystem tool. Adapt shell/Git instructions to vwork and
+omit requirements that depend on unavailable Claude-specific hooks or agents.
+
+To distinguish working vwork tools from a missing extension, ask the agent to
+call `vwork_workspace_info` and `vwork_files_list` for its bound workspace. Goose
+may prefix these names, for example `vwork__vwork_workspace_info`. Successful
+calls establish virtual file access, not host file access. If the tools are
+absent or fail, inspect the enabled vwork extension, daemon, and workspace binding;
+do not treat enabling Developer as the repair. The Virtual window discovers
+configuration and talks to the daemon separately, so its presence alone does not
+prove that a particular Goose conversation loaded the MCP tools.
+
+Verified against [Goose 1.56.0 prompt construction](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/src/agents/prompt_manager.rs)
+and [hint lookup](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/src/hints/load_hints.rs).
+
 ## Browse and edit
 
 - Filter the catalog by store, repository, or workspace name. At most 200
