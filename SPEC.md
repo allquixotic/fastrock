@@ -108,7 +108,7 @@ T24|x|Land port directly on main; fast cached CI signs/verifies/publishes Window
 T25|x|Fix enum metadata mistaken for duplicate Rally records; verify and publish signed prerelease|V17,V18,V23,V24
 T26|x|Publish official optimized/debuggable 0.2.0 with LTO off and matching debug symbol archives|V15,V22,V23,V25,I.distribution
 T27|x|External Goose ACP default, concurrent sessions, native conversation/config/permission UI, Rally MCP bridge, fixture verification; retain Codex option|V6,V11,V14,V16,V17,V19,V20,V26,V27,I.goose
-T28|~|Verify Windows/Mac builds, Windows tests and signed CI prerelease; document Goose architecture/capability limits|V15,V22,V23,V26,V27,I.distribution,I.goose
+T28|x|Verify Windows/Mac builds, Windows tests and signed CI prerelease; document Goose architecture/capability limits|V15,V22,V23,V26,V27,I.distribution,I.goose
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 

@@ -312,3 +312,17 @@ signed release executable for the UI runs. The Mac only compiles and performs
 signing/notarization verification; it runs no tests or GUI. CI evidence includes
 `goose-chat-smoke`, `goose-rally-smoke`, `rally-smoke`, Windows test output and
 signature receipts. A live provider account has not been exercised.
+
+Release verification completed 2026-10-26:
+
+- Source commit: `b611ffe3c2eb87c30cab1ecd8ce77cfa6121a73e`.
+- [Signed CI run 40267148011](https://github.com/allquixotic/fastrock/actions/runs/40267148011): build, Windows and macOS jobs succeeded.
+- [Published v0.3.0-alpha.1](https://github.com/allquixotic/fastrock/releases/tag/v0.3.0-alpha.1): Windows x64 ZIP and Apple Silicon DMG, each with checksum and attestation.
+- Windows: 681 Rust tests passed; Goose chat, Goose Rally and Codex Rally UI
+  acceptance passed. Every UI receipt matches signed executable SHA-256
+  `b88a380f5703ef6764fb7013733607f6cf7e56583bbee2d74157abcffe438a36`.
+  Authenticode publisher is Sean McNamara; Microsoft RFC 3161 timestamp verified.
+- Mac: app and DMG notarization both Accepted; signing, stapling and Gatekeeper
+  verification passed without launching the app. Both temporary CI runners were
+  removed after completion. Local evidence is retained under
+  `build/goose-verification/`; CI artifacts retain the published-source receipts.
