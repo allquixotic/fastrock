@@ -326,3 +326,33 @@ Release verification completed 2026-10-26:
   verification passed without launching the app. Both temporary CI runners were
   removed after completion. Local evidence is retained under
   `build/goose-verification/`; CI artifacts retain the published-source receipts.
+
+## Stable 0.3.0 virtual workspaces — 2026-10-26
+
+- [Stable release v0.3.0+build.1](https://github.com/allquixotic/fastrock/releases/tag/v0.3.0%2Bbuild.1)
+  is public, latest and not a prerelease. Windows x64 ZIP only; Mac compilation
+  passed without running Mac tests or GUI, and the Mac publication job was skipped.
+- [Signed CI run 40382229798](https://github.com/allquixotic/fastrock/actions/runs/40382229798)
+  succeeded from `3002f35fb14bb00690930db4384efd0d12585cec`. The temporary build
+  runner was removed. Fast build settings remain opt-level 0, debug 0, no LTO.
+- Windows: 690 application tests, five provider tests and four release-policy
+  tests passed. One live-vwork test remains opt-in/ignored; one existing window
+  runtime test is skipped in the headless test executable. Native Goose chat,
+  Goose Rally, Codex Rally and virtual-workspace UI acceptance all passed on the
+  exact signed executable. Hosted Rally uses callback-based board interaction.
+- Virtual workspace evidence verifies the native window, preserving text on a
+  revision conflict, a successful revision-checked save, and hidden controls with
+  vwork disabled. The UI screenshot was inspected after downloading CI evidence.
+- Azure Artifact Signing `allquixotic-signing/windows-public` produced valid Sean
+  McNamara Authenticode signing and a Microsoft RFC 3161 timestamp. Certificate
+  SHA-1: `0063631B695A60361BF66A861649BD0CB7F91CB2`. Signed executable SHA-256:
+  `61dfb942633dc414bafd8f68423bafdc455965767b021bcab5b34a5841e27067`.
+- ZIP: `fastrock-0.3.0-windows-x64-fast.zip`, 145,777,592 bytes, SHA-256
+  `c830f129682c798ff0a91e9b429ffa40e68157d60490d781ba7309d917b33200`.
+  Downloaded bytes match the checksum, GitHub asset digest and embedded signing
+  receipt; GitHub provenance verification passed for the exact source/tag/workflow.
+- [S3 fastrock.zip](https://fastrock-dl-582961286906-us-east-1-an.s3.us-east-1.amazonaws.com/fastrock.zip)
+  contains identical bytes. The explicitly invoked ship-to-aws helper verified
+  anonymous HEAD and full-download SHA-256, REDUCED_REDUNDANCY storage and denied
+  anonymous bucket listing. Failed tag v0.3.0 remains unchanged; B72 records the
+  runner PSGallery registration fix included in the successful build tag.
