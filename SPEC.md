@@ -261,3 +261,4 @@ B69|2026-10-25|Queue persistence referenced an undeclared hash crate|V26; reuse 
 B70|2026-10-25|UI summary reused Codex permission labels and unfiltered child-thread lookup showed the parent as its own sub-agent|V27; Goose-owned permission summary, live model/provider refresh, reject unsupported child enumeration
 
 B71|2026-10-26|Rally child window dropped explicit CLI backend selection and defaulted to Goose during Codex acceptance|V27; forward connection address/token-variable name to child; native fixtures exercise both backends
+B72|2026-10-26|Hosted Windows runner lacked PSGallery registration, preventing Azure signing module installation|Register default repository before signing; preserve failed tag and use stable +build.1; existing V29 signing gate retained
