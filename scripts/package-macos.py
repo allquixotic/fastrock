@@ -108,7 +108,7 @@ def main():
             'identity_sha1':IDENTITY,'team_id':TEAM,'app_submission':app_id,'dmg_submission':dmg_id,
             'status':'Accepted','stapling':'app and DMG validated','gatekeeper':'app, DMG and mounted app accepted',
             'sha256':checksum,'architectures':['arm64'],'binary_sha256':hashlib.sha256(executable.read_bytes()).hexdigest()}
-    if not plan['prerelease']:
+    if plan['profile'] == 'official':
         dsym=unpack_dsym(binary.with_name('fastrock.dSYM.zip'),dist/'debug-symbols')
         identity=verify_macos(executable,dsym)
         assert identity==build_input['symbols']['macos']

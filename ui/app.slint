@@ -72,6 +72,8 @@ export struct DialogData {
 }
 
 export global AppState {
+    in property <bool> virtual-workspaces-available: false;
+    callback open-virtual-workspaces();
     in property <[TabInfo]> tabs;
     in property <int> active-tab: -1;
     in property <TabKindCode> active-kind: TabKindCode.new-tab;
@@ -568,6 +570,11 @@ component TabStrip inherits Rectangle {
             text: "Info";
             text-color: (AppState.info-visible && AppState.info-fits) || AppState.info-drawer-open ? Theme.accent : Theme.text-muted;
             clicked => { AppState.toggle-info(); }
+        }
+
+        if AppState.virtual-workspaces-available: LinkButton {
+            text: "Virtual";
+            clicked => { AppState.open-virtual-workspaces(); }
         }
 
         LinkButton {
@@ -1211,3 +1218,4 @@ export component MainWindow inherits Window {
         }
     }
 }
+export { VirtualWorkspaceWindow, WorkspaceRowData } from "virtual-workspaces.slint";

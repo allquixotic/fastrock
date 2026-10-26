@@ -10,7 +10,7 @@ mkdir -p build/release-inputs
 release_profile=$(python3 -c 'from scripts.release_config import build_plan; print(build_plan()["profile"])')
 cargo xwin build --locked --profile "$release_profile" --target x86_64-pc-windows-msvc --bin fastrock
 cargo build --locked --profile "$release_profile" --bin fastrock
-cargo xwin test --locked --lib --target x86_64-pc-windows-msvc --no-run --message-format=json > build/windows-test-artifacts.jsonl
+cargo xwin test --locked --workspace --target x86_64-pc-windows-msvc --no-run --message-format=json > build/windows-test-artifacts.jsonl
 python3 - <<'PY'
 import hashlib,json,os,pathlib,subprocess,tomllib,shutil,zipfile
 from scripts.release_config import build_plan
@@ -21,14 +21,17 @@ target=pathlib.Path(os.environ["CARGO_TARGET_DIR"])
 root=pathlib.Path('build/release-inputs')
 for name in ('fastrock.exe','fastrock','fastrock.pdb','fastrock.dSYM.zip','BUILD-INPUT.json','fastrock-tests.exe'):
     (root/name).unlink(missing_ok=True)
+for path in root.glob('fastrock-tests-*.exe'):
+    path.unlink()
 for name,source in [('fastrock.exe',target/'x86_64-pc-windows-msvc'/output/'fastrock.exe'),('fastrock',target/output/'fastrock')]:
     shutil.copy2(source,root/name)
 test_artifacts=[json.loads(line) for line in pathlib.Path('build/windows-test-artifacts.jsonl').read_text().splitlines() if line.startswith('{')]
 test_exes=[item['executable'] for item in test_artifacts if item.get('reason')=='compiler-artifact' and item.get('profile',{}).get('test') and item.get('executable')]
-assert len(test_exes)==1,test_exes
-shutil.copy2(test_exes[0],root/'fastrock-tests.exe')
+assert test_exes
+for index,executable in enumerate(test_exes):
+    shutil.copy2(executable,root/f'fastrock-tests-{index}.exe')
 symbols={}
-if not plan['prerelease']:
+if plan['profile'] == 'official':
     pdb=target/'x86_64-pc-windows-msvc'/output/'fastrock.pdb'
     symbols['windows']=verify_windows(root/'fastrock.exe',pdb)
     shutil.copy2(pdb,root/'fastrock.pdb')

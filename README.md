@@ -51,6 +51,15 @@ The executable is `target/debug/fastrock` (`fastrock.exe` on Windows). Windows a
 macOS build scripts use the same fast development profile. Never launch the app or
 tests on Sean's Mac; execute tests on Windows. The Mac compiles and signs only.
 
+## Virtual workspaces
+
+When Goose is configured with an enabled, installed vwork MCP extension, the
+toolbar offers **Virtual** to browse and edit all configured stores, repositories
+and workspaces. Files stay in vwork; saves check revisions and preserve drafts
+on conflict. The controls disappear when vwork is not configured. See
+[setup and usage](docs/VIRTUAL_WORKSPACES.md). Stable 0.3.0 distributes the signed
+Windows x64 ZIP; its `-fast` suffix describes compilation settings, not an alpha.
+
 ## Rally
 
 Open a page from the Rally menu, then configure the endpoint, workspace and API

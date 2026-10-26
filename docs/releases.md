@@ -1,4 +1,15 @@
-# Official 0.2.0 and rapid signed prereleases
+# Stable releases and rapid signed prereleases
+
+## Stable 0.3.0
+
+The user authorized a stable 0.3.0 release with the virtual-workspace feature.
+It retains the fast development build profile: stability is independent of
+compiler optimization. CI signs, verifies, attests and publishes the Windows
+x64 ZIP as a normal latest release. The Mac build is checked but no Mac release
+binary is published for 0.3.0. All Rust workspace test executables, including
+the storage-neutral provider tests, run on Windows CI.
+
+## Official 0.2.0
 
 Sean explicitly authorized the official **0.2.0** build with optimization and
 crash symbols. `cargo build --profile official` selects `opt-level=1`, `debug=2`,

@@ -311,6 +311,7 @@ pub(crate) type DialogCallback = Box<dyn FnOnce(&mut AppController, Option<Strin
 
 /// All UI-thread state. Lives in a thread-local; see [`crate::ui_thread`].
 pub(crate) struct AppController {
+    pub(crate) virtual_workspaces: crate::virtual_workspaces::Controller,
     pub(crate) window: MainWindow,
     pub(crate) backend: Backend,
     pub(crate) prefs: Prefs,
@@ -381,6 +382,7 @@ impl AppController {
             state.set_server_status("starting".into());
         }
         Self {
+            virtual_workspaces: crate::virtual_workspaces::Controller::default(),
             window,
             backend,
             prefs,
@@ -436,6 +438,7 @@ impl AppController {
         self.newtab_bind();
         self.xtab_bind();
         self.rally_bind();
+        self.virtual_workspaces_bind();
         self.show_active();
         self.automation_start();
     }

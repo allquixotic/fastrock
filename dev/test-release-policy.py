@@ -19,7 +19,9 @@ class ReleasePolicy(unittest.TestCase):
         self.assertEqual(build_plan('0.2.0')['profile'], 'official')
         self.assertEqual(build_plan('0.2.0')['lto'], 'off')
         self.assertEqual(build_plan('0.2.1-alpha.1')['profile'], 'dev')
-        for version in ('0.2.1', '0.3.0', '0.2.0-arbitrary'):
+        self.assertEqual(build_plan('0.3.0')['profile'], 'dev')
+        self.assertFalse(build_plan('0.3.0')['prerelease'])
+        for version in ('0.2.1', '0.3.1', '0.2.0-arbitrary'):
             with self.assertRaises(AssertionError):
                 build_plan(version)
 

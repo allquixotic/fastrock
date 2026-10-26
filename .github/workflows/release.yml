@@ -62,10 +62,12 @@ jobs:
       - name: Rust and release policy tests on Windows
         run: |
           $env:FASTROCK_TEST_PYTHON = (Get-Command python).Source
-          python scripts/verify-ci-input.py build/release-inputs/fastrock-tests.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & build/release-inputs/fastrock-tests.exe --skip window_runtime::tests | Tee-Object build/windows-tests.log
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($test in Get-ChildItem build/release-inputs/fastrock-tests*.exe) {
+            python scripts/verify-ci-input.py $test.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $test.FullName --skip window_runtime::tests | Tee-Object -Append build/windows-tests.log
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
           python dev/test-release-policy.py -v
       - name: Azure login for Artifact Signing (OIDC)
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
@@ -103,6 +105,8 @@ jobs:
           python dev/windows-rally-smoke.py build/release-inputs/fastrock.exe --ci
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-goose-smoke.py build/release-inputs/fastrock.exe --ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/windows-vwork-smoke.py build/release-inputs/fastrock.exe
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         if: always()
         with:
@@ -111,6 +115,7 @@ jobs:
             build/rally-smoke/
             build/goose-rally-smoke/
             build/goose-chat-smoke/
+            build/vwork-smoke/
             build/windows-tests.log
             build/windows-signing.json
           compression-level: 0
@@ -136,6 +141,7 @@ jobs:
           compression-level: 0
           if-no-files-found: error
   macos:
+    if: "!startsWith(github.ref, 'refs/tags/v0.3.0')"
     needs: [build, windows]
     runs-on: [self-hosted, macOS, ARM64, fastrock-signing]
     timeout-minutes: 60

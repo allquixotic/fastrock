@@ -1,9 +1,9 @@
-Fastrock 0.2.0 is the first official Rust/Slint release, rebuilt on codex-gui with native Rally pages, Team Board, filters, saved views, editing, attachments, bulk changes and reviewed AI proposals. Codex uses your installed external `codex app-server` (CLI 0.162.0 or newer).
+Fastrock 0.3.0 is a stable release with native virtual-workspace browsing and editing, the external Goose ACP backend, optional Codex backend, and the existing native Rally workspace.
 
-This release includes the Team Board metadata fix from alpha.5. Rally's built-in dropdown values no longer trigger a false duplicate-record error.
+When Goose has an enabled, installed vwork MCP extension, the toolbar gains a **Virtual** button. Browse all configured stores, repositories and workspaces; filter and page through files; edit UTF-8 text; create/fork virtual workspaces; inspect saved diffs and logical sizes. Saves use the loaded revision and preserve drafts on conflicts. Fastrock talks to the existing daemon and never opens redb or exports a checkout.
 
-The official binaries use basic compiler optimization (`opt-level=1`), full debug information (`debug=2`) and **LTO completely disabled** (`lto="off"`). Matching Windows PDB and macOS dSYM archives are published separately for crash investigation. Optimization can still make some local variables unavailable or move source lines during debugging.
+The feature stays hidden when Goose is not configured for vwork. Text editing is limited to 2 MiB; binary files and symlinks are listed but not editable. Unsaved drafts live in memory, so save before quitting. [Setup and usage](https://github.com/allquixotic/fastrock/blob/v0.3.0/docs/VIRTUAL_WORKSPACES.md).
 
-Windows x64 is Authenticode signed and timestamped. The Apple Silicon Mac app and DMG are Developer ID signed, notarized and stapled. Each application and symbol package has a SHA-256 checksum and GitHub build attestation. Windows fixtures exercise the exact signed executable; all Rally test data stays on loopback fixtures.
+This release distributes a Windows x64 ZIP only. Its executable is Authenticode signed and timestamped, with a SHA-256 checksum and GitHub build attestation. CI builds both supported platforms and executes Rust tests plus Goose/Rally fixture checks on Windows. No live provider account or production Rally data is used.
 
-Download the application package for your operating system. Keep the corresponding `*-symbols.zip` with crash reports; it must match this exact version. See [debugging instructions](https://github.com/allquixotic/fastrock/blob/main/docs/releases.md) for PDB/dSYM use. Debug symbols do not need to be installed to run Fastrock.
+The `-fast` filename describes the retained unoptimized build profile, not release stability. The GitHub release is stable/latest. vwork, Goose and optional Codex remain separately installed dependencies. No Mac binary is published for this version.

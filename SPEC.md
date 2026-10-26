@@ -15,6 +15,7 @@ Broader GUI contract: repository `GUI.md`.
 - Commit/push main directly; no draft PR workflow. CI builds/signs/verifies/publishes releases with persistent incremental caches; no unsigned fallback.
 - Never run GUI tests or launch this project's GUI on Sean's Mac unless the user explicitly says "test the GUI on this Mac"; use Windows hosts.
 - Publish only after development verification passes. Explicit 0.2.0 exception: official profile optimizes at level 1 with full debug info, packed symbols, LTO off; fast defaults remain.
+- Stable 0.3.0 is authorized with the fast profile and Windows x64 ZIP publication only; compile the Mac build but do not publish it.
 - Verify GitHub asset digest before deleting local build outputs.
 
 ## §I INTERFACES
@@ -26,6 +27,7 @@ Broader GUI contract: repository `GUI.md`.
 - I.distribution: Azure Authenticode, Developer ID Application, Apple notarization/stapling, GitHub artifact attestations.
 - I.links: glyph hover, Copy link, Open in browser, Open file.
 - I.goose: installed `goose acp`; FASTROCK_GOOSE executable override; ACP session lifecycle, streaming, permissions, config options, optional Goose extensions.
+- I.vwork: optional storage-neutral workspace provider; discover installed enabled Goose vwork MCP extensions, use authenticated loopback daemon API, never direct redb/file exports.
 
 ## §V INVARIANTS
 V1–V14 retain the imported upstream behavior/history. V10 describes its historical signed distributions; current Fastrock prereleases follow V15/V22.
@@ -69,6 +71,8 @@ V25: Explicit stable 0.2.0 ! official profile opt=1, debug=2, packed symbols, LT
 
 V26: Default ! one installed Goose ACP process; concurrent sessions ! independent prompt/cancel/permission routing; prompt ! no short RPC deadline; shutdown/disconnect ! stop owned tasks/process and retain drafts. No Goose dependencies. Verify: goose::tests::concurrent_sessions_and_cancel, goose::tests::disconnect_fails_pending, build policy.
 V27: ACP history/config/permissions ! server capabilities and values; session IDs ! backend namespace; missing feature ! explicit error, never fabricated success; unknown notifications ! tolerated. Rally tools ! scoped loopback MCP bridge, no credentials, human Apply unchanged. Verify: goose::tests and dev/windows-goose-smoke.py.
+V28: Virtual controls ! absent without configured vwork; multiple stores/repos/workspaces, bounded lists and UTF-8 editor. IO ! background tasks. Saved bytes/mode ! retained, revision conflict/stale callbacks/config removal ! preserve drafts. Extension rename ! stable store identity. Daemon credentials ! never GUI/log/persistence. Verify: virtual_workspaces::browser_tests and fastrock-workspaces HTTP/config fixtures.
+V29: Stable 0.3.0 ! GitHub non-prerelease/latest, retained fast profile, signed/verified/attested Windows ZIP. Provider and app tests ! run on Windows; no Mac GUI or release binary. Verify: release_config, CI receipts and public downloads.
 
 ## §T TASKS
 id|status|task|cites
@@ -109,6 +113,7 @@ T25|x|Fix enum metadata mistaken for duplicate Rally records; verify and publish
 T26|x|Publish official optimized/debuggable 0.2.0 with LTO off and matching debug symbol archives|V15,V22,V23,V25,I.distribution
 T27|x|External Goose ACP default, concurrent sessions, native conversation/config/permission UI, Rally MCP bridge, fixture verification; retain Codex option|V6,V11,V14,V16,V17,V19,V20,V26,V27,I.goose
 T28|x|Verify Windows/Mac builds, Windows tests and signed CI prerelease; document Goose architecture/capability limits|V15,V22,V23,V26,V27,I.distribution,I.goose
+T29|>|Port vwork provider/browser onto current Goose/Rally architecture; verify and publish stable 0.3.0 Windows ZIP, mirror with ship-to-aws|V15,V23,V28,V29,I.vwork,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 

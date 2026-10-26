@@ -4285,7 +4285,7 @@ dependencies = [
 
 [[package]]
 name = "fastrock"
-version = "0.3.0-alpha.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -4315,6 +4315,7 @@ dependencies = [
  "csv",
  "dirs",
  "dunce",
+ "fastrock-workspaces",
  "futures",
  "i-slint-common",
  "i-slint-core",
@@ -4348,6 +4349,20 @@ dependencies = [
  "webbrowser",
  "windows-sys 0.61.2",
  "wiremock",
+]
+
+[[package]]
+name = "fastrock-workspaces"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]

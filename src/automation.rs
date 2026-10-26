@@ -52,6 +52,8 @@ pub(crate) enum Step {
         timeout_ms: u64,
     },
     Rally(Vec<String>),
+    /// Optional vwork window fixture operations (no implicit local exports).
+    VirtualWorkspaces(Vec<String>),
     /// Click a rendered native control by its exact visible label.
     ClickText(String),
     /// Wait for the active thread's cached purpose and background queue to settle.
@@ -410,6 +412,7 @@ impl AppController {
                 Step::Approval(action) => self.approvals_automation(&action),
                 Step::InjectRequest(request) => self.approvals_automation_inject(request),
                 Step::Composer(args) => self.composer_automation(&args),
+                Step::VirtualWorkspaces(args) => self.virtual_workspaces_automation(&args),
                 Step::Bedrock(args) => self.bedrock_automation(&args),
                 Step::Forward(text) => {
                     if let Some(index) = self.active_thread_index() {

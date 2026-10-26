@@ -1,6 +1,6 @@
 [package]
 name = "fastrock"
-version = "0.3.0-alpha.1"
+version = "0.3.0"
 edition = "2024"
 license = "Apache-2.0"
 build = "build.rs"
@@ -21,6 +21,7 @@ doctest = false
 workspace = true
 
 [dependencies]
+fastrock-workspaces = { path = "crates/fastrock-workspaces" }
 unicode-segmentation = "1.12"
 anyhow = { workspace = true }
 arboard = { workspace = true }
@@ -129,7 +130,7 @@ pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
 
 [workspace]
-members = []
+members = ["crates/fastrock-workspaces"]
 default-members = ["."]
 resolver = "2"
 

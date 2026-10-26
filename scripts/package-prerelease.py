@@ -32,7 +32,7 @@ if args.build_input:
     metadata['ci_build']=build_input
 if __import__('os').environ.get('GITHUB_ACTIONS')=='true':
     assert args.signing_evidence and args.build_input, 'CI releases require signature and build evidence'
-if not plan['prerelease']:
+if plan['profile'] == 'official':
     assert args.build_input, 'Official release needs CI input and symbol provenance'
     pdb=args.binary.with_name('fastrock.pdb')
     identity=verify_windows(args.binary,pdb)
@@ -42,7 +42,7 @@ if not plan['prerelease']:
     zip_symbols(args.output/f'fastrock-{version}-windows-x64-symbols.zip', [(pdb,'fastrock.pdb')], metadata)
 with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_STORED) as z:
     z.write(args.binary, 'fastrock.exe')
-    for filename in ['LICENSE','NOTICE','README.md','docs/RALLY-INVENTORY.md','docs/PORT-VERIFICATION.md','docs/gui.md','docs/releases.md','docs/goose-acp.md']:
+    for filename in ['LICENSE','NOTICE','README.md','docs/RALLY-INVENTORY.md','docs/PORT-VERIFICATION.md','docs/gui.md','docs/releases.md','docs/goose-acp.md','docs/VIRTUAL_WORKSPACES.md']:
         if (root/filename).is_file(): z.write(root/filename, filename)
     for path in sorted((root/'docs/images').glob('*.png')):
         z.write(path, path.relative_to(root).as_posix())

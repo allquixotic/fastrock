@@ -1,0 +1,122 @@
+import { Button, LineEdit, TextEdit, ScrollView } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+
+export struct WorkspaceRowData { label: string, action: string, selected: bool }
+
+component WorkspaceRow inherits Rectangle {
+    in property <WorkspaceRowData> entry;
+    in property <bool> enabled: true;
+    callback clicked(string);
+    height: 30px;
+    background: entry.selected ? Theme.selected : touch.has-hover ? Theme.hover : Theme.surface;
+    Text {
+        x: 6px; width: parent.width - 12px; height: parent.height;
+        text: root.entry.label; color: root.enabled ? Theme.text : Theme.text-faint;
+        vertical-alignment: center; overflow: elide; font-size: Theme.font-size-small;
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => {root.clicked(root.entry.action);}
+    }
+}
+
+export component VirtualWorkspaceWindow inherits Window {
+    title: "Fastrock — Virtual workspaces";
+    preferred-width: 1020px; preferred-height: 800px;
+    min-width: 780px; min-height: 600px;
+    background: Theme.window-bg;
+    in property <bool> workspace-busy;
+    in property <string> workspace-status;
+    in property <string> workspace-title;
+    in-out property <string> workspace-text;
+    in property <bool> workspace-dirty;
+    in property <bool> workspace-editable;
+    in property <bool> workspace-selected;
+    in property <bool> workspace-can-create;
+    in property <bool> workspace-has-next;
+    in property <bool> workspace-has-previous;
+    in property <string> workspace-report;
+    in property <[WorkspaceRowData]> workspace-catalog;
+    in property <[WorkspaceRowData]> workspace-files;
+    callback action(string);
+
+    VerticalLayout {
+        padding: 12px; spacing: 8px;
+        HorizontalLayout {
+            Text {text: "Virtual workspaces"; color: Theme.text; font-size: 18px;}
+            Button {text: "Refresh"; enabled: !root.workspace-busy; clicked => {root.action("virtual-refresh");}}
+        }
+        Text {text: root.workspace-status; color: Theme.text-muted; wrap: word-wrap;}
+        HorizontalLayout {
+            spacing: 12px;
+            VerticalLayout {
+                min-width: 240px; max-width: 300px; spacing: 8px;
+                LineEdit {
+                    placeholder-text: "Filter store / repo / workspace";
+                    edited(text) => {root.action("virtual-catalog-filter:" + text);}
+                }
+                ScrollView {
+                    vertical-stretch: 1;
+                    VerticalLayout {
+                        spacing: 1px;
+                        for item in root.workspace-catalog: WorkspaceRow {
+                            entry: item; enabled: !root.workspace-busy;
+                            clicked(action) => {root.action(action);}
+                        }
+                    }
+                }
+                name := LineEdit {placeholder-text: "New workspace name";}
+                Button {
+                    text: "Create from repository HEAD";
+                    enabled: root.workspace-can-create && !root.workspace-busy && !root.workspace-dirty && name.text != "";
+                    clicked => {root.action("virtual-create:" + name.text);}
+                }
+                Button {
+                    text: "Fork selected workspace";
+                    enabled: root.workspace-selected && !root.workspace-busy && !root.workspace-dirty && name.text != "";
+                    clicked => {root.action("virtual-fork:" + name.text);}
+                }
+            }
+            VerticalLayout {
+                spacing: 8px;
+                HorizontalLayout {
+                    prefix := LineEdit {placeholder-text: "Path prefix, e.g. src"; accepted => {root.action("virtual-filter:" + self.text);}}
+                    Button {text: "Browse"; enabled: root.workspace-selected && !root.workspace-busy && !root.workspace-dirty; clicked => {root.action("virtual-filter:" + prefix.text);}}
+                }
+                ScrollView {
+                    height: 150px;
+                    VerticalLayout {
+                        spacing: 1px;
+                        for item in root.workspace-files: WorkspaceRow {
+                            entry: item; enabled: !root.workspace-busy;
+                            clicked(action) => {root.action(action);}
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    Button {text: "Previous"; enabled: root.workspace-has-previous && !root.workspace-busy && !root.workspace-dirty; clicked => {root.action("virtual-previous");}}
+                    Button {text: "Next"; enabled: root.workspace-has-next && !root.workspace-busy && !root.workspace-dirty; clicked => {root.action("virtual-next");}}
+                }
+                Text {text: (root.workspace-dirty ? "Unsaved · " : "") + root.workspace-title; color: root.workspace-dirty ? Theme.warning : Theme.text; wrap: word-wrap;}
+                HorizontalLayout {
+                    Button {text: "Save"; enabled: root.workspace-dirty && root.workspace-editable; clicked => {root.action("virtual-save");}}
+                    Button {text: "Discard"; enabled: root.workspace-dirty && !root.workspace-busy; clicked => {root.action("virtual-discard");}}
+                    Button {text: "Reload"; enabled: root.workspace-editable && !root.workspace-dirty; clicked => {root.action("virtual-reload");}}
+                }
+                TextEdit {
+                    vertical-stretch: 1; min-height: 120px;
+                    text <=> root.workspace-text;
+                    read-only: !root.workspace-editable;
+                    font-family: Theme.mono-font;
+                    edited(text) => {root.action("virtual-edit:" + text);}
+                }
+                Text {text: "UTF-8 files up to 2 MiB. Save drafts before quitting Fastrock."; color: Theme.text-muted; wrap: word-wrap;}
+                HorizontalLayout {
+                    Button {text: "Workspace diff"; enabled: root.workspace-selected && !root.workspace-busy; clicked => {root.action("virtual-diff");}}
+                    Button {text: "Logical size"; enabled: root.workspace-selected && !root.workspace-busy; clicked => {root.action("virtual-size");}}
+                }
+                if root.workspace-report != "": TextEdit {height: 120px; text: root.workspace-report; read-only: true; font-family: Theme.mono-font;}
+            }
+        }
+    }
+}

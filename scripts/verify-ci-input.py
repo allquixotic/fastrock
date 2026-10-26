@@ -15,7 +15,7 @@ assert metadata['binary_sha256'][binary.name]==hashlib.sha256(binary.read_bytes(
 plan=build_plan()
 for field,value in plan.items():
     assert metadata[field]==value,field
-if not plan['prerelease'] and binary.name != 'fastrock-tests.exe':
+if plan['profile'] == 'official' and not binary.name.startswith('fastrock-tests'):
     name='fastrock.pdb' if binary.suffix=='.exe' else 'fastrock.dSYM.zip'
     symbols=binary.with_name(name)
     assert metadata['binary_sha256'][name]==hashlib.sha256(symbols.read_bytes()).hexdigest()
