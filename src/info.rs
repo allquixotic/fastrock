@@ -1385,7 +1385,7 @@ impl AppController {
     // ----- rendering --------------------------------------------------------
 
     /// Pushes the active thread's info into `InfoState`.
-    fn info_render(&mut self) {
+    pub(crate) fn info_render(&mut self) {
         let Some(index) = self.active_thread_index() else {
             return;
         };
@@ -1627,6 +1627,30 @@ impl AppController {
 /// overrides first (the same rules as the composer toolbar), then what the
 /// server reported.
 fn summary_fields(thread: &ThreadTab) -> Vec<(&'static str, String)> {
+    if thread
+        .thread_id
+        .as_deref()
+        .is_some_and(|id| id.starts_with("goose:"))
+    {
+        return vec![
+            (
+                "Model",
+                thread
+                    .model
+                    .clone()
+                    .unwrap_or_else(|| "Goose default".into()),
+            ),
+            (
+                "Provider",
+                thread
+                    .model_provider
+                    .clone()
+                    .unwrap_or_else(|| "Goose default".into()),
+            ),
+            ("Permissions", "See Goose options".into()),
+            ("Sandbox", "Not provided by ACP".into()),
+        ];
+    }
     let approval = crate::composer::effective_approval(thread);
     let reviewer = crate::composer::effective_reviewer(thread);
     let sandbox = crate::composer::effective_sandbox(thread);

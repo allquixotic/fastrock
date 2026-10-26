@@ -1,11 +1,16 @@
 # Using Fastrock
 
-Install Codex CLI 0.162.0 or newer and launch Fastrock. Codex configuration and
-credentials belong to the installed CLI; Fastrock starts its app-server over
-stdio. Settings → Connection also supports an explicitly selected daemon/remote
-server. The imported conversation controls are documented in
-[the upstream guide](upstream/user-guide.md); its embedded-backend and packaging
-sections have been superseded by Fastrock's README and release instructions.
+Install and configure Goose CLI 1.56.0 or newer, then launch Fastrock. Fastrock
+starts `goose acp` and keeps multiple conversations in that one child process.
+Expand **Goose options** above Send to choose the session's provider, model, mode
+and other options advertised by Goose. Global credentials/extensions are managed
+with `goose configure`; restart the backend after changing them.
+
+Settings → Connection offers installed Codex (CLI 0.162.0 or newer) and Codex
+remote/daemon connections. Choose it to open existing Codex conversations or use
+Codex-specific features. See [Goose architecture and capability limits](goose-acp.md).
+The imported [upstream conversation guide](upstream/user-guide.md) describes the
+Codex workflows; its embedded-backend and packaging instructions are superseded.
 
 Open Rally pages from the Rally menu. Configure Rally Settings inside the document:
 endpoint, workspace, team/project scope and API token. The token is stored in the

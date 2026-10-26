@@ -3,10 +3,12 @@
 Based on allquixotic/codex-gui; upstream identity in codex-gui-base.json.
 Preserve upstream conversation features, Slint patches, licenses and attribution.
 All newly written UI must use native Slint controls/layouts; no canvas renderer.
-Rally documents use horizontal tabs; sidebar contains Codex conversations only.
-Keep Codex external: spawn installed `codex app-server` over stdio. Never embed
-codex-core, inference, app-server, V8 or a second agent runtime in Fastrock.
-Inherit installed Codex environment/configuration; never install/update Codex.
+Rally documents use horizontal tabs; sidebar contains agent conversations only.
+Default backend: installed `goose acp` over stdio, one process for concurrent
+sessions. Installed `codex app-server` remains an explicit connection option.
+Never compile Goose crates or embed codex-core, inference, app-server, V8 or a
+second agent runtime in Fastrock. Inherit backend environment/configuration;
+never install/update either backend. Negotiate ACP capabilities at runtime.
 All build profiles prioritize compilation speed: opt-level=0, no LTO, no debug
 information, 256 codegen units, incremental builds, no stripping/packing pass.
 Optimized builds require Sean's explicit authorization. Prereleases use fast builds.

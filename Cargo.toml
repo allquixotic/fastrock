@@ -1,12 +1,12 @@
 [package]
 name = "fastrock"
-version = "0.2.0"
+version = "0.3.0-alpha.1"
 edition = "2024"
 license = "Apache-2.0"
 build = "build.rs"
 autobins = false
 repository = "https://github.com/allquixotic/fastrock"
-description = "Native Slint Codex and Rally workspace using external Codex"
+description = "Native Slint Goose ACP, Codex and Rally workspace"
 
 [[bin]]
 name = "fastrock"
@@ -76,6 +76,7 @@ slint = { workspace = true, features = [
 ] }
 thiserror = { workspace = true }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 csv = "1"
 chrono = { version = "0.4", features = ["serde"] }

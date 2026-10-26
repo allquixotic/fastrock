@@ -602,7 +602,9 @@ impl AppController {
         self.connection_label = ready.connection;
         self.set_server_status("ready", "");
         self.settings_on_server_ready();
-        self.bedrock_on_server_ready();
+        if !self.backend.is_goose() {
+            self.bedrock_on_server_ready();
+        }
         self.sidebar_on_server_ready();
         self.composer_on_server_ready();
         self.files_on_server_ready(ready.restarted);
@@ -749,6 +751,28 @@ impl AppController {
     pub(crate) fn handle_server_events(&mut self, events: Vec<AppServerEvent>) {
         for event in events {
             match event {
+                AppServerEvent::GooseConfig { thread_id, options } => {
+                    if let Some(index) = self.tab_index_for_thread(&thread_id) {
+                        if let Some(thread) = self.thread_tab_mut(index) {
+                            for option in &options {
+                                if let Some(value) = option["currentValue"].as_str() {
+                                    match option["id"].as_str() {
+                                        Some("model") => thread.model = Some(value.into()),
+                                        Some("provider") => {
+                                            thread.model_provider = Some(value.into())
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    self.composer_shared
+                        .goose_configs
+                        .insert(thread_id, options);
+                    self.goose_controls_refresh();
+                    self.info_render();
+                }
                 AppServerEvent::ServerNotification(notification) => {
                     self.handle_notification(*notification);
                 }

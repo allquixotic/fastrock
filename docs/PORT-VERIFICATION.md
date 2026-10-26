@@ -287,3 +287,28 @@ attestations and physical fixture receipts) and `build/ci-020-download/`
 (published bytes). Both temporary runners removed their registrations; zero
 remained. No Mac GUI or production Rally calls/writes occurred. Mac free space
 remained about 2.3 TiB and games about 3.06 TB; active caches were retained.
+
+
+## Goose ACP migration — 0.3.0-alpha.1
+
+The default backend launches installed Goose ACP over stdio. Source inspection of
+Goose v1.56.0 confirms independent sessions and prompt tasks within one process;
+`goose serve` uses the same ACP handler. See [architecture](goose-acp.md).
+No Goose crate was added to Cargo.lock. Both platforms use the fast dev profile.
+
+Windows verification on `games` covers the full Rust suite (681 passed; the one
+window-runtime unit test is excluded in favor of native UI acceptance), including
+11 Goose adapter tests. Three release-policy tests pass; the Apple-only symbol
+fixture is skipped on Windows. Native automation uses a separate Python ACP
+process and loopback Rally/MCP fixtures, with no real inference or Rally writes.
+Two conversation tabs stream independently; stopping the first does not stop the
+second. Screenshots verify the native Goose option controls. The Rally suite
+covers 82 HTTP requests and 13 explicit fixture writes, proposal review/Apply,
+drafts, restart and window transfer. `--ci` uses native board callbacks: no
+physical mouse test was possible because no interactive user was signed in.
+
+CI repeats the Rust and native Goose/Codex UI checks on Windows, on the exact
+signed release executable for the UI runs. The Mac only compiles and performs
+signing/notarization verification; it runs no tests or GUI. CI evidence includes
+`goose-chat-smoke`, `goose-rally-smoke`, `rally-smoke`, Windows test output and
+signature receipts. A live provider account has not been exercised.

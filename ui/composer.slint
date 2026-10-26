@@ -6,6 +6,7 @@
 
 import { ScrollView, ListView } from "std-widgets.slint";
 import { Theme, FlatButton } from "theme.slint";
+import { GooseState, GooseControls } from "goose.slint";
 
 // One attached image.
 export struct ComposerChip {
@@ -697,7 +698,8 @@ export component ComposerView inherits Rectangle {
                 }
 
                 // Keep effort and speed usable without crowding the send controls.
-                if root.narrow: HorizontalLayout {
+                if GooseState.active: GooseControls { }
+                if root.narrow && !GooseState.active: HorizontalLayout {
                     spacing: Theme.pad-xs;
                     alignment: start;
                     if ComposerState.effort-visible: Picker {
@@ -726,7 +728,7 @@ export component ComposerView inherits Rectangle {
                     spacing: Theme.pad-xs;
                     alignment: stretch;
 
-                    Picker {
+                    if !GooseState.active: Picker {
                         name: "model";
                         heading: "Model";
                         label: ComposerState.model-label;
@@ -736,7 +738,7 @@ export component ComposerView inherits Rectangle {
                         max-width: root.narrow ? 140px : 220px;
                         shrink-to: 56px;
                     }
-                    if !root.narrow && ComposerState.effort-visible: Picker {
+                    if !GooseState.active && !root.narrow && ComposerState.effort-visible: Picker {
                         name: "effort";
                         heading: "Reasoning effort";
                         label: ComposerState.effort-label;
@@ -746,7 +748,7 @@ export component ComposerView inherits Rectangle {
                         max-width: 140px;
                         shrink-to: 110px;
                     }
-                    if !root.narrow: Picker {
+                    if !GooseState.active && !root.narrow: Picker {
                         name: "speed";
                         heading: "Inference speed";
                         label: ComposerState.speed-label;
@@ -756,7 +758,7 @@ export component ComposerView inherits Rectangle {
                         max-width: 110px;
                         shrink-to: 60px;
                     }
-                    Picker {
+                    if !GooseState.active: Picker {
                         name: "permissions";
                         heading: "Permissions";
                         label: ComposerState.permission-label;
@@ -766,7 +768,7 @@ export component ComposerView inherits Rectangle {
                         max-width: 140px;
                         shrink-to: 110px;
                     }
-                    if ComposerState.plan-available: Rectangle {
+                    if !GooseState.active && ComposerState.plan-available: Rectangle {
                         width: plan.width + Theme.pad-s;
                         plan := PlanToggle {
                             x: Theme.pad-s;

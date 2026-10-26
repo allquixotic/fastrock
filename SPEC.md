@@ -1,12 +1,12 @@
 # SPEC
 
 ## §G GOAL
-Replace Go Fastrock with codex-gui Rust/Slint; preserve Rally inventory and external installed Codex; fast prerelease iteration.
+Native Rust/Slint Fastrock with external Goose ACP by default; retain external Codex option, Rally inventory and fast prerelease iteration.
 Broader GUI contract: repository `GUI.md`.
 
 ## §C CONSTRAINTS
 - Fastrock derives from pinned allquixotic/codex-gui; Apache-2.0 and Slint attribution preserved.
-- Installed external Codex over stdio; no embedded runtime/core/V8. Protocol types pinned to stable baseline.
+- Installed external Goose ACP over stdio; external Codex optional. No Goose crates or embedded runtime/core/V8. Existing Codex protocol types serve UI compatibility boundary.
 - Every build prioritizes compile speed; no optimized dependency overrides, LTO, stripping or packing without explicit user authorization.
 - New Rally UI uses native Slint controls/layouts; horizontal documents, conversation-only sidebar.
 - Track Mac/games free space; clean identified stale build junk only when needed.
@@ -25,6 +25,7 @@ Broader GUI contract: repository `GUI.md`.
 - I.summaries: sidebar titles/tooltips, resize handle; GUI-only persistent cache, ephemeral fast-model requests.
 - I.distribution: Azure Authenticode, Developer ID Application, Apple notarization/stapling, GitHub artifact attestations.
 - I.links: glyph hover, Copy link, Open in browser, Open file.
+- I.goose: installed `goose acp`; FASTROCK_GOOSE executable override; ACP session lifecycle, streaming, permissions, config options, optional Goose extensions.
 
 ## §V INVARIANTS
 V1–V14 retain the imported upstream behavior/history. V10 describes its historical signed distributions; current Fastrock prereleases follow V15/V22.
@@ -66,6 +67,9 @@ V24: Rally AttributeDefinition AllowedValues ! preserve all enum choices with sh
 
 V25: Explicit stable 0.2.0 ! official profile opt=1, debug=2, packed symbols, LTO="off" (including local ThinLTO), strip=none, 256 codegen units, incremental; build scripts ! fast. Stable tag ! GitHub official/latest release, matching PDB GUID/age and dSYM UUID, symbol archives with hashes/source/run/attestations. Prereleases ! retain V15/V22. Verify: dev/test-release-policy.py, CI receipts, native signed Windows fixture and symbol checks.
 
+V26: Default ! one installed Goose ACP process; concurrent sessions ! independent prompt/cancel/permission routing; prompt ! no short RPC deadline; shutdown/disconnect ! stop owned tasks/process and retain drafts. No Goose dependencies. Verify: goose::tests::concurrent_sessions_and_cancel, goose::tests::disconnect_fails_pending, build policy.
+V27: ACP history/config/permissions ! server capabilities and values; session IDs ! backend namespace; missing feature ! explicit error, never fabricated success; unknown notifications ! tolerated. Rally tools ! scoped loopback MCP bridge, no credentials, human Apply unchanged. Verify: goose::tests and dev/windows-goose-smoke.py.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -103,6 +107,8 @@ T23|x|Complete fixture/headless/Windows interaction checks and prerelease|V15,V1
 T24|x|Land port directly on main; fast cached CI signs/verifies/publishes Windows and Mac prerelease|V15,V22,V23,I.distribution
 T25|x|Fix enum metadata mistaken for duplicate Rally records; verify and publish signed prerelease|V17,V18,V23,V24
 T26|x|Publish official optimized/debuggable 0.2.0 with LTO off and matching debug symbol archives|V15,V22,V23,V25,I.distribution
+T27|x|External Goose ACP default, concurrent sessions, native conversation/config/permission UI, Rally MCP bridge, fixture verification; retain Codex option|V6,V11,V14,V16,V17,V19,V20,V26,V27,I.goose
+T28|~|Verify Windows/Mac builds, Windows tests and signed CI prerelease; document Goose architecture/capability limits|V15,V22,V23,V26,V27,I.distribution,I.goose
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 
@@ -241,3 +247,12 @@ B64|2026-10-10|Generic collection guard treats AllowedAttributeValue _ref="null"
 B65|2026-10-10|Symbol fixture linked and deleted temporary object before dsymutil; UUID-only check accepted dSYM without debug sections|V25; retain fixture object, require nonempty DWARF info/line sections and reject empty matching-UUID symbols
 
 B66|2026-10-10|Cargo keeps hash-suffixed link filename inside dSYM after exposing public fastrock binary; filename-based symbol check rejects valid matching UUID|V25; resolve sole DWARF file by UUID and verify sections, hashed-filename regression; preserve failed tag and use stable +build.1 packaging tag
+B67|2026-10-25|Goose queue drain and prompt completion formed recursive opaque async Send types|V26; boxed queue scheduling boundary, concurrent/queued prompt fixture and Windows compile
+
+B68|2026-10-25|ACP live item projections omitted mandatory UI lifecycle timestamps; replay-only coverage missed event deserialization|V26; stamp millisecond item lifecycle events and deserialize every live event kind in Windows regression
+
+B69|2026-10-25|Queue persistence referenced an undeclared hash crate|V26; reuse existing base64 path encoding; no new hashing dependency
+
+B70|2026-10-25|UI summary reused Codex permission labels and unfiltered child-thread lookup showed the parent as its own sub-agent|V27; Goose-owned permission summary, live model/provider refresh, reject unsupported child enumeration
+
+B71|2026-10-26|Rally child window dropped explicit CLI backend selection and defaulted to Goose during Codex acceptance|V27; forward connection address/token-variable name to child; native fixtures exercise both backends

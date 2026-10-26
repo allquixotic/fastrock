@@ -87,7 +87,7 @@ export component ConnectionPage inherits Rectangle {
     VerticalLayout {
         PageHeader {
             title: "Connection";
-            subtitle: "Where the Codex server behind this window runs. Threads, history, and settings live with that server.";
+            subtitle: "Choose the installed agent behind this window. Conversations and configuration belong to that agent.";
             side-padding: root.side;
         }
         ScrollView {
@@ -142,11 +142,16 @@ export component ConnectionPage inherits Rectangle {
 
                 SectionTitle {
                     title: "Server";
-                    subtitle: "The installed Codex CLI runs over stdio by default. Daemon connections are optional.";
+                    subtitle: "Goose ACP runs over stdio by default. Both agents are installed and updated separately from Fastrock.";
+                }
+                ModeOption {
+                    mode: 3;
+                    title: "Installed Goose ACP (default)";
+                    description: "One installed goose acp process serves simultaneous conversations. Inherits Goose providers and configuration. FASTROCK_GOOSE can select another executable.";
                 }
                 ModeOption {
                     mode: 0;
-                    title: "Installed Codex (default)";
+                    title: "Installed Codex";
                     description: "Starts the installed codex app-server over stdio and inherits your Codex configuration. Quitting closes this connection.";
                 }
                 ModeOption {
@@ -160,7 +165,7 @@ export component ConnectionPage inherits Rectangle {
                     description: "Drive Codex on another machine, for example across a tailnet, over WebSocket (ws://host:port or wss://host:port). Commands and file edits run on that machine.";
                 }
 
-                if SettingsState.connection-mode != 0: Card {
+                if SettingsState.connection-mode == 1 || SettingsState.connection-mode == 2: Card {
                     VerticalLayout {
                         padding: Theme.pad-l;
                         spacing: Theme.pad-m;
@@ -227,7 +232,7 @@ export component ConnectionPage inherits Rectangle {
                     }
                     FlatButton {
                         text: "Test connection";
-                        enabled: SettingsState.connection-mode != 0 && SettingsState.connection-valid && !SettingsState.connection-testing;
+                        enabled: (SettingsState.connection-mode == 1 || SettingsState.connection-mode == 2) && SettingsState.connection-valid && !SettingsState.connection-testing;
                         clicked => {
                             SettingsState.connection-test();
                         }

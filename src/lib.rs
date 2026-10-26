@@ -53,6 +53,8 @@ use crate::prefs::Prefs;
 use crate::prefs::RendererChoice;
 use crate::startup::StartupOptions;
 
+mod goose;
+
 /// How long shutdown may take before the process exits anyway.
 const SHUTDOWN_BUDGET: Duration = Duration::from_secs(50);
 /// Shutdown budget when the user logs out: macOS waits only briefly before
@@ -76,7 +78,7 @@ pub struct Cli {
     #[arg(long, value_name = "auto|software|gpu")]
     pub renderer: Option<String>,
 
-    /// App-server connection: `embedded` (legacy name for installed Codex), `unix://`
+    /// Agent connection: `goose` (default), `codex` (installed Codex), `unix://`
     /// (local daemon), `unix://PATH`, `ws://host:port`, or `wss://host:port`.
     /// Overrides the connection saved under Settings › Connection.
     #[arg(long = "remote", value_name = "ADDR")]

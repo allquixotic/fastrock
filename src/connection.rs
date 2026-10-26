@@ -1,6 +1,6 @@
 //! Where the GUI's app-server lives (GUI.md §5.10).
 //!
-//! The default starts installed Codex over stdio: no socket, no port. Users
+//! The default starts installed Goose ACP over stdio. Users
 //! may opt in to a local daemon (`unix://`, shared with `codex` and the TUI)
 //! or a remote app-server over WebSocket (for example across a tailnet).
 
@@ -10,6 +10,7 @@ use codex_utils_absolute_path::AbsolutePathBuf;
 /// Parsed connection choice.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum ConnectionTarget {
+    Goose,
     // Legacy internal name retained for connection preference compatibility.
     Embedded,
     Remote(RemoteAppServerEndpoint),
@@ -19,6 +20,7 @@ impl ConnectionTarget {
     /// Short description for status displays.
     pub(crate) fn label(&self) -> String {
         match self {
+            Self::Goose => "Installed Goose (ACP)".to_string(),
             Self::Embedded => "Installed Codex (stdio)".to_string(),
             Self::Remote(RemoteAppServerEndpoint::UnixSocket { socket_path }) => {
                 format!("Local daemon ({})", socket_path.display())
@@ -30,7 +32,7 @@ impl ConnectionTarget {
     }
 
     pub(crate) fn is_embedded(&self) -> bool {
-        matches!(self, Self::Embedded)
+        matches!(self, Self::Embedded | Self::Goose)
     }
 
     /// Whether the server's files live on another machine (a WebSocket
@@ -58,7 +60,14 @@ pub(crate) fn parse_connection(
 ) -> anyhow::Result<ConnectionTarget> {
     let address = address.trim();
     if address.is_empty()
-        || (address.eq_ignore_ascii_case("embedded") || address.eq_ignore_ascii_case("stdio"))
+        || address.eq_ignore_ascii_case("goose")
+        || address.eq_ignore_ascii_case("acp")
+    {
+        return Ok(ConnectionTarget::Goose);
+    }
+    if address.eq_ignore_ascii_case("embedded")
+        || address.eq_ignore_ascii_case("stdio")
+        || address.eq_ignore_ascii_case("codex")
     {
         return Ok(ConnectionTarget::Embedded);
     }
@@ -153,14 +162,14 @@ impl ConnectionChoice {
             "The --remote connection"
         };
         format!(
-            "{source} cannot be used: {err:#}. Change it under Settings › Connection, or use the installed Codex server."
+            "{source} cannot be used: {err:#}. Change it under Settings › Connection, or select installed Goose or Codex."
         )
     }
 }
 
 fn invalid_address(address: &str) -> anyhow::Error {
     anyhow::anyhow!(
-        "invalid app-server address `{address}`; expected `embedded`, `unix://`, `unix://PATH`, `ws://host:port`, or `wss://host:port`"
+        "invalid app-server address `{address}`; expected `goose`, `codex`, `unix://`, `unix://PATH`, `ws://host:port`, or `wss://host:port`"
     )
 }
 
@@ -197,9 +206,14 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn empty_and_embedded_mean_installed_stdio() -> anyhow::Result<()> {
+    fn default_is_goose_and_legacy_embedded_is_codex() -> anyhow::Result<()> {
+        assert_eq!(parse_connection("", None, None)?, ConnectionTarget::Goose);
         assert_eq!(
-            parse_connection("", None, None)?,
+            parse_connection("goose", None, None)?,
+            ConnectionTarget::Goose
+        );
+        assert_eq!(
+            parse_connection("codex", None, None)?,
             ConnectionTarget::Embedded
         );
         assert_eq!(

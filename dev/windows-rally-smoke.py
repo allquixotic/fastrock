@@ -8,7 +8,8 @@ from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
 
 ROOT=Path(__file__).resolve().parent.parent
-OUT=ROOT/'build'/'rally-smoke'
+GOOSE='--goose' in sys.argv
+OUT=ROOT/'build'/('goose-rally-smoke' if GOOSE else 'rally-smoke')
 OUT.mkdir(parents=True,exist_ok=True)
 TOKEN='fixture-token-not-a-secret'
 
@@ -149,6 +150,8 @@ def main():
         script[gesture:gesture+2]=[rally('move',fixture.story['_ref'],'In-Progress','',fixture.ref('HierarchicalRequirement',102),'above'),wait(300)]
     scriptpath=OUT/'script.json';scriptpath.write_text(json.dumps(script),encoding='utf-8')
     env=dict(os.environ,FASTROCK_HOME=str(home),CODEX_HOME=str(codex),FASTROCK_CODEX=sys.executable,FASTROCK_CODEX_FIXTURE=str(ROOT/'dev'/'external-codex-fixture.py'),FASTROCK_RALLY_TOKEN=TOKEN,FASTROCK_FIXTURE_ARTIFACT=fixture.story['_ref'],CODEX_GUI_AUTOMATION=str(scriptpath),SLINT_BACKEND='winit-software',RUST_BACKTRACE='1')
+    if GOOSE:
+        env.update(FASTROCK_GOOSE=sys.executable,FASTROCK_GOOSE_FIXTURE=str(ROOT/'dev'/'external-goose-fixture.py'))
     driver_errors=[]
     def drive_drag(proc):
         if (OUT/'drag-done').exists():return
@@ -186,7 +189,7 @@ def main():
         except Exception as e:driver_errors.append(str(e))
     def run():
         with (OUT/'app.log').open('a',encoding='utf-8') as log:
-            proc=subprocess.Popen([str(binary)],cwd=ROOT,env=env,stdout=log,stderr=log)
+            proc=subprocess.Popen([str(binary),'--remote','goose' if GOOSE else 'codex'],cwd=ROOT,env=env,stdout=log,stderr=log)
             driver=None
             if not ci_mode:
                 driver=threading.Thread(target=drive_drag,args=(proc,),daemon=True);driver.start()
@@ -246,7 +249,7 @@ def main():
         assert all(r['query'].get('workspace')==fixture.workspace['_ref'] for r in fixture.requests if r['path']=='hierarchicalrequirement' and r['method']=='GET'), 'Scope lost'
         assert any(r['path'].startswith('AttributeDefinition/') and r['path'].endswith('/AllowedValues') and r['query'].get('workspace')==fixture.workspace['_ref'] for r in fixture.requests),'Realistic scoped enum metadata was not loaded'
         assert [lane['name'] for lane in load('mixed')['lanes']]==['Defined','In-Progress','Completed','Accepted'],'Enum metadata lost Team Board lanes'
-        receipt={'binary_sha256':binary_sha,'requests':len(fixture.requests),'explicit_writes':len(writes),'result':'PASS','native_mouse_drag':not ci_mode,'native_user_picker_click':True,'board_move_mode':'callback' if ci_mode else 'Windows mouse','realistic_allowed_value_metadata':True}
+        receipt={'backend':'goose-acp' if GOOSE else 'codex','binary_sha256':binary_sha,'requests':len(fixture.requests),'explicit_writes':len(writes),'result':'PASS','native_mouse_drag':not ci_mode,'native_user_picker_click':True,'board_move_mode':'callback' if ci_mode else 'Windows mouse','realistic_allowed_value_metadata':True}
         (OUT/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8')
         print(f'PASS: native Slint list/board/drag/rank/undo/swimlanes/detail/create/relations/rich/discussion/views/bulk/assistant/restart/window-transfer; {len(fixture.requests)} fixture requests, {len(writes)} explicit writes')
         print('Board move mode: '+receipt['board_move_mode'])

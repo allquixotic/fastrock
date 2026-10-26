@@ -26,7 +26,6 @@ jobs:
           python3 dev/check-build-policy.py
           python3 -c 'from scripts.release_config import release_tag; release_tag()'
           cargo fmt --all -- --check
-          python3 dev/test-release-policy.py -v
       - name: Compile once per platform using the persistent incremental cache
         run: bash scripts/build-ci.sh
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -35,13 +34,6 @@ jobs:
           path: build/release-inputs/*
           compression-level: 0
           if-no-files-found: error
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
-        if: always()
-        with:
-          name: headless-test-evidence
-          path: build/headless-tests.log
-          compression-level: 0
-          if-no-files-found: ignore
   windows:
     needs: build
     runs-on: windows-latest
@@ -65,7 +57,16 @@ jobs:
       - name: Verify unsigned build provenance and policy
         run: |
           python dev/check-build-policy.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/verify-ci-input.py build/release-inputs/fastrock.exe
+      - name: Rust and release policy tests on Windows
+        run: |
+          $env:FASTROCK_TEST_PYTHON = (Get-Command python).Source
+          python scripts/verify-ci-input.py build/release-inputs/fastrock-tests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & build/release-inputs/fastrock-tests.exe --skip window_runtime::tests | Tee-Object build/windows-tests.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/test-release-policy.py -v
       - name: Azure login for Artifact Signing (OIDC)
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
         with:
@@ -98,13 +99,19 @@ jobs:
           FASTROCK_WINDOWS_PUBLISHER: ${{ vars.FASTROCK_WINDOWS_PUBLISHER }}
         run: ./scripts/verify-windows-signature.ps1 build/release-inputs/fastrock.exe build/windows-signing.json
       - name: Fixture tests on the exact signed executable
-        run: python dev/windows-rally-smoke.py build/release-inputs/fastrock.exe --ci
+        run: |
+          python dev/windows-rally-smoke.py build/release-inputs/fastrock.exe --ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/windows-goose-smoke.py build/release-inputs/fastrock.exe --ci
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         if: always()
         with:
           name: windows-signing-and-rally-evidence
           path: |
             build/rally-smoke/
+            build/goose-rally-smoke/
+            build/goose-chat-smoke/
+            build/windows-tests.log
             build/windows-signing.json
           compression-level: 0
           if-no-files-found: ignore

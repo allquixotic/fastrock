@@ -17,7 +17,7 @@ for asset in assets:
 view=subprocess.run(['gh','release','view',tag,'--json','isPrerelease,assets'],text=True,capture_output=True)
 if view.returncode:
     notes=pathlib.Path('docs/prerelease-notes.md' if plan['prerelease'] else 'docs/release-notes.md')
-    subprocess.run(['gh','release','create',tag,*map(str,assets),'--verify-tag',*(['--prerelease'] if plan['prerelease'] else ['--latest']),'--title',f'Fastrock {version} — native Slint Rally','--notes-file',str(notes)],check=True)
+    subprocess.run(['gh','release','create',tag,*map(str,assets),'--verify-tag',*(['--prerelease'] if plan['prerelease'] else ['--latest']),'--title',f'Fastrock {version} — Goose ACP and Rally','--notes-file',str(notes)],check=True)
 else:
     release=json.loads(view.stdout)
     assert release['isPrerelease']==plan['prerelease'],'Existing release kind does not match tag'

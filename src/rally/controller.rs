@@ -4007,12 +4007,20 @@ impl AppController {
             tab.busy = true;
         }
         self.rally_show();
+        let connection_choice = self.connection_choice.clone();
         self.backend.spawn(async move {
             let result = async {
                 let master = hub.root.clone();
                 let (child_id, store) =
                     tokio::task::spawn_blocking(move || hub.prepare_child(&prefs)).await??;
                 let mut command = tokio::process::Command::new(std::env::current_exe()?);
+                // Saved preferences are shared; explicit CLI choices must travel too.
+                if let Some(address) = connection_choice.cli_address {
+                    command.arg("--remote").arg(address);
+                    if let Some(variable) = connection_choice.cli_token_env {
+                        command.arg("--remote-auth-token-env").arg(variable);
+                    }
+                }
                 command
                     .env("FASTROCK_HOME", &store.directory)
                     .env("FASTROCK_RALLY_MASTER_HOME", master)

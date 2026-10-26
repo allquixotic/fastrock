@@ -1,15 +1,27 @@
 # Fastrock
 
-Native Rust/Slint workspace for Codex conversations and Rally work. The codebase is
+Native Rust/Slint workspace for Goose conversations and Rally work. The codebase is
 based on [allquixotic/codex-gui](https://github.com/allquixotic/codex-gui), with Rally
 rebuilt using Slint buttons, editors, lists, layouts and dialogs. Rally documents
 occupy horizontal tabs; the sidebar remains a list of LLM conversations.
 
-Codex remains external. Install Codex CLI **0.162.0 or newer** on PATH; Fastrock
-starts `codex app-server` over stdio and inherits its configuration and environment.
-`FASTROCK_CODEX` can name another installed executable. Fastrock contains no
-inference runtime, app-server, V8, or bundled Codex helper executables. Existing
-Codex GUI conversation features remain available through the external protocol.
+Goose is the default agent. Install/configure **Goose CLI 1.56.0 or newer** separately;
+Fastrock starts one `goose acp` child over stdio and multiplexes concurrent
+conversations. It inherits Goose's environment, provider configuration, extensions,
+and session store. Set `FASTROCK_GOOSE` to select an installed executable.
+No Goose crates, agent runtime, inference engine or server are compiled into Fastrock.
+Update Goose independently to receive its model support and fixes.
+
+Open a conversation and expand **Goose options** above Send for the provider,
+model, mode and other choices advertised by Goose. Configure credentials and
+extensions using `goose configure`. [Architecture and capability details](docs/goose-acp.md)
+explain why stdio ACP supports this design and where the two backends differ.
+
+Installed Codex CLI **0.162.0 or newer** remains an explicit option under Settings →
+Connection, or `fastrock --remote codex`. `FASTROCK_CODEX` selects its executable.
+Existing Codex conversations remain available through that connection. Explicit
+saved Codex/remote selections are preserved; an unset connection now selects Goose.
+Fastrock never installs or updates either backend.
 
 ## Releases
 
@@ -37,7 +49,7 @@ cargo build --locked --bin fastrock
 
 The executable is `target/debug/fastrock` (`fastrock.exe` on Windows). Windows and
 macOS build scripts use the same fast development profile. Never launch the app or
-GUI tests on Sean's Mac; use Windows for UI acceptance. Mac checks are headless.
+tests on Sean's Mac; execute tests on Windows. The Mac compiles and signs only.
 
 ## Rally
 

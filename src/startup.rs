@@ -13,7 +13,7 @@ pub(crate) struct StartupOptions {
     pub cli_overrides: Vec<(String, toml::Value)>,
 }
 /// Read-only configuration snapshot used by upstream presentation code.
-/// Authoritative configuration always belongs to the installed external Codex.
+/// Authoritative configuration always belongs to the selected external agent.
 pub(crate) struct Config {
     pub model_provider_id: String,
     pub model_provider: ModelProviderInfo,
@@ -37,7 +37,7 @@ impl Config {
     }
 }
 pub(crate) fn log_startup_error(message: &str) {
-    tracing::error!(error = %message, "external Codex startup failed");
+    tracing::error!(error = %message, "external agent startup failed");
 }
 
 /// Read the external server's effective config; no second config/inference loader.

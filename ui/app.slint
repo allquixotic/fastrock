@@ -8,6 +8,7 @@ import { LineEdit, ListView, Palette, AboutSlint } from "std-widgets.slint";
 import { Theme, FlatButton, LinkButton, Badge, Divider } from "theme.slint";
 import { TranscriptView, TranscriptState, BlockData } from "transcript.slint";
 import { ComposerView, ComposerState } from "composer.slint";
+import { GooseState, GooseOption } from "goose.slint";
 import { ApprovalsView, ApprovalsState } from "approvals.slint";
 import { SettingsView, SettingsState } from "settings.slint";
 import { BedrockState } from "bedrock.slint";
@@ -22,6 +23,7 @@ import { RallyView, RallyState, RallyChoice, RallyRow, RallyCell, RallyLane, Ral
 import { PendingMessageState, PendingMessageEditor } from "pending-message.slint";
 
 export {
+    GooseState, GooseOption,
     RallyState, RallyChoice, RallyRow, RallyCell, RallyLane, RallyBoardGroup, RallyField, RallyRichBlock, RallyMetric, RallyProposal,
     PendingMessageState,
     Theme,
@@ -652,7 +654,7 @@ component StatusOverlay inherits Rectangle {
         padding: Theme.pad-xl;
 
         Text {
-            text: AppState.server-status == "failed" ? "Codex could not start" : "Starting Codex…";
+            text: AppState.server-status == "failed" ? "Agent could not start" : "Starting agent…";
             color: Theme.text;
             font-size: Theme.font-size-title;
             horizontal-alignment: center;

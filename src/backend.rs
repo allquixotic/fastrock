@@ -54,7 +54,7 @@ const UNSUBSCRIBE_BUDGET: Duration = Duration::from_secs(2);
 pub(crate) enum BackendError {
     #[error("{0}")]
     Request(#[from] TypedRequestError),
-    #[error("the external Codex app-server is not running")]
+    #[error("the external agent is not running")]
     Unavailable,
 }
 
@@ -123,6 +123,21 @@ pub(crate) struct Backend {
 }
 
 impl Backend {
+    pub(crate) fn is_goose(&self) -> bool {
+        matches!(self.connection(), ConnectionTarget::Goose)
+    }
+    pub(crate) async fn goose_request(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        let handle = self.wait_ready().await.map_err(|e| e.to_string())?;
+        handle
+            .raw(serde_json::json!({"id":self.next_request_id(),"method":method,"params":params}))
+            .await
+            .map_err(|e| e.to_string())?
+            .map_err(|e| e.message)
+    }
     /// Creates the handle and starts the external Codex app-server in the background.
     ///
     /// Returns immediately; the UI is told about the outcome through
@@ -155,11 +170,11 @@ impl Backend {
     /// which is what the user is offered to fall back to.
     pub(crate) fn connection(&self) -> ConnectionTarget {
         match self.shared.connection.read() {
-            Ok(connection) => connection.clone().unwrap_or(ConnectionTarget::Embedded),
+            Ok(connection) => connection.clone().unwrap_or(ConnectionTarget::Goose),
             Err(poisoned) => poisoned
                 .into_inner()
                 .clone()
-                .unwrap_or(ConnectionTarget::Embedded),
+                .unwrap_or(ConnectionTarget::Goose),
         }
     }
 
@@ -408,19 +423,29 @@ async fn start_server(
 ) -> Result<Started, String> {
     let target = connection.clone()?;
     let started = match target {
-        ConnectionTarget::Embedded => match AppServerClient::external(options).await {
-            Ok(client) => {
-                let config = crate::startup::read_snapshot(&client, options)
-                    .await
-                    .map(Arc::new);
-                Ok(Started {
-                    client,
-                    config,
-                    relaunch: Relaunch::External(options.clone()),
-                })
+        ConnectionTarget::Embedded | ConnectionTarget::Goose => {
+            match AppServerClient::external(&StartupOptions {
+                connection: Ok(target.clone()),
+                ..options.clone()
+            })
+            .await
+            {
+                Ok(client) => {
+                    let config = crate::startup::read_snapshot(&client, options)
+                        .await
+                        .map(Arc::new);
+                    Ok(Started {
+                        client,
+                        config,
+                        relaunch: Relaunch::External(StartupOptions {
+                            connection: Ok(target),
+                            ..options.clone()
+                        }),
+                    })
+                }
+                Err(error) => Err(error),
             }
-            Err(error) => Err(error),
-        },
+        }
         ConnectionTarget::Remote(endpoint) => {
             let args = remote_connect_args(endpoint);
             connect_remote(args.clone()).await.map(|client| Started {

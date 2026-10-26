@@ -2,7 +2,7 @@
 //!
 //! The choice is saved to `gui.json` (`app_server_address`,
 //! `remote_auth_token_env`) and read at startup, so changes apply the next
-//! time Codex starts. "Test connection" opens a short-lived connection to
+//! time the agent starts. "Test connection" opens a short-lived connection to
 //! a daemon or remote server on a Tokio task and shuts it down again.
 
 use std::path::Path;
@@ -30,10 +30,11 @@ const TEST_TIMEOUT: Duration = Duration::from_secs(20);
 const TONE_SUCCESS: i32 = 1;
 const TONE_DANGER: i32 = 3;
 
-/// The three kinds of connection the page offers.
+/// Connection choices offered by the page.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) enum ConnectionMode {
     #[default]
+    Goose,
     Embedded,
     Daemon,
     Remote,
@@ -42,6 +43,7 @@ pub(crate) enum ConnectionMode {
 impl ConnectionMode {
     fn index(self) -> i32 {
         match self {
+            Self::Goose => 3,
             Self::Embedded => 0,
             Self::Daemon => 1,
             Self::Remote => 2,
@@ -50,6 +52,7 @@ impl ConnectionMode {
 
     fn from_index(index: i32) -> Self {
         match index {
+            3 => Self::Goose,
             1 => Self::Daemon,
             2 => Self::Remote,
             _ => Self::Embedded,
@@ -71,8 +74,21 @@ impl ConnectionForm {
     /// The form for the saved preferences.
     pub(crate) fn from_prefs(address: &str, token_env: Option<&str>) -> Self {
         let address = address.trim();
-        if address.is_empty() || address.eq_ignore_ascii_case("embedded") {
+        if address.is_empty()
+            || address.eq_ignore_ascii_case("goose")
+            || address.eq_ignore_ascii_case("acp")
+        {
             return Self::default();
+        }
+        if address.eq_ignore_ascii_case("embedded")
+            || address.eq_ignore_ascii_case("codex")
+            || address.eq_ignore_ascii_case("stdio")
+        {
+            return Self {
+                mode: ConnectionMode::Embedded,
+                address: String::new(),
+                token_env: String::new(),
+            };
         }
         if let Some(socket) = address.strip_prefix("unix://") {
             return Self {
@@ -109,9 +125,14 @@ pub(crate) fn validate_form(
     env: impl Fn(&str) -> Option<String>,
 ) -> Result<ValidConnection, String> {
     match form.mode {
+        ConnectionMode::Goose => Ok(ValidConnection {
+            target: ConnectionTarget::Goose,
+            address: "goose".into(),
+            token_env: None,
+        }),
         ConnectionMode::Embedded => Ok(ValidConnection {
             target: ConnectionTarget::Embedded,
-            address: String::new(),
+            address: "codex".into(),
             token_env: None,
         }),
         ConnectionMode::Daemon => {
@@ -510,7 +531,8 @@ mod tests {
     fn prefs_round_trip_through_the_form() -> Result<(), String> {
         let home = tempfile::tempdir().map_err(|err| err.to_string())?;
         for (address, token_env) in [
-            ("", None),
+            ("goose", None),
+            ("codex", None),
             ("unix://", None),
             ("ws://127.0.0.1:4500", None),
             ("wss://box.tailnet:4500", Some("TOKEN")),
@@ -522,7 +544,7 @@ mod tests {
         }
         assert_eq!(
             ConnectionForm::from_prefs(" embedded ", Some("X")),
-            ConnectionForm::default()
+            form(ConnectionMode::Embedded, "", "")
         );
         assert_eq!(
             ConnectionForm::from_prefs("unix:///tmp/codex.sock", None),
@@ -539,7 +561,7 @@ mod tests {
             no_env,
         )?;
         assert!(valid.target.is_embedded());
-        assert_eq!(valid.address, "");
+        assert_eq!(valid.address, "codex");
         assert_eq!(valid.token_env, None);
         Ok(())
     }

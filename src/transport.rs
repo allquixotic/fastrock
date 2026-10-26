@@ -42,10 +42,18 @@ pub(crate) struct RemoteAppServerConnectArgs {
 }
 #[derive(Clone, Debug)]
 pub(crate) enum AppServerEvent {
-    Lagged { skipped: usize },
+    GooseConfig {
+        thread_id: String,
+        options: Vec<Value>,
+    },
+    Lagged {
+        skipped: usize,
+    },
     ServerNotification(Box<ServerNotification>),
     ServerRequest(Box<ServerRequest>),
-    Disconnected { message: String },
+    Disconnected {
+        message: String,
+    },
 }
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum TypedRequestError {
@@ -62,8 +70,8 @@ pub(crate) enum TypedRequestError {
         source: serde_json::Error,
     },
 }
-type Reply = Result<Value, JSONRPCErrorError>;
-type Pending = Arc<Mutex<HashMap<String, oneshot::Sender<Reply>>>>;
+pub(crate) type Reply = Result<Value, JSONRPCErrorError>;
+pub(crate) type Pending = Arc<Mutex<HashMap<String, oneshot::Sender<Reply>>>>;
 #[derive(Clone)]
 pub(crate) struct AppServerRequestHandle {
     writer: mpsc::Sender<Value>,
@@ -140,7 +148,31 @@ pub(crate) struct AppServerClient {
     metadata: Value,
 }
 impl AppServerClient {
+    /// Adapters share the bounded UI request/event channels, not an agent runtime.
+    pub(crate) fn adapter(
+        writer: mpsc::Sender<Value>,
+        pending: Pending,
+        events: mpsc::Receiver<AppServerEvent>,
+        tasks: Vec<tokio::task::JoinHandle<()>>,
+        child: tokio::process::Child,
+        metadata: Value,
+    ) -> Self {
+        Self {
+            handle: AppServerRequestHandle { writer, pending },
+            events,
+            tasks,
+            child: Some(child),
+            metadata,
+        }
+    }
+
     pub async fn external(options: &crate::startup::StartupOptions) -> anyhow::Result<Self> {
+        if matches!(
+            options.connection,
+            Ok(crate::connection::ConnectionTarget::Goose)
+        ) {
+            return crate::goose::connect(options).await;
+        }
         let exe = std::env::var_os("FASTROCK_CODEX").unwrap_or_else(|| "codex".into());
         // Only the explicit fixture executable bypasses the installed CLI version probe.
         if std::env::var_os("FASTROCK_CODEX_FIXTURE").is_none() {
@@ -427,7 +459,9 @@ impl Drop for AppServerClient {
         }
     }
 }
-async fn read_frame<R: tokio::io::AsyncBufRead + Unpin>(reader: &mut R) -> io::Result<Vec<u8>> {
+pub(crate) async fn read_frame<R: tokio::io::AsyncBufRead + Unpin>(
+    reader: &mut R,
+) -> io::Result<Vec<u8>> {
     let mut frame = Vec::new();
     loop {
         let available = reader.fill_buf().await?;
@@ -450,7 +484,7 @@ async fn read_frame<R: tokio::io::AsyncBufRead + Unpin>(reader: &mut R) -> io::R
         }
     }
 }
-async fn dispatch(
+pub(crate) async fn dispatch(
     value: Value,
     pending: &Pending,
     events: &mpsc::Sender<AppServerEvent>,

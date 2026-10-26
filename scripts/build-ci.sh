@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs inside Actions on the Mac; cached compilation only, never GUI tests.
+# Runs inside Actions on the Mac; compilation only. All tests execute on Windows.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export CARGO_TARGET_DIR="${FASTROCK_BUILD_CACHE:-${RUNNER_WORKSPACE}/fastrock-target}"
@@ -10,7 +10,7 @@ mkdir -p build/release-inputs
 release_profile=$(python3 -c 'from scripts.release_config import build_plan; print(build_plan()["profile"])')
 cargo xwin build --locked --profile "$release_profile" --target x86_64-pc-windows-msvc --bin fastrock
 cargo build --locked --profile "$release_profile" --bin fastrock
-cargo test --locked --lib -- --skip window_runtime::tests 2>&1 | tee build/headless-tests.log
+cargo xwin test --locked --lib --target x86_64-pc-windows-msvc --no-run --message-format=json > build/windows-test-artifacts.jsonl
 python3 - <<'PY'
 import hashlib,json,os,pathlib,subprocess,tomllib,shutil,zipfile
 from scripts.release_config import build_plan
@@ -19,10 +19,14 @@ plan=build_plan()
 output="debug" if plan["profile"]=="dev" else plan["profile"]
 target=pathlib.Path(os.environ["CARGO_TARGET_DIR"])
 root=pathlib.Path('build/release-inputs')
-for name in ('fastrock.exe','fastrock','fastrock.pdb','fastrock.dSYM.zip','BUILD-INPUT.json'):
+for name in ('fastrock.exe','fastrock','fastrock.pdb','fastrock.dSYM.zip','BUILD-INPUT.json','fastrock-tests.exe'):
     (root/name).unlink(missing_ok=True)
 for name,source in [('fastrock.exe',target/'x86_64-pc-windows-msvc'/output/'fastrock.exe'),('fastrock',target/output/'fastrock')]:
     shutil.copy2(source,root/name)
+test_artifacts=[json.loads(line) for line in pathlib.Path('build/windows-test-artifacts.jsonl').read_text().splitlines() if line.startswith('{')]
+test_exes=[item['executable'] for item in test_artifacts if item.get('reason')=='compiler-artifact' and item.get('profile',{}).get('test') and item.get('executable')]
+assert len(test_exes)==1,test_exes
+shutil.copy2(test_exes[0],root/'fastrock-tests.exe')
 symbols={}
 if not plan['prerelease']:
     pdb=target/'x86_64-pc-windows-msvc'/output/'fastrock.pdb'

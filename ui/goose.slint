@@ -1,0 +1,62 @@
+import { ComboBox, ScrollView } from "std-widgets.slint";
+import { Theme, FlatButton } from "theme.slint";
+
+export struct GooseOption {
+    id: string,
+    title: string,
+    names: [string],
+    values: [string],
+    selected: int,
+}
+export global GooseState {
+    in property <bool> active;
+    in property <bool> busy;
+    in property <bool> changing;
+    in property <[GooseOption]> options;
+    in property <string> summary: "Goose";
+    in property <string> error;
+    callback choose(id: string, value: string);
+}
+export component GooseControls inherits Rectangle {
+    property <bool> expanded;
+    VerticalLayout {
+        spacing: Theme.pad-s;
+        FlatButton {
+            text: GooseState.summary + (root.expanded ? "  ▴" : "  ▾");
+            clicked => { root.expanded = !root.expanded; }
+        }
+        if root.expanded: ScrollView {
+            height: min(180px, GooseState.options.length * 38px + 36px);
+            VerticalLayout {
+                spacing: Theme.pad-s;
+                for option in GooseState.options: HorizontalLayout {
+                    Text { text: option.title; color: Theme.text-muted; width: 110px; vertical-alignment: center; }
+                    ComboBox {
+                        horizontal-stretch: 1;
+                        model: option.names;
+                        current-index: option.selected;
+                        enabled: !GooseState.busy && !GooseState.changing && option.values.length > 1;
+                        selected(value) => { GooseState.choose(option.id, option.values[self.current-index]); }
+                    }
+                }
+                Text { text: "Goose controls tool permissions; ACP does not provide an OS sandbox."; color: Theme.text-faint; wrap: word-wrap; font-size: Theme.font-size-small; }
+            }
+        }
+        if GooseState.error != "": Text { text: GooseState.error; color: Theme.danger; wrap: word-wrap; }
+    }
+}
+
+export component GooseSettingsPage inherits Rectangle {
+    ScrollView {
+        VerticalLayout {
+            padding: Theme.pad-xl;
+            spacing: Theme.pad-l;
+            alignment: start;
+            Text { text: "Goose"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; }
+            Text { text: "Fastrock uses your installed Goose. Configure providers, credentials, and extensions with goose configure; restart the backend after changing global configuration."; color: Theme.text; wrap: word-wrap; }
+            Text { text: "Open a conversation and expand Goose options above its Send button to select the provider, model, mode, and thinking effort offered by Goose for that session."; color: Theme.text; wrap: word-wrap; }
+            Text { text: "One Goose process supports concurrent conversations. Model updates and fixes come from updating Goose separately. Fastrock does not install or update it."; color: Theme.text-muted; wrap: word-wrap; }
+            Text { text: "Use Connection settings to choose installed Codex or its remote server. Codex conversations remain with Codex; Goose conversations remain with Goose."; color: Theme.text-muted; wrap: word-wrap; }
+        }
+    }
+}

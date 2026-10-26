@@ -1,0 +1,91 @@
+# Goose ACP in Fastrock
+
+Fastrock 0.3 uses an installed `goose acp` process by default. One child serves all
+conversations in that Fastrock window. Requests have independent JSON-RPC IDs;
+streamed updates, permissions, cancellation, and pending tool calls are routed by
+ACP session ID. Different windows own different children. Closing Fastrock closes
+its child, while Goose retains ordinary conversations in its own session store.
+
+## Why stdio ACP
+
+The architecture was checked against Goose **v1.56.0** (commit
+`9949cf926cd42f1d128b9991ed23a496ecace896`, released 2026-10-23), not inferred
+from the protocol name. Goose stores multiple active sessions and starts prompt
+handlers independently. Its cancel handler identifies the session. A long prompt
+therefore does not serialize other conversations in the same process.
+
+Sources: [Goose session and run management](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/src/acp/server.rs),
+[concurrent ACP dispatch](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/src/acp/server/dispatch.rs),
+and [Goose protocol extension schema](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/acp-schema.json).
+
+`goose serve` exposes the same ACP handler over HTTP/WebSocket. It does not provide
+a separate multi-conversation API that stdio lacks. Stdio gives Fastrock a child
+lifecycle and needs no daemon authentication or listening agent port. A future
+remote-Goose connection can use the HTTP transport without embedding Goose.
+The current WebSocket/daemon connection choices are **Codex** connections.
+
+No Goose crate or executable is bundled. Existing Codex protocol/config utility
+crates remain as the native UI's presentation types and for optional Codex support;
+they do not run the agent. The adapter translates ACP into these existing types.
+Axum, already in the dependency graph, is used for the small Fastrock tool bridge.
+Updating Goose does not require rebuilding Fastrock for new models, option values,
+provider fixes or agent-side tools. New client UI capabilities or breaking changes
+to Goose's unstable extensions can still require a Fastrock update.
+
+## Behavior
+
+- Create, list, search, reopen and stream conversations; replay persisted messages,
+  thoughts, plans and tool results into the native transcript. ACP load replays the
+  whole history before Fastrock presents pages to the existing UI.
+- Concurrent prompts use one process. Prompt RPCs have no short completion timeout.
+  Other requests have a bounded timeout. Stop and permissions apply to one session.
+- Provider, model, mode and thinking choices come from `configOptions`, including
+  grouped choices and values unknown when Fastrock was built. Changes apply to the
+  selected idle session. Global provider credentials/extensions belong to Goose.
+- ACP permission options appear in the native approval UI. Only an exact offered
+  option is returned; dismissing or supplying an unrecognized answer cancels it.
+  Goose owns tool execution. ACP permission mode is not an operating-system sandbox.
+- Queued messages can be edited or deleted before dispatch. Draft queues are saved
+  atomically under Fastrock's `goose-queues` directory (inside `FASTROCK_HOME` when
+  set). Restored queues are visible when their session is reopened; they do not
+  automatically resume after a restart. A `*.last-dispatch.json` recovery record
+  retains the latest attempted submission; check the transcript before resending it.
+- Rename, archive, unarchive, compact and in-flight steering use Goose extensions.
+  Unsupported methods return a visible error. Session IDs are prefixed `goose:`
+  inside Fastrock so a Codex conversation cannot be sent to Goose accidentally.
+
+Rally's assistant uses a temporary hidden Goose session with only the Fastrock
+MCP tools enabled. Fastrock verifies that restricted extension set and appends the
+existing Rally instructions before prompting. It deletes the hidden session when
+closed. The MCP listener binds loopback, checks Host/Origin and uses an unguessable
+session-specific route. It never holds Rally credentials. Tool calls pass through
+the existing native handlers: proposed changes still require the user's Apply.
+Namespaced cross-tab tools are translated to MCP names and routed back to their
+original namespace. They remain governed by the existing per-tab/user controls.
+
+## Current boundaries
+
+Goose owns authentication and global configuration; Codex account, provider and
+sandbox settings are hidden on the Goose connection. Configure Goose before
+starting Fastrock. Inherited environment configuration follows the installed CLI.
+No automatic CLI installation, update, or credential migration occurs.
+
+Codex-specific features such as constrained JSON recap/purpose inference, review
+RPCs, turn-boundary forks/side chats, rollback, Codex projects/sections, realtime
+voice and server terminal APIs are not emulated. Background purpose inference is
+disabled for Goose. Invoking an unsupported action returns an error; choose the
+Codex connection for those workflows. Existing Codex data is not converted into
+Goose history. Unknown ACP notifications are tolerated, while new client-side
+methods return method-not-found rather than pretending to execute them.
+
+## Verification
+
+`src/goose/tests.rs` exercises a separate Python ACP process: simultaneous sessions,
+isolated cancellation and permission outcomes, history replay, configuration values,
+queue edits/persistence, namespaced MCP routing and disconnect handling. The full
+Rust suite runs on Windows. `dev/windows-goose-smoke.py` exercises the native Rally
+workflow through Goose ACP plus local HTTP/MCP fixtures. It performs no inference
+or production Rally writes. Signed CI packages run both Goose and Codex Rally
+fixtures on the exact Windows release executable. macOS only compiles and signs.
+These fixtures do not validate a live provider account or make claims about its
+availability, speed or model output quality.

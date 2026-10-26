@@ -372,6 +372,10 @@ impl AppController {
         self.purpose_pump();
     }
     fn purpose_pump(&mut self) {
+        if self.backend.is_goose() {
+            self.sidebar.purpose.queue.clear();
+            return;
+        }
         if self.sidebar.purpose.running || self.quitting {
             return;
         }

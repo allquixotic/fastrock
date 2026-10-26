@@ -1194,6 +1194,8 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "serde_core",
+ "serde_json",
+ "serde_path_to_error",
  "sha1 0.10.6",
  "sync_wrapper",
  "tokio",
@@ -4283,10 +4285,11 @@ dependencies = [
 
 [[package]]
 name = "fastrock"
-version = "0.2.0"
+version = "0.3.0-alpha.1"
 dependencies = [
  "anyhow",
  "arboard",
+ "axum",
  "base64 0.22.1",
  "chrono",
  "clap",

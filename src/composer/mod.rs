@@ -102,6 +102,7 @@ pub(crate) struct ComposerDraft {
 /// Composer state shared by all tabs.
 #[derive(Default)]
 pub(crate) struct ComposerShared {
+    pub(crate) goose_configs: HashMap<String, Vec<serde_json::Value>>,
     /// `model/list` catalog of the running server.
     pub(crate) models: Vec<ApiModel>,
     /// The Plan preset from `collaborationMode/list`; `None` hides Plan mode.
@@ -207,6 +208,8 @@ impl AppController {
     }
 
     pub(crate) fn composer_on_server_ready(&mut self) {
+        self.goose_controls_install();
+        self.composer_shared.goose_configs.clear();
         self.composer_shared.skills.clear();
         self.composer_shared.skills_loading.clear();
         self.composer_shared.settings_update_unsupported = false;
@@ -719,6 +722,7 @@ impl AppController {
     /// Pushes the active thread's state (phase, settings, attachments) into
     /// the view. Leaves the text alone.
     pub(crate) fn composer_refresh(&mut self) {
+        self.goose_controls_refresh();
         let state = self.window.global::<ComposerState>();
         let enter_sends = self.prefs.enter_sends;
         state.set_enter_sends(enter_sends);
@@ -736,6 +740,9 @@ impl AppController {
         state.set_enabled(enabled);
         state.set_busy(busy);
         state.set_placeholder(placeholder(thread.phase).into());
+        if self.backend.is_goose() {
+            state.set_placeholder("Ask Goose anything".into());
+        }
         state.set_send_label(if busy { "Queue" } else { "Send" }.into());
 
         let models = &self.composer_shared.models;

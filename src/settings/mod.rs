@@ -682,6 +682,20 @@ impl AppController {
     }
 
     fn settings_activate_page(&mut self, page: &str) {
+        if self.backend.is_goose()
+            && ![
+                "goose",
+                "appearance",
+                "keyboard",
+                "connection",
+                "diagnostics",
+            ]
+            .contains(&page)
+        {
+            self.settings.page = "goose".into();
+            self.settings_activate_page("goose");
+            return;
+        }
         if page.is_empty() {
             return;
         }
@@ -724,6 +738,15 @@ impl AppController {
         let state = self.window.global::<SettingsState>();
         state.set_server_ready(true);
         state.set_server_error(SharedString::new());
+        if self.backend.is_goose() {
+            self.settings_connection_refresh_status();
+            self.settings_load_models();
+            self.settings_reload_config();
+            if self.settings_tab_active() {
+                self.settings_activate_page("goose");
+            }
+            return;
+        }
         // The new server started with the provider now in config.toml.
         self.settings.provider_watch = ProviderWatch::default();
         self.settings_refresh_restart_note();

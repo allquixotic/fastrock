@@ -51,11 +51,11 @@ before supported scripts and CI. Sean must explicitly authorize any exception.
 Build with `cargo build --locked --bin fastrock`; never add an optimization pass.
 Mac-to-Windows builds use `cargo xwin build --locked --target
 x86_64-pc-windows-msvc --bin fastrock`. Both use the development profile. The
-software renderer avoids building a second GPU stack. Codex CLI 0.162.0 or newer
-is an external prerequisite, never bundled or silently installed.
+software renderer avoids building a second GPU stack. Goose CLI 1.56.0 or newer
+is the default external prerequisite; Codex CLI 0.162.0 or newer is optional. Neither is bundled or silently installed.
 
 The CI build job runs on this Mac with its persistent Cargo target cache. It
-compiles each platform once, runs headless Rust tests, and uploads only binaries
+compiles each platform and the Windows Rust test executable, and uploads binaries
 and build receipts with compression disabled. It does not archive the multi-GB
 incremental cache on every commit/tag, and Windows CI does not compile again.
 This avoids the previous repeated compile and cache-upload delays. Initial cache
@@ -70,14 +70,14 @@ python3 scripts/start-release-runner.py signing
 
 They run one trusted release job each and remove their GitHub registrations.
 Only release-tag workflows can use them; the build verifies its source is on
-main. No pull request jobs or Mac GUI tests run. The normal login keychain holds
+main. No pull request jobs, tests or GUI run on the Mac. Windows runs the Rust suite and release-policy tests. The normal login keychain holds
 the pinned Developer ID identity and AC_NOTARY; no Apple private keys are exported.
 Apple Silicon is the rapid Mac prerelease architecture; imported universal-build
 records under docs/upstream are historical.
 
 Windows CI verifies input hashes/source/run, obtains Azure signing authorization
 through OIDC, and signs fastrock.exe with SHA-256 and an RFC 3161 timestamp. It
-requires the configured Sean McNamara publisher, runs fixture-only Rally UI checks
+requires the configured Sean McNamara publisher, runs Goose and Codex fixture-only Rally UI checks
 on that exact signed executable, then creates a stored ZIP with BUILD.json,
 licenses, source pins and signing evidence. No unsigned fallback is published.
 Hosted UI checks use `--ci` for deterministic board callbacks. The default suite

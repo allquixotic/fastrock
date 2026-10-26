@@ -9,6 +9,7 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
+import { GooseState, GooseSettingsPage } from "goose.slint";
 import { BedrockPage } from "bedrock.slint";
 import { SettingsState, FieldData, ItemRow, KeyValue, ShortcutRow } from "settings_state.slint";
 import { CommonPage, AllSettingsPage, RawConfigPage } from "settings_config.slint";
@@ -69,6 +70,8 @@ component SettingsNav inherits Rectangle {
             spacing: 2px;
             alignment: start;
 
+            if GooseState.active: NavButton { id: "goose"; title: "Goose"; }
+            if !GooseState.active: VerticalLayout {
             NavCaption {
                 text: "Configuration";
             }
@@ -126,6 +129,7 @@ component SettingsNav inherits Rectangle {
                 id: "memories";
                 title: "Memories";
             }
+            }
             NavCaption {
                 text: "App";
             }
@@ -141,7 +145,7 @@ component SettingsNav inherits Rectangle {
                 id: "connection";
                 title: "Connection";
             }
-            if SettingsState.sandbox-visible: NavButton {
+            if !GooseState.active && SettingsState.sandbox-visible: NavButton {
                 id: "windows-sandbox";
                 title: "Windows sandbox";
             }
@@ -152,7 +156,7 @@ component SettingsNav inherits Rectangle {
             NavCaption {
                 text: "Help";
             }
-            NavButton {
+            if !GooseState.active: NavButton {
                 id: "feedback";
                 title: "Send feedback";
             }
@@ -175,6 +179,7 @@ export component SettingsView inherits Rectangle {
             horizontal-stretch: 1;
 
             if SettingsState.page == "common": CommonPage { }
+            if SettingsState.page == "goose": GooseSettingsPage { }
             if SettingsState.page == "all": AllSettingsPage { }
             if SettingsState.page == "raw": RawConfigPage { }
             if SettingsState.page == "account": AccountPage { }
