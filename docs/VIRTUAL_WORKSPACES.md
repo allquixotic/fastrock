@@ -9,7 +9,9 @@ owner. All changes go through its authenticated local API and revision checks.
 
 1. Install/build vwork, register your Git repository, and create a workspace
    using vwork's setup instructions.
-2. Start the daemon with `vwork --home <absolute-state-directory> start`.
+2. Start the daemon with `vwork --home <absolute-state-directory> start` for
+   initial setup. With vwork 0.2.2+, Goose also starts/reuses it automatically
+   when loading the enabled MCP extension, from either Fastrock or the Goose CLI.
 3. Generate and merge vwork's Goose configuration fragment into your existing
    Goose config. Keep your provider/model settings. A minimal extension looks
    like this (use your actual **absolute** paths):
@@ -37,6 +39,17 @@ vwork MCP extension in Goose config, the button and all virtual-file controls ar
 absent. Disabling the extension removes the button and hides the window at the next refresh. The Goose
 process itself need not be running. Fastrock never launches commands from Goose
 configuration, changes that configuration, or starts the daemon for you.
+Automatic startup belongs to the external vwork MCP executable, so updating
+vwork provides it without rebuilding Fastrock or Goose. It occurs on MCP load;
+opening only the Virtual window still requires a running daemon. Add
+`--no-auto-start` to the MCP arguments to opt out. Concurrent clients reuse one
+owner, and closing a chat leaves that owner running. If workstation policy denies
+background process creation, retain the permitted manual startup route.
+
+vwork 0.2.2 also generates a tool-name matcher for its optional Goose policy hook.
+This avoids a shell/hook launch for ordinary vwork calls while retaining the
+existing native-tool blocks. Regenerate and merge `plugin/hooks/hooks.json` into
+the installed plugin to apply it; updating the executable does not rewrite config.
 
 ### Configuration lookup
 
