@@ -65,6 +65,33 @@ fn opened() -> Browser {
 }
 
 #[test]
+fn v30_compaction_preserves_drafts() {
+    let mut browser = opened();
+    browser.action("virtual-edit:keep this draft\r\n");
+    let work = browser.action("virtual-compact");
+    assert_eq!(
+        work.len(),
+        1,
+        "compaction must enqueue a provider operation"
+    );
+    assert!(browser.snapshot().busy);
+    browser.apply(Event::Complete {
+        epoch: epoch(&work),
+        result: Ok(Reply::Report("Reclaimed 1.2 GB".into())),
+    });
+    assert_eq!(browser.snapshot().text, "keep this draft\r\n");
+    assert!(browser.snapshot().dirty);
+    assert_eq!(browser.snapshot().report, "Reclaimed 1.2 GB");
+    let work = browser.action("virtual-compact");
+    browser.apply(Event::Complete {
+        epoch: epoch(&work),
+        result: Err("Database is busy".into()),
+    });
+    assert!(browser.snapshot().status.contains("Database is busy"));
+    assert!(browser.snapshot().dirty);
+}
+
+#[test]
 fn v22_controls_follow_configuration_without_losing_drafts() {
     assert!(!Browser::default().snapshot().visible);
     let mut browser = opened();

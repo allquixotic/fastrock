@@ -148,7 +148,7 @@ jobs:
           compression-level: 0
           if-no-files-found: error
   macos:
-    if: "!startsWith(github.ref, 'refs/tags/v0.3.0')"
+    if: "!startsWith(github.ref, 'refs/tags/v0.3.0') && !startsWith(github.ref, 'refs/tags/v0.3.1')"
     needs: [build, windows]
     runs-on: [self-hosted, macOS, ARM64, fastrock-signing]
     timeout-minutes: 60

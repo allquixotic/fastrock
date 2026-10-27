@@ -1,5 +1,12 @@
 # Stable releases and rapid signed prereleases
 
+## Stable 0.3.1
+
+The requested maintenance release keeps the fast compiler profile and Windows x64
+ZIP distribution. It adds vwork database compaction in the native UI. Mac is
+compiled for compatibility; its release job remains disabled for this release.
+Signing, hosted Windows tests, native acceptance and provenance remain mandatory.
+
 ## Stable 0.3.0
 
 The user authorized a stable 0.3.0 release with the virtual-workspace feature.

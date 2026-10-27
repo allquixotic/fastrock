@@ -50,6 +50,7 @@ pub struct Document {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Request {
     Catalog,
+    Compact,
     Files {
         workspace: String,
         prefix: String,

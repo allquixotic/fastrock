@@ -295,6 +295,13 @@ impl Browser {
             }
             return vec![];
         }
+        if action == "virtual-compact" {
+            let work = self.begin(Request::Compact);
+            if !work.is_empty() {
+                self.status = "Checking and compacting the selected vwork store… This may take several minutes; unsaved text is preserved.".into();
+            }
+            return work;
+        }
         if (action == "virtual-diff" || action == "virtual-size")
             && let Some(s) = &self.selected
         {

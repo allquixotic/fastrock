@@ -272,3 +272,33 @@ async fn v22_discovery_deduplicates_stores_and_ignores_other_commands() {
     assert_eq!(found.len(), 2);
     assert_ne!(found[0].home, found[1].home);
 }
+
+#[tokio::test]
+async fn v30_compaction_rpc_reports_skips_success_and_errors() {
+    let (_dir, installation, requests, task) = fixture(vec![
+        json!({"result":{"reason":"busy"}}),
+        json!({"result":{"reason":"below_threshold","threshold_bytes":1_000_000_000}}),
+        json!({"result":{"reason":"compacted","reclaimed_bytes":1_200_000_000,"after_bytes":680_000_000}}),
+        json!({"error":"database maintenance failed; restart vwork for recovery"}),
+    ]).await;
+    let provider = VworkProvider::new(&installation).unwrap();
+    for expected in ["active", "threshold", "1.20 GB"] {
+        let Reply::Report(report) = provider.execute(Request::Compact).await.unwrap() else {
+            panic!()
+        };
+        assert!(report.contains(expected), "{report}");
+    }
+    assert!(
+        provider
+            .execute(Request::Compact)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("recovery")
+    );
+    task.await.unwrap();
+    for request in requests.lock().unwrap().iter() {
+        assert_eq!(request["operation"], "database_compact");
+        assert_eq!(request["arguments"], json!({}));
+    }
+}

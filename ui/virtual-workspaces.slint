@@ -40,11 +40,23 @@ export component VirtualWorkspaceWindow inherits Window {
     in property <[WorkspaceRowData]> workspace-files;
     callback action(string);
 
+    MenuBar {
+        Menu {
+            title: "Storage";
+            MenuItem {
+                title: "Compact selected vwork store";
+                enabled: root.workspace-can-create && !root.workspace-busy;
+                activated => {root.action("virtual-compact");}
+            }
+        }
+    }
+
     VerticalLayout {
         padding: 12px; spacing: 8px;
         HorizontalLayout {
             Text {text: "Virtual workspaces"; color: Theme.text; font-size: 18px;}
             Button {text: "Refresh"; enabled: !root.workspace-busy; clicked => {root.action("virtual-refresh");}}
+            Button {text: "Compact store"; enabled: root.workspace-can-create && !root.workspace-busy; clicked => {root.action("virtual-compact");}}
         }
         Text {text: root.workspace-status; color: Theme.text-muted; wrap: word-wrap;}
         HorizontalLayout {

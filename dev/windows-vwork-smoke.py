@@ -45,6 +45,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif op == 'files_read':
             assert args['binary'] is True
             result = dict(revision=revision, base64=base64.b64encode(content.encode()).decode())
+        elif op == 'database_compact':
+            assert args == {}
+            result = dict(compacted=True, reason='compacted', reclaimed_bytes=1200000000, after_bytes=680000000)
         elif op == 'files_write':
             assert args['mode'] == '100755'
             if revision == 'r1':
@@ -89,11 +92,15 @@ def virtual(*args):
 try:
     run(True, [dict(wait=2000), virtual('open'), dict(wait=300), virtual('select', '1'), dict(wait=500),
                virtual('file', '0'), dict(wait=500), virtual('action', 'virtual-edit:edited\r\n'),
-               virtual('action', 'virtual-save'), dict(wait=500), virtual('dump', str(out / 'conflict.json')),
+               virtual('action', 'virtual-compact'), dict(wait=500), virtual('dump', str(out / 'compacted.json')),
+               dict(wait=300), virtual('action', 'virtual-save'), dict(wait=500), virtual('dump', str(out / 'conflict.json')),
                virtual('snapshot', str(out / 'virtual.png')), dict(wait=300),
                virtual('action', 'virtual-discard'), virtual('action', 'virtual-reload'), dict(wait=500),
                virtual('action', 'virtual-edit:edited\r\n'), virtual('action', 'virtual-save'), dict(wait=500),
                virtual('dump', str(out / 'saved.json')), dict(wait=500), dict(quit=True)], 'enabled')
+    compacted = json.loads((out / 'compacted.json').read_text())
+    assert compacted['dirty'] and compacted['text'] == 'edited\r\n', compacted
+    assert '1.20 GB' in compacted['report'], compacted
     conflict = json.loads((out / 'conflict.json').read_text())
     saved = json.loads((out / 'saved.json').read_text())
     assert conflict['visible'] and conflict['dirty'] and conflict['text'] == 'edited\r\n', conflict
@@ -104,7 +111,7 @@ try:
     run(False, [dict(wait=2000), virtual('dump', str(out / 'disabled.json')), dict(wait=500), dict(quit=True)], 'disabled')
     assert not json.loads((out / 'disabled.json').read_text())['visible']
     (out / 'acceptance.json').write_text(json.dumps(dict(result='PASS', binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
-        native_window=True, conflict_preserves_draft=True, revision_checked_save=True, hidden_without_vwork=True), indent=2))
+        native_window=True, compaction_preserves_draft=True, conflict_preserves_draft=True, revision_checked_save=True, hidden_without_vwork=True), indent=2))
     print('PASS: native vwork window, conflict-safe edits and hidden controls when disabled')
 finally:
     server.shutdown()

@@ -204,3 +204,23 @@ The provider adapter was originally verified against a separately built vwork
 0.2 daemon using the opt-in round trip. The current application retains the
 Goose ACP, Codex and Rally architecture; virtual files have their own editor
 buffer and do not enter local filesystem save paths.
+
+## Compacting the vwork store
+
+With vwork 0.3.1 or newer, open **File → Virtual workspaces…**, select a repository
+or workspace, then choose **Storage → Compact selected vwork store**. The Compact
+store button invokes the same operation. It targets the entire selected vwork
+store, preserves unsaved editor text, and reports completion, a threshold skip,
+or an active-operation deferral. Filesystem/network work stays off the UI thread.
+
+vwork runs GC and checks allocated-page statistics first. Both the button and
+hourly automatic idle checks compact only above the configured threshold (default
+1 GB of estimated unused space). Automatic checks additionally require more than
+five minutes of input inactivity and no running vwork jobs. New requests receive
+a busy response during compaction; the daemon's connection remains unchanged.
+See [vwork maintenance](https://github.com/allquixotic/vwork/blob/v0.3.1/docs/operations.md#maintenance)
+for idle settings, recovery snapshots and startup integrity validation.
+
+To refresh imported Git history, Goose can use `vwork_repo_fetch` on the existing
+registration. Fetch updates stored refs and keeps current workspaces pinned;
+create a workspace from the updated branch to start on newer source.

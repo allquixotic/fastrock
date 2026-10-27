@@ -246,6 +246,11 @@ impl VworkProvider {
         let mut response = self
             .client
             .post(&connection.url)
+            .timeout(if op == "database_compact" {
+                Duration::from_secs(3600)
+            } else {
+                Duration::from_secs(20)
+            })
             .bearer_auth(&connection.token)
             .json(&json!({"operation":op,"arguments":arguments}))
             .send()
@@ -280,6 +285,34 @@ impl VworkProvider {
     }
     async fn run(&self, request: Request) -> Result<Reply, WorkspaceError> {
         match request {
+            Request::Compact => {
+                let value = self.call("database_compact", json!({})).await?;
+                let reason = string(&value, "reason")?;
+                let message = match reason.as_str() {
+                    "busy" => {
+                        "A vwork operation is active. Try compacting again after it finishes."
+                            .to_owned()
+                    }
+                    "below_threshold" => format!(
+                        "No compaction needed. Estimated unused space is below the configured threshold ({} GB).",
+                        value["threshold_bytes"].as_u64().unwrap_or(1_000_000_000) as f64
+                            / 1_000_000_000.0
+                    ),
+                    "compacted" | "already_compact" => format!(
+                        "Compaction finished. Reclaimed {:.2} GB; database is now {:.2} GB.",
+                        value["reclaimed_bytes"]
+                            .as_u64()
+                            .ok_or(WorkspaceError::Protocol)? as f64
+                            / 1_000_000_000.0,
+                        value["after_bytes"]
+                            .as_u64()
+                            .ok_or(WorkspaceError::Protocol)? as f64
+                            / 1_000_000_000.0
+                    ),
+                    _ => return Err(WorkspaceError::Protocol),
+                };
+                Ok(Reply::Report(message))
+            }
             Request::Catalog => {
                 let repos = self.call("repo_list", json!({})).await?;
                 let workspaces = self.call("workspace_list", json!({})).await?;

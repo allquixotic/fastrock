@@ -53,7 +53,7 @@ impl AppController {
             "dump" => {
                 if let Some(path) = args.get(1) {
                     let view = self.virtual_workspaces.browser.snapshot();
-                    let value = serde_json::json!({"visible":view.visible,"dirty":view.dirty,"text":view.text,"status":view.status,"title":view.title});
+                    let value = serde_json::json!({"visible":view.visible,"dirty":view.dirty,"text":view.text,"status":view.status,"report":view.report,"title":view.title});
                     let path = path.clone();
                     self.backend.spawn(async move {
                         let _ = tokio::fs::write(path, value.to_string()).await;

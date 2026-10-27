@@ -73,6 +73,7 @@ V26: Default ! one installed Goose ACP process; concurrent sessions ! independen
 V27: ACP history/config/permissions ! server capabilities and values; session IDs ! backend namespace; missing feature ! explicit error, never fabricated success; unknown notifications ! tolerated. Rally tools ! scoped loopback MCP bridge, no credentials, human Apply unchanged. Verify: goose::tests and dev/windows-goose-smoke.py.
 V28: Virtual controls ! absent without configured vwork; multiple stores/repos/workspaces, bounded lists and UTF-8 editor. IO ! background tasks. Saved bytes/mode ! retained, revision conflict/stale callbacks/config removal ! preserve drafts. Extension rename ! stable store identity. Daemon credentials ! never GUI/log/persistence. Verify: virtual_workspaces::browser_tests and fastrock-workspaces HTTP/config fixtures.
 V29: Stable 0.3.0 ! GitHub non-prerelease/latest, retained fast profile, signed/verified/attested Windows ZIP. Provider and app tests ! run on Windows; no Mac GUI or release binary. Verify: release_config, CI receipts and public downloads.
+V30: Vwork compaction UI ! selected store only, native menu/button, background authenticated daemon call; progress/outcome ! accurate; drafts/provider-removal guards preserved; no direct DB access or daemon restart. Verify: virtual_workspaces::browser_tests::v30_compaction_preserves_drafts, provider HTTP fixtures, Windows vwork smoke.
 
 ## §T TASKS
 id|status|task|cites
@@ -114,6 +115,7 @@ T26|x|Publish official optimized/debuggable 0.2.0 with LTO off and matching debu
 T27|x|External Goose ACP default, concurrent sessions, native conversation/config/permission UI, Rally MCP bridge, fixture verification; retain Codex option|V6,V11,V14,V16,V17,V19,V20,V26,V27,I.goose
 T28|x|Verify Windows/Mac builds, Windows tests and signed CI prerelease; document Goose architecture/capability limits|V15,V22,V23,V26,V27,I.distribution,I.goose
 T29|x|Port vwork provider/browser onto current Goose/Rally architecture; verify and publish stable 0.3.0 Windows ZIP, mirror with ship-to-aws|V15,V23,V28,V29,I.vwork,I.distribution
+T30|~|Native vwork storage compaction control, preserve drafts, verify Fastrock 0.3.1 Windows fast CI release and explicit S3 upload; Mac compatibility compile|V15,V23,V28,V30,I.vwork,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 

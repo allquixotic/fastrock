@@ -959,6 +959,10 @@ export component MainWindow inherits Window {
                 activated => { AppState.menu-action("close-tab"); }
             }
             MenuSeparator { }
+            if AppState.virtual-workspaces-available: MenuItem {
+                title: "Virtual workspaces…";
+                activated => { AppState.open-virtual-workspaces(); }
+            }
             MenuItem {
                 title: "Settings…";
                 activated => { AppState.menu-action("settings"); }
