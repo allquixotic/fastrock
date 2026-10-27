@@ -463,10 +463,22 @@ pub(crate) fn node_blocks(
             }
         }
         Node::Table { aligns, rows } => {
-            let mut block = base_block(BlockKind::Table, style, quote, level);
-            block.table = Some(table(aligns, rows));
-            block.copyable = true;
-            out.push(block);
+            let table = table(aligns, rows);
+            let count = table.rows.len().div_ceil(8);
+            for (index, rows) in table.rows.chunks(8).enumerate() {
+                let mut block = base_block(BlockKind::Table, style, quote, level);
+                block.table = Some(Table {
+                    rows: rows.to_vec(),
+                    widths: table.widths.clone(),
+                    aligns: table.aligns.clone(),
+                });
+                block.part = Part::of(index, count);
+                if index > 0 {
+                    block.gap = Gap::None;
+                }
+                block.copyable = true;
+                out.push(block);
+            }
         }
         Node::Rule => out.push(base_block(BlockKind::Rule, style, quote, level)),
         Node::Html(text) => {
@@ -1177,6 +1189,30 @@ mod tests {
         assert_eq!(blocks[3].quote, 1);
         let table = blocks[5].table.as_ref().map(|table| table.aligns.clone());
         assert_eq!(table, Some(vec![0, 2]));
+    }
+
+    #[test]
+    fn v32_large_table_has_bounded_rows_and_shared_columns() {
+        let source = "| name | value |\n|---|---:|\n".to_string()
+            + &(0..200)
+                .map(|n| format!("| item {n} | [link {n}](https://example.com/{n}) |\n"))
+                .collect::<String>();
+        let blocks = render(&source, BlockStyle::default());
+        assert!(blocks.len() > 20);
+        let tables: Vec<_> = blocks.iter().filter_map(|b| b.table.as_ref()).collect();
+        assert_eq!(tables.iter().map(|t| t.rows.len()).sum::<usize>(), 201);
+        assert!(tables.iter().all(|t| t.rows.len() <= 8
+            && t.widths == tables[0].widths
+            && t.aligns == tables[0].aligns));
+        assert_eq!(blocks.first().map(|b| b.part), Some(Part::First));
+        assert_eq!(blocks.last().map(|b| b.part), Some(Part::Last));
+        assert!(
+            tables
+                .last()
+                .and_then(|t| t.rows.last())
+                .and_then(|r| r.get(1))
+                .is_some_and(|cell| cell.contains("https://example.com/199"))
+        );
     }
 
     #[test]

@@ -109,7 +109,7 @@ pub(crate) enum Frame {
     Single = 4,
 }
 
-/// Position of a code row in a code block split into several rows
+/// Position of a code, table or tool row in a block split into several rows
 /// (`BlockData.part`): the first row has the header and top edge, the last
 /// row the bottom edge, and they draw one box together.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -203,7 +203,7 @@ pub(crate) struct Block {
     pub(crate) tone: Tone,
     pub(crate) gap: Gap,
     pub(crate) frame: Frame,
-    /// Code rows: where the row sits in its code block.
+    /// Position within a split code, table, or tool block.
     pub(crate) part: Part,
     /// Heading level or list indentation.
     pub(crate) level: i32,

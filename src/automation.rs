@@ -132,6 +132,12 @@ pub(crate) enum Step {
     Log(String),
     /// Transcript test hook (see `AppController::transcript_automation`).
     Transcript(String),
+    /// Repeat native wheel input at 60 Hz and save in-memory renderer timings.
+    ScrollBenchmark {
+        frames: u32,
+        delta: f32,
+        output: PathBuf,
+    },
     /// Press and release a key on the focused widget: `"escape"`,
     /// `"return"`, `"tab"`, or literal text.
     Key(String),
@@ -167,6 +173,17 @@ pub(crate) struct Automation {
     steps: VecDeque<Step>,
     waiting: Option<(Step, Instant)>,
     timer: slint::Timer,
+    scroll_benchmark: Option<ScrollBenchmark>,
+    benchmark_writing: bool,
+}
+
+struct ScrollBenchmark {
+    remaining: u32,
+    delta: f32,
+    output: PathBuf,
+    last_tick: Instant,
+    tick_us: Vec<u64>,
+    positions: Vec<f32>,
 }
 
 impl Automation {
@@ -188,6 +205,8 @@ impl Automation {
             steps: steps.into(),
             waiting: None,
             timer: slint::Timer::default(),
+            scroll_benchmark: None,
+            benchmark_writing: false,
         })
     }
 }
@@ -206,6 +225,21 @@ impl AppController {
     }
 
     fn automation_tick(&mut self) {
+        if self
+            .automation
+            .as_ref()
+            .is_some_and(|a| a.benchmark_writing)
+        {
+            return;
+        }
+        if self
+            .automation
+            .as_ref()
+            .is_some_and(|a| a.scroll_benchmark.is_some())
+        {
+            self.automation_scroll_tick();
+            return;
+        }
         loop {
             let Some(automation) = self.automation.as_mut() else {
                 return;
@@ -447,6 +481,31 @@ impl AppController {
                 Step::Mark(name) => crate::perf::mark(&name),
                 Step::Log(message) => eprintln!("codex-gui automation: {message}"),
                 Step::Transcript(command) => self.transcript_automation(&command),
+                Step::ScrollBenchmark {
+                    frames,
+                    delta,
+                    output,
+                } => {
+                    i_slint_backend_winit::software_metrics::start();
+                    if let Some(automation) = self.automation.as_mut() {
+                        automation.scroll_benchmark = Some(ScrollBenchmark {
+                            remaining: frames.min(10_000),
+                            delta,
+                            output,
+                            last_tick: Instant::now(),
+                            tick_us: Vec::new(),
+                            positions: Vec::new(),
+                        });
+                        automation.timer.start(
+                            slint::TimerMode::Repeated,
+                            Duration::from_micros(16_667),
+                            || {
+                                crate::ui_thread::with_app(AppController::automation_tick);
+                            },
+                        );
+                    }
+                    return;
+                }
                 Step::Selection(args) => self.selection_automation(&args),
                 Step::Key(key) => self.automation_dispatch(key_events(&key)),
                 Step::Pointer((kind, x, y)) => {
@@ -554,6 +613,65 @@ impl AppController {
                 }
             }
         }
+    }
+
+    fn automation_scroll_tick(&mut self) {
+        let state = self.window.global::<crate::ui::TranscriptState>();
+        let Some(automation) = self.automation.as_mut() else {
+            return;
+        };
+        let Some(run) = automation.scroll_benchmark.as_mut() else {
+            return;
+        };
+        run.tick_us.push(run.last_tick.elapsed().as_micros() as u64);
+        run.last_tick = Instant::now();
+        run.positions.push(state.get_scroll_y());
+        if run.remaining > 0 {
+            run.remaining -= 1;
+            let delta = run.delta;
+            let viewport = state.get_viewport();
+            // Clear tail following before measurement, just like the native wheel hook.
+            if delta > 0.0 {
+                state.set_follow_tail(false);
+            }
+            self.automation_dispatch(vec![slint::platform::WindowEvent::PointerScrolled {
+                position: slint::LogicalPosition::new(
+                    viewport.x + viewport.width / 2.0,
+                    viewport.y + viewport.height / 2.0,
+                ),
+                delta_x: 0.0,
+                delta_y: delta,
+            }]);
+            return;
+        }
+        let Some(run) = automation.scroll_benchmark.take() else {
+            return;
+        };
+        automation.benchmark_writing = true;
+        automation
+            .timer
+            .start(slint::TimerMode::Repeated, POLL, || {
+                crate::ui_thread::with_app(AppController::automation_tick);
+            });
+        let frames: Vec<_> = i_slint_backend_winit::software_metrics::take().into_iter().map(|frame| {
+            serde_json::json!({"render_us":frame.render_us,"present_us":frame.present_us,
+                "total_us":frame.total_us,"dirty_pixels":frame.dirty_pixels,"window_pixels":frame.window_pixels})
+        }).collect();
+        let data = serde_json::json!({"frames":frames,"tick_us":run.tick_us,"positions":run.positions,
+            "scale_factor":self.window.window().scale_factor(),"size":[self.window.window().size().width,self.window.window().size().height]});
+        self.backend.spawn(async move {
+            let result =
+                tokio::task::spawn_blocking(move || std::fs::write(run.output, data.to_string()))
+                    .await;
+            crate::ui_thread::post(move |app| {
+                if !matches!(result, Ok(Ok(()))) {
+                    eprintln!("scroll benchmark write failed: {result:?}");
+                }
+                if let Some(automation) = app.automation.as_mut() {
+                    automation.benchmark_writing = false;
+                }
+            });
+        });
     }
 
     /// Dispatches input on the next event-loop turn, like real input:

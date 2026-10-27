@@ -23,7 +23,10 @@ class ReleasePolicy(unittest.TestCase):
         self.assertFalse(build_plan('0.3.0')['prerelease'])
         self.assertEqual(build_plan('0.3.1')['profile'], 'dev')
         self.assertFalse(build_plan('0.3.1')['prerelease'])
-        for version in ('0.2.1', '0.3.2', '0.2.0-arbitrary'):
+        self.assertFalse(build_plan('0.3.2')['prerelease'])
+        self.assertEqual(build_plan('0.3.2')['lto'], 'off')
+        self.assertEqual(build_plan('0.3.2')['rendering_dependencies']['parley'], {'opt-level': 2})
+        for version in ('0.2.1', '0.3.3', '0.2.0-arbitrary'):
             with self.assertRaises(AssertionError):
                 build_plan(version)
 
@@ -38,7 +41,8 @@ class ReleasePolicy(unittest.TestCase):
 
     def test_v25_build_metadata_preserves_stable_application_version(self):
         from unittest.mock import patch
-        stable = {"package": {"version": "0.2.0"}}
+        stable = __import__("tomllib").loads((ROOT / "Cargo.toml").read_text())
+        stable["package"]["version"] = "0.2.0"
         for tag in ('v0.2.0', 'v0.2.0+build.1'):
             with patch.dict(os.environ, GITHUB_REF_NAME=tag), patch('release_config.tomllib.loads', return_value=stable):
                 self.assertEqual(release_tag(), tag)

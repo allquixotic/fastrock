@@ -1,5 +1,17 @@
 # Stable releases and rapid signed prereleases
 
+## Stable 0.3.2
+
+The scrolling performance release keeps application code at opt-level 0 and
+optimizes only the explicit rendering/text dependency allowlist at level 2.
+All profiles use `lto="off"`, including local ThinLTO. Debug info remains disabled;
+256 codegen units, incremental compilation, and unstripped output are retained.
+`dev/check-build-policy.py` rejects undeclared overrides. BUILD.json records the
+exact optimized dependency list. Windows x64 ZIP publication continues; Mac is
+compiled for compatibility only. CI signing, timestamping, tests and attestations
+remain mandatory. `dev/windows-scroll-benchmark.py` measures the native software
+renderer on games before release and exercises the signed binary in Windows CI.
+
 ## Stable 0.3.1
 
 The requested maintenance release keeps the fast compiler profile and Windows x64
@@ -62,13 +74,13 @@ then adds the signed/notarized Apple Silicon Mac DMG to the same prerelease.
 Tags must match Cargo.toml/Cargo.lock, for example `v0.2.0-alpha.4`. No force pushes.
 
 Default dev/release/test profiles favor compile speed: opt-level 0, debug 0, split-debuginfo off,
-LTO false, codegen-units 256, incremental true, strip none. Build dependencies also
+LTO off, codegen-units 256, incremental true, strip none. Build dependencies also
 use opt-level 0 and 256 codegen units. Environment overrides may not alter these declared settings. `dev/check-build-policy.py` verifies the policy
 before supported scripts and CI. Sean must explicitly authorize any exception.
 
-Build with `cargo build --locked --bin fastrock`; never add an optimization pass.
+Build with `cargo build --locked --bin fastrock`; use only the authorized Cargo dependency overrides.
 Mac-to-Windows builds use `cargo xwin build --locked --target
-x86_64-pc-windows-msvc --bin fastrock`. Both use the development profile. The
+x86_64-pc-windows-msvc --bin fastrock`. Both use the development profile with the authorized rendering/text overrides. The
 software renderer avoids building a second GPU stack. Goose CLI 1.56.0 or newer
 is the default external prerequisite; Codex CLI 0.162.0 or newer is optional. Neither is bundled or silently installed.
 

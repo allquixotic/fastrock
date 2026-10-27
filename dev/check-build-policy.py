@@ -4,7 +4,7 @@ import os, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "scripts"))
 root=pathlib.Path(__file__).resolve().parents[1]
 data=tomllib.loads((root/'Cargo.toml').read_text())
-expected={'opt-level':0,'debug':0,'split-debuginfo':'off','lto':False,
+expected={'opt-level':0,'debug':0,'split-debuginfo':'off','lto':'off',
           'codegen-units':256,'incremental':True,'strip':'none','debug-assertions':False,'overflow-checks':False}
 for name in ('dev','release','test'):
     for key,value in expected.items():
@@ -17,7 +17,13 @@ assert 'package' not in data['profile']['official']
 for name in ('dev','release','official'):
     build=data['profile'][name]['build-override']
     assert build=={'opt-level':0,'debug':0,'codegen-units':256}, (name,build)
-    assert 'package' not in data['profile'][name], 'Dependency profile overrides need review'
+
+allowed = {'parley', 'i-slint-core', 'swash', 'harfrust', 'unicode-linebreak', 'tiny-skia', 'read-fonts', 'yazi', 'euclid', 'skrifa', 'fontique', 'unicode-segmentation', 'pulldown-cmark', 'i-slint-renderer-software', 'i-slint-backend-winit', 'tiny-skia-path', 'zeno'}
+for profile in ('dev', 'release'):
+    packages = data['profile'][profile]['package']
+    assert set(packages) == allowed, (profile, 'render/text allowlist changed')
+    assert all(settings == {'opt-level': 2} for settings in packages.values())
+assert 'package' not in data['profile']['test'], 'Tests inherit the dev allowlist'
 for name,value in os.environ.items():
     if name.startswith('CARGO_PROFILE_'):
         key=next((k for k in expected if name.endswith('_'+k.upper().replace('-','_'))),None)
@@ -32,4 +38,4 @@ for path in [*root.glob('.github/workflows/*'),*root.glob('scripts/*'),root/'.ca
     text=path.read_text(errors='replace')
     assert not re.search(r'(?:-C\s*opt-level\s*=\s*[1-3sz]|CARGO_INCREMENTAL\s*[:=]\s*["\']?0\b)',text),path
     assert not re.search(r'CARGO_PROFILE_\w+_(?:OPT_LEVEL|LTO|DEBUG|CODEGEN_UNITS)\s*[:=]\s*["\']?(?:[1-3sz]|true|thin|fat|4|16)\b',text),path
-print('V15/V25: fast defaults; explicit official profile opt=1, debug=2, LTO=off; no entrypoint overrides.')
+print('V15/V25: application opt=0; allowlisted render/text opt=2; LTO=off; no entrypoint overrides.')

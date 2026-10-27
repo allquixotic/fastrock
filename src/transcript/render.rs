@@ -28,6 +28,7 @@ use super::blocks::Block;
 use super::blocks::BlockKind;
 use super::blocks::Gap;
 use super::blocks::Line;
+use super::blocks::Part;
 use super::blocks::Status;
 use super::blocks::Tone;
 use super::blocks::frame_blocks;
@@ -100,6 +101,7 @@ pub(crate) fn render_entry(entry: &Entry, ctx: RenderContext<'_>) -> Vec<Block> 
         Body::Hook(hook) => vec![render_hook(hook)],
         Body::Card(card) => card_blocks(card, ctx),
     };
+    blocks = virtualize_blocks(blocks);
     if let Some(first) = blocks.first_mut()
         && first.gap != Gap::None
         && first.kind != BlockKind::Explore
@@ -107,6 +109,53 @@ pub(crate) fn render_entry(entry: &Entry, ctx: RenderContext<'_>) -> Vec<Block> 
         first.gap = Gap::Entry;
     }
     blocks
+}
+
+/// Bound each native list item even when one expanded tool owns hundreds of
+/// lines. Only the first chunk owns the header, toggle and complete Copy source.
+fn virtualize_blocks(blocks: Vec<Block>) -> Vec<Block> {
+    let mut out = Vec::new();
+    for mut block in blocks {
+        let line_count = match block.kind {
+            BlockKind::Tool | BlockKind::PatchFile => block.lines.len(),
+            BlockKind::Exec => block.text.lines().count(),
+            _ => 0,
+        };
+        if line_count <= 16 {
+            out.push(block);
+            continue;
+        }
+        let count = line_count.div_ceil(16);
+        let lines = std::mem::take(&mut block.lines);
+        let text = if block.kind == BlockKind::Exec {
+            std::mem::take(&mut block.text)
+        } else {
+            String::new()
+        };
+        let text_lines: Vec<_> = text.lines().collect();
+        let copy_text = block.copy_text.take();
+        for index in 0..count {
+            let mut chunk = block.clone();
+            chunk.part = Part::of(index, count);
+            if index == 0 {
+                chunk.copy_text = copy_text.clone();
+            } else {
+                chunk.gap = Gap::None;
+                chunk.toggle = None;
+                chunk.copyable = false;
+            }
+            chunk.footer = block.footer && index + 1 == count;
+            let start = index * 16;
+            let end = (start + 16).min(line_count);
+            if block.kind == BlockKind::Exec {
+                chunk.text = text_lines[start..end].join("\n");
+            } else {
+                chunk.lines = lines[start..end].to_vec();
+            }
+            out.push(chunk);
+        }
+    }
+    out
 }
 
 fn notice_block(kind: NoticeKind, title: &str, text: &str) -> Block {
@@ -1940,5 +1989,74 @@ mod tests {
             ..ctx()
         };
         assert!(render_item(&entry, hidden).is_empty());
+    }
+    #[test]
+    fn v32_expanded_tool_rows_preserve_order_and_copy_without_duplication() {
+        let mut block = Block::new(BlockKind::Tool);
+        block.expanded = true;
+        block.toggle = Some(0);
+        block.copy_text = Some("complete source, including omitted lines".into());
+        block.lines = (0..200)
+            .map(|n| Line::new(format!("line {n}"), 0))
+            .collect();
+        let rows = virtualize_blocks(vec![block]);
+        assert!(rows.len() > 10);
+        assert!(rows.iter().all(|row| row.lines.len() <= 16));
+        assert_eq!(
+            rows.iter()
+                .flat_map(|r| &r.lines)
+                .map(|l| l.text.clone())
+                .collect::<Vec<_>>(),
+            (0..200).map(|n| format!("line {n}")).collect::<Vec<_>>()
+        );
+        assert_eq!(rows.iter().filter(|r| r.copy_text.is_some()).count(), 1);
+        assert_eq!(rows.iter().filter(|r| r.toggle.is_some()).count(), 1);
+        assert_eq!(
+            rows[0].copy_text.as_deref(),
+            Some("complete source, including omitted lines")
+        );
+        assert!(rows[1..].iter().all(|r| r.gap == Gap::None));
+    }
+
+    #[test]
+    fn v32_exec_and_diff_chunks_preserve_source_and_gutters() {
+        let source = (0..100)
+            .map(|n| format!("output {n}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut exec = Block::new(BlockKind::Exec);
+        exec.text = source.clone();
+        exec.copy_text = Some(source.clone());
+        exec.toggle = Some(0);
+        let rows = virtualize_blocks(vec![exec]);
+        assert!(rows.iter().all(|r| r.text.lines().count() <= 16));
+        assert_eq!(
+            rows.iter()
+                .map(|r| r.text.as_str())
+                .collect::<Vec<_>>()
+                .join("\n"),
+            source
+        );
+        assert_eq!(
+            super::super::export::group_copy_text(&rows, rows.len() - 1),
+            Some(source)
+        );
+
+        let mut diff = Block::new(BlockKind::PatchFile);
+        diff.lines = (0..100)
+            .map(|n| Line {
+                text: format!("+line {n}"),
+                kind: 1,
+                gutter: n.to_string(),
+                target: "file.rs".into(),
+            })
+            .collect();
+        let expected = diff.lines.clone();
+        let rows = virtualize_blocks(vec![diff]);
+        assert!(rows.iter().all(|r| r.lines.len() <= 16));
+        assert_eq!(
+            rows.into_iter().flat_map(|r| r.lines).collect::<Vec<_>>(),
+            expected
+        );
     }
 }

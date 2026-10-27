@@ -13,6 +13,7 @@ use i_slint_core::window::WindowInner;
 
 /// Repaint lost pixels even when the presentation surface claims it retained them.
 /// Called before a Windows redraw, without requesting another frame.
+#[cfg(test)]
 pub(crate) fn invalidate_frame(window: &slint::Window) {
     let inner = WindowInner::from_pub(window);
     let size = window.size().to_logical(window.scale_factor());
@@ -103,6 +104,8 @@ mod tests {
             width: 320px;
             height: 200px;
             background: #f2f2f2;
+            in property <color> patch-color: #cc0000;
+            Rectangle { x: 270px; y: 150px; width: 20px; height: 20px; background: root.patch-color; }
             Rectangle {
                 x: 10px; y: 10px; width: 150px; height: 80px;
                 background: #cceeff;
@@ -154,6 +157,63 @@ mod tests {
         });
         assert_eq!(pixels, expected, "full invalidation must repair all pixels");
         assert!(!window.draw_if_needed(|_| panic!("idle must not poll repaint")));
+
+        // V31: private raster storage survives a falsely retained RDP surface.
+        // The next redraw copies the whole frame while rasterizing zero pixels.
+        let mut retained = i_slint_backend_winit::retained_buffer::RetainedBuffer::default();
+        let (storage, changed) = retained.prepare(320, 200);
+        assert!(changed);
+        storage.copy_from_slice(&pixels);
+        pixels.fill(Rgb8Pixel::default());
+        window.request_redraw();
+        window.draw_if_needed(|renderer| {
+            let (storage, changed) = retained.prepare(320, 200);
+            assert!(!changed);
+            let damage = renderer.render(storage, 320);
+            assert_eq!(
+                damage
+                    .iter()
+                    .map(|(_, size)| u64::from(size.width) * u64::from(size.height))
+                    .sum::<u64>(),
+                0,
+                "unchanged content must not rerasterize"
+            );
+        });
+        retained.present_to(&mut pixels);
+        assert_eq!(
+            pixels, expected,
+            "RDP presentation loss must recover from private pixels"
+        );
+        assert!(!window.draw_if_needed(|_| panic!("retained presentation must not poll")));
+        scene.set_patch_color(slint::Color::from_rgb_u8(0, 220, 0));
+        window.request_redraw();
+        window.draw_if_needed(|renderer| {
+            let (storage, _) = retained.prepare(320, 200);
+            let damage = renderer.render(storage, 320);
+            let area: u32 = damage
+                .iter()
+                .map(|(_, size)| size.width * size.height)
+                .sum();
+            assert!(
+                area > 0 && area < 320 * 200 / 4,
+                "small change must retain partial rendering: {area}"
+            );
+        });
+        pixels.fill(Rgb8Pixel::default());
+        retained.present_to(&mut pixels);
+        assert_eq!(pixels[160 * 320 + 280], Rgb8Pixel { r: 0, g: 220, b: 0 });
+        assert_eq!(
+            pixels[0], expected[0],
+            "unchanged presentation pixels restored too"
+        );
+        assert!(
+            retained.prepare(200, 320).1,
+            "equal-area resize changes row stride"
+        );
+        assert!(
+            retained.prepare(640, 400).1,
+            "size change needs full rasterization"
+        );
 
         let mut link_rows = std::collections::HashSet::new();
         let mut file_hit = false;

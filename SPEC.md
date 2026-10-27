@@ -7,7 +7,7 @@ Broader GUI contract: repository `GUI.md`.
 ## §C CONSTRAINTS
 - Fastrock derives from pinned allquixotic/codex-gui; Apache-2.0 and Slint attribution preserved.
 - Installed external Goose ACP over stdio; external Codex optional. No Goose crates or embedded runtime/core/V8. Existing Codex protocol types serve UI compatibility boundary.
-- Every build prioritizes compile speed; no optimized dependency overrides, LTO, stripping or packing without explicit user authorization.
+- Application compile speed retained; explicit 2026-10-26 exception permits allowlisted render/text dependency opt=2, LTO="off" including local ThinLTO; no stripping/packing.
 - New Rally UI uses native Slint controls/layouts; horizontal documents, conversation-only sidebar.
 - Track Mac/games free space; clean identified stale build junk only when needed.
 - Native Slint 1.18.1; bound transcript memory; no idle repaint polling.
@@ -56,7 +56,7 @@ V13: Viewing/resuming/reading ! never advance thread activity; user/agent/tool c
 
 V14: Pending-message pencil ! edit or delete local unsent input and server queue entries; preserve non-text attachments; queue update/delete ! atomic backend boundary; consumed input ! never silently rewrite history; failed/racing edits ! retain draft.
 
-V15: Default dev/release/test Cargo profiles ! opt-level=0, debug=0, LTO=false, codegen-units=256; build scripts/CI ! no optimization overrides. Verify: dev/check-build-policy.py.
+V15: Default dev/release/test application ! opt-level=0, debug=0, LTO="off", codegen-units=256; explicit rendering/text dependency allowlist ! opt=2 only; build scripts/CI ! no environment overrides. Verify: dev/check-build-policy.py.
 V16: Startup ! launch installed external Codex after first frame; inherited env/config; process cancellation/restart/disconnect ! retain unsent drafts. Verify: transport::tests plus Windows mock-process smoke.
 V17: Rally tokens ! OS vault only, no logs/prompts/settings; refs ! same-origin WSAPI; HTTP ! loopback only; mutation ! never auto-retry. Verify: rally::client::tests.
 V18: Query/search/filter/preset/types/export ! retain selected scope, paging and loaded-only totals; metadata ! per-workspace/type. Verify: rally::view::tests and fixture integration.
@@ -74,6 +74,10 @@ V27: ACP history/config/permissions ! server capabilities and values; session ID
 V28: Virtual controls ! absent without configured vwork; multiple stores/repos/workspaces, bounded lists and UTF-8 editor. IO ! background tasks. Saved bytes/mode ! retained, revision conflict/stale callbacks/config removal ! preserve drafts. Extension rename ! stable store identity. Daemon credentials ! never GUI/log/persistence. Verify: virtual_workspaces::browser_tests and fastrock-workspaces HTTP/config fixtures.
 V29: Stable 0.3.0 ! GitHub non-prerelease/latest, retained fast profile, signed/verified/attested Windows ZIP. Provider and app tests ! run on Windows; no Mac GUI or release binary. Verify: release_config, CI receipts and public downloads.
 V30: Vwork compaction UI ! selected store only, native menu/button, background authenticated daemon call; progress/outcome ! accurate; drafts/provider-removal guards preserved; no direct DB access or daemon restart. Verify: virtual_workspaces::browser_tests::v30_compaction_preserves_drafts, provider HTTP fixtures, Windows vwork smoke.
+
+V31: Windows software frames ! retain private framebuffer; unchanged scene ! no rerasterization; every existing redraw ! fully restore presentation pixels despite false buffer age; resize/scale/recreation ! correct; idle ! no polling. Verify: window_runtime::tests and games scroll/recovery fixture.
+V32: Large transcript tables/tool output/diffs ! bounded rows in native ListView; shared column widths, source order, copy, links, expand/collapse ! preserved. Verify: transcript virtualization tests and games fixtures.
+V33: 0.3.2 ! games before/after frame timing with same fixture, Windows tests, Mac compile, signed/verified CI Windows ZIP. Rendering optimization ! exact dependency receipt, LTO off.
 
 ## §T TASKS
 id|status|task|cites
@@ -116,6 +120,8 @@ T27|x|External Goose ACP default, concurrent sessions, native conversation/confi
 T28|x|Verify Windows/Mac builds, Windows tests and signed CI prerelease; document Goose architecture/capability limits|V15,V22,V23,V26,V27,I.distribution,I.goose
 T29|x|Port vwork provider/browser onto current Goose/Rally architecture; verify and publish stable 0.3.0 Windows ZIP, mirror with ship-to-aws|V15,V23,V28,V29,I.vwork,I.distribution
 T30|x|Native vwork storage compaction control, preserve drafts, verify Fastrock 0.3.1 Windows fast CI release and explicit S3 upload; Mac compatibility compile|V15,V23,V28,V30,I.vwork,I.distribution
+
+T31|~|Retained Windows presentation, optimized render/text dependencies, finer transcript rows, games benchmark and 0.3.2 CI release|V15,V31,V32,V33,I.scroll,I.paint,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 
@@ -265,3 +271,7 @@ B70|2026-10-25|UI summary reused Codex permission labels and unfiltered child-th
 B71|2026-10-26|Rally child window dropped explicit CLI backend selection and defaulted to Goose during Codex acceptance|V27; forward connection address/token-variable name to child; native fixtures exercise both backends
 B72|2026-10-26|Hosted Windows runner lacked PSGallery registration, preventing Azure signing module installation|Register default repository before signing; preserve failed tag and use stable +build.1; existing V29 signing gate retained
 B73|2026-10-26|Setup guidance omitted virtual/host file and skill/instruction boundaries, allowing deliberately disabled Developer to be mistaken for missing ACP capability|Document vwork-only workflow, host-side global instruction setup and 1.56.0 hint loading; no runtime defect established, no new invariant
+
+B74|2026-10-26|Unconditional Windows full-window invalidation, opt=0 raster/text dependencies and monolithic table/tool rows amplify scrolling cost|V31,V32,V33; retained framebuffer, authorized dependency optimization, bounded native rows, same-fixture benchmark
+
+B75|2026-10-26|Replacing shorthand padding while retaining explicit left override produced duplicate Slint binding|Use one binding per edge; compile-time regression, existing V20

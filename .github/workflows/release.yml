@@ -67,6 +67,9 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             & $test.FullName --skip window_runtime::tests | Tee-Object -Append build/windows-tests.log
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            # Isolate Slint platform initialization from the parallel unit suite.
+            & $test.FullName window_runtime::tests --test-threads=1 | Tee-Object -Append build/windows-tests.log
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           python dev/test-release-policy.py -v
       - name: Azure login for Artifact Signing (OIDC)
@@ -114,6 +117,8 @@ jobs:
           python dev/windows-goose-smoke.py build/release-inputs/fastrock.exe --ci
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-vwork-smoke.py build/release-inputs/fastrock.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/windows-scroll-benchmark.py build/release-inputs/fastrock.exe --output build/scroll-smoke --frames 120
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         if: always()
         with:
@@ -125,6 +130,7 @@ jobs:
             build/vwork-smoke/
             build/windows-tests.log
             build/windows-signing.json
+            build/scroll-smoke/
           compression-level: 0
           if-no-files-found: ignore
       - name: Package signed binary and matching symbols
@@ -148,7 +154,7 @@ jobs:
           compression-level: 0
           if-no-files-found: error
   macos:
-    if: "!startsWith(github.ref, 'refs/tags/v0.3.0') && !startsWith(github.ref, 'refs/tags/v0.3.1')"
+    if: "!startsWith(github.ref, 'refs/tags/v0.3.0') && !startsWith(github.ref, 'refs/tags/v0.3.1') && !startsWith(github.ref, 'refs/tags/v0.3.2')"
     needs: [build, windows]
     runs-on: [self-hosted, macOS, ARM64, fastrock-signing]
     timeout-minutes: 60

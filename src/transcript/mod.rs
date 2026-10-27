@@ -1119,9 +1119,9 @@ impl AppController {
         let Some((entry, block)) = thread.transcript.block_for_row(row_id) else {
             return;
         };
-        // A long code block spans several rows; its actions use all of it.
+        // A split block spans several rows; its actions use the complete source.
         let code = store::split_row_id(row_id)
-            .and_then(|(_, local)| export::code_block_text(&entry.blocks, local));
+            .and_then(|(_, local)| export::group_copy_text(&entry.blocks, local));
         match action {
             "edit-pending" => {
                 let client_id = entry.key.clone();

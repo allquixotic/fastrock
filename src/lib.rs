@@ -483,14 +483,9 @@ impl slint::winit_030::CustomApplicationHandler for WindowEvents {
             }
             _ => {}
         }
-        // Windows/RDP can lose a retained surface without reporting buffer age
-        // changes. Dirty every existing frame; this schedules no periodic frames.
+        // The software backend restores every presentation pixel from its private
+        // retained framebuffer. Ordinary redraws keep Slint's dirty-region tracking.
         if cfg!(windows) {
-            if matches!(event, WindowEvent::RedrawRequested)
-                && let Some(window) = slint_window
-            {
-                window_runtime::invalidate_frame(window);
-            }
             if matches!(
                 event,
                 WindowEvent::Focused(true)

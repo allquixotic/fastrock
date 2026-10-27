@@ -9,9 +9,12 @@ sessions. Installed `codex app-server` remains an explicit connection option.
 Never compile Goose crates or embed codex-core, inference, app-server, V8 or a
 second agent runtime in Fastrock. Inherit backend environment/configuration;
 never install/update either backend. Negotiate ACP capabilities at runtime.
-All build profiles prioritize compilation speed: opt-level=0, no LTO, no debug
+Build profiles prioritize compilation speed: application opt-level=0, no LTO, no debug
 information, 256 codegen units, incremental builds, no stripping/packing pass.
 Optimized builds require Sean's explicit authorization. Prereleases use fast builds.
+Authorized 2026-10-26: allowlisted rendering/text dependencies use opt-level=2,
+lto="off" including local ThinLTO. Keep other fast settings; benchmark on games
+before 0.3.2 CI release. Continue Windows ZIP distribution and Mac compatibility compile.
 Stable 0.3.0 and 0.3.1 are explicitly authorized with the existing fast profile and Windows
 x64 ZIP publication only; compile Mac for compatibility but skip its release job.
 Explicit exception: official 0.2.0 uses profile official, opt-level=1, debug=2,

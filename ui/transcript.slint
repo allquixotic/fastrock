@@ -24,7 +24,7 @@ export struct BlockLine {
 //   tone:   0 normal, 1 muted, 2 plan, 3 info, 4 warning, 5 error, 6 success
 //   gap:    0 attached, 1 block, 2 entry, 3 list item
 //   frame:  0 none, 1 card top, 2 card middle, 3 card bottom, 4 single-row card
-//   part:   code rows of one block: 0 whole block, 1 first, 2 middle, 3 last
+//   part:   chunks of one block: 0 whole block, 1 first, 2 middle, 3 last
 export struct BlockData {
     id: string,
     kind: int,
@@ -523,10 +523,17 @@ component Chevron inherits Rectangle {
 
 // Bordered card used by tool-like rows.
 component Card inherits Rectangle {
-    background: Theme.surface;
-    border-width: 1px;
-    border-color: Theme.border;
-    border-radius: Theme.radius;
+    in property <int> part: 0;
+    clip: root.part != 0;
+    Rectangle {
+        width: parent.width;
+        y: root.part == 2 || root.part == 3 ? -16px : 0px;
+        height: parent.height - self.y + (root.part == 1 || root.part == 2 ? 16px : 0px);
+        background: Theme.surface;
+        border-width: 1px;
+        border-color: Theme.border;
+        border-radius: Theme.radius;
+    }
 }
 
 // "+12 −3" counters.
@@ -555,12 +562,15 @@ component OutputBox inherits Rectangle {
     in property <string> text;
     in property <string> row-id;
     in property <bool> show-copy;
+    in property <int> part: 0;
     background: Theme.surface-sunken;
-    border-radius: Theme.radius-small;
+    border-radius: root.part == 0 ? Theme.radius-small : 0px;
 
     VerticalLayout {
-        padding: Theme.pad-m;
         padding-left: Theme.pad-l;
+        padding-right: Theme.pad-m;
+        padding-top: root.part <= 1 ? Theme.pad-m : 0px;
+        padding-bottom: root.part == 0 || root.part == 3 ? Theme.pad-m : 0px;
         spacing: Theme.pad-s;
         SelectableText {
             text: root.text;
@@ -668,23 +678,21 @@ component CodeRow inherits Rectangle {
     }
 }
 
-component TableRow inherits Rectangle {
+component TableRow inherits Card {
     in property <BlockData> block;
+    part: root.block.part;
     // Width available to the table, computed by the row (not from the
     // layout, which would make cell widths depend on themselves).
     in property <length> available;
     property <length> cell-pad: Theme.pad-m;
     property <length> cell-spacing: Theme.pad-l;
     property <length> inner: root.available - 2 * self.cell-pad - (root.block.widths.length - 1) * self.cell-spacing;
-    border-width: 1px;
-    border-color: Theme.border;
-    border-radius: Theme.radius;
     min-height: table-layout.preferred-height;
 
     table-layout := VerticalLayout {
         for row[r] in root.block.cells: Rectangle {
-            background: r == 0 ? Theme.surface-alt : transparent;
-            border-radius: r == 0 ? Theme.radius : 0;
+            background: (r == 0 && root.block.part <= 1) ? Theme.surface-alt : transparent;
+            border-radius: (r == 0 && root.block.part <= 1) ? Theme.radius : 0;
             VerticalLayout {
                 HorizontalLayout {
                     padding-left: root.cell-pad;
@@ -702,7 +710,7 @@ component TableRow inherits Rectangle {
                             : TextHorizontalAlignment.left;
                     }
                 }
-                if r < root.block.cells.length - 1: Rectangle {
+                if r < root.block.cells.length - 1 || root.block.part == 1 || root.block.part == 2: Rectangle {
                     height: 1px;
                     background: Theme.border;
                 }
@@ -848,9 +856,10 @@ component ReasoningRow inherits Rectangle {
 // Command execution: header with status and command, optional output.
 component ExecRow inherits Card {
     in property <BlockData> block;
+    part: root.block.part;
 
     VerticalLayout {
-        header := Rectangle {
+        if root.block.part <= 1: header := Rectangle {
             height: 32px;
             border-radius: Theme.radius;
             background: touch.has-hover && root.block.expandable ? Theme.hover : transparent;
@@ -895,9 +904,12 @@ component ExecRow inherits Card {
             }
         }
         if root.block.text != "": VerticalLayout {
-            padding: Theme.pad-xs;
+            padding-left: Theme.pad-xs;
+            padding-right: Theme.pad-xs;
+            padding-bottom: root.block.part == 0 || root.block.part == 3 ? Theme.pad-xs : 0px;
             padding-top: 0;
             OutputBox {
+                part: root.block.part;
                 text: root.block.text;
                 row-id: root.block.id;
                 show-copy: root.block.copyable && root.block.expanded;
@@ -978,11 +990,12 @@ component PatchSummaryRow inherits HorizontalLayout {
 
 component PatchFileRow inherits Card {
     in property <BlockData> block;
+    part: root.block.part;
     // Part of a multi-file patch (attached under the summary row).
     property <bool> nested: root.block.gap == 0;
 
     VerticalLayout {
-        Rectangle {
+        if root.block.part <= 1: Rectangle {
             height: 32px;
             border-radius: Theme.radius;
             background: toggle-touch.has-hover ? Theme.hover : transparent;
@@ -1051,8 +1064,8 @@ component PatchFileRow inherits Card {
             border-radius: Theme.radius-small;
             min-height: diff-lines.preferred-height;
             diff-lines := VerticalLayout {
-                padding-top: Theme.pad-s;
-                padding-bottom: Theme.pad-s;
+                padding-top: root.block.part <= 1 ? Theme.pad-s : 0px;
+                padding-bottom: root.block.part == 0 || root.block.part == 3 ? Theme.pad-s : 0px;
                 for line in root.block.lines: Rectangle {
                     height: Look.line-height;
                     background: line.kind == 1 ? Theme.diff-add-bg : line.kind == 2 ? Theme.diff-del-bg : transparent;
@@ -1088,9 +1101,10 @@ component PatchFileRow inherits Card {
 // MCP / dynamic tool / web search / image card.
 component ToolRow inherits Card {
     in property <BlockData> block;
+    part: root.block.part;
 
     VerticalLayout {
-        Rectangle {
+        if root.block.part <= 1: Rectangle {
             height: 32px;
             border-radius: Theme.radius;
             background: touch.has-hover && root.block.expandable ? Theme.hover : transparent;
@@ -1142,15 +1156,19 @@ component ToolRow inherits Card {
             }
         }
         if root.block.lines.length > 0: VerticalLayout {
-            padding: Theme.pad-xs;
+            padding-left: Theme.pad-xs;
+            padding-right: Theme.pad-xs;
+            padding-bottom: root.block.part == 0 || root.block.part == 3 ? Theme.pad-xs : 0px;
             padding-top: 0;
             Rectangle {
                 background: Theme.surface-sunken;
-                border-radius: Theme.radius-small;
+                border-radius: root.block.part == 0 ? Theme.radius-small : 0px;
                 clip: true;
                 min-height: result-lines.preferred-height;
                 result-lines := VerticalLayout {
-                    padding: Theme.pad-m;
+                    padding-right: Theme.pad-m;
+                    padding-top: root.block.part <= 1 ? Theme.pad-m : 0px;
+                    padding-bottom: root.block.part == 0 || root.block.part == 3 ? Theme.pad-m : 0px;
                     padding-left: Theme.pad-l;
                     for line in root.block.lines: Text {
                         text: line.text;

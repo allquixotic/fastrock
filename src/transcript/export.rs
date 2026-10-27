@@ -427,14 +427,19 @@ pub(crate) fn block_copy_text(block: &Block) -> String {
     }
 }
 
-/// The whole code block that row `local` of `blocks` belongs to: the text
+/// The whole split block that row `local` of `blocks` belongs to: the text
 /// of its rows, and the lines its note row left out. `None` when the row is
-/// not code.
-pub(crate) fn code_block_text(blocks: &[Block], local: usize) -> Option<String> {
-    if blocks.get(local)?.kind != BlockKind::Code {
+/// outside a supported block group.
+pub(crate) fn group_copy_text(blocks: &[Block], local: usize) -> Option<String> {
+    let kind = blocks.get(local)?.kind;
+    if !matches!(
+        kind,
+        BlockKind::Code | BlockKind::Table | BlockKind::Tool | BlockKind::Exec
+    ) {
         return None;
     }
-    let continues = |block: &Block| matches!(block.part, Part::Middle | Part::Last);
+    let continues =
+        |block: &Block| block.kind == kind && matches!(block.part, Part::Middle | Part::Last);
     let mut start = local;
     while start > 0 && continues(&blocks[start]) {
         start -= 1;
@@ -442,6 +447,18 @@ pub(crate) fn code_block_text(blocks: &[Block], local: usize) -> Option<String> 
     let mut end = local;
     while end + 1 < blocks.len() && continues(&blocks[end + 1]) {
         end += 1;
+    }
+    if matches!(kind, BlockKind::Tool | BlockKind::Exec) {
+        return blocks[start].copy_text.clone();
+    }
+    if kind == BlockKind::Table {
+        return Some(
+            blocks[start..=end]
+                .iter()
+                .map(block_copy_text)
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
     }
     let mut text = String::new();
     for (offset, block) in blocks[start..=end].iter().enumerate() {
@@ -474,6 +491,25 @@ pub(crate) fn quote(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn v32_copy_from_any_table_chunk_preserves_every_row() {
+        let source = "| a | b |\n|---|---|\n".to_string()
+            + &(0..80)
+                .map(|i| format!("| item {i} | [value](https://example.com/{i}) |\n"))
+                .collect::<String>();
+        let blocks =
+            super::super::markdown::render(&source, super::super::markdown::BlockStyle::default());
+        let expected = std::iter::once("| a | b |".to_string())
+            .chain((0..80).map(|i| format!("| item {i} | value |")))
+            .collect::<Vec<_>>()
+            .join("\n");
+        for index in 0..blocks.len() {
+            assert_eq!(
+                super::group_copy_text(&blocks, index).as_deref(),
+                Some(expected.as_str())
+            );
+        }
+    }
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -491,11 +527,11 @@ mod tests {
         // Any row of the block, the note row included, copies all of it.
         for local in [1, 5, blocks.len() - 2] {
             assert_eq!(
-                code_block_text(&blocks, local).as_deref(),
+                group_copy_text(&blocks, local).as_deref(),
                 Some(whole.as_str())
             );
         }
-        assert_eq!(code_block_text(&blocks, 0), None);
+        assert_eq!(group_copy_text(&blocks, 0), None);
     }
 
     #[test]

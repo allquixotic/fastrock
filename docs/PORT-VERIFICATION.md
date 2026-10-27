@@ -384,3 +384,54 @@ Release verification completed 2026-10-26:
   [fastrock.zip](https://fastrock-dl-582961286906-us-east-1-an.s3.us-east-1.amazonaws.com/fastrock.zip)
   with identical bytes using REDUCED_REDUNDANCY. Anonymous HEAD size/class and
   full-download SHA-256 passed; anonymous bucket listing remained denied (403).
+
+## 0.3.2 scrolling performance — 2026-10-26
+
+Development benchmark ran in the signed-in console session on `games` (Windows 11
+26100, software renderer). Identical local ACP fixtures and native wheel events
+were used before and after; 360 input ticks per scenario at 1440×1000/100%,
+120 at 2560×1600/200%. First ten samples were excluded. Renderer timings include
+rasterization and presentation; event-loop intervals additionally expose layout
+and dispatch stalls. The 16.667 ms input timer is a pacing target, not an input-to-
+photon latency measurement. No inference or real Rally requests were used.
+
+Baseline is c7374dd behavior plus in-memory diagnostics, all opt-level 0 and the
+original full-window invalidation. Candidate retains application opt-level 0,
+optimizes 17 rendering/text dependencies at level 2, disables all LTO (including
+local ThinLTO), retains a private Windows framebuffer, and virtualizes tables in
+eight-row chunks and tool/command/diff output in sixteen-line chunks.
+
+| Scenario | 100% frame p95, before → after | 200% frame p95, before → after | 100% event-loop interval p95, before → after |
+|---|---:|---:|---:|
+| prose | 63.90 → 7.45 ms | 120.51 → 13.20 ms | 72.49 → 17.24 ms |
+| table | 56.93 → 6.65 ms | 81.45 → 9.94 ms | 140.62 → 18.23 ms |
+| code | 41.00 → 5.43 ms | 81.69 → 9.55 ms | 42.29 → 17.26 ms |
+| tools | 45.36 → 6.79 ms | 87.66 → 9.13 ms | 47.17 → 17.39 ms |
+| streaming | 68.76 → 7.75 ms | 125.28 → 12.83 ms | 81.84 → 17.20 ms |
+
+Baseline executable SHA-256: `8d6fe39c2193d9ca7d7fe9e1becf0c1c7ead025a033f835be1ee5bcb731c0f43`.
+Candidate executable SHA-256: `6604f3a25e7c5b04e7aae484a31b44ba29c10043e91c0f0d98d4fd72964a004a`.
+All baseline frames dirtied the entire window; candidate scrolling typically
+dirties only the conversation region. Presentation still copies every pixel to
+Windows so RDP buffer loss cannot expose stale pixels. Private storage costs
+approximately four bytes per physical window pixel.
+
+Raw frames, timing summaries, snapshots and local binaries are retained in
+`build/scroll-benchmark/` and `games:C:/Users/SeanMcNamara/fastrock-scroll-032/`.
+The reusable fixture is `dev/windows-scroll-benchmark.py`. These are development
+measurements; hosted CI runs a shorter acceptance fixture on the signed executable,
+without imposing machine-independent timing thresholds.
+
+Windows regression evidence: 695 application tests plus the isolated rendering
+test passed; six provider fixture tests passed, one live-vwork test stayed ignored.
+Three release-policy tests passed; the Apple symbol fixture was skipped on Windows.
+Rendering tests corrupt the presentation buffer, verify unchanged content needs
+zero rasterization, verify a small visual change remains a partial repaint, and
+check resize storage, links, clipping and selection. Native benchmark exercises
+minimize/restore. Actual RDP reconnect was not driven; surface loss is injected
+deterministically. Mac compatibility compilation passed; no Mac tests or GUI ran.
+
+Native acceptance on the candidate also passed both Codex and Goose Rally fixtures
+(82 local requests and 13 explicit fixture writes each, real Windows mouse board
+moves), concurrent Goose chat/cancel/config controls, and virtual-workspace
+conflict/save/disabled-controls checks. All receipts bind to the candidate hash.

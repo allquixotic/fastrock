@@ -37,6 +37,17 @@ def prompt(req):
     cancel=threading.Event(); s['cancel']=cancel
     update(sid,dict(sessionUpdate='session_info_update',_meta={'goose':{'activeRunId':'run-'+sid}}))
     if text=='disconnect': os._exit(0)
+    if text == 'benchmark-tools':
+        for n in range(6):
+            tid = f'bench-{sid}-{n}'
+            update(sid, dict(sessionUpdate='tool_call', toolCallId=tid, title=f'Fixture tool {n}', status='in_progress', rawInput={'fixture': n}))
+            output = '\n'.join(f'Output {n}/{i}: line of tool text with preserved source order' for i in range(200))
+            update(sid, dict(sessionUpdate='tool_call_update', toolCallId=tid, status='completed', content=[dict(type='content', content=dict(type='text', text=output))]))
+    if text == 'benchmark-stream':
+        for n in range(1000):
+            if cancel.wait(.02): break
+            update(sid,dict(sessionUpdate='agent_message_chunk',messageId='stream-'+sid,
+                            content=dict(type='text',text=f'Streamed sentence {n} with **formatted** text.\n\n')))
     if 'permission' in text:
         pid='permission-'+sid; wait=threading.Event(); permissions[pid]=(wait,{})
         send(dict(id=pid,method='session/request_permission',params=dict(sessionId=sid,

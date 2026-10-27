@@ -23,3 +23,11 @@ clipboard output. Never execute rendering or GUI tests on Sean's Mac.
 Keep each bridge until an upstream Slint release provides the corresponding
 public behavior. Remove the Cargo override and vendor directory only after all
 bridges can use upstream APIs and Windows rendering/interaction tests pass.
+
+`i-slint-backend-winit` retains the crates.io 1.18.1 package, including licensing.
+`renderer/sw.rs` uses `retained_buffer.rs` on Windows: dirty regions rasterize into
+private CPU storage and every native redraw presents the complete retained frame.
+False buffer-age reports after RDP surface loss therefore need no full text redraw.
+`software_metrics.rs` exposes bounded, opt-in, in-memory frame measurements used by
+`dev/windows-scroll-benchmark.py`; it performs no rendering-thread I/O or polling.
+Other platforms retain upstream presentation behavior.
