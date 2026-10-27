@@ -46,10 +46,11 @@ opening only the Virtual window still requires a running daemon. Add
 owner, and closing a chat leaves that owner running. If workstation policy denies
 background process creation, retain the permitted manual startup route.
 
-vwork 0.2.2 also generates a tool-name matcher for its optional Goose policy hook.
-This avoids a shell/hook launch for ordinary vwork calls while retaining the
-existing native-tool blocks. Regenerate and merge `plugin/hooks/hooks.json` into
-the installed plugin to apply it; updating the executable does not rewrite config.
+vwork 0.3.2 enables Goose Developer alongside vwork and preserves other MCPs.
+Its optional policy hook only redirects recognizable direct Git repository
+creation; reads, host-file edits and general scripts remain available. Regenerate
+setup and replace old vwork hints/hooks when upgrading from the strict policy.
+Updating the executable alone does not rewrite installed Goose configuration.
 
 ### Configuration lookup
 
@@ -79,43 +80,50 @@ absolute (`~/...` is supported). Entries pointing at the same store are merged.
 Multiple qualifying extensions can expose multiple stores. Every registered
 repository and workspace within those stores appears in the catalog, including
 workspaces other than the extension's default `--workspace`. vwork's workspace
-binding is a default, not an access boundary. Repositories still use their
-existing Git-backed base data; keep the registered source repositories present.
+binding is a default, not an access boundary. vwork 0.3+ imports all persistent Git objects and source into redb. Keep original
+repositories until any legacy migration finishes; imported registrations no longer
+depend on the original checkout.
 
 ### Agent tools and global instructions
 
-The vwork setup deliberately disables Goose's Developer and Extension Manager
-extensions. Keep them disabled when routing source operations through vwork.
-An agent recommending Developer merely because it cannot run a shell has missed
-this configuration. vwork supplies virtual file operations and configured
-build/package tasks; it does not supply an arbitrary host shell or access to
-host files such as `%USERPROFILE%\.claude\CLAUDE.md`.
+With vwork 0.3.2+, enable Goose's Developer extension for arbitrary host reads,
+host-file edits and one-off Bun/Python/shell scripts. Keep other desired MCPs,
+including Exa and AWS, in the existing Goose configuration. Fastrock inherits that
+configuration. No Fastrock binary update is needed for this policy change.
 
-Skill discovery, instruction loading, and tool access are separate. Discovering
-skills under `.claude/skills` does not import `.claude/CLAUDE.md`, make Claude Code
-hooks/subagents available, or grant access to other physical files.
+Repository work defaults to vwork. Use leased temporary copies for tools that need
+source files, import wanted edits and release promptly. Intentional
+`workspace_export` copies remain indefinite. Avoid unmanaged clones, worktrees
+and bulk source copies. Reads of existing repositories, skills and AGENTS.md are
+allowed; use vwork reads when you need the current virtual revision.
 
-Goose **1.56.0 loads hints independently of Developer**. To supply global rules,
-manually merge the desired instruction text into `AGENTS.md` beside the active
-Goose `config.yaml`, preserving existing rules. The default Windows location is
-`%APPDATA%\Block\goose\config\AGENTS.md`; with `GOOSE_PATH_ROOT`, use
-`<GOOSE_PATH_ROOT>\config\AGENTS.md`. Its default context filenames include
-`AGENTS.md` and `.goosehints`; retain `AGENTS.md` if overriding
-`CONTEXT_FILE_NAMES`. Start a new conversation after setup. This supplies context
-without adding a host filesystem tool. Adapt shell/Git instructions to vwork and
-omit requirements that depend on unavailable Claude-specific hooks or agents.
+Regenerate vwork's setup with the installed executable. Merge only its Developer
+and vwork entries into the existing extensions mapping, retaining other MCPs,
+credentials and provider/model settings. Remove obsolete Developer tool allowlists.
+Replace the old vwork section in global Goose hints with the new generated text;
+remove stale instructions forbidding all shell or filesystem use. Replace the
+installed vwork-policy plugin too, so the old blanket-denial hook does not survive
+alongside the new policy. Start a new conversation afterward.
 
-To distinguish working vwork tools from a missing extension, ask the agent to
-call `vwork_workspace_info` and `vwork_files_list` for its bound workspace. Goose
-may prefix these names, for example `vwork__vwork_workspace_info`. Successful
-calls establish virtual file access, not host file access. If the tools are
-absent or fail, inspect the enabled vwork extension, daemon, and workspace binding;
-do not treat enabling Developer as the repair. The Virtual window discovers
-configuration and talks to the daemon separately, so its presence alone does not
-prove that a particular Goose conversation loaded the MCP tools.
+The optional hook detects direct Git clone/init/worktree-add mistakes; reads,
+file edits and unrelated MCPs skip it. Shell reads are allowed, and hook failure
+also allows calls. Arbitrary scripts can still write repositories: this is a
+best-effort prompt-and-hook policy, not an OS sandbox or filesystem monitor.
+Goose 1.56.0 still launches selected hooks through `sh`, which may flash a console
+on Windows; vwork's own subprocess suppression cannot change that launcher.
 
-Verified against [Goose 1.56.0 prompt construction](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/src/agents/prompt_manager.rs)
-and [hint lookup](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/src/hints/load_hints.rs).
+Skill discovery, hint loading and tool availability are separate. Skills under
+`.claude/skills` do not automatically import `.claude/CLAUDE.md` or implement
+Claude hooks/subagents. Global Goose hints normally live beside `config.yaml`
+in `%APPDATA%\Block\goose\config\AGENTS.md` on Windows, or
+`<GOOSE_PATH_ROOT>\config\AGENTS.md` when overridden. Developer can read/edit
+those host files. The vwork MCP, recipe and generated AGENTS.md share one policy.
+
+For missing virtual tools, check the enabled vwork extension, daemon and workspace
+binding using `vwork_workspace_info` / `vwork_files_list`. The Virtual window talks
+to the daemon separately; its presence does not prove the chat loaded MCP tools.
+See [vwork Goose setup](https://github.com/allquixotic/vwork/blob/main/docs/goose.md)
+and [Goose 1.56.0 hooks](https://github.com/aaif-goose/goose/blob/v1.56.0/documentation/docs/guides/context-engineering/hooks.md).
 
 ## Browse and edit
 
