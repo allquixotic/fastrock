@@ -356,3 +356,31 @@ Release verification completed 2026-10-26:
   anonymous HEAD and full-download SHA-256, REDUCED_REDUNDANCY storage and denied
   anonymous bucket listing. Failed tag v0.3.0 remains unchanged; B72 records the
   runner PSGallery registration fix included in the successful build tag.
+
+## 0.3.1 vwork maintenance — 2026-10-26
+
+- [Release v0.3.1](https://github.com/allquixotic/fastrock/releases/tag/v0.3.1)
+  and [signed CI 40425525614](https://github.com/allquixotic/fastrock/actions/runs/40425525614)
+  succeeded from `58fa5da5014d120b6e45e57d32f5bee12d874da1`. Windows x64 fast ZIP;
+  Mac compatibility compilation passed with no local Mac tests/GUI. The temporary
+  build runner was removed and its incremental cache preserved.
+- 691 application tests, six workspace-provider tests and four release-policy
+  tests passed. The existing live-vwork opt-in test remains ignored and the
+  headless-incompatible window-runtime test remains skipped. Signed native
+  Codex Rally, Goose Rally/chat and virtual-workspace acceptance passed.
+- The compact action calls the selected store in the background, shows measured
+  reclaimed bytes or skip/error reasons, and preserves unsaved drafts. Native
+  fixture evidence and the inspected screenshot show the button, successful
+  compaction report and preserved draft; disabled vwork hides the feature.
+- Authenticode publisher: Sean McNamara; Microsoft RFC 3161 timestamp present.
+  Certificate SHA-1 `F65E5B72C3747B4450FC367E1AD28B15F1418729`.
+  Executable SHA-256:
+  `d8e6044139aa229ea200ae2464f2a5e65273ee728e4001e2e5cb72cf2e9db750`.
+- Downloaded ZIP `fastrock-0.3.1-windows-x64-fast.zip`: 145,959,360 bytes;
+  SHA-256 `10648b312c46ec89993aa4dbd8a81db44f66742303813651c6362f36031e1304`.
+  GitHub asset digest, checksum and signing receipt match. GitHub provenance
+  verified against the exact source, tag and release workflow.
+- Explicit ship-to-aws upload overwrote
+  [fastrock.zip](https://fastrock-dl-582961286906-us-east-1-an.s3.us-east-1.amazonaws.com/fastrock.zip)
+  with identical bytes using REDUCED_REDUNDANCY. Anonymous HEAD size/class and
+  full-download SHA-256 passed; anonymous bucket listing remained denied (403).
