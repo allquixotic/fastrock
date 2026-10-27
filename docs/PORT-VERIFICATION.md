@@ -435,3 +435,32 @@ Native acceptance on the candidate also passed both Codex and Goose Rally fixtur
 (82 local requests and 13 explicit fixture writes each, real Windows mouse board
 moves), concurrent Goose chat/cancel/config controls, and virtual-workspace
 conflict/save/disabled-controls checks. All receipts bind to the candidate hash.
+
+### Published CI artifact
+
+[Signed release CI run 40441558745](https://github.com/allquixotic/fastrock/actions/runs/40441558745)
+passed and published [v0.3.2](https://github.com/allquixotic/fastrock/releases/tag/v0.3.2)
+on 2026-10-27 UTC from `d38db9e890025cc514a244d6e7e89310f9ff60eb`.
+Windows ran 695 application tests, the isolated renderer test, six provider tests,
+and release-policy checks. The live-vwork test stayed ignored. Mac compatibility
+compilation passed; Mac publication was skipped. The temporary build runner was
+deregistered after completion.
+
+The exact signed executable passed CI's Codex/Goose Rally, concurrent chat,
+virtual-workspace and five-scenario scrolling fixtures. Hosted Rally board moves
+used callbacks; the pre-release games checks above exercised native mouse moves.
+CI scrolling p95 render-plus-present times ranged from 6.64 to 12.53 ms at
+1440×1000/100%; these hosted-runner figures are separate from the games comparison.
+
+Downloaded `fastrock-0.3.2-windows-x64.zip` SHA-256 matched both the published
+sidecar and GitHub asset digest:
+`aa4d3e2f0ccee342f2bef205a231f9134c73b8d24f86a30ccba9c95134398106`.
+GitHub attestation verification passed with repository, release workflow, tag and
+source commit constraints. BUILD.json confirms a clean source tree, all 17
+authorized dependency optimizations and `lto="off"`; signing and acceptance
+receipts match the extracted executable SHA-256:
+`44767d7917a65c5bd24cdbf00288d58b9037727f00cedcc8f446678113bdeb10`.
+Independent Authenticode verification of that downloaded executable on games
+returned `Valid`, publisher Sean McNamara, with Microsoft's timestamp authority.
+Downloaded assets, CI receipts and local verification evidence are retained in
+`build/scroll-release-0.3.2/`.

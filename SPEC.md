@@ -121,7 +121,7 @@ T28|x|Verify Windows/Mac builds, Windows tests and signed CI prerelease; documen
 T29|x|Port vwork provider/browser onto current Goose/Rally architecture; verify and publish stable 0.3.0 Windows ZIP, mirror with ship-to-aws|V15,V23,V28,V29,I.vwork,I.distribution
 T30|x|Native vwork storage compaction control, preserve drafts, verify Fastrock 0.3.1 Windows fast CI release and explicit S3 upload; Mac compatibility compile|V15,V23,V28,V30,I.vwork,I.distribution
 
-T31|~|Retained Windows presentation, optimized render/text dependencies, finer transcript rows, games benchmark and 0.3.2 CI release|V15,V31,V32,V33,I.scroll,I.paint,I.distribution
+T31|x|Retained Windows presentation, optimized render/text dependencies, finer transcript rows, games benchmark and 0.3.2 CI release|V15,V31,V32,V33,I.scroll,I.paint,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 
