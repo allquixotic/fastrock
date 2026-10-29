@@ -212,5 +212,58 @@
     ]
   },
   "vwork_release": "v0.3.3",
-  "vwork_zip_sha256": "81ad8e8df7b6423ff47c994c4cbb263307036d27b4cffd97fd42d1232eb6732d"
+  "vwork_zip_sha256": "81ad8e8df7b6423ff47c994c4cbb263307036d27b4cffd97fd42d1232eb6732d",
+  "published": {
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "goose_version": "1.57.0",
+    "goose_sha256": "ee39aee30805fda80ed996a4e2e9940d04ec855436315b8deb96950231145242",
+    "fastrock_sha256": "c3e5cac2218aef354e457de610de2bacc0c1783153120f35710e87cca300e1bd",
+    "provider": "local HTTP fixture; no real inference",
+    "measurements": [
+      {
+        "repeat": 0,
+        "gui": [
+          {
+            "shared": {
+              "session_id": "20261029_3",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "new",
+            "response_ms": 97.5,
+            "idle_observed_ms": 100.3,
+            "history_available_upper_bound_ms": null
+          },
+          {
+            "shared": {
+              "session_id": "20261029_2",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "resume",
+            "response_ms": 69.8,
+            "idle_observed_ms": 100.5,
+            "history_available_upper_bound_ms": 201.5
+          },
+          {
+            "shared": {
+              "session_id": "20261029_3",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "resume",
+            "response_ms": 83.5,
+            "idle_observed_ms": 103.3,
+            "history_available_upper_bound_ms": 303.7
+          }
+        ],
+        "fastrock_bridge_count": 0,
+        "standalone_goose_bridge_count": 4
+      }
+    ]
+  }
 }

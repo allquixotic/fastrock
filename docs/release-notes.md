@@ -1,16 +1,22 @@
-Fastrock 0.3.2 improves Windows software-rendered scrolling.
+Fastrock 0.3.3 removes repeated vwork client launches when opening conversations.
 
-- Rendering and text dependencies use compiler optimization; application builds
-  retain fast settings. LTO, including local ThinLTO, is disabled.
-- A private framebuffer preserves partial rasterization while restoring complete
-  Windows presentation surfaces after RDP exposure or lost pixels.
-- Large tables, expanded tool output, command output and diffs use smaller native
-  virtualized rows. Copy actions retain complete block content.
+- With [vwork 0.3.3](https://github.com/allquixotic/vwork/releases/tag/v0.3.3) and
+  Goose HTTP MCP support, Fastrock reuses the existing database daemon for new
+  and reopened conversations. A stopped daemon starts once when needed.
+- Both HTTP hops bind 127.0.0.1 only, reject browser Origin and unexpected Host
+  headers, and retain bearer authentication on the daemon hop. No proxying or
+  redirects to external hosts. Workspace bindings survive Fastrock restarts.
+- **Compact entire database** now selects the whole redb independently of any
+  workspace, including every repository and workspace. Unsaved text is preserved.
 
-On games, the same prose-scrolling fixture improved from 63.9 to 7.4 ms at the
-95th-percentile frame time (1440×1000, 100% scale), and from 120.5 to 13.2 ms at
-2560×1600, 200% scale. Tables, code, tool output and simultaneous streaming were
-also measured. These are development fixture results, not universal FPS claims.
+On Windows x64 `games`, installed Goose 1.57.0 plus vwork 0.3.3 produced zero
+vwork client launches across nine Fastrock open/reload operations. Three-sample
+median open time changed from 113.6 to 95.1 ms, and reload from 92.0 to 65.1 ms.
+These isolated local-provider fixtures did not reproduce severe work-machine
+latency; they verify removal of the repeated process launches. Standalone Goose
+and older/customized vwork configurations retain stdio behavior.
 
-Windows x64 ZIP with Authenticode signing, RFC 3161 timestamp and GitHub provenance.
+The 0.3.2 scrolling and RDP recovery fixes remain. Application optimization stays
+at 0, the rendering/text dependency allowlist at 2, and LTO stays off. Windows x64
+ZIP includes Authenticode signing, RFC 3161 timestamp and GitHub provenance.
 Mac compatibility compilation is checked; no Mac package is published.

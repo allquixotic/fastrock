@@ -647,3 +647,29 @@ The daemon dependency passed Windows/macOS CI 40895378344 and signed release
 40896550504; ZIP attestation, checksum and Windows publisher/timestamp were
 independently verified. Application optimization remains 0, the existing
 render/text allowlist remains 2, and LTO remains off.
+
+A separate cold-owner check stopped only the fixture daemon, then opened a new
+conversation through Fastrock. It started the installed owner successfully,
+completed in 245.3 ms, served the real bound MCP tool, and retained the
+Host/Origin guards. The test stopped its owner afterward. The native database
+window smoke also passed compaction before workspace selection, draft retention,
+conflict handling, revision-checked save and disabled-provider hiding.
+
+Signed application release [40899046673](https://github.com/allquixotic/fastrock/actions/runs/40899046673)
+passed both platform builds, 706 Windows Rust tests, release-policy checks,
+Authenticode/timestamp verification, and native Codex/Rally, Goose conversation,
+Goose/Rally, vwork and software-scroll acceptance on the exact signed executable.
+Mac publication was skipped and the temporary build runner deregistered.
+Source: `98075c028691bba085f0814cf4e1ed675d1d078c`.
+ZIP SHA-256: `1d110a2483f0ee157000061e47769f067d94da9db53f45602ebbbc4a69c0fce9`.
+Signed EXE SHA-256: `c3e5cac2218aef354e457de610de2bacc0c1783153120f35710e87cca300e1bd`.
+Downloaded checksum and source/tag/workflow-bound attestation passed; games
+independently verified Sean McNamara's Authenticode signature and Microsoft
+RFC 3161 timestamp. README and release notes were refreshed after publication;
+release assets remain the unchanged CI-built bytes.
+
+The downloaded signed executable passed the installed-stack check on games:
+new 97.5 ms, seeded reload 69.8 ms, and reload after app restart 83.5 ms. All
+three operations used HTTP, preserved the original workspace and rejected
+Origin/forged-Host probes, with zero vwork clients. Standalone Goose control
+launched four clients as expected. The receipt includes this separate final run.

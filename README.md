@@ -32,15 +32,15 @@ prerelease builds retain the fast settings below.
 
 ## Test builds
 
-Windows x64 prereleases are available from [Fastrock releases](https://github.com/allquixotic/fastrock/releases).
-Extract the signed ZIP and run `fastrock.exe`. Apple Silicon Macs get a signed,
-notarized and stapled DMG. All release assets are built and published by CI.
-These builds deliberately have **zero
-optimization**, no debug information, no LTO, 256 codegen units and incremental
-compilation. Default profiles, including `release`, follow this policy; the explicitly
-authorized `official` profile is separate. Optimized
-builds require explicit authorization. The software renderer avoids compiling a
-second GPU stack. See [rapid build/release instructions](docs/releases.md).
+[Fastrock 0.3.3](https://github.com/allquixotic/fastrock/releases/tag/v0.3.3)
+is available as a signed Windows x64 ZIP. Extract it and run `fastrock.exe`.
+All release assets are built and published by CI. Current releases compile
+macOS for compatibility; historical Mac releases include signed, notarized DMGs.
+Application code uses optimization level 0, no debug information, no LTO,
+256 codegen units and incremental compilation. The explicitly authorized
+rendering/text dependency allowlist uses optimization level 2. The `official`
+0.2.0 profile is separate. The software renderer avoids compiling a second GPU
+stack. See [build/release instructions](docs/releases.md).
 
 ```sh
 python3 dev/check-build-policy.py
@@ -57,8 +57,9 @@ When Goose is configured with an enabled, installed vwork MCP extension, the
 toolbar offers **Virtual** to browse and edit all configured stores, repositories
 and workspaces. Files stay in vwork; saves check revisions and preserve drafts
 on conflict. The controls disappear when vwork is not configured. See
-[setup and usage](docs/VIRTUAL_WORKSPACES.md). Stable 0.3.1 distributes the signed
-Windows x64 ZIP; its `-fast` suffix describes compilation settings, not an alpha.
+[setup and usage](docs/VIRTUAL_WORKSPACES.md). With vwork 0.3.3, conversations
+reuse its daemon through localhost HTTP without per-conversation client processes.
+The Compact control covers the entire selected database.
 
 ## Rally
 

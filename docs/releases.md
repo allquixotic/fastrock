@@ -1,5 +1,19 @@
 # Stable releases and rapid signed prereleases
 
+## Stable 0.3.3
+
+Conversation startup uses shared localhost vwork MCP with vwork 0.3.3 and an
+installed Goose advertising HTTP MCP. Eligible opens/reloads no longer spawn
+vwork clients. The native compaction action selects an entire database without
+requiring a workspace. Both hops bind 127.0.0.1 and reject Origin/unexpected Host;
+the daemon keeps bearer authentication. Older/custom transports retain stdio.
+
+The compiler settings and Windows ZIP distribution match 0.3.2: application
+opt-level 0, rendering/text allowlist at 2, LTO off, no debug info, 256 codegen
+units and incremental builds. Mac compiles for compatibility. The installed
+Goose/vwork Windows benchmark ran on games before the CI release; see
+[verification](PORT-VERIFICATION.md#shared-vwork-transport-and-whole-database-compaction-2026-10-29).
+
 ## Stable 0.3.2
 
 The scrolling performance release keeps application code at opt-level 0 and
