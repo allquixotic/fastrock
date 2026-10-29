@@ -1,4 +1,4 @@
-import { Button, LineEdit, TextEdit, ScrollView } from "std-widgets.slint";
+import { Button, ComboBox, LineEdit, TextEdit, ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 
 export struct WorkspaceRowData { label: string, action: string, selected: bool }
@@ -38,14 +38,18 @@ export component VirtualWorkspaceWindow inherits Window {
     in property <string> workspace-report;
     in property <[WorkspaceRowData]> workspace-catalog;
     in property <[WorkspaceRowData]> workspace-files;
+    in property <[string]> database-labels;
+    in property <[string]> database-actions;
+    in property <int> database-index: -1;
+    in property <bool> database-can-compact;
     callback action(string);
 
     MenuBar {
         Menu {
             title: "Storage";
             MenuItem {
-                title: "Compact selected vwork store";
-                enabled: root.workspace-can-create && !root.workspace-busy;
+                title: "Compact entire database";
+                enabled: root.database-can-compact && !root.workspace-busy;
                 activated => {root.action("virtual-compact");}
             }
         }
@@ -56,8 +60,19 @@ export component VirtualWorkspaceWindow inherits Window {
         HorizontalLayout {
             Text {text: "Virtual workspaces"; color: Theme.text; font-size: 18px;}
             Button {text: "Refresh"; enabled: !root.workspace-busy; clicked => {root.action("virtual-refresh");}}
-            Button {text: "Compact store"; enabled: root.workspace-can-create && !root.workspace-busy; clicked => {root.action("virtual-compact");}}
         }
+        HorizontalLayout {
+            Text {text: "Database"; color: Theme.text; vertical-alignment: center;}
+            ComboBox {
+                model: root.database-labels;
+                current-index: root.database-index;
+                enabled: !root.workspace-busy;
+                selected(value) => {root.action(root.database-actions[self.current-index]);}
+                horizontal-stretch: 1;
+            }
+            Button {text: "Compact entire database"; enabled: root.database-can-compact && !root.workspace-busy; clicked => {root.action("virtual-compact");}}
+        }
+        Text {text: "Compaction covers all repositories and workspaces in the selected database."; color: Theme.text-muted; wrap: word-wrap;}
         Text {text: root.workspace-status; color: Theme.text-muted; wrap: word-wrap;}
         HorizontalLayout {
             spacing: 12px;

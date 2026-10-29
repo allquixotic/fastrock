@@ -46,6 +46,9 @@ pub struct BrowserSnapshot {
     pub has_next: bool,
     pub has_previous: bool,
     pub report: String,
+    pub databases: Vec<BrowserRow>,
+    pub database_index: i32,
+    pub can_compact: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Work {
@@ -140,6 +143,7 @@ pub struct Browser {
     catalog: Vec<CatalogItem>,
     catalog_filter: String,
     selected: Option<CatalogItem>,
+    database: Option<Installation>,
     page: Option<FilePage>,
     prefix: String,
     offset: usize,
@@ -207,6 +211,25 @@ impl Browser {
             has_next: self.page.as_ref().is_some_and(|p| p.next.is_some()),
             has_previous: self.offset > 0,
             report: self.report.clone(),
+            databases: self
+                .providers
+                .iter()
+                .enumerate()
+                .map(|(i, p)| BrowserRow {
+                    label: format!("{} · {}", p.label, p.home.display()),
+                    action: format!("virtual-database:{}:{i}", self.catalog_epoch),
+                    selected: self.database.as_ref().is_some_and(|d| d.id == p.id),
+                })
+                .collect(),
+            database_index: self
+                .providers
+                .iter()
+                .position(|p| self.database.as_ref().is_some_and(|d| d.id == p.id))
+                .map_or(-1, |i| i as i32),
+            can_compact: self
+                .database
+                .as_ref()
+                .is_some_and(|d| self.providers.contains(d)),
         }
     }
     pub fn dirty(&self) -> bool {
@@ -296,11 +319,31 @@ impl Browser {
             return vec![];
         }
         if action == "virtual-compact" {
-            let work = self.begin(Request::Compact);
-            if !work.is_empty() {
-                self.status = "Checking and compacting the selected vwork store… This may take several minutes; unsaved text is preserved.".into();
-            }
-            return work;
+            let Some(database) = self
+                .database
+                .as_ref()
+                .filter(|d| self.providers.contains(d))
+            else {
+                self.status = "Select a database to compact".into();
+                return vec![];
+            };
+            self.epoch += 1;
+            self.busy = true;
+            self.status = format!(
+                "Compacting the entire database for {} — all repositories and workspaces. This may take several minutes; unsaved text is preserved.",
+                database.label
+            );
+            return vec![Work::Call {
+                epoch: self.epoch,
+                provider: database.clone(),
+                request: Request::Compact,
+            }];
+        }
+        if let Some(index) = row_index(action, "virtual-database:", self.catalog_epoch)
+            && let Some(database) = self.providers.get(index)
+        {
+            self.database = Some(database.clone());
+            return vec![];
         }
         if (action == "virtual-diff" || action == "virtual-size")
             && let Some(s) = &self.selected
@@ -323,6 +366,7 @@ impl Browser {
         if let Some(index) = row_index(action, "virtual-select:", self.catalog_epoch)
             && let Some(s) = self.catalog.get(index).cloned()
         {
+            self.database = Some(s.provider.clone());
             self.selected = Some(s);
             self.page = None;
             self.document = None;
@@ -411,8 +455,20 @@ impl Browser {
                         self.busy = false;
                     }
                 }
-                if self.catalog != catalog {
+                if self.catalog != catalog || self.providers != providers {
                     self.catalog_epoch += 1;
+                }
+                if let Some(database) = &self.database {
+                    if let Some(current) = providers.iter().find(|p| p.id == database.id) {
+                        self.database = Some(current.clone());
+                    } else {
+                        self.database = None;
+                        self.epoch += 1;
+                        self.busy = false;
+                    }
+                }
+                if self.database.is_none() && providers.len() == 1 {
+                    self.database = providers.first().cloned();
                 }
                 self.providers = providers;
                 self.catalog = catalog;

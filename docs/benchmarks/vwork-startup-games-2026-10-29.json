@@ -1,0 +1,216 @@
+{
+  "before": {
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "goose_version": "1.57.0",
+    "goose_sha256": "ee39aee30805fda80ed996a4e2e9940d04ec855436315b8deb96950231145242",
+    "fastrock_sha256": "44767d7917a65c5bd24cdbf00288d58b9037727f00cedcc8f446678113bdeb10",
+    "provider": "local HTTP fixture; no real inference",
+    "measurements": [
+      {
+        "repeat": 0,
+        "gui": [
+          {
+            "shared": {},
+            "operation": "new",
+            "response_ms": 113.6,
+            "idle_observed_ms": 200.3,
+            "history_available_upper_bound_ms": null
+          },
+          {
+            "shared": {},
+            "operation": "resume",
+            "response_ms": 87.4,
+            "idle_observed_ms": 100.2,
+            "history_available_upper_bound_ms": 201.4
+          }
+        ],
+        "fastrock_bridge_count": 2,
+        "standalone_goose_bridge_count": 4
+      },
+      {
+        "repeat": 1,
+        "gui": [
+          {
+            "shared": {},
+            "operation": "new",
+            "response_ms": 109.6,
+            "idle_observed_ms": 199.8,
+            "history_available_upper_bound_ms": null
+          },
+          {
+            "shared": {},
+            "operation": "resume",
+            "response_ms": 95.2,
+            "idle_observed_ms": 100.3,
+            "history_available_upper_bound_ms": 201.2
+          }
+        ],
+        "fastrock_bridge_count": 2,
+        "standalone_goose_bridge_count": 4
+      },
+      {
+        "repeat": 2,
+        "gui": [
+          {
+            "shared": {},
+            "operation": "new",
+            "response_ms": 115.5,
+            "idle_observed_ms": 201.2,
+            "history_available_upper_bound_ms": null
+          },
+          {
+            "shared": {},
+            "operation": "resume",
+            "response_ms": 92.0,
+            "idle_observed_ms": 99.9,
+            "history_available_upper_bound_ms": 201.0
+          }
+        ],
+        "fastrock_bridge_count": 2,
+        "standalone_goose_bridge_count": 4
+      }
+    ]
+  },
+  "after": {
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "goose_version": "1.57.0",
+    "goose_sha256": "ee39aee30805fda80ed996a4e2e9940d04ec855436315b8deb96950231145242",
+    "fastrock_sha256": "0d9c52742516b072c087ce6edfb84d17510429b5430d1c85a2514472a834a20e",
+    "provider": "local HTTP fixture; no real inference",
+    "measurements": [
+      {
+        "repeat": 0,
+        "gui": [
+          {
+            "shared": {
+              "session_id": "20261029_3",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "new",
+            "response_ms": 95.1,
+            "idle_observed_ms": 100.9,
+            "history_available_upper_bound_ms": null
+          },
+          {
+            "shared": {
+              "session_id": "20261029_2",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "resume",
+            "response_ms": 79.0,
+            "idle_observed_ms": 103.5,
+            "history_available_upper_bound_ms": 303.8
+          },
+          {
+            "shared": {
+              "session_id": "20261029_3",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "resume",
+            "response_ms": 84.7,
+            "idle_observed_ms": 105.0,
+            "history_available_upper_bound_ms": 305.8
+          }
+        ],
+        "fastrock_bridge_count": 0,
+        "standalone_goose_bridge_count": 4
+      },
+      {
+        "repeat": 1,
+        "gui": [
+          {
+            "shared": {
+              "session_id": "20261029_3",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "new",
+            "response_ms": 118.1,
+            "idle_observed_ms": 200.9,
+            "history_available_upper_bound_ms": null
+          },
+          {
+            "shared": {
+              "session_id": "20261029_2",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "resume",
+            "response_ms": 65.1,
+            "idle_observed_ms": 99.8,
+            "history_available_upper_bound_ms": 200.6
+          },
+          {
+            "shared": {
+              "session_id": "20261029_3",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "resume",
+            "response_ms": 75.3,
+            "idle_observed_ms": 99.9,
+            "history_available_upper_bound_ms": 201.0
+          }
+        ],
+        "fastrock_bridge_count": 0,
+        "standalone_goose_bridge_count": 4
+      },
+      {
+        "repeat": 2,
+        "gui": [
+          {
+            "shared": {
+              "session_id": "20261029_3",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "new",
+            "response_ms": 94.0,
+            "idle_observed_ms": 100.2,
+            "history_available_upper_bound_ms": null
+          },
+          {
+            "shared": {
+              "session_id": "20261029_2",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "resume",
+            "response_ms": 63.4,
+            "idle_observed_ms": 99.3,
+            "history_available_upper_bound_ms": 200.0
+          },
+          {
+            "shared": {
+              "session_id": "20261029_3",
+              "transport": "streamable_http",
+              "workspace": "one",
+              "origin_host_rejected": true
+            },
+            "operation": "resume",
+            "response_ms": 89.3,
+            "idle_observed_ms": 105.8,
+            "history_available_upper_bound_ms": 207.1
+          }
+        ],
+        "fastrock_bridge_count": 0,
+        "standalone_goose_bridge_count": 4
+      }
+    ]
+  },
+  "vwork_release": "v0.3.3",
+  "vwork_zip_sha256": "81ad8e8df7b6423ff47c994c4cbb263307036d27b4cffd97fd42d1232eb6732d"
+}

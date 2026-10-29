@@ -63,6 +63,10 @@ the existing native handlers: proposed changes still require the user's Apply.
 Namespaced cross-tab tools are translated to MCP names and routed back to their
 original namespace. They remain governed by the existing per-tab/user controls.
 
+Fastrock 0.3.3 can replace eligible vwork stdio extensions with a shared localhost
+MCP route, eliminating per-conversation vwork client processes. vwork 0.3.3 remains
+the sole database owner. See [shared transport and database compaction](VIRTUAL_WORKSPACES.md).
+
 ## Current boundaries
 
 Goose owns authentication and global configuration; Codex account, provider and

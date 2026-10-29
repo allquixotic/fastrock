@@ -92,6 +92,60 @@ fn v30_compaction_preserves_drafts() {
 }
 
 #[test]
+fn v36_compaction_selects_database_without_workspace() {
+    let mut browser = Browser::default();
+    browser.apply(catalog(0));
+    assert!(browser.snapshot().can_compact);
+    let work = browser.action("virtual-compact");
+    assert!(matches!(
+        &work[..],
+        [Work::Call {
+            request: Request::Compact,
+            ..
+        }]
+    ));
+    browser.apply(Event::Complete {
+        epoch: epoch(&work),
+        result: Ok(Reply::Report("done".into())),
+    });
+    let mut second = installation();
+    second.id = "second".into();
+    second.home = second.home.join("second");
+    browser.apply(Event::Discovery {
+        providers: vec![installation(), second.clone()],
+        catalog: vec![],
+        errors: vec![],
+    });
+    let select = browser.snapshot().databases[1].action.clone();
+    browser.action(&select);
+    let work = browser.action("virtual-compact");
+    let [
+        Work::Call {
+            provider,
+            request: Request::Compact,
+            ..
+        },
+    ] = &work[..]
+    else {
+        panic!()
+    };
+    assert_eq!(provider, &second);
+    browser.apply(Event::Discovery {
+        providers: vec![],
+        catalog: vec![],
+        errors: vec![],
+    });
+    browser.apply(Event::Complete {
+        epoch: epoch(&work),
+        result: Ok(Reply::Report("stale".into())),
+    });
+    assert_ne!(browser.snapshot().report, "stale");
+    assert!(!browser.snapshot().can_compact);
+    assert!(browser.action(&select).is_empty());
+    assert!(browser.action("virtual-compact").is_empty());
+}
+
+#[test]
 fn v22_controls_follow_configuration_without_losing_drafts() {
     assert!(!Browser::default().snapshot().visible);
     let mut browser = opened();

@@ -37,14 +37,27 @@ owner. All changes go through its authenticated local API and revision checks.
 There is no Fastrock feature toggle to maintain. Without an enabled installed
 vwork MCP extension in Goose config, the button and all virtual-file controls are
 absent. Disabling the extension removes the button and hides the window at the next refresh. The Goose
-process itself need not be running. Fastrock never launches commands from Goose
-configuration, changes that configuration, or starts the daemon for you.
-Automatic startup belongs to the external vwork MCP executable, so updating
-vwork provides it without rebuilding Fastrock or Goose. It occurs on MCP load;
-opening only the Virtual window still requires a running daemon. Add
-`--no-auto-start` to the MCP arguments to opt out. Concurrent clients reuse one
-owner, and closing a chat leaves that owner running. If workstation policy denies
-background process creation, retain the permitted manual startup route.
+process itself need not be running. Opening only the Virtual window requires a
+running daemon.
+
+With Fastrock 0.3.3, vwork 0.3.3 and Goose HTTP MCP support, ordinary vwork
+extensions use the shared daemon directly. Opening or loading a conversation
+creates no vwork client process. Fastrock starts the installed daemon once when
+needed; `--no-auto-start` opts out. Closing a chat leaves the owner running.
+Goose outside Fastrock retains its normal stdio configuration. Fastrock does not
+rewrite that configuration, install backends, or embed a second agent runtime.
+
+Both HTTP hops bind **127.0.0.1 only**. The Fastrock bridge checks the exact Host,
+rejects any Origin header, and requires an unguessable route. The daemon checks
+its existing bearer authentication and exact Host and rejects Origin headers.
+Forwarding bypasses proxies and redirects. Per-request workspace bindings keep
+concurrent conversations independent. Nonsecret session sidecars restore the
+original binding and a fresh local route after Fastrock restarts.
+
+Older daemons, shell wrappers, custom working directories/environments, tool
+filters and unknown CLI arguments retain Goose's stdio transport. Shared MCP is
+never added to restricted Rally sessions. If workstation policy denies background
+process creation, start the daemon through the permitted manual route.
 
 vwork 0.3.2 enables Goose Developer alongside vwork and preserves other MCPs.
 Its optional policy hook only redirects recognizable direct Git repository
@@ -175,7 +188,7 @@ this interface without depending on redb or changing the editor's file model.
 
 The adapter reads `connection.json` for each request so daemon restarts can
 change the port and token. It accepts only `http://127.0.0.1:<port>/`, bypasses
-proxies, rejects redirects, limits responses to 4 MiB, and never puts the token
+proxies, rejects redirects, limits workspace responses to 4 MiB (MCP to 32 MiB), and never puts the token
 in UI state, persistence, or diagnostics. Goose config reads are capped at
 1 MiB. Missing or malformed configuration fails closed (no provider UI).
 
@@ -215,10 +228,11 @@ buffer and do not enter local filesystem save paths.
 
 ## Compacting the vwork store
 
-With vwork 0.3.1 or newer, open **File → Virtual workspaces…**, select a repository
-or workspace, then choose **Storage → Compact selected vwork store**. The Compact
-store button invokes the same operation. It targets the entire selected vwork
-store, preserves unsaved editor text, and reports completion, a threshold skip,
+With vwork 0.3.1 or newer, open **File → Virtual workspaces…**, choose a database in
+the **Database** selector, then **Storage → Compact entire database** or the
+matching button. A single configured database is selected automatically. No
+repository or workspace selection is required, even for an empty catalog. It
+targets the entire redb, including every repository and workspace, preserves unsaved editor text, and reports completion, a threshold skip,
 or an active-operation deferral. Filesystem/network work stays off the UI thread.
 
 vwork runs GC and checks allocated-page statistics first. Both the button and

@@ -596,3 +596,54 @@ python dev/windows-goose-benchmark.py C:\path\to\goose.exe --fastrock C:\path\to
 
 The benchmark never installs or updates Goose. The existing hosted CI benchmark
 uses an ACP fixture; these installed-Goose measurements ran on games.
+
+## Shared vwork transport and whole-database compaction (2026-10-29)
+
+Fastrock 0.3.3 replaces eligible installed vwork stdio definitions at Goose
+session activation with same-name Streamable HTTP routes. Both listeners bind
+127.0.0.1; Host/Origin checks, bearer authentication on the daemon hop, and
+proxy/redirect rejection remain enforced. vwork 0.3.3 runs its existing MCP
+handler with request-local workspace binding; Fastrock carries no vwork tool
+implementation or redb handle. Restricted sessions do not receive vwork.
+Session sidecars preserve bindings across Fastrock restarts. Older daemons and
+customized extension definitions retain stdio.
+
+The native Virtual window now selects a database separately from workspace
+selection. Compact targets the entire redb, including all repositories and
+workspaces, works with an empty catalog, and preserves editor drafts.
+
+On `games` Windows x64, installed Goose 1.57.0, signed vwork 0.3.3, software
+rendering at 1440×1000, and an isolated local model fixture:
+
+| Three samples each | Signed Fastrock 0.3.2 | Development Fastrock 0.3.3 |
+| --- | --- | --- |
+| New conversation response | 109.6–115.5 ms, median 113.6 | 94.0–118.1 ms, median 95.1 |
+| Resume seeded conversation | 87.4–95.2 ms, median 92.0 | 63.4–79.0 ms, median 65.1 |
+| Resume after Fastrock restart | Not included | 75.3–89.3 ms |
+| vwork clients per GUI open/resume | 1 | 0 |
+
+The owner stayed alive through each run. The process monitor observed four
+clients for the standalone-Goose control in every sample, and zero clients
+across all nine new Fastrock GUI operations. Actual `vwork_workspace_info` calls
+returned the original workspace before and after app restart. Origin and forged
+Host probes returned HTTP 403. Timings measure the existing native response
+milestones, not end-to-end perceived pixel latency; three samples do not
+establish a universal percentage improvement. This machine did not reproduce
+the user's severe work-machine latency. The eliminated process launches are
+verified; their benefit on a machine with expensive process creation remains
+unmeasured. Live inference and unrelated user MCPs were not exercised.
+
+Reproducible command: `dev/windows-goose-benchmark.py <goose.exe> --variants vwork
+--repeats 3 --fastrock <fastrock.exe> --vwork <vwork.exe> --require-shared-vwork`.
+The script creates isolated configuration, repos and databases, cleans up its
+own daemon, and uses no real provider credentials or Rally writes. Omit the
+last flag for the 0.3.2 baseline. Machine-readable measurements and executable
+hashes: [benchmark receipt](benchmarks/vwork-startup-games-2026-10-29.json).
+
+Windows tests: 699 application + 7 workspace tests passed; one opt-in live
+workspace test skipped. Three release-policy tests passed, Mac-only symbol
+test skipped. Mac compatibility check passed without executing tests or GUI.
+The daemon dependency passed Windows/macOS CI 40895378344 and signed release
+40896550504; ZIP attestation, checksum and Windows publisher/timestamp were
+independently verified. Application optimization remains 0, the existing
+render/text allowlist remains 2, and LTO remains off.

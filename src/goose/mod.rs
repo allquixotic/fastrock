@@ -7,6 +7,7 @@ mod rpc;
 mod sessions;
 #[cfg(test)]
 mod tests;
+mod vwork;
 
 use crate::transport::{AppServerClient, AppServerEvent, Pending, Reply};
 use codex_app_server_protocol::JSONRPCErrorError;

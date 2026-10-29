@@ -302,3 +302,52 @@ async fn v30_compaction_rpc_reports_skips_success_and_errors() {
         assert_eq!(request["arguments"], json!({}));
     }
 }
+
+#[tokio::test]
+async fn v35_mcp_discovery_preserves_custom_transports_and_bindings() {
+    let dir = tempfile::tempdir().unwrap();
+    let executable = dir
+        .path()
+        .join(if cfg!(windows) { "vwork.exe" } else { "vwork" });
+    std::fs::write(&executable, "never execute").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let config = dir.path().join("config.yaml");
+    let paths = DiscoveryPaths {
+        user_home: dir.path().into(),
+        configs: vec![config.clone()],
+        search: vec![],
+        default_vwork_home: dir.path().join("state"),
+    };
+    let valid = json!({"enabled":true,"type":"stdio","name":"Goose.vwork","cmd":executable,"args":["mcp","--workspace=one","--no-auto-start"],"timeout":900});
+    for (field, value) in [
+        ("envs", json!({"VWORK_HOME":"custom"})),
+        ("env_keys", json!(["KEY"])),
+        ("available_tools", json!(["workspace_info"])),
+        ("args", json!(["mcp", "--unknown"])),
+    ] {
+        let mut extension = valid.clone();
+        extension[field] = value;
+        std::fs::write(
+            &config,
+            json!({"extensions":{"vwork":extension}}).to_string(),
+        )
+        .unwrap();
+        assert!(discover_mcp(&paths).await.unwrap().is_empty(), "{field}");
+    }
+    std::fs::write(config, json!({"extensions":{"vwork":valid}}).to_string()).unwrap();
+    let bindings = discover_mcp(&paths).await.unwrap();
+    assert_eq!(bindings.len(), 1);
+    let b = &bindings[0];
+    assert_eq!(b.name, "Goose.vwork");
+    assert_eq!(b.workspace.as_deref(), Some("one"));
+    assert!(!b.auto_start);
+    assert_eq!(b.timeout_seconds, 900);
+    assert!(b.matches_stdio(&json!({"name":b.name,"command":b.command,"args":b.args,"env":[]})));
+    assert!(!b.matches_stdio(
+        &json!({"name":b.name,"command":b.command,"args":["mcp","--workspace=two"],"env":[]})
+    ));
+}

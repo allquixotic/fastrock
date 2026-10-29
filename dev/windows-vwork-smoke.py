@@ -36,7 +36,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         requests.append(payload)
         op, args = payload['operation'], payload['arguments']
         entry = dict(path='src/main.rs', size=len(content.encode()), mode='100755')
-        if op == 'repo_list':
+        if op == 'health':
+            result = dict(capabilities=dict(shared_mcp=False))
+        elif op == 'repo_list':
             result = [dict(id='mono')]
         elif op == 'workspace_list':
             result = [dict(id='task', repo='mono', head=revision)]
@@ -90,7 +92,9 @@ def virtual(*args):
 
 
 try:
-    run(True, [dict(wait=2000), virtual('open'), dict(wait=300), virtual('select', '1'), dict(wait=500),
+    run(True, [dict(wait=2000), virtual('open'), dict(wait=300),
+               virtual('action', 'virtual-compact'), dict(wait=500), virtual('dump', str(out / 'database-only.json')),
+               virtual('select', '1'), dict(wait=500),
                virtual('file', '0'), dict(wait=500), virtual('action', 'virtual-edit:edited\r\n'),
                virtual('action', 'virtual-compact'), dict(wait=500), virtual('dump', str(out / 'compacted.json')),
                dict(wait=300), virtual('action', 'virtual-save'), dict(wait=500), virtual('dump', str(out / 'conflict.json')),
@@ -98,6 +102,8 @@ try:
                virtual('action', 'virtual-discard'), virtual('action', 'virtual-reload'), dict(wait=500),
                virtual('action', 'virtual-edit:edited\r\n'), virtual('action', 'virtual-save'), dict(wait=500),
                virtual('dump', str(out / 'saved.json')), dict(wait=500), dict(quit=True)], 'enabled')
+    database_only = json.loads((out / 'database-only.json').read_text())
+    assert database_only['canCompact'] and '1.20 GB' in database_only['report'], database_only
     compacted = json.loads((out / 'compacted.json').read_text())
     assert compacted['dirty'] and compacted['text'] == 'edited\r\n', compacted
     assert '1.20 GB' in compacted['report'], compacted

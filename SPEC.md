@@ -80,6 +80,9 @@ V32: Large transcript tables/tool output/diffs ! bounded rows in native ListView
 V33: 0.3.2 ! games before/after frame timing with same fixture, Windows tests, Mac compile, signed/verified CI Windows ZIP. Rendering optimization ! exact dependency receipt, LTO off.
 V34: Installed-Goose timing ! isolated config/local provider, successful extension activation and observed MCP initialization; unknown fixture RPC ! method-not-found; replay timing ! matching session text events. Reload tool catalog may be cached. Verify: dev/windows-goose-benchmark.py on games.
 
+V35: Shared vwork MCP ! 127.0.0.1 listeners only; authenticated daemon, exact Host, no Origin/proxy/redirect; preserve per-request workspace, installed tools, timeout, restricted-session boundaries and restart recovery; warm conversation open ! zero vwork client spawns. Custom transports retain stdio. Verify: v35 fixtures + installed stack on games.
+V36: Compact ! entire selected redb, independent of workspace/catalog selection; multiple stores ! explicit selector; drafts and stale-response guards preserved. Verify: v36 browser fixture + Windows native smoke.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -124,10 +127,12 @@ T30|x|Native vwork storage compaction control, preserve drafts, verify Fastrock 
 
 T31|x|Retained Windows presentation, optimized render/text dependencies, finer transcript rows, games benchmark and 0.3.2 CI release|V15,V31,V32,V33,I.scroll,I.paint,I.distribution
 T32|x|Measure signed 0.3.2 opening on games/CI; installed Goose 1.57.0 local-provider/extension timing on games; confirm activation gates history, record unprofiled copy/UI candidates and real-config limits|V27,V33,V34,I.distribution,I.goose
+T33|~|Shared localhost vwork MCP, database-level compaction, actual Goose/games comparison, signed 0.3.3 CI release|V15,V27,V34,V35,V36,I.vwork,I.goose,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 
 Signed release acceptance: v0.2.0-alpha.4, source 32ab8aeb93dcd7401c32fc3392a19178daf01286, CI 38048069773 all jobs passed. Build 5m26s; 676 headless tests; signed Windows callback + games physical mouse each 82 requests/13 fixture writes; expected Authenticode publisher/timestamp; Mac pinned Developer ID, both Apple logs Accepted, app/DMG stapling and mounted Gatekeeper passed. Published checksums + attestations independently verified. Direct main push; temporary runners removed; no Mac GUI or real Rally writes. Full receipt: docs/PORT-VERIFICATION.md.
+
 
 ## §B BUGS
 id|date|cause|fix
@@ -279,3 +284,8 @@ B74|2026-10-26|Unconditional Windows full-window invalidation, opt=0 raster/text
 B75|2026-10-26|Replacing shorthand padding while retaining explicit left override produced duplicate Slint binding|Use one binding per edge; compile-time regression, existing V20
 B76|2026-10-29|Goose history pages clone whole store; replay builds then discards presentation events; UI waits for activation despite received history|T32; signed 0.3.2 Windows baselines and installed-Goose delayed-MCP reproduction recorded in docs/PORT-VERIFICATION.md; optimization pending, user's severe delay not reproduced with clean config
 B77|2026-10-29|Startup benchmark returned empty success for unknown MCP discovery, masking extension failure; reload check assumed uncached tool-list fetch|V34; method-not-found response, activation/initialize/replay assertions, cached catalog allowed; repaired full Windows benchmark passed
+
+B78|2026-10-29|Each Goose activation launches stdio vwork bridge despite persistent database daemon|V35; forward same-name MCP extension through localhost Fastrock route to authenticated daemon
+B79|2026-10-29|Compaction targeted whole database but UI required selected workspace|V36; independent database selector and explicit whole-database action
+B80|2026-10-29|Manual Windows test launch omitted FASTROCK_TEST_PYTHON; eight embedded Goose fixtures failed before startup|Use installed Python path, matching CI setup; rerun passed 706 tests
+B81|2026-10-29|End-to-end MCP probe used internal workspace_info operation instead of advertised vwork_workspace_info tool|V35; use native MCP name; daemon correctly rejected unknown tool

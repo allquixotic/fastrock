@@ -99,6 +99,139 @@ struct Extension {
     cmd: String,
     #[serde(default)]
     args: Vec<String>,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    timeout: Option<u64>,
+    #[serde(default)]
+    envs: Value,
+    #[serde(default)]
+    env_keys: Vec<String>,
+    #[serde(default)]
+    available_tools: Vec<String>,
+    #[serde(default)]
+    cwd: Option<String>,
+}
+
+/// A stateless vwork MCP binding eligible for the daemon's shared transport.
+/// Credentials and arbitrary extension environment are deliberately not copied.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct McpBinding {
+    pub name: String,
+    pub executable: PathBuf,
+    pub command: String,
+    pub args: Vec<String>,
+    pub home: PathBuf,
+    pub workspace: Option<String>,
+    pub auto_start: bool,
+    pub timeout_seconds: u64,
+}
+
+impl McpBinding {
+    pub fn installation(&self) -> Installation {
+        Installation {
+            id: self.home.to_string_lossy().into(),
+            label: self.name.clone(),
+            home: self.home.clone(),
+        }
+    }
+
+    pub fn matches_stdio(&self, server: &Value) -> bool {
+        server["name"] == self.name
+            && server["command"] == self.command
+            && server["args"] == json!(self.args)
+            && server["env"].as_array().is_none_or(|env| env.is_empty())
+    }
+}
+
+/// Unknown CLI forms and customized environment/tool filters retain Goose's stdio path.
+pub async fn discover_mcp(paths: &DiscoveryPaths) -> Result<Vec<McpBinding>, WorkspaceError> {
+    let mut bindings = Vec::new();
+    for path in &paths.configs {
+        let Ok(bytes) = limited_file(path, 1024 * 1024).await else {
+            continue;
+        };
+        let Ok(config) = serde_yaml::from_slice::<GooseConfig>(&bytes) else {
+            continue;
+        };
+        for (key, extension) in config.extensions {
+            if !extension.enabled
+                || extension.kind != "stdio"
+                || !extension.env_keys.is_empty()
+                || !extension.available_tools.is_empty()
+                || extension.cwd.is_some()
+                || !(extension.envs.is_null()
+                    || extension.envs.as_object().is_some_and(|v| v.is_empty()))
+            {
+                continue;
+            }
+            let name = if extension.name.is_empty() {
+                key
+            } else {
+                extension.name
+            };
+            if name == "fastrock" {
+                continue;
+            }
+            let command = expand(&extension.cmd, &paths.user_home);
+            let Some(binary) = command.file_name().and_then(|p| p.to_str()) else {
+                continue;
+            };
+            if !binary.eq_ignore_ascii_case("vwork") && !binary.eq_ignore_ascii_case("vwork.exe") {
+                continue;
+            }
+            let executable = if command.is_absolute() {
+                Some(command.clone()).filter(|p| installed(p))
+            } else {
+                config
+                    .search_paths
+                    .iter()
+                    .map(|p| expand(p, &paths.user_home))
+                    .chain(paths.search.iter().cloned())
+                    .flat_map(|p| [p.join(&command), p.join(format!("{binary}.exe"))])
+                    .find(|p| installed(p))
+            };
+            let Some(executable) = executable.filter(|p| p.is_absolute()) else {
+                continue;
+            };
+            let mut home = paths.default_vwork_home.clone();
+            let mut workspace = None;
+            let mut auto_start = true;
+            let mut mcp = false;
+            let mut valid = true;
+            let mut args = extension.args.iter();
+            while let Some(arg) = args.next() {
+                match arg.as_str() {
+                    "mcp" if !mcp => mcp = true,
+                    "--no-auto-start" => auto_start = false,
+                    "--home" => match args.next() {
+                        Some(v) => home = expand(v, &paths.user_home),
+                        None => valid = false,
+                    },
+                    "--workspace" => match args.next() {
+                        Some(v) => workspace = Some(v.clone()),
+                        None => valid = false,
+                    },
+                    _ if arg.starts_with("--home=") => home = expand(&arg[7..], &paths.user_home),
+                    _ if arg.starts_with("--workspace=") => workspace = Some(arg[12..].into()),
+                    _ => valid = false,
+                }
+            }
+            if valid && mcp && home.is_absolute() {
+                bindings.push(McpBinding {
+                    name,
+                    executable,
+                    command: extension.cmd,
+                    args: extension.args,
+                    home,
+                    workspace,
+                    auto_start,
+                    timeout_seconds: extension.timeout.unwrap_or(300).clamp(1, 86400),
+                });
+            }
+        }
+    }
+    Ok(bindings)
 }
 
 fn expand(path: &str, user_home: &Path) -> PathBuf {
@@ -234,6 +367,45 @@ impl VworkProvider {
     }
 
     async fn call(&self, op: &str, arguments: Value) -> Result<Value, WorkspaceError> {
+        self.call_with_timeout(
+            op,
+            arguments,
+            if op == "database_compact" {
+                Duration::from_secs(3600)
+            } else {
+                Duration::from_secs(20)
+            },
+        )
+        .await
+    }
+
+    pub async fn shared_mcp_supported(&self) -> Result<bool, WorkspaceError> {
+        Ok(self
+            .call_with_timeout("health", json!({}), Duration::from_secs(3))
+            .await?["capabilities"]["shared_mcp"]
+            == true)
+    }
+
+    pub async fn mcp_request(
+        &self,
+        workspace: Option<&str>,
+        request: Value,
+        timeout: Duration,
+    ) -> Result<Value, WorkspaceError> {
+        self.call_with_timeout(
+            "mcp",
+            json!({"workspace":workspace,"request":request}),
+            timeout,
+        )
+        .await
+    }
+
+    async fn call_with_timeout(
+        &self,
+        op: &str,
+        arguments: Value,
+        timeout: Duration,
+    ) -> Result<Value, WorkspaceError> {
         #[derive(Deserialize)]
         struct Connection {
             url: String,
@@ -246,11 +418,7 @@ impl VworkProvider {
         let mut response = self
             .client
             .post(&connection.url)
-            .timeout(if op == "database_compact" {
-                Duration::from_secs(3600)
-            } else {
-                Duration::from_secs(20)
-            })
+            .timeout(timeout)
             .bearer_auth(&connection.token)
             .json(&json!({"operation":op,"arguments":arguments}))
             .send()
@@ -265,7 +433,7 @@ impl VworkProvider {
             .await
             .map_err(|_| WorkspaceError::Transport)?
         {
-            if bytes.len() + chunk.len() > 4 * 1024 * 1024 {
+            if bytes.len() + chunk.len() > (if op == "mcp" { 32 } else { 4 }) * 1024 * 1024 {
                 return Err(WorkspaceError::Protocol);
             }
             bytes.extend_from_slice(&chunk);

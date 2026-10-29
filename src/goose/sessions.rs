@@ -18,12 +18,19 @@ impl Adapter {
         } else {
             Some(self.mcp.register(Arc::downgrade(self), tools.clone()).await)
         };
-        let servers = registration
+        let mut servers = registration
             .as_ref()
             .map(|r| vec![r.server()])
             .unwrap_or_default();
         let restricted =
             params["config"]["features.shell_tool"] == false || params["sandbox"] == "read-only";
+        let bindings = if restricted {
+            vec![]
+        } else {
+            let (vwork, bindings) = self.new_vwork_servers().await;
+            servers.extend(vwork);
+            bindings
+        };
         let mut args = json!({"cwd":cwd,"mcpServers":servers,"_meta":{}});
         if params["ephemeral"] == true {
             args["_meta"]["hidden"] = json!(true);
@@ -60,6 +67,7 @@ impl Adapter {
             self.mcp.bind(&r.key, id).await;
         }
         let setup = async {
+            if params["ephemeral"] != true { self.save_vwork_bindings(id, &bindings)?; }
             if !tools.is_empty() && params["ephemeral"] != true {
                 std::fs::create_dir_all(&self.queue_root).map_err(|e|error(format!("Save session tool definitions: {e}")))?;
                 let bytes=serde_json::to_vec(&tools).map_err(|e|error(e.to_string()))?;
@@ -187,9 +195,6 @@ impl Adapter {
                 let s = sessions
                     .get_mut(id)
                     .ok_or_else(|| error("Session unavailable"))?;
-                s.replaying = true;
-                s.turns.clear();
-                s.last_chunk.clear();
                 text(&s.info, "cwd").to_string()
             };
             let mut servers = self.mcp.servers(id).await;
@@ -211,6 +216,16 @@ impl Adapter {
                     Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
                     Err(e) => return Err(error(format!("Read session tools: {e}"))),
                 }
+            }
+            servers.extend(self.load_vwork_servers(id).await?);
+            {
+                let mut sessions = self.sessions.lock().await;
+                let s = sessions
+                    .get_mut(id)
+                    .ok_or_else(|| error("Session unavailable"))?;
+                s.replaying = true;
+                s.turns.clear();
+                s.last_chunk.clear();
             }
             let loaded = self
                 .rpc

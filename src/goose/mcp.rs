@@ -8,13 +8,23 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
+use fastrock_workspaces::vwork::{McpBinding, VworkProvider};
 use std::sync::Weak;
+
+#[cfg(test)]
+#[path = "mcp_tests.rs"]
+mod tests;
 
 #[derive(Clone)]
 struct Route {
     adapter: Weak<Adapter>,
     tools: Vec<Value>,
     session: Option<String>,
+    vwork: Option<Arc<VworkRoute>>,
+}
+struct VworkRoute {
+    binding: McpBinding,
+    client: VworkProvider,
 }
 #[derive(Clone)]
 struct Shared {
@@ -24,6 +34,7 @@ struct Shared {
 pub(super) struct Bridge {
     state: Shared,
     task: tokio::task::JoinHandle<()>,
+    vwork: Mutex<Vec<(McpBinding, String)>>,
 }
 pub(super) struct Registration {
     pub key: String,
@@ -44,12 +55,16 @@ impl Bridge {
         };
         let router = Router::new()
             .route("/{key}", post(handle))
-            .layer(DefaultBodyLimit::max(8 * 1024 * 1024))
+            .layer(DefaultBodyLimit::max(32 * 1024 * 1024))
             .with_state(state.clone());
         let task = tokio::spawn(async move {
             let _ = axum::serve(listener, router).await;
         });
-        Ok(Self { state, task })
+        Ok(Self {
+            state,
+            task,
+            vwork: Mutex::new(Vec::new()),
+        })
     }
     pub async fn register(&self, adapter: Weak<Adapter>, tools: Vec<Value>) -> Registration {
         let key = uuid::Uuid::new_v4().to_string();
@@ -59,12 +74,67 @@ impl Bridge {
                 adapter,
                 tools: flatten_tools(tools),
                 session: None,
+                vwork: None,
             },
         );
         Registration {
             url: format!("http://{}/{key}", self.state.authority),
             key,
         }
+    }
+    /// One route per binding; all sessions call the same authenticated database owner.
+    pub async fn vwork_server(&self, binding: &McpBinding) -> anyhow::Result<Option<Value>> {
+        // Serialize cold-start checks across bindings to avoid duplicate launcher processes.
+        let mut shared = self.vwork.lock().await;
+        let client = VworkProvider::new(&binding.installation())?;
+        let supported = match client.shared_mcp_supported().await {
+            Ok(supported) => supported,
+            Err(fastrock_workspaces::WorkspaceError::Transport) if binding.auto_start => {
+                crate::perf::mark("vwork-daemon-start");
+                let mut command = tokio::process::Command::new(&binding.executable);
+                command
+                    .args(["--home"])
+                    .arg(&binding.home)
+                    .arg("start")
+                    .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .kill_on_drop(true);
+                #[cfg(windows)]
+                command.creation_flags(0x08000000);
+                let status =
+                    tokio::time::timeout(std::time::Duration::from_secs(30), command.status())
+                        .await??;
+                anyhow::ensure!(status.success(), "vwork daemon startup failed");
+                client.shared_mcp_supported().await?
+            }
+            Err(error) => return Err(error.into()),
+        };
+        if !supported {
+            return Ok(None);
+        }
+        let key = if let Some((_, key)) = shared.iter().find(|(b, _)| b == binding) {
+            key.clone()
+        } else {
+            let key = uuid::Uuid::new_v4().to_string();
+            self.state.routes.lock().await.insert(
+                key.clone(),
+                Route {
+                    adapter: Weak::new(),
+                    tools: vec![],
+                    session: None,
+                    vwork: Some(Arc::new(VworkRoute {
+                        binding: binding.clone(),
+                        client,
+                    })),
+                },
+            );
+            shared.push((binding.clone(), key.clone()));
+            key
+        };
+        Ok(Some(
+            json!({"type":"http","name":binding.name,"url":format!("http://{}/{key}", self.state.authority),"headers":[],"_meta":{"timeout":binding.timeout_seconds}}),
+        ))
     }
     pub async fn bind(&self, key: &str, session: &str) {
         if let Some(route) = self.state.routes.lock().await.get_mut(key) {
@@ -122,6 +192,23 @@ async fn handle(
     };
     if request.get("id").is_none() {
         return StatusCode::ACCEPTED.into_response();
+    }
+    if let Some(vwork) = &route.vwork {
+        let response = match vwork
+            .client
+            .mcp_request(
+                vwork.binding.workspace.as_deref(),
+                request.clone(),
+                std::time::Duration::from_secs(vwork.binding.timeout_seconds),
+            )
+            .await
+        {
+            Ok(response) => response,
+            Err(error) => {
+                json!({"jsonrpc":"2.0","id":request["id"],"error":{"code":-32000,"message":error.to_string()}})
+            }
+        };
+        return Json(response).into_response();
     }
     let result = dispatch(&route, &request).await;
     let response = match result {

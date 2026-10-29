@@ -53,7 +53,7 @@ impl AppController {
             "dump" => {
                 if let Some(path) = args.get(1) {
                     let view = self.virtual_workspaces.browser.snapshot();
-                    let value = serde_json::json!({"visible":view.visible,"dirty":view.dirty,"text":view.text,"status":view.status,"report":view.report,"title":view.title});
+                    let value = serde_json::json!({"visible":view.visible,"dirty":view.dirty,"text":view.text,"status":view.status,"report":view.report,"title":view.title,"canCompact":view.can_compact,"databaseIndex":view.database_index});
                     let path = path.clone();
                     self.backend.spawn(async move {
                         let _ = tokio::fs::write(path, value.to_string()).await;
@@ -179,6 +179,20 @@ impl AppController {
         window.set_workspace_has_next(view.has_next);
         window.set_workspace_has_previous(view.has_previous);
         window.set_workspace_report(view.report.into());
+        window.set_database_can_compact(view.can_compact);
+        window.set_database_index(view.database_index);
+        window.set_database_labels(ModelRc::new(VecModel::from(
+            view.databases
+                .iter()
+                .map(|d| slint::SharedString::from(d.label.as_str()))
+                .collect::<Vec<_>>(),
+        )));
+        window.set_database_actions(ModelRc::new(VecModel::from(
+            view.databases
+                .iter()
+                .map(|d| slint::SharedString::from(d.action.as_str()))
+                .collect::<Vec<_>>(),
+        )));
         let row = |item: browser::BrowserRow| WorkspaceRowData {
             label: item.label.into(),
             action: item.action.into(),
