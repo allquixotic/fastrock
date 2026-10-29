@@ -3,13 +3,9 @@
 //! - macOS: Cmd+Q, Dock › Quit and logout send `terminate:` to the
 //!   application, which would exit the process without the app's quit
 //!   confirmation or shutdown ([`install_termination_handler`]).
-//! - macOS: apps started from Finder or the Dock inherit launchd's minimal
-//!   `PATH`; [`import_login_shell_path`] adopts the login shell's.
 //! - macOS: [`main_bundle_identifier`] lets notifications name the app.
 //! - Windows: the GUI subsystem has no console for `--help` and argument
 //!   errors ([`attach_parent_console`]).
-//! - Linux: [`opengl_available`] lets the default renderer skip OpenGL on
-//!   machines without GL libraries.
 
 /// Windows remote desktops can advertise OpenGL while losing the presentation
 /// surface across reconnects. Use CPU rendering for Auto in those sessions.
@@ -29,139 +25,6 @@ pub(crate) fn remote_desktop_session() -> bool {
     }
 }
 
-/// Asking a login shell for its `PATH` (macOS; tested on every Unix).
-#[cfg(any(target_os = "macos", all(test, unix)))]
-mod login_shell {
-    use std::path::Path;
-    use std::time::Duration;
-    use std::time::Instant;
-
-    pub(super) const PATH_MARKER: &str = "__CODEX_GUI_PATH__";
-
-    /// Shells whose `-l -c` flags we know.
-    pub(super) fn supports_login_flags(shell: &Path) -> bool {
-        let name = shell
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or_default();
-        matches!(name, "zsh" | "bash" | "fish" | "sh" | "ksh" | "dash")
-    }
-
-    /// Text between the first two markers, without the trailing newline
-    /// that `printenv` adds. Shell start-up files may print around it.
-    pub(super) fn parse_marked_path(output: &str) -> Option<String> {
-        let start = output.find(PATH_MARKER)? + PATH_MARKER.len();
-        let rest = &output[start..];
-        let end = rest.find(PATH_MARKER)?;
-        let path = rest[..end].trim_end_matches(['\r', '\n']);
-        (!path.trim().is_empty()).then(|| path.to_string())
-    }
-
-    /// `shell_path` followed by the entries of `current` it lacks, so
-    /// nothing the process could already find goes missing.
-    pub(super) fn merge_paths(shell_path: &str, current: &str) -> String {
-        let mut entries: Vec<&str> = shell_path
-            .split(':')
-            .filter(|entry| !entry.is_empty())
-            .collect();
-        for entry in current.split(':') {
-            if !entry.is_empty() && !entries.contains(&entry) {
-                entries.push(entry);
-            }
-        }
-        entries.join(":")
-    }
-
-    /// Runs `shell` with `args` to print its `PATH`, killing it after
-    /// `timeout`. Returns `None` on any failure.
-    pub(super) fn login_shell_path(
-        shell: &Path,
-        args: &[&str],
-        timeout: Duration,
-    ) -> Option<String> {
-        use std::io::Read;
-        use std::process::Command;
-        use std::process::Stdio;
-
-        let command =
-            format!("printf '%s' {PATH_MARKER}; /usr/bin/printenv PATH; printf '%s' {PATH_MARKER}");
-        let mut child = Command::new(shell)
-            .args(args)
-            .arg(command)
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .ok()?;
-        let deadline = Instant::now() + timeout;
-        loop {
-            match child.try_wait() {
-                Ok(Some(_)) => break,
-                Ok(None) if Instant::now() < deadline => {
-                    // No threads may exist yet (the caller then sets PATH),
-                    // so poll instead of waiting on a helper thread.
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-                _ => {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    return None;
-                }
-            }
-        }
-        let mut output = String::new();
-        child.stdout.take()?.read_to_string(&mut output).ok()?;
-        parse_marked_path(&output)
-    }
-}
-
-/// Upper bound for asking the login shell for its `PATH`.
-#[cfg(target_os = "macos")]
-const LOGIN_SHELL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
-
-/// On macOS, when the app was not started from a terminal, replaces the
-/// minimal `PATH` launchd gives Finder and Dock launches with the user's
-/// login-shell `PATH`, so MCP servers, hooks and other tools that are
-/// started without a shell (`npx`, `uvx`, `docker`, ...) are found.
-///
-/// The shell runs as a login shell but not an interactive one: it reads
-/// `/etc/zprofile` (`path_helper`), `~/.zprofile`, `~/.zshenv` and
-/// `~/.zlogin` (bash: `~/.bash_profile` or `~/.profile`), not `~/.zshrc`.
-/// Interactive start-up files can block for good when an app without
-/// folder permissions runs them (completion setup touching protected
-/// folders waits on a privacy prompt), which would stall every launch.
-///
-/// # Safety
-///
-/// Calls `std::env::set_var`; the process must still be single-threaded.
-#[cfg(target_os = "macos")]
-pub(crate) unsafe fn import_login_shell_path() {
-    use std::io::IsTerminal;
-
-    if std::env::var_os("TERM").is_some() || std::io::stdin().is_terminal() {
-        return;
-    }
-    let shell = std::env::var_os("SHELL")
-        .map(std::path::PathBuf::from)
-        .filter(|shell| shell.is_absolute() && login_shell::supports_login_flags(shell))
-        .unwrap_or_else(|| std::path::PathBuf::from("/bin/zsh"));
-    let Some(shell_path) =
-        login_shell::login_shell_path(&shell, &["-l", "-c"], LOGIN_SHELL_TIMEOUT)
-    else {
-        crate::perf::mark("login-shell-path-unavailable");
-        return;
-    };
-    crate::perf::mark("login-shell-path-read");
-    let current = std::env::var("PATH").unwrap_or_default();
-    let merged = login_shell::merge_paths(&shell_path, &current);
-    if merged != current {
-        // SAFETY: the caller guarantees no other thread exists yet.
-        unsafe {
-            std::env::set_var("PATH", merged);
-        }
-    }
-}
-
 /// Attaches to the console of the process that started us (cmd.exe or
 /// PowerShell), so `--help` and argument errors print there. Returns false
 /// when there is none, for example when started from a shortcut.
@@ -172,21 +35,6 @@ pub(crate) fn attach_parent_console() -> bool {
 
     // SAFETY: plain Win32 call without pointers.
     unsafe { AttachConsole(ATTACH_PARENT_PROCESS) != 0 }
-}
-
-/// Whether an OpenGL (EGL or GLX) client library can be loaded. The
-/// OpenGL renderer only finds out when the window is shown, which is too
-/// late to pick another renderer in this process.
-#[cfg(target_os = "linux")]
-pub(crate) fn opengl_available() -> bool {
-    ["libEGL.so.1", "libGL.so.1"].iter().any(|name| {
-        let Ok(name) = std::ffi::CString::new(*name) else {
-            return false;
-        };
-        // SAFETY: dlopen with a valid C string; the handle is intentionally
-        // kept open because the renderer loads the same library next.
-        !unsafe { libc::dlopen(name.as_ptr(), libc::RTLD_LAZY | libc::RTLD_LOCAL) }.is_null()
-    })
 }
 
 #[cfg(target_os = "macos")]
@@ -377,77 +225,13 @@ mod macos {
     }
 }
 
-// Everything tested here is Unix-only.
-#[cfg(all(test, unix))]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
-    use login_shell::*;
-    use pretty_assertions::assert_eq;
-    use std::path::Path;
-    use std::time::Duration;
-    use std::time::Instant;
 
-    #[test]
-    fn marked_path_ignores_start_up_noise() {
-        let output =
-            format!("Welcome!\n{PATH_MARKER}/opt/homebrew/bin:/usr/bin\n{PATH_MARKER}bye\n");
-        assert_eq!(
-            parse_marked_path(&output),
-            Some("/opt/homebrew/bin:/usr/bin".to_string())
-        );
-        assert_eq!(parse_marked_path("no markers"), None);
-        assert_eq!(
-            parse_marked_path(&format!("{PATH_MARKER}\n{PATH_MARKER}")),
-            None
-        );
-    }
-
-    #[test]
-    fn merged_path_keeps_shell_order_and_current_entries() {
-        assert_eq!(
-            merge_paths(
-                "/opt/homebrew/bin:/usr/bin:/bin",
-                "/usr/bin:/bin:/usr/sbin:/sbin"
-            ),
-            "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-        );
-        assert_eq!(merge_paths("", "/usr/bin"), "/usr/bin");
-    }
-
-    #[test]
-    fn only_known_shells_get_login_flags() {
-        assert!(supports_login_flags(Path::new("/bin/zsh")));
-        assert!(supports_login_flags(Path::new("/opt/homebrew/bin/fish")));
-        assert!(!supports_login_flags(Path::new("/bin/tcsh")));
-    }
-
-    #[cfg(target_os = "macos")]
     #[test]
     fn bare_executables_have_no_bundle_identifier() {
-        // The test binary is not inside an app bundle, so notifications keep
-        // notify-rust's default attribution.
+        // The test binary is not inside an app bundle.
         assert_eq!(main_bundle_identifier(), None);
-    }
-
-    #[test]
-    fn login_shell_path_reads_the_shell_environment() {
-        let path = login_shell_path(Path::new("/bin/sh"), &["-c"], Duration::from_secs(10));
-        assert_eq!(
-            path,
-            std::env::var("PATH").ok().filter(|path| !path.is_empty())
-        );
-    }
-
-    #[test]
-    fn login_shell_path_gives_up_after_the_timeout() {
-        // `-c` runs the script; the extra command argument becomes `$0`.
-        let started = Instant::now();
-        let path = login_shell_path(
-            Path::new("/bin/sh"),
-            &["-c", "sleep 5"],
-            Duration::from_millis(100),
-        );
-        assert_eq!(path, None);
-        assert!(started.elapsed() < Duration::from_secs(4));
     }
 }

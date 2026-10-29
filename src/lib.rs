@@ -118,11 +118,6 @@ pub fn prepare_process_env() {
             std::env::set_var("SLINT_WGPU_CPU", "1");
         }
     }
-    // SAFETY: still single-threaded (see above).
-    #[cfg(target_os = "macos")]
-    unsafe {
-        platform::import_login_shell_path();
-    }
     perf::mark("process-env-ready");
 }
 
@@ -258,17 +253,6 @@ fn run_app(
     install_termination_handler(&rt, &backend);
 
     if let Err(err) = window.show() {
-        #[cfg(target_os = "linux")]
-        if renderer == RendererChoice::Auto {
-            // OpenGL failed only now (for example no GLX over X forwarding);
-            // the renderer is fixed for this process, so start a new one.
-            tracing::warn!(%err, "OpenGL renderer failed; restarting with the software renderer");
-            stop_backend(&rt, &backend, Vec::new());
-            drop(ui_thread::take());
-            relaunch_with_software_renderer()
-                .with_context(|| format!("failed to show the main window: {err}"))?;
-            return Ok(());
-        }
         return Err(anyhow::anyhow!(
             "failed to show the main window: {err}. Try `--renderer software` (or Settings › Appearance › Renderer › Software)."
         ));
@@ -332,53 +316,9 @@ fn install_termination_handler(rt: &tokio::runtime::Handle, backend: &Backend) {
     );
 }
 
-/// The renderer to use for `requested`: `Auto` skips OpenGL on Linux
-/// machines without OpenGL libraries (containers, minimal VMs).
+/// Preserve the requested mode without running platform probes or a replacement process.
 fn available_renderer(requested: RendererChoice) -> RendererChoice {
-    #[cfg(target_os = "linux")]
-    if requested == RendererChoice::Auto && !platform::opengl_available() {
-        return RendererChoice::Software;
-    }
     requested
-}
-
-/// Arguments for a new instance that uses the software renderer: any
-/// `--renderer` option is replaced, and the new one goes first so it can
-/// never follow `--`.
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
-fn software_renderer_args(args: Vec<std::ffi::OsString>) -> Vec<std::ffi::OsString> {
-    let mut out: Vec<std::ffi::OsString> = vec!["--renderer".into(), "software".into()];
-    let mut args = args.into_iter();
-    while let Some(arg) = args.next() {
-        if arg == "--" {
-            out.push(arg);
-            out.extend(args);
-            break;
-        }
-        if arg == "--renderer" {
-            let _ = args.next();
-            continue;
-        }
-        if arg
-            .to_str()
-            .is_some_and(|arg| arg.starts_with("--renderer="))
-        {
-            continue;
-        }
-        out.push(arg);
-    }
-    out
-}
-
-#[cfg(target_os = "linux")]
-fn relaunch_with_software_renderer() -> anyhow::Result<()> {
-    let exe = std::env::current_exe().context("cannot find the codex-gui executable")?;
-    let args = software_renderer_args(std::env::args_os().skip(1).collect());
-    std::process::Command::new(exe)
-        .args(args)
-        .spawn()
-        .context("failed to restart with the software renderer")?;
-    Ok(())
 }
 
 /// What to open once the server is ready.
@@ -392,18 +332,9 @@ fn startup_actions(folder: Option<PathBuf>, resume: Option<String>) -> Vec<app::
     actions
 }
 
-/// Chooses the Slint backend and renderer. Must run before any window exists.
-///
-/// Measured on macOS (Retina, one streaming thread): FemtoVG on OpenGL used
-/// the least CPU (about 5x less than the software renderer while streaming,
-/// and near zero when idle); the software renderer used the least memory;
-/// FemtoVG on WGPU used the most of both, so it is only used on request,
-/// where it can run on Windows' WARP software adapter. `Auto` falls back to
-/// the software renderer when OpenGL is missing: Slint's own fallback covers
-/// Windows (it probes for OpenGL 2), [`available_renderer`] covers Linux
-/// machines without GL libraries, and `run_app` restarts with the software
-/// renderer when OpenGL still fails when the window opens. `SLINT_BACKEND`
-/// still overrides.
+/// Selects the in-process software renderer before creating any window.
+/// An explicit SLINT_BACKEND remains authoritative; a failed window reports an
+/// error without launching a replacement Fastrock process.
 fn select_backend(renderer: RendererChoice) -> anyhow::Result<()> {
     let selector = slint::BackendSelector::new()
         .backend_name("winit".to_string())
@@ -524,7 +455,6 @@ fn show_message(message: &str, informational: bool) {
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
-    use std::ffi::OsString;
 
     #[test]
     fn parses_renderer_names() {
@@ -566,23 +496,6 @@ mod tests {
             typo.map_err(|err| err.kind()),
             Err(clap::error::ErrorKind::UnknownArgument)
         ));
-    }
-
-    #[test]
-    fn software_relaunch_replaces_the_renderer_option() {
-        let args = |list: &[&str]| list.iter().map(OsString::from).collect::<Vec<_>>();
-        assert_eq!(
-            software_renderer_args(args(&["--renderer", "auto", "/repo"])),
-            args(&["--renderer", "software", "/repo"])
-        );
-        assert_eq!(
-            software_renderer_args(args(&["--renderer=auto", "-c", "x=1"])),
-            args(&["--renderer", "software", "-c", "x=1"])
-        );
-        assert_eq!(
-            software_renderer_args(args(&["--", "--renderer"])),
-            args(&["--renderer", "software", "--", "--renderer"])
-        );
     }
 
     #[test]

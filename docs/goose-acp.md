@@ -10,7 +10,10 @@ Goose's built-in extensions use its public built-in registry. The Fastrock tools
 and vwork MCP adapters use session-scoped loopback routes inside the same process;
 the routes call embedded Rust handlers. They never connect to a vwork daemon.
 Configured third-party extensions, hooks, AWS credential helpers and user/LLM
-tools retain their authorized ability to launch programs.
+tools retain their authorized ability to launch programs. Startup inherits PATH
+without executing login-shell scripts. Configure extension executable paths when
+they are outside that inherited PATH. Renderer failures report an error in the
+current process instead of launching a replacement Fastrock instance.
 
 The provider factory permits `aws_bedrock`, `openai` and `anthropic`. Existing
 Goose configuration and credential entries remain authoritative. Codex and remote

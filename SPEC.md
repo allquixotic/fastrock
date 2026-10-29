@@ -187,6 +187,8 @@ Scrollback foundation verification, 2026-10-29: cold LZ4 pages, 16-page/8-MiB de
 
 Navigation foundation verification, 2026-10-29: native T3 sidebar/header adaptation, separate Rally document strip and permanent Rally project; same-area bulk close preserves dirty Rally documents. Games 694 application tests, one rendering regression, 16 workspace fixtures and standalone embedded Goose fixture passed. Native three-turn smoke also verified independent Rally selection/return/close/reopen, draft retention and navigation through an injected backend failure overlay; only GET requests to local Rally fixture, six local model calls, 162,045,952 peak process bytes. Binary SHA-256 `156cf30c6935f41c21463455f10bf433ae8bf4176196c2ac00ba37d67be47d91`; games receipt `C:\Users\SeanMcNamara\fastrock-040-policy\sidebar-native-2\acceptance.json`. Mac compile and static audits passed. T40 remains open for repository/workspace binding, composer/panel parity and complete orchestration UI; no release tag.
 
+Core startup audit, 2026-10-29: removed automatic login-shell PATH probing and renderer subprocess relaunch. Mac compile passed; Windows library compiled and 693 application tests passed (obsolete relaunch test removed), workspace and embedded Goose fixtures passed. Static audit finds no process launch in src/lib.rs or src/platform.rs. Rally window process migration remains open under T37/T40/T43.
+
 ## §B BUGS
 id|date|cause|fix
 B1|2026-10-06|32px tail threshold and height-estimate callbacks pull upward scroll back to bottom|V1
@@ -362,3 +364,4 @@ B95|2026-10-29|Graceful-close request made shutdown fail after a known disconnec
 B96|2026-10-29|Shared Slint ContextMenuArea collided with inherited close function, then compiler inlining panicked with Menu plus children slot|Keep native menus inline and pair accessibility labels with roles; retain compile oracle; V1
 B97|2026-10-29|Shared Close other tabs crossed Rally/conversation areas and bypassed Rally write/draft guards|Scope bulk close to same kind; reject bulk close while Rally writes/drafts need handling; native navigation fixture; V19,V42
 B98|2026-10-29|Backend status overlay covered the permanent Rally sidebar project|Limit overlay to conversation pane; native injected failure still permits Rally navigation; V42
+B99|2026-10-29|Inherited startup code launched a login shell and Linux renderer replacement process|Remove startup probes/relaunch; inherit environment and report renderer failures in process; V38
