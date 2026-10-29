@@ -7,6 +7,7 @@ mod hooks;
 mod mcp;
 mod model;
 mod queue;
+pub(crate) use queue::Recovery;
 mod rpc;
 mod sessions;
 mod summary_service;
@@ -70,7 +71,7 @@ struct Adapter {
     defaults: Mutex<Value>,
     cwd: String,
     mcp: mcp::Bridge,
-    queue: Mutex<HashMap<String, Vec<Value>>>,
+    queue: Mutex<HashMap<String, queue::QueueState>>,
     queue_root: std::path::PathBuf,
     vwork_paths: fastrock_workspaces::vwork::DiscoveryPaths,
     embedded_runtime: bool,
@@ -504,6 +505,9 @@ impl Adapter {
             }
             "turn/steer" => self.steer(params).await,
             "thread/queue/add"
+            | "fastrock/goose/recovery"
+            | "fastrock/goose/resumeQueue"
+            | "fastrock/goose/dismissRecovery"
             | "thread/queue/list"
             | "thread/queue/update"
             | "thread/queue/delete" => self.queue_request(params, method).await,

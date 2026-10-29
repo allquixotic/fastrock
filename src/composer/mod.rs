@@ -103,6 +103,7 @@ pub(crate) struct ComposerDraft {
 #[derive(Default)]
 pub(crate) struct ComposerShared {
     pub(crate) goose_configs: HashMap<String, Vec<serde_json::Value>>,
+    pub(crate) goose_recovery: HashMap<String, crate::goose::Recovery>,
     /// `model/list` catalog of the running server.
     pub(crate) models: Vec<ApiModel>,
     /// The Plan preset from `collaborationMode/list`; `None` hides Plan mode.

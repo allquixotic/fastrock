@@ -14,6 +14,10 @@ const MAX_FRAME: usize = 32 * 1024 * 1024;
 pub(crate) const DEFAULT_IN_PROCESS_CHANNEL_CAPACITY: usize = 512;
 #[derive(Clone, Debug)]
 pub(crate) enum AppServerEvent {
+    GooseRecovery {
+        thread_id: String,
+        recovery: crate::goose::Recovery,
+    },
     GooseConfig {
         thread_id: String,
         options: Vec<Value>,

@@ -1397,6 +1397,31 @@ impl Transcript {
 
     // ----- history ----------------------------------------------------------------
 
+    /// Goose assigns different turn/user IDs during replay. Replace its old
+    /// server projection on reattachment, retaining local drafts and notes.
+    /// Bounded resident rows are removed once; history pages refill them.
+    pub(crate) fn prepare_goose_reload(&mut self, ctx: RenderContext<'_>) {
+        let retained = std::mem::take(&mut self.entries)
+            .into_iter()
+            .filter(|entry| match &entry.body {
+                Body::Item(item) => item.local_echo,
+                Body::Notice { .. } | Body::Card(_) => true,
+                _ => false,
+            })
+            .collect();
+        self.model.remove(0, self.rows);
+        self.rows = 0;
+        self.bytes = 0;
+        self.index.clear();
+        self.aliases.clear();
+        self.alias_of.clear();
+        self.reported_turn_errors.clear();
+        self.retry_key = None;
+        self.activity = None;
+        self.history.turns.clear();
+        self.insert_entries(0, retained, ctx);
+    }
+
     /// Inserts history items (chronological) before everything shown.
     /// Items already present are skipped. Returns the number of entries added.
     pub(crate) fn prepend_history(
@@ -2035,6 +2060,57 @@ mod tests {
         // A repeated event for the same item does not duplicate it.
         apply(&mut transcript, completed(user("u1", Some("c1"), "hi")));
         assert_eq!(row_ids(&transcript), vec!["a#0", "u1#0"]);
+    }
+
+    #[test]
+    fn v41_goose_reload_replaces_live_ids_and_keeps_pending_and_unsent() {
+        let mut transcript = Transcript::new();
+        apply(
+            &mut transcript,
+            completed(user("live-user", Some("c1"), "interrupted")),
+        );
+        transcript.push_local_user_message(
+            "pending",
+            &[crate::session::text_input("queued")],
+            ctx(),
+        );
+        transcript.push_local_user_message(
+            "unsent",
+            &[crate::session::text_input("keep this")],
+            ctx(),
+        );
+        transcript.mark_echo_unsent("unsent", ctx());
+        transcript.prepare_goose_reload(ctx());
+        transcript.prepend_history(
+            vec![(
+                "replayed-turn".into(),
+                user("replayed-user", None, "interrupted"),
+            )],
+            &HashMap::new(),
+            ctx(),
+        );
+        assert_eq!(
+            row_ids(&transcript),
+            vec!["replayed-user#0", "pending#0", "unsent#0"]
+        );
+        assert!(transcript.entry("unsent").unwrap().item().unwrap().unsent);
+        assert!(
+            transcript
+                .entry("pending")
+                .unwrap()
+                .item()
+                .unwrap()
+                .local_echo
+        );
+        assert_eq!(transcript.rows, transcript.model.len());
+        assert_eq!(
+            transcript.bytes,
+            transcript
+                .entries
+                .iter()
+                .map(|entry| entry.bytes)
+                .sum::<usize>()
+        );
     }
 
     #[test]

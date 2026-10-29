@@ -169,7 +169,7 @@ T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only releas
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
 T37|~|Replace external backend/core bridges with embedded Goose; remove Codex UI/connection, preserve Goose configuration|V38,V39,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; compressed current-summary table in same redb|V40,I.vwork
-T39|.|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; no quotas|V41,I.orchestration
+T39|~|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; no quotas|V41,I.orchestration
 T40|~|Native T3 main UI/sidebar/panels, repository projects and permanent independent Rally project|V42,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and efficient arbitrary scrolling|V1,V9,V32,V37,V43,I.scroll
@@ -380,3 +380,8 @@ B103|2026-10-29|Window-close path saved UI preferences synchronously on the Slin
 B104|2026-10-29|Slint tray attempted its one-time native initialization before the async icon arrived, leaving no tray|Construct tray only after decoding its initial icon; native close/background/restore/menu-Quit fixture; V47
 B105|2026-10-29|Tray fixture treated Winit's transparent WS_VISIBLE event target as a user window and destroyed callback delivery with WM_CLOSE|Exclude internal event window from native window enumeration; retain timeout diagnostics; V47,V48
 B106|2026-10-29|Synthetic End/Return did not activate the native tray menu, repeating B14's modal-menu driver limitation|Use process-owned IAccessible default action on the verified Quit Fastrock item; V47
+B107|2026-10-29|Queue dequeue and dispatch evidence used separate files; restart could expose an uncertain send as pending and a later add could drain it|One atomic queue/dispatch record; recover pending work paused and quarantine uncertain sends; v41 queue crash-boundary fixtures and explicit Resume UI; V41,V47
+B108|2026-10-29|Native fixture captured clipboard before its deferred Copy callback executed|Yield after native Copy before capture; recovery fixture verifies copied record; V41
+B109|2026-10-29|Goose replay changes turn/user IDs; retained live projection duplicated interrupted prompt|Replace server projection on reattachment; retain pending/unsent input and notes; v41_goose_reload_replaces_live_ids_and_keeps_pending_and_unsent plus native visible-history export; V41,V43
+B110|2026-10-29|Failed completion persistence retained a dispatch claim that Resume could not clear|Quarantine the in-memory record; disk evidence remains recoverable; v41_failed_completion_save_remains_reviewable_and_resumable; V41,V47
+B111|2026-10-29|Recovery fixture expected live unpaused state after explicit Quit had closed the session|Assert persisted unresolved evidence is paused for next launch; native recovery fixture; V41,V47

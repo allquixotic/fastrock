@@ -1,4 +1,4 @@
-import { ComboBox, LineEdit, ScrollView } from "std-widgets.slint";
+import { ComboBox, LineEdit, ScrollView, TextEdit } from "std-widgets.slint";
 import { Theme, FlatButton } from "theme.slint";
 
 export struct GooseOption {
@@ -22,11 +22,34 @@ export global GooseState {
     in property <bool> cheap-loading;
     in property <string> cheap-status;
     callback save-cheap();
+    in property <bool> recovery-paused;
+    in property <int> recovered-pending;
+    in property <int> uncertain-count;
+    in property <string> recovery-details;
+    callback resume-recovered();
+    callback copy-recovery();
+    callback dismiss-recovery();
 }
 export component GooseControls inherits Rectangle {
     property <bool> expanded;
+    property <bool> review-open;
     VerticalLayout {
         spacing: Theme.pad-s;
+        if GooseState.recovery-paused: HorizontalLayout {
+            Text { text: "Recovered work is paused · " + GooseState.recovered-pending + " queued"; color: Theme.text-muted; wrap: word-wrap; vertical-alignment: center; }
+            FlatButton { text: "Resume"; enabled: !GooseState.changing && !GooseState.busy; clicked => { GooseState.resume-recovered(); } }
+        }
+        if GooseState.uncertain-count > 0: VerticalLayout {
+            FlatButton { text: "Review interrupted sends (" + GooseState.uncertain-count + ")"; clicked => { root.review-open = !root.review-open; } }
+            if root.review-open: VerticalLayout {
+                Text { text: "These sends may have reached the model or run tools. They will not be sent again automatically. Check the conversation and tool results before continuing."; color: Theme.text-muted; wrap: word-wrap; }
+                TextEdit { text: GooseState.recovery-details; read-only: true; height: 130px; wrap: word-wrap; }
+                HorizontalLayout {
+                    FlatButton { text: "Copy recovery records"; clicked => { GooseState.copy-recovery(); } }
+                    FlatButton { text: "Dismiss reviewed records"; enabled: !GooseState.changing; clicked => { GooseState.dismiss-recovery(); } }
+                }
+            }
+        }
         FlatButton {
             text: GooseState.summary + (root.expanded ? "  ▴" : "  ▾");
             clicked => { root.expanded = !root.expanded; }

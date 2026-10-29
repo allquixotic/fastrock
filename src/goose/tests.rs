@@ -3,7 +3,11 @@ use std::time::Duration;
 
 async fn fixture() -> (AppServerClient, tempfile::TempDir) {
     let temp = tempfile::tempdir().unwrap();
-    let script = temp.path().join("goose.py");
+    let client = fixture_at(temp.path()).await;
+    (client, temp)
+}
+async fn fixture_at(root: &std::path::Path) -> AppServerClient {
+    let script = root.join("goose.py");
     std::fs::write(&script, include_str!("../../dev/external-goose-fixture.py")).unwrap();
     let python = std::env::var_os("FASTROCK_TEST_PYTHON").unwrap_or_else(|| {
         if cfg!(windows) {
@@ -17,15 +21,14 @@ async fn fixture() -> (AppServerClient, tempfile::TempDir) {
         .arg(script)
         .arg("acp")
         .env_remove("FASTROCK_FIXTURE_ARTIFACT");
-    let cwd = dunce::canonicalize(temp.path()).unwrap();
-    let client = tokio::time::timeout(
+    let cwd = dunce::canonicalize(root).unwrap();
+    tokio::time::timeout(
         Duration::from_secs(15),
-        connect_command(command, cwd, temp.path().join("queues")),
+        connect_command(command, cwd, root.join("queues")),
     )
     .await
     .unwrap()
-    .unwrap();
-    (client, temp)
+    .unwrap()
 }
 async fn call(client: &AppServerClient, method: &str, params: Value) -> Reply {
     tokio::time::timeout(
@@ -411,5 +414,207 @@ async fn queued_drafts_are_persisted_before_acknowledgement() {
         .unwrap();
     assert_eq!(files.len(), 1);
     let queue: Value = serde_json::from_slice(&std::fs::read(files[0].path()).unwrap()).unwrap();
-    assert_eq!(queue[0]["input"][0]["text"], "retained draft");
+    assert_eq!(queue["pending"][0]["input"][0]["text"], "retained draft");
+}
+
+#[tokio::test]
+async fn v41_restart_requires_resume_and_never_replays_uncertain_send() {
+    let (client, temp) = fixture().await;
+    let id = new(&client, temp.path()).await;
+    send(&client, &id, "hold uncertain").await;
+    let add = |client_id: &str| {
+        json!({"threadId":id,"clientUserMessageId":client_id,
+        "input":[{"type":"text","text":"safe pending message","textElements":[]}]})
+    };
+    call(&client, "thread/queue/add", add("pending-one"))
+        .await
+        .unwrap();
+    client.shutdown().await.unwrap();
+
+    let mut client = fixture_at(temp.path()).await;
+    assert_eq!(new(&client, temp.path()).await, id); // Fixture restores its stable native ID.
+    call(&client, "thread/resume", json!({"threadId":id}))
+        .await
+        .unwrap();
+    let recovery = call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(recovery["paused"], true);
+    assert_eq!(recovery["pending"], 1);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        recovery["uncertain"][0]["input"][0]["text"],
+        "hold uncertain"
+    );
+    call(&client, "thread/queue/add", add("pending-two"))
+        .await
+        .unwrap();
+    assert!(
+        call(
+            &client,
+            "turn/start",
+            json!({"threadId":id,"input":[{"type":"text","text":"must wait"}]})
+        )
+        .await
+        .is_err()
+    );
+    tokio::time::sleep(Duration::from_millis(250)).await;
+    assert_eq!(
+        call(&client, "thread/read", json!({"threadId":id}))
+            .await
+            .unwrap()["thread"]["status"]["type"],
+        "idle"
+    );
+    call(
+        &client,
+        "fastrock/goose/resumeQueue",
+        json!({"threadId":id}),
+    )
+    .await
+    .unwrap();
+    let mut started = vec![];
+    let mut completed = 0;
+    while completed < 2 {
+        if let AppServerEvent::ServerNotification(n) = event(&mut client).await {
+            match *n {
+                codex_app_server_protocol::ServerNotification::TurnStarted(n) => {
+                    let value = serde_json::to_value(n.turn).unwrap();
+                    started.push(value["items"][0]["clientId"].clone());
+                }
+                codex_app_server_protocol::ServerNotification::TurnCompleted(_) => completed += 1,
+                _ => {}
+            }
+        }
+    }
+    assert_eq!(started, vec![json!("pending-one"), json!("pending-two")]);
+    let recovery = call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(recovery["pending"], 0);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    client.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn v41_close_reopen_requires_resume_and_preserves_queued_edits() {
+    let (client, temp) = fixture().await;
+    let id = new(&client, temp.path()).await;
+    send(&client, &id, "hold uncertain close").await;
+    let added = call(
+        &client,
+        "thread/queue/add",
+        json!({"threadId":id,"input":[{"type":"text","text":"original"}]}),
+    )
+    .await
+    .unwrap();
+    let queued_id = &added["queuedSubmission"]["id"];
+    let input =
+        json!([{"type":"text","text":"edited é"},{"type":"localImage","path":"retained.png"}]);
+    call(
+        &client,
+        "thread/queue/update",
+        json!({"threadId":id,"queuedSubmissionId":queued_id,"input":input}),
+    )
+    .await
+    .unwrap();
+    call(&client, "thread/unsubscribe", json!({"threadId":id}))
+        .await
+        .unwrap();
+    call(&client, "thread/resume", json!({"threadId":id}))
+        .await
+        .unwrap();
+    let recovery = call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(recovery["paused"], true);
+    assert_eq!(recovery["pending"], 1);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    let pending = call(&client, "thread/queue/list", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(pending["data"][0]["input"], input);
+    call(
+        &client,
+        "fastrock/goose/dismissRecovery",
+        json!({"threadId":id,"ids":["not-reviewed"]}),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
+            .await
+            .unwrap()["uncertain"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    call(
+        &client,
+        "fastrock/goose/dismissRecovery",
+        json!({"threadId":id,"ids":[recovery["uncertain"][0]["id"]]}),
+    )
+    .await
+    .unwrap();
+    assert!(
+        call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
+            .await
+            .unwrap()["uncertain"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    client.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn v41_failed_completion_save_remains_reviewable_and_resumable() {
+    use base64::Engine;
+    let (mut client, temp) = fixture().await;
+    let id = new(&client, temp.path()).await;
+    send(&client, &id, "hold failed completion save").await;
+    let path = temp.path().join("queues").join(format!(
+        "{}.json",
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(session_id(&id).unwrap())
+    ));
+    let original = std::fs::read(&path).unwrap();
+    std::fs::remove_file(&path).unwrap();
+    std::fs::create_dir(&path).unwrap(); // Force atomic replacement to fail on every platform.
+    call(&client, "turn/interrupt", json!({"threadId":id}))
+        .await
+        .unwrap();
+    loop {
+        if let AppServerEvent::ServerNotification(notification) = event(&mut client).await {
+            if matches!(
+                *notification,
+                codex_app_server_protocol::ServerNotification::TurnCompleted(_)
+            ) {
+                break;
+            }
+        }
+    }
+    let recovered = call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(recovered["paused"], true);
+    assert_eq!(recovered["uncertain"].as_array().unwrap().len(), 1);
+    std::fs::remove_dir(&path).unwrap();
+    std::fs::write(&path, original).unwrap();
+    call(
+        &client,
+        "fastrock/goose/resumeQueue",
+        json!({"threadId":id}),
+    )
+    .await
+    .unwrap();
+    let saved: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    assert_eq!(saved["dispatch"], Value::Null);
+    assert_eq!(saved["uncertain"].as_array().unwrap().len(), 1);
+    send(
+        &client,
+        &id,
+        "An explicit new send is possible after storage recovers",
+    )
+    .await;
+    client.shutdown().await.unwrap();
 }

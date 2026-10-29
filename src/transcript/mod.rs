@@ -387,6 +387,9 @@ impl AppController {
             .collect::<Vec<_>>();
         self.approvals_restore_async(index, &items);
         let request = self.with_transcript(index, |transcript, ctx, _| {
+            if start.thread_id.starts_with("goose:") {
+                transcript.prepare_goose_reload(ctx);
+            }
             let live_turns = transcript.live_turns();
             transcript.clear_notice(HISTORY_ERROR_KEY);
             let history = &mut transcript.history;

@@ -25,9 +25,11 @@ parser.add_argument('--turns', type=int, default=1)
 parser.add_argument('--navigation', action='store_true')
 parser.add_argument('--tray', action='store_true', help='Close while a model runs, restore through the native tray, and quit from its menu')
 parser.add_argument('--windows', action='store_true', help='Exercise two in-process windows and draft transfer')
+parser.add_argument('--recovery', action='store_true', help='Restart during a send, review it, and explicitly resume only queued work')
 args = parser.parse_args()
 assert 1 <= args.turns <= 100
 assert not args.windows or args.navigation, '--windows requires --navigation'
+assert not args.recovery or (args.turns == 1 and not (args.windows or args.navigation or args.tray)), '--recovery is a separate one-turn scenario'
 out = args.output.resolve()
 out.mkdir(parents=True, exist_ok=False)
 for folder in ('home', 'codex', 'project', 'goose/config', 'local', 'roaming'):
@@ -51,6 +53,10 @@ class Provider(BaseHTTPRequestHandler):
         requests.append({'path': self.path, 'summary': summary})
         assert self.path.startswith('/model/') and self.path.endswith('/converse'), self.path
         turn = sum(not request['summary'] for request in requests)
+        if args.recovery and not summary and turn == 2:
+            release_first_turn.set()
+        if args.recovery and not summary and turn == 1:
+            assert release_first_turn.wait(60), 'No explicit Resume reached the provider'
         if args.tray and not summary and turn == 1:
             assert release_first_turn.wait(20), 'Native window was not hidden during the active turn'
         text = ('ObsidianNeedle: compaction-length keyword fixture for searching this conversation.'
@@ -58,11 +64,14 @@ class Provider(BaseHTTPRequestHandler):
         response = json.dumps({'output': {'message': {'role': 'assistant', 'content': [{'text': text}]}},
                               'stopReason': 'end_turn', 'usage': {'inputTokens': 3, 'outputTokens': 4, 'totalTokens': 7},
                               'metrics': {'latencyMs': 1}}).encode()
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Content-Length', str(len(response)))
-        self.end_headers()
-        self.wfile.write(response)
+        try:
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(response)))
+            self.end_headers()
+            self.wfile.write(response)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            assert args.recovery and turn == 1, 'Unexpected provider disconnect'
 
 
 server = ThreadingHTTPServer(('127.0.0.1', 0), Provider)
@@ -82,8 +91,19 @@ if args.navigation:
     }), encoding='utf-8')
 steps = [{'wait_ready': 30000}, {'resize': [1440, 1000]},
          {'new_thread': str(out / 'project')}, {'wait_idle': 30000}]
-for turn in range(1, args.turns + 1):
-    steps += [{'send': f'Please give a short fixture answer {turn}'}, {'wait_idle': 30000}, {'wait': 2000}]
+if args.recovery:
+    steps += [{'send': 'Uncertain send: retain me for review'}, {'wait': 1200},
+              {'composer': ['type', 'Queued recovery message é']}, {'composer': ['send']}, {'wait': 500},
+              {'restart_server': True}, {'wait': 1200}, {'wait_ready': 30000}, {'wait_idle': 30000},
+              {'click_text': 'Review interrupted sends (1)'}, {'wait': 300},
+              {'click_text': 'Copy recovery records'}, {'wait': 300}, {'selection': ['capture', str(out / 'recovery-records.json')]},
+              {'snapshot': str(out / 'recovery-paused.png')},
+              {'transcript': 'export:' + str(out / 'recovery-visible.md')},
+              {'sidebar': ['dump', str(out / 'recovery-paused.json')]}, {'wait': 2500},
+              {'click_text': 'Resume'}, {'wait': 500}, {'wait_idle': 30000}, {'wait': 2000}]
+else:
+    for turn in range(1, args.turns + 1):
+        steps += [{'send': f'Please give a short fixture answer {turn}'}, {'wait_idle': 30000}, {'wait': 2000}]
 steps += [{'transcript': 'export-complete:' + str(out / 'complete.md')}, {'wait': 300},
          {'sidebar': ['search', 'OBSIDIANNEEDLE']}, {'wait': 1500},
          {'sidebar': ['dump', str(out / 'matches.json')]}, {'snapshot': str(out / 'search.png')},
@@ -292,6 +312,7 @@ tray_state = dict(close_requested=False, turn_completed_hidden=False, restore_re
 menu_driver = None
 menu_errors = []
 menu_labels = []
+observed_recovery_pause = False
 
 def quit_from_menu(hwnd, pid):
     try:
@@ -317,6 +338,9 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
             # benchmark allowance; leave additional headroom on the VM host.
             if peak >= 2_000_000_000 or time.monotonic() > deadline:
                 raise RuntimeError('Fixture memory/time limit exceeded')
+            if args.recovery and not observed_recovery_pause and (out / 'recovery-paused.json').exists():
+                assert len(requests) == 1, f'Work ran before Resume: {requests}'
+                observed_recovery_pause = True
             if args.tray:
                 windows = native_windows(process.pid)
                 tray = tray_window(process.pid)
@@ -368,14 +392,36 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
 matches = json.loads((out / 'matches.json').read_text())['rows']
 assert len(matches) == 1 and matches[0]['id'].startswith('goose:'), matches
 assert json.loads((out / 'empty.json').read_text())['rows'] == []
-assert len(requests) == 2 * (args.turns + int(args.windows)), f'Search or settings caused extra model calls: {requests}'
-for ordinary, summary in zip(requests[::2], requests[1::2]):
+expected_requests = 3 if args.recovery else 2 * (args.turns + int(args.windows))
+assert len(requests) == expected_requests, f'Unexpected model calls: {requests}'
+paired_requests = requests[1:] if args.recovery else requests
+for ordinary, summary in zip(paired_requests[::2], paired_requests[1::2]):
     assert ordinary['summary'] is False and 'openai.gpt-6.1-sol' in ordinary['path']
     assert summary['summary'] is True and 'openai.gpt-6-luna' in summary['path']
 transcript = (out / 'complete.md').read_text(encoding='utf-8')
-for turn in range(1, args.turns + 1):
-    assert transcript.count(f'Please give a short fixture answer {turn}') == 1, transcript
-    assert transcript.count(f'Native embedded Goose answer {turn},') == 1, transcript
+if args.recovery:
+    assert observed_recovery_pause
+    visible = (out / 'recovery-visible.md').read_text(encoding='utf-8')
+    assert visible.count('Uncertain send: retain me for review') == 1, visible
+    records = json.loads((out / 'recovery-records.json').read_text(encoding='utf-8'))
+    assert len(records) == 1 and records[0]['input'][0]['text'] == 'Uncertain send: retain me for review', records
+    assert transcript.count('Queued recovery message é') == 1, transcript
+    assert transcript.count('Native embedded Goose answer 2,') == 1, transcript
+    assert 'Native embedded Goose answer 1,' not in transcript, transcript
+    states = []
+    for path in (out / 'home').rglob('*.json'):
+        value = json.loads(path.read_text(encoding='utf-8'))
+        if isinstance(value, dict) and value.get('version') == 1 and 'uncertain' in value:
+            states.append(value)
+    assert len(states) == 1, states
+    assert states[0]['pending'] == [] and states[0]['dispatch'] is None, states
+    # Explicit Quit closes the session. Unreviewed evidence remains paused
+    # for the next launch, even though pending work completed after Resume.
+    assert len(states[0]['uncertain']) == 1 and states[0]['paused'] is True, states
+else:
+    for turn in range(1, args.turns + 1):
+        assert transcript.count(f'Please give a short fixture answer {turn}') == 1, transcript
+        assert transcript.count(f'Native embedded Goose answer {turn},') == 1, transcript
 assert 'ObsidianNeedle' not in transcript, 'Search summary leaked into the source history'
 saved = (out / 'goose/config/config.yaml').read_text(encoding='utf-8')
 assert 'FASTROCK_CHEAP_PROFILE:' in saved and 'Bedrock Luna' in saved
@@ -420,6 +466,7 @@ if args.tray:
     assert all(tray_state.values()), tray_state
     assert (out / 'codex/gui.json').exists(), 'Explicit Quit did not flush UI preferences'
 receipt = dict(result='PASS', binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+               explicit_recovery_resume=args.recovery, uncertain_send_never_replayed=args.recovery,
                peak_process_bytes=peak, requests=requests, summary_only_match=True,
                exported_turns=args.turns, complete_history_preserved=True,
                native_cheap_profile_saved=True, all_provider_requests_local=True,

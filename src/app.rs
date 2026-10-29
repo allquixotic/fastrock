@@ -783,6 +783,17 @@ impl AppController {
     pub(crate) fn handle_server_events(&mut self, events: Vec<AppServerEvent>) {
         for event in events {
             match event {
+                AppServerEvent::GooseRecovery {
+                    thread_id,
+                    recovery,
+                } => {
+                    if self.tab_index_for_thread(&thread_id).is_some() {
+                        self.composer_shared
+                            .goose_recovery
+                            .insert(thread_id, recovery);
+                        self.goose_controls_refresh();
+                    }
+                }
                 AppServerEvent::GooseConfig { thread_id, options } => {
                     if let Some(index) = self.tab_index_for_thread(&thread_id) {
                         if let Some(thread) = self.thread_tab_mut(index) {

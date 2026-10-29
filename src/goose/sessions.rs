@@ -266,6 +266,8 @@ impl Adapter {
                     .map_err(|_| error("Restore Goose history failed"))?
             );
         }
+        drop(sessions);
+        self.queue_event(id, self.load_queue(id).await?);
         Ok(result)
     }
 
@@ -370,6 +372,15 @@ impl Adapter {
             return Err(unsupported("image prompts"));
         }
         let tid = uuid::Uuid::new_v4().to_string();
+        if !self
+            .sessions
+            .lock()
+            .await
+            .get(&id)
+            .is_some_and(|s| s.ephemeral)
+        {
+            self.claim_dispatch(&id, &tid, params).await?;
+        }
         let mut started = turn(&tid, "inProgress");
         let user = json!({"type":"userMessage","id":format!("user-{tid}"),"clientId":params["clientUserMessageId"],"content":params["input"]});
         started["items"] = json!([user]);
@@ -463,12 +474,13 @@ impl Adapter {
         for item in t["items"].as_array().into_iter().flatten() {
             let _=self.emit(json!({"method":"item/completed","params":{"threadId":ui_id(id),"turnId":tid,"item":item}}));
         }
-        if let Err(error) =
-            self.emit(json!({"method":"turn/completed","params":{"threadId":ui_id(id),"turn":t}}))
-        {
+        let completion =
+            json!({"method":"turn/completed","params":{"threadId":ui_id(id),"turn":t}});
+        drop(sessions);
+        self.settle_dispatch(id, tid, completed).await;
+        if let Err(error) = self.emit(completion) {
             tracing::error!(error = %error.message, "could not deliver turn completion");
         }
-        drop(sessions);
         if summarize {
             if let Some(service) = &self.summaries {
                 service.completed(id.to_owned()).await;
@@ -585,6 +597,7 @@ impl Adapter {
         self.cancel_answers(id).await;
         self.mcp.remove_session(id).await;
         self.sessions.lock().await.remove(id);
+        self.pause_closed_queue(id).await?;
         Ok(json!({"status":"unsubscribed"}))
     }
 }

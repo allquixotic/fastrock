@@ -726,3 +726,29 @@ verified against the exact source, tag and workflow. Independent verification on
 timestamp. Published executable SHA-256:
 `dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9`.
 vwork remains unchanged at `c53cea4879bc0e12735ae1c89bd7d5ca3e9b1910`.
+
+## 0.4.0 development: durable queue recovery
+
+On 2026-10-29, `games` passed 708 application tests, 16 workspace tests and
+the standalone embedded-Goose fixture. The native renderer test also passed.
+Mac compatibility compilation, formatting and the optimization-policy audit
+passed; no application or tests ran on the Mac.
+
+`dev/windows-summary-smoke.py --recovery` restarted embedded Goose during a held
+local Bedrock request. It verified no work before Resume, one retained uncertain
+send, native review/Copy, a single visible replayed prompt, and exactly one queued
+send after Resume. The queued turn generated one Luna search summary; search and
+settings caused no additional model calls. Explicit Quit retained the unresolved
+record paused for the next launch. Unit fixtures also cover legacy-file migration,
+invalid records, attachments, edits, close/reopen, reviewed-ID dismissal and failed
+completion writes. Closed chats release their cached recovery state.
+
+Final native receipt:
+`C:\Users\SeanMcNamara\fastrock-040-policy\recovery-native-4\acceptance.json`.
+Development executable SHA-256:
+`745b206fe98adca24c235ab464547d0d05e2302aac1e6c38d0cd90332c905f4b`.
+Peak process memory was 149,364,736 bytes under a 2 GB fixture cap.
+
+This is queue/backend-restart acceptance, not complete process/draft recovery or
+the large-workload benchmark. No live model credentials or production Rally
+endpoint were used. No 0.4.0 release was published.

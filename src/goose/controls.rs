@@ -7,6 +7,21 @@ impl AppController {
     pub(crate) fn goose_controls_install(&mut self) {
         self.window
             .global::<GooseState>()
+            .on_resume_recovered(crate::ui_thread::scoped_callback!(|| {
+                crate::ui_thread::with_app(|app| app.goose_recovery_action("resume"));
+            }));
+        self.window
+            .global::<GooseState>()
+            .on_copy_recovery(crate::ui_thread::scoped_callback!(|| {
+                crate::ui_thread::with_app(|app| app.goose_recovery_action("copy"));
+            }));
+        self.window
+            .global::<GooseState>()
+            .on_dismiss_recovery(crate::ui_thread::scoped_callback!(|| {
+                crate::ui_thread::with_app(|app| app.goose_recovery_action("dismiss"));
+            }));
+        self.window
+            .global::<GooseState>()
             .on_choose(crate::ui_thread::scoped_callback!(|id, value| {
                 let (id, value) = (id.to_string(), value.to_string());
                 crate::ui_thread::with_app(move |app| app.goose_choose(id, value));
@@ -21,6 +36,16 @@ impl AppController {
         let state = self.window.global::<GooseState>();
         state.set_active(self.backend.is_goose());
         let thread = self.active_thread_index().and_then(|i| self.thread_tab(i));
+        let recovery = thread
+            .and_then(|t| t.thread_id.as_ref())
+            .and_then(|id| self.composer_shared.goose_recovery.get(id));
+        state.set_recovery_paused(recovery.is_some_and(|r| r.paused));
+        state
+            .set_recovered_pending(recovery.map_or(0, |r| r.pending.min(i32::MAX as usize) as i32));
+        state.set_uncertain_count(
+            recovery.map_or(0, |r| r.uncertain.len().min(i32::MAX as usize) as i32),
+        );
+        state.set_recovery_details(recovery.map(recovery_preview).unwrap_or_default().into());
         state.set_busy(thread.is_none_or(|t| t.is_busy()));
         let options = thread
             .and_then(|t| t.thread_id.as_ref())
@@ -109,6 +134,72 @@ impl AppController {
         });
     }
 
+    fn goose_recovery_action(&mut self, action: &str) {
+        let Some(id) = self
+            .active_thread_index()
+            .and_then(|i| self.thread_tab(i))
+            .and_then(|t| t.thread_id.clone())
+        else {
+            return;
+        };
+        let recovery = self
+            .composer_shared
+            .goose_recovery
+            .get(&id)
+            .cloned()
+            .unwrap_or_default();
+        match action {
+            "copy" => {
+                if let Ok(text) = serde_json::to_string_pretty(&recovery.uncertain) {
+                    self.copy_to_clipboard(&text);
+                }
+            }
+            "resume" => self.goose_recovery_request(id, "fastrock/goose/resumeQueue", json!({})),
+            "dismiss" => {
+                let ids = recovery
+                    .uncertain
+                    .iter()
+                    .map(|item| item["id"].clone())
+                    .collect::<Vec<_>>();
+                self.show_dialog(crate::app::DialogRequest::confirm(
+                    "Dismiss reviewed records?",
+                    "This removes the selected recovery records. Conversation history and queued messages remain. Copy the records first if you need them.".to_owned(),
+                ).accept_label("Dismiss").destructive(), Box::new(move |app, accepted| {
+                    if accepted.is_some() { app.goose_recovery_request(id, "fastrock/goose/dismissRecovery", json!({"ids":ids})); }
+                }));
+            }
+            _ => {}
+        }
+    }
+    fn goose_recovery_request(
+        &mut self,
+        id: String,
+        method: &'static str,
+        mut params: serde_json::Value,
+    ) {
+        params["threadId"] = json!(id);
+        self.window.global::<GooseState>().set_changing(true);
+        self.window.global::<GooseState>().set_error("".into());
+        let backend = self.backend.clone();
+        self.backend.spawn(async move {
+            let result = backend
+                .goose_request(method, params)
+                .await
+                .and_then(|value| {
+                    serde_json::from_value::<super::Recovery>(value).map_err(|e| e.to_string())
+                });
+            crate::ui_thread::post(move |app| {
+                app.window.global::<GooseState>().set_changing(false);
+                // Ordered backend events carry the current state. A response
+                // snapshot can arrive after the resumed queue advances.
+                if let Err(error) = result {
+                    app.window.global::<GooseState>().set_error(error.into());
+                }
+                app.goose_controls_refresh();
+            });
+        });
+    }
+
     pub(crate) fn goose_cheap_load(&mut self) {
         let state = self.window.global::<GooseState>();
         if state.get_cheap_loading() {
@@ -175,4 +266,34 @@ impl AppController {
             });
         });
     }
+}
+
+fn recovery_preview(recovery: &super::Recovery) -> String {
+    recovery
+        .uncertain
+        .iter()
+        .take(12)
+        .map(|item| {
+            let text = item["input"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|input| {
+                    input["text"]
+                        .as_str()
+                        .unwrap_or("[attachment or structured input]")
+                })
+                .flat_map(|text| text.chars().chain(std::iter::once('\n')))
+                .take(2048)
+                .collect::<String>();
+            format!(
+                "{}\n{}",
+                item["recoveryReason"]
+                    .as_str()
+                    .unwrap_or("Interrupted send"),
+                text
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }

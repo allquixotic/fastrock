@@ -66,8 +66,20 @@ Rally has a permanent sidebar entry and a separate document strip; returning to
 Rally selects the last document. Open tabs still exposes child conversations and
 files. This is the navigation foundation, not complete T3 feature parity.
 
+All native windows share one backend and store owner. Closing the last window
+hides it to the native tray while agents continue. Open Fastrock restores it;
+Quit Fastrock saves preferences, stops the backend and exits.
+
+Pending input and the current dispatch share one atomic queue record. After a
+backend restart or session close/reopen, pending work stays paused until Resume.
+Interrupted or uncertain sends appear under Review interrupted sends; they are
+never automatically queued again. Copy preserves the complete input, including
+attachment references, and Dismiss removes only the records reviewed in that
+dialog. Existing legacy queue files migrate on the next successful write; old
+dispatch evidence is retained on disk. Invalid records are not overwritten.
+
 Graphical provider/credential setup, repository/workspace binding, full T3 orchestration/UI,
-large-history UI/performance acceptance and tray lifecycle
+large-history UI/performance acceptance and complete unsent-draft/process recovery
 remain tracked in `SPEC.md`. This development foundation is not a completed 0.4.0
 release. Historical 0.3.x transport details follow for old releases only.
 

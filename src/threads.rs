@@ -575,6 +575,8 @@ impl AppController {
         let Some(thread_id) = thread.thread_id.clone() else {
             return;
         };
+        self.composer_shared.goose_recovery.remove(&thread_id);
+        self.composer_shared.goose_configs.remove(&thread_id);
         if !thread.is_busy() {
             self.unsubscribe_thread(thread_id);
             return;
