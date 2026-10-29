@@ -673,7 +673,7 @@ new 97.5 ms, seeded reload 69.8 ms, and reload after app restart 83.5 ms. All
 three operations used HTTP, preserved the original workspace and rejected
 Origin/forged-Host probes, with zero vwork clients. Standalone Goose control
 launched four clients as expected. The receipt includes this separate final run.
-# Conversation selection, 2026-10-29
+## Conversation selection, 2026-10-29
 
 Fastrock 0.3.4 adds 12-logical-pixel selection gutters beside rich/native text
 (table cells use half their inter-column spacing). Tool results use selectable
@@ -710,3 +710,19 @@ when switching from a gutter selection. No vwork source or protocol changes.
   frame times remain below 8.2 ms with selection enabled. Restore smoke passed.
   Development executable SHA-256:
   `5843b144881475953420345ff01de9f351043758f7b6ce6854e70018d5bfc1b8`.
+
+[Signed release CI 40917749947](https://github.com/allquixotic/fastrock/actions/runs/40917749947)
+passed from source `19e94e62276d14d4246abadbc710db90923f4eba`: both platform
+compiles, 708 Windows tests, release policy, Azure signing/timestamp verification,
+and signed-byte Rally, Goose, vwork, selection and scrolling fixtures. The
+temporary build runner was removed. [Fastrock 0.3.4](https://github.com/allquixotic/fastrock/releases/tag/v0.3.4)
+is published as a Windows x64 ZIP; the Mac publishing job was intentionally skipped.
+
+Downloaded ZIP SHA-256:
+`89fc853834acfa8d631ab940a246dadd55135e68bdd7adda943a8990887f426a`.
+GitHub digest, checksum file and embedded binary receipt agree; bundled provenance
+verified against the exact source, tag and workflow. Independent verification on
+`games` confirmed Valid Authenticode, Sean McNamara publisher and Microsoft RFC3161
+timestamp. Published executable SHA-256:
+`dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9`.
+vwork remains unchanged at `c53cea4879bc0e12735ae1c89bd7d5ca3e9b1910`.

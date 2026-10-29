@@ -129,7 +129,7 @@ T30|x|Native vwork storage compaction control, preserve drafts, verify Fastrock 
 T31|x|Retained Windows presentation, optimized render/text dependencies, finer transcript rows, games benchmark and 0.3.2 CI release|V15,V31,V32,V33,I.scroll,I.paint,I.distribution
 T32|x|Measure signed 0.3.2 opening on games/CI; installed Goose 1.57.0 local-provider/extension timing on games; confirm activation gates history, record unprofiled copy/UI candidates and real-config limits|V27,V33,V34,I.distribution,I.goose
 T33|x|Shared localhost vwork MCP, database-level compaction, actual Goose/games comparison, signed 0.3.3 CI release|V15,V27,V34,V35,V36,I.vwork,I.goose,I.distribution
-T34|~|Widen text selection hit areas, selectable tool/command details, Windows interaction/scroll checks, Mac compile and signed Fastrock 0.3.4; no vwork changes|V9,V15,V23,V32,V37,I.distribution
+T34|x|Widen text selection hit areas, selectable tool/command details, Windows interaction/scroll checks, Mac compile and signed Fastrock 0.3.4; no vwork changes|V9,V15,V23,V32,V37,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 
