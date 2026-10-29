@@ -464,3 +464,61 @@ Independent Authenticode verification of that downloaded executable on games
 returned `Valid`, publisher Sean McNamara, with Microsoft's timestamp authority.
 Downloaded assets, CI receipts and local verification evidence are retained in
 `build/scroll-release-0.3.2/`.
+
+## Conversation opening investigation — 2026-10-29
+
+`dev/windows-thread-benchmark.py` measured the published, signed 0.3.2 executable
+with SHA-256 `44767d7917a65c5bd24cdbf00288d58b9037727f00cedcc8f446678113bdeb10`.
+The same executable ran on games (Windows 11 x64 26100.9711, active console session)
+and [hosted Windows CI run 40879417319](https://github.com/allquixotic/fastrock/actions/runs/40879417319).
+CI independently verified the release checksum, attestation, executable hash,
+Authenticode publisher and timestamp. All twelve samples per host passed.
+
+Each sample starts a fresh native application process, waits for backend readiness,
+then opens a conversation at 1440×1000/100% with software rendering. The local ACP
+fixture has no provider, extensions, inference, credentials or external services.
+New conversations use the normal folder-trust path in an isolated folder outside
+Git. This measures conversation opening after application startup, not cold launch.
+
+| Scenario | games request → thread response | games history availability upper bound | CI request → thread response |
+|---|---:|---:|---:|
+| new conversation | 18.5–23.7 ms | n/a | 8.0–9.0 ms |
+| 10 saved turns, 26 KB replay | 5.3–6.5 ms | 104–308 ms | 3.3–3.5 ms |
+| 2,000 saved turns, 5.3 MB replay | 225–287 ms | 411–655 ms | 165–166 ms |
+| 200 turns with tool output, 15.3 MB replay | 288–516 ms | 662–907 ms | 287–294 ms |
+
+Ranges cover three samples per scenario. Response timings use the existing
+`thread-started` / `thread-resumed` milestones. The transcript export is sampled
+every 100 ms until its latest-message sentinel is present. That history measure
+includes polling and asynchronous export overhead; it is neither a first-pixel
+measurement nor input-to-photon latency. Fixture delivery timing includes Python
+serialization and pipe backpressure, so it cannot isolate Rust parsing CPU time.
+
+Source inspection identified these optimization candidates:
+
+- `src/goose/sessions.rs`: new conversations wait for `session/new`; resumed ones
+  wait for the entire `session/load` reply before exposing history. Every history
+  page clones all loaded items before taking at most 100; turn metadata also clones
+  item payloads before discarding them. The shared session mutex covers that work.
+- `src/goose/model.rs`: replay constructs presentation events, including cloned
+  tool output, then clears them because replay only needs stored history.
+- `src/transcript/store.rs`: first-page Markdown parsing and row conversion run
+  on the UI thread. Row virtualization does not remove this initial preparation.
+- `src/app.rs`: `save_prefs` writes synchronously, including the new-thread path.
+  The measured new-thread fixture was still below 24 ms, so this alone does not
+  establish the cause of the reported severe delay.
+
+The [Goose 1.56.0 ACP implementation](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/src/acp/server.rs)
+starts extension leases during session activation before returning setup responses.
+Its [load handler](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/src/acp/server/load_session.rs)
+also replays stored conversation content. Provider/extension setup is therefore a
+candidate shared by new and existing conversations, but the user's installed
+version/configuration has not yet been measured. Goose was not found on games'
+interactive PATH or in the inspected installation folders. No backend was installed
+or changed. These fixture results do not reproduce or disprove the reported delay
+with the user's real Goose environment.
+
+Evidence: `build/thread-benchmark-ci/`, `build/thread-benchmark-games-summary.json`,
+and `games:C:/Users/SeanMcNamara/fastrock-thread-032/fixture/`. The manual
+`thread-performance.yml` workflow permits repeating the same test against a signed
+published release without rebuilding the application.
