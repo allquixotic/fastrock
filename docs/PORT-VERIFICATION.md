@@ -508,17 +508,91 @@ Source inspection identified these optimization candidates:
   The measured new-thread fixture was still below 24 ms, so this alone does not
   establish the cause of the reported severe delay.
 
-The [Goose 1.56.0 ACP implementation](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/src/acp/server.rs)
+The [Goose ACP implementation](https://github.com/aaif-goose/goose/blob/v1.57.0/crates/goose/src/acp/server.rs)
 starts extension leases during session activation before returning setup responses.
-Its [load handler](https://github.com/aaif-goose/goose/blob/v1.56.0/crates/goose/src/acp/server/load_session.rs)
+Its [load handler](https://github.com/aaif-goose/goose/blob/v1.57.0/crates/goose/src/acp/server/load_session.rs)
 also replays stored conversation content. Provider/extension setup is therefore a
-candidate shared by new and existing conversations, but the user's installed
-version/configuration has not yet been measured. Goose was not found on games'
-interactive PATH or in the inspected installation folders. No backend was installed
-or changed. These fixture results do not reproduce or disprove the reported delay
-with the user's real Goose environment.
+candidate shared by new and existing conversations. The installed-backend experiment
+below confirms the dependency, but does not reproduce the user's configuration.
 
 Evidence: `build/thread-benchmark-ci/`, `build/thread-benchmark-games-summary.json`,
 and `games:C:/Users/SeanMcNamara/fastrock-thread-032/fixture/`. The manual
 `thread-performance.yml` workflow permits repeating the same test against a signed
 published release without rebuilding the application.
+
+### Installed Goose on games
+
+After explicit user authorization on 2026-10-29, installed the official
+[`@aaif/goose-acp@1.57.0` package](https://github.com/aaif-goose/goose/tree/v1.57.0/ui/goose-acp)
+through Bun 1.4.2 as the signed-in Windows user:
+`bun add --global @aaif/goose-acp@1.57.0`. Both `where goose` and `goose --version`
+passed in that user's session. The command shim is
+`C:\Users\SeanMcNamara\.bun\bin\goose.exe`; the package's native x64 executable is
+`C:\Users\SeanMcNamara\.bun\install\global\node_modules\@aaif\goose-binary-win32-x64\bin\goose.exe`,
+SHA-256 `ee39aee30805fda80ed996a4e2e9940d04ec855436315b8deb96950231145242`.
+No normal Goose provider configuration or credentials were changed.
+
+`dev/windows-goose-benchmark.py` drives that installed command with a separate
+`GOOSE_PATH_ROOT` per sample. A loopback OpenAI-compatible fixture answers model
+discovery and produces one fixed response; no real inference or external tools run.
+Four variants each have three fresh-process samples and two create/prompt/close/load
+cycles. The empty-config variant retains Goose's default platform extensions;
+it does **not** mean zero extensions. The Developer variant explicitly enables
+the builtin Developer entry. The other two add the same local HTTP MCP server,
+with either immediate initialization or an intentional 1,000 ms delay.
+
+| Goose ACP variant | First new session | Second new session | Reload one saved turn |
+|---|---:|---:|---:|
+| Empty config / default platform extensions | 118–143 ms | 16–22 ms | 10–15 ms |
+| Explicit builtin Developer | 129–140 ms | 18–20 ms | 10–33 ms |
+| Default + immediate local MCP | 133–170 ms | 22–47 ms | 17–27 ms |
+| Default + MCP delayed by 1,000 ms | 1,110–1,117 ms | 1,025–1,037 ms | 1,019–1,046 ms |
+
+These direct ACP timings include no native UI. Reloads occur after `session/close`
+in the same Goose process. The script also launches the same signed Fastrock 0.3.2
+binary used above, with software rendering at 1440×1000/100%. Every GUI sample
+starts a fresh application/backend process and waits for backend readiness before
+opening. New conversations use Fastrock's normal folder path, including its default
+cross-tab MCP bridge. Resumes load the saved fixture turn; MCP variants retain the
+saved external MCP configuration. All eighteen GUI opens passed in the final run.
+
+| Native Fastrock + installed Goose | New-thread response | Saved-thread response | Saved history availability upper bound |
+|---|---:|---:|---:|
+| Default platform extensions | 69–115 ms | 40–47 ms | 202–300 ms |
+| Explicit builtin Developer | 63–72 ms | 43–54 ms | 201–302 ms |
+| Saved immediate local MCP | n/a | 54–70 ms | 201–301 ms |
+| Saved MCP delayed by 1,000 ms | n/a | 1,064–1,070 ms | 1,105–1,206 ms |
+
+History availability uses the same 100 ms transcript-export sampling described
+above, not first-pixel timing. In the delayed MCP direct-client samples, all saved
+text arrived after only **3.2–6.8 ms**, while the final `session/load` reply took
+**1,019–1,046 ms**. Fastrock's adapter buffers that replay but waits for the reply
+before allowing history queries. This confirms an opportunity to show received
+history while activation finishes, with generation, failure and send-readiness
+guards preserved. It does not establish which extension/provider, if any, causes
+the user's reported severe slowdown. Clean defaults and builtin Developer did not
+reproduce a multi-second opening delay.
+
+The other concrete optimization candidates remain page-sized cloning instead of
+whole-history cloning, avoiding discarded replay presentation events, and moving
+initial Markdown preparation off the UI thread. Their CPU contribution has not
+yet been isolated. No Fastrock runtime code or build profile changed in this
+benchmark step; no new application release was produced.
+
+Benchmark validation checks extension activation results, actual MCP initialize
+requests, matching-session text replay, normal app exit and exported sentinel
+content. Early fixture runs were discarded after fixing unknown `server/discover`
+handling (must return method-not-found for fallback) and allowing Goose's cached
+tool catalog on reload. The final full run exited zero with all checks passing.
+
+Final evidence: `games:C:/Users/SeanMcNamara/fastrock-thread-032/goose-final/`,
+local `build/goose-final/`, and `build/goose-install.json`. Raw ACP replies,
+request timings, HTTP method logs, isolated config, GUI logs and snapshots are
+retained. To repeat on Windows with an already installed backend:
+
+```powershell
+python dev/windows-goose-benchmark.py C:\path\to\goose.exe --fastrock C:\path\to\fastrock.exe --output C:\path\to\new-results-directory
+```
+
+The benchmark never installs or updates Goose. The existing hosted CI benchmark
+uses an ACP fixture; these installed-Goose measurements ran on games.
