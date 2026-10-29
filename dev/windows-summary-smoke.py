@@ -7,6 +7,7 @@ import argparse
 import ctypes
 from ctypes import wintypes
 import hashlib
+import importlib.util
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
@@ -21,6 +22,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('binary', type=Path)
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--turns', type=int, default=1)
+parser.add_argument('--navigation', action='store_true')
 args = parser.parse_args()
 assert 1 <= args.turns <= 100
 out = args.output.resolve()
@@ -60,6 +62,18 @@ class Provider(BaseHTTPRequestHandler):
 server = ThreadingHTTPServer(('127.0.0.1', 0), Provider)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 endpoint = f'http://127.0.0.1:{server.server_port}'
+rally = None
+if args.navigation:
+    fixture_path = Path(__file__).with_name('windows-rally-smoke.py')
+    spec = importlib.util.spec_from_file_location('rally_fixture', fixture_path)
+    fixture_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixture_module)
+    rally = fixture_module.RallyFixture()
+    threading.Thread(target=rally.server.serve_forever, daemon=True).start()
+    (out / 'home/rally.json').write_text(json.dumps({
+        'rallyEndpoint': rally.base, 'rallyWorkspace': rally.workspace['_ref'],
+        'rallyProject': rally.project['_ref'], 'projectChildren': True,
+    }), encoding='utf-8')
 steps = [{'wait_ready': 30000}, {'resize': [1440, 1000]},
          {'new_thread': str(out / 'project')}, {'wait_idle': 30000}]
 for turn in range(1, args.turns + 1):
@@ -69,7 +83,35 @@ steps += [{'transcript': 'export-complete:' + str(out / 'complete.md')}, {'wait'
          {'sidebar': ['dump', str(out / 'matches.json')]}, {'snapshot': str(out / 'search.png')},
          {'sidebar': ['search', 'absent-very-unique-keyword']}, {'wait': 1000},
          {'sidebar': ['dump', str(out / 'empty.json')]},
-         {'open_settings': 'goose'}, {'wait': 1000}, {'snapshot': str(out / 'settings.png')},
+         {'sidebar': ['search', '']}, {'wait': 500}]
+if args.navigation:
+    steps += [{'server': 'fixture-failed'}, {'wait': 200}, {'click_text': 'Rally'}, {'wait_rally': {'rows': 1, 'tabs': 1, 'timeout_ms': 15000}},
+              {'rally': ['item', rally.story['_ref']]},
+              {'wait_rally': {'detail': True, 'timeout_ms': 15000}},
+              {'rally': ['edit', 'Name', 'Keep this unsaved draft']},
+              {'rally': ['open', 'tasks']}, {'wait_rally': {'rows': 1, 'tabs': 2, 'timeout_ms': 15000}},
+              {'sidebar': ['dump', str(out / 'rally-two.json')]}, {'snapshot': str(out / 'rally.png')},
+              {'tab_action': 'close-others'}, {'wait': 200},
+              {'sidebar': ['dump', str(out / 'rally-bulk-blocked.json')]},
+              {'select_tab': 1}, {'wait': 100},
+              {'rally': ['dump', str(out / 'rally-kept-draft.json')]},
+              {'rally': ['action', 'detail-back']}, {'rally': ['dirty-choice', 'discard']},
+              {'select_tab': 2}, {'wait': 100},
+              {'tab_action': 'close-others'}, {'wait': 200},
+              {'sidebar': ['dump', str(out / 'rally-bulk-closed.json')]},
+              {'rally': ['open', 'teamboard']}, {'wait_rally': {'rows': 1, 'tabs': 2, 'timeout_ms': 15000}},
+              {'sidebar': ['dump', str(out / 'rally-two-final.json')]},
+              {'select_tab': 0}, {'wait': 300},
+              {'sidebar': ['dump', str(out / 'conversation-nav.json')]},
+              {'snapshot': str(out / 'conversation.png')},
+              {'click_text': 'Rally'}, {'wait': 300},
+              {'sidebar': ['dump', str(out / 'rally-return.json')]},
+              {'rally': ['close']}, {'wait': 100}, {'rally': ['close']}, {'wait': 100},
+              {'sidebar': ['dump', str(out / 'rally-closed.json')]},
+              {'click_text': 'Rally'}, {'wait_rally': {'rows': 1, 'tabs': 1, 'timeout_ms': 15000}},
+              {'sidebar': ['dump', str(out / 'rally-reopened.json')]},
+              {'rally': ['close']}, {'wait': 100}, {'server': 'fixture-ready'}]
+steps += [{'open_settings': 'goose'}, {'wait': 1000}, {'snapshot': str(out / 'settings.png')},
          {'click_text': 'Save cheap profile'}, {'wait': 500}, {'quit': True}]
 (out / 'script.json').write_text(json.dumps(steps), encoding='utf-8')
 env = dict(os.environ)
@@ -85,6 +127,9 @@ env.update(FASTROCK_HOME=str(out / 'home'), CODEX_HOME=str(out / 'codex'),
            AWS_EC2_METADATA_DISABLED='true', AWS_ENDPOINT_URL_BEDROCK_RUNTIME=endpoint,
            AWS_ENDPOINT_URL_BEDROCK=endpoint, AWS_ENDPOINT_URL=endpoint,
            CODEX_GUI_AUTOMATION=str(out / 'script.json'), SLINT_BACKEND='winit-software')
+
+if rally is not None:
+    env['FASTROCK_RALLY_TOKEN'] = fixture_module.TOKEN
 
 
 class Memory(ctypes.Structure):
@@ -122,6 +167,8 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
             process.kill()
             process.wait(timeout=10)
         server.shutdown()
+        if rally is not None:
+            rally.server.shutdown()
 
 matches = json.loads((out / 'matches.json').read_text())['rows']
 assert len(matches) == 1 and matches[0]['id'].startswith('goose:'), matches
@@ -138,9 +185,30 @@ assert 'ObsidianNeedle' not in transcript, 'Search summary leaked into the sourc
 saved = (out / 'goose/config/config.yaml').read_text(encoding='utf-8')
 assert 'FASTROCK_CHEAP_PROFILE:' in saved and 'Bedrock Luna' in saved
 assert (out / 'local/vwork/workspaces.redb').exists()
+if args.navigation:
+    navigation = {name: json.loads((out / (name + '.json')).read_text())['navigation']
+                  for name in ('rally-two', 'rally-bulk-blocked', 'rally-bulk-closed', 'rally-two-final', 'conversation-nav', 'rally-return', 'rally-closed', 'rally-reopened')}
+    assert 'server failed \"Fixture backend unavailable\"' in (out / 'app.log').read_text(encoding='utf-8')
+    assert navigation['rally-two']['rallySelected'] is True, navigation
+    assert navigation['conversation-nav']['rallySelected'] is False, navigation
+    assert navigation['rally-bulk-blocked']['rallyCount'] == 2, navigation
+    draft = json.loads((out / 'rally-kept-draft.json').read_text())
+    assert draft['dirty'] and any(field['name'] == 'Name' and field['value'] == 'Keep this unsaved draft'
+                                  for field in draft['fields']), draft
+    assert navigation['rally-bulk-closed']['rallyCount'] == 1, navigation
+    assert navigation['rally-two']['rallyCount'] == 2, navigation
+    assert navigation['rally-two']['documentKinds'] == ['Rally', 'Rally'], navigation
+    assert navigation['conversation-nav']['activeKind'] == 'Thread', navigation
+    assert navigation['conversation-nav']['documentKinds'] == [], navigation
+    assert navigation['rally-return']['activeId'] == navigation['rally-two-final']['activeId'], navigation
+    assert navigation['rally-closed']['rallyCount'] == 0, navigation
+    assert navigation['rally-reopened']['rallyCount'] == 1, navigation
+    assert navigation['rally-reopened']['activeKind'] == 'Rally', navigation
+    assert all(request['method'] == 'GET' for request in rally.requests), rally.requests
 receipt = dict(result='PASS', binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                peak_process_bytes=peak, requests=requests, summary_only_match=True,
                exported_turns=args.turns, complete_history_preserved=True,
-               native_cheap_profile_saved=True, all_provider_requests_local=True)
+               native_cheap_profile_saved=True, all_provider_requests_local=True,
+               independent_rally_navigation=args.navigation, backend_overlay_navigation=args.navigation)
 (out / 'acceptance.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
 print(json.dumps(receipt, indent=2), flush=True)

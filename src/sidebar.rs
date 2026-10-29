@@ -376,6 +376,9 @@ impl AppController {
         self.sidebar.purpose = purpose::PurposeController::load(self.codex_home.as_deref());
         self.sidebar.activity = activity::ActivityController::load(self.codex_home.as_deref());
         let state = self.window.global::<SidebarState>();
+        state.on_open_rally(|| crate::ui_thread::with_app(AppController::rally_open_project));
+        state.on_new_thread(|| crate::ui_thread::with_app(AppController::open_new_tab_page));
+        state.on_open_settings(|| crate::ui_thread::with_app(|app| app.open_settings(None)));
         state.set_rows(ModelRc::from(self.sidebar.rows.clone()));
         state.on_width_changed(|width| {
             crate::ui_thread::with_app(move |app| app.purpose_width_changed(width))

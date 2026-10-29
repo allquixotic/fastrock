@@ -31,3 +31,9 @@ LZ4 Flex 0.14.0
 Copyright (c) 2020 Pascal Seitz
 Licensed under the MIT License. License included in licenses/lz4-flex/LICENSE.
 https://github.com/PSeitz/lz4_flex
+
+T3 Code 0.1.5
+Copyright (c) 2026 T3 Tools Inc.
+Native sidebar and workspace chrome adapted from commit 6d450a4284852af137b2f3407fddd89eb76e7644.
+Licensed under the MIT License. License included in licenses/t3code/LICENSE.
+https://github.com/pingdotgg/t3code

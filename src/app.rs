@@ -50,6 +50,7 @@ use crate::transcript::Transcript;
 use crate::ui::AppState;
 use crate::ui::DialogData;
 use crate::ui::MainWindow;
+use crate::ui::SidebarState;
 use crate::ui::TabInfo;
 use crate::ui::TabKindCode;
 use crate::ui::TabStatusCode;
@@ -252,6 +253,7 @@ impl Tab {
         };
         TabInfo {
             id: i32::try_from(self.id).unwrap_or(i32::MAX),
+            index: -1,
             kind,
             title: title.into(),
             tooltip: tooltip.into(),
@@ -460,6 +462,7 @@ impl AppController {
             });
         });
         state.on_new_tab(|| crate::ui_thread::with_app(AppController::open_new_tab_page));
+        state.on_open_rally(|| crate::ui_thread::with_app(AppController::rally_open_project));
         state.on_move_tab(|from, to| {
             crate::ui_thread::with_app(move |app| {
                 if let (Ok(from), Ok(to)) = (usize::try_from(from), usize::try_from(to)) {
@@ -1083,6 +1086,7 @@ impl AppController {
             .enumerate()
             .map(|(index, tab)| {
                 let mut info = tab.info();
+                info.index = i32::try_from(index).unwrap_or(-1);
                 // Requests routed here from sub-agents also need attention.
                 if tab.thread().is_some() && self.approvals_pending_count(index) > 0 {
                     info.status = TabStatusCode::Waiting;
@@ -1090,14 +1094,63 @@ impl AppController {
                 info
             })
             .collect();
-        let unchanged = self.tab_model.row_count() == infos.len()
-            && infos
+        let state = self.window.global::<AppState>();
+        let active = self
+            .active
+            .and_then(|index| infos.get(index))
+            .cloned()
+            .unwrap_or_default();
+        let documents: Vec<_> = infos
+            .iter()
+            .filter(|info| {
+                matches!(active.kind, TabKindCode::Rally | TabKindCode::File)
+                    && info.kind == active.kind
+            })
+            .cloned()
+            .collect();
+        state.set_active_document_tab(
+            documents
+                .iter()
+                .position(|info| info.index == active.index)
+                .and_then(|index| i32::try_from(index).ok())
+                .unwrap_or(-1),
+        );
+        let current = state.get_document_tabs();
+        if current.row_count() != documents.len()
+            || documents
                 .iter()
                 .enumerate()
-                .all(|(index, info)| self.tab_model.row_data(index).as_ref() == Some(info));
-        if !unchanged {
-            self.tab_model.set_vec(infos);
+                .any(|(index, info)| current.row_data(index).as_ref() != Some(info))
+        {
+            state.set_document_tabs(ModelRc::new(VecModel::from(documents)));
         }
+        let scope = match self
+            .active
+            .and_then(|index| self.tabs.get(index))
+            .map(|tab| &tab.kind)
+        {
+            Some(TabKind::Thread(thread)) => thread
+                .cwd
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            Some(TabKind::Rally(_)) => "Rally".into(),
+            _ => String::new(),
+        };
+        state.set_active_scope(scope.into());
+        state.set_active_info(active);
+        crate::sidebar::sync_model(&self.tab_model, infos);
+        let sidebar = self.window.global::<SidebarState>();
+        sidebar.set_rally_selected(state.get_active_kind() == TabKindCode::Rally);
+        sidebar.set_rally_count(
+            i32::try_from(
+                self.tabs
+                    .iter()
+                    .filter(|tab| matches!(tab.kind, TabKind::Rally(_)))
+                    .count(),
+            )
+            .unwrap_or(i32::MAX),
+        );
         self.sidebar_on_tabs_changed();
     }
 
@@ -1226,13 +1279,17 @@ impl AppController {
     pub(crate) fn tab_action(&mut self, index: usize, action: &str) {
         match action {
             "close-others" => {
-                let Some(keep) = self.tabs.get(index).map(|tab| tab.id) else {
+                let Some((keep, area)) = self
+                    .tabs
+                    .get(index)
+                    .map(|tab| (tab.id, std::mem::discriminant(&tab.kind)))
+                else {
                     return;
                 };
                 let others: Vec<(TabId, bool)> = self
                     .tabs
                     .iter()
-                    .filter(|tab| tab.id != keep)
+                    .filter(|tab| tab.id != keep && std::mem::discriminant(&tab.kind) == area)
                     .map(|tab| (tab.id, tab.thread().is_some_and(ThreadTab::is_busy)))
                     .collect();
                 self.close_tabs(others);
@@ -1245,6 +1302,15 @@ impl AppController {
     /// running ones are confirmed together in one dialog (one dialog per tab
     /// would cancel each other, since a new dialog dismisses the open one).
     fn close_tabs(&mut self, tabs: Vec<(TabId, bool)>) {
+        // A bulk action cannot bypass Rally's write/draft navigation guard.
+        // Leave every tab intact until those documents are handled individually.
+        if tabs.iter().any(|(id, _)| {
+            self.rally_tab(*id)
+                .is_some_and(|rally| !rally.can_close_without_prompt())
+        }) {
+            self.toast("Finish Rally writes and close unsaved documents individually first");
+            return;
+        }
         let mut busy: Vec<TabId> = Vec::new();
         for (id, running) in tabs {
             if running {

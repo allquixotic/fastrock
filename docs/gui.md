@@ -1,21 +1,26 @@
 # Using Fastrock
 
-Install and configure Goose CLI 1.56.0 or newer, then launch Fastrock. Fastrock
-starts `goose acp` and keeps multiple conversations in that one child process.
-Expand **Goose options** above Send to choose the session's provider, model, mode
-and other options advertised by Goose. Global credentials/extensions are managed
-with `goose configure`; restart the backend after changing them.
+The 0.4.0 development build embeds Goose and vwork; no separate installation is
+needed. Existing Goose settings and OS-vault credentials remain in place. Expand
+**Goose options** above Send for the model, mode and effort choices Goose exposes.
+See [runtime status and current limitations](goose-acp.md). Graphical provider
+setup and complete repository/workspace integration are still in progress.
 
-Settings → Connection offers installed Codex (CLI 0.162.0 or newer) and Codex
-remote/daemon connections. Choose it to open existing Codex conversations or use
-Codex-specific features. See [Goose architecture and capability limits](goose-acp.md).
-The imported [upstream conversation guide](upstream/user-guide.md) describes the
-Codex workflows; its embedded-backend and packaging instructions are superseded.
+Conversations appear in the sidebar. Click the active title in the header for
+rename, fork, compact, export and other conversation actions. **Open tabs** also
+reaches open child conversations and files. The sidebar footer opens settings;
+search uses current compressed summaries and never sends your query to a model.
 
-Open Rally pages from the Rally menu. Configure Rally Settings inside the document:
-endpoint, workspace, team/project scope and API token. The token is stored in the
-OS credential vault. Team/Parents/Children apply to all subsequent queries. Rally
-pages never appear in the conversation sidebar.
+The permanent **Rally** sidebar project opens the last Rally document or a new
+Team Board. Its horizontal strip contains only Rally documents, each independently
+closable. The project stays available with no open documents and when the Goose
+connection is unavailable. **Close other tabs** applies only to the current area;
+finish writes and handle unsaved Rally documents individually before bulk closing.
+
+Open additional pages from the Rally menu. Configure Rally Settings inside the
+document: endpoint, workspace, team/project scope and API token. The token is
+stored in the OS credential vault. Team/Parents/Children apply to subsequent
+queries. Rally documents have no binding to an ordinary conversation.
 
 Use the six section buttons, page selector, private views, iteration/FY Quarter,
 search, quick filters or the advanced query to choose work. Each document keeps its
@@ -37,7 +42,7 @@ outcomes. Writes are never automatically retried. CSV exports retrieve the whole
 applied query with spreadsheet-formula neutralization; visual summaries cover
 only the loaded records and say so.
 
-Ask AI opens the Rally assistant dock using the same external Codex model catalog.
+Ask AI opens an explicit temporary Goose session in the Rally assistant dock.
 Its typed tools read scoped data and prepare changes. Review the old/new values,
 select the intended changes, then explicitly Apply. A partial failure stops the
 batch and preserves the exact outcomes. Descriptions returned by Rally are data,

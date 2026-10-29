@@ -51,6 +51,7 @@ export enum TabStatusCode { idle, starting, running, waiting, error, closed }
 
 export struct TabInfo {
     id: int,
+    index: int,
     kind: TabKindCode,
     title: string,
     tooltip: string,
@@ -75,6 +76,11 @@ export global AppState {
     in property <bool> virtual-workspaces-available: false;
     callback open-virtual-workspaces();
     in property <[TabInfo]> tabs;
+    // Only documents in the active area belong in a horizontal strip.
+    in property <[TabInfo]> document-tabs;
+    in property <int> active-document-tab: -1;
+    in property <TabInfo> active-info;
+    in property <string> active-scope;
     in property <int> active-tab: -1;
     in property <TabKindCode> active-kind: TabKindCode.new-tab;
     in property <bool> has-active-tab: false;
@@ -104,6 +110,7 @@ export global AppState {
     callback select-tab(int);
     callback close-tab(int);
     callback new-tab();
+    callback open-rally();
     callback move-tab(int, int);
     // Actions from the tab context menu, identified by name.
     callback tab-action(int, string);
@@ -420,10 +427,10 @@ component TabStrip inherits Rectangle {
     property <length> drag-tab-width;
 
     // Width of each tab: the row gives every tab the same constraints.
-    property <length> tab-width: AppState.tabs.length == 0 ? 0px
+    property <length> tab-width: AppState.document-tabs.length == 0 ? 0px
         : root.overflowing ? TabMetrics.min-width
         : max(TabMetrics.min-width, min(240px,
-            (flick.width - (AppState.tabs.length - 1) * root.spacing) / AppState.tabs.length));
+            (flick.width - (AppState.document-tabs.length - 1) * root.spacing) / AppState.document-tabs.length));
 
     // Scrolls the active tab into view (and keeps the scroll position in
     // range after the strip was resized).
@@ -431,8 +438,8 @@ component TabStrip inherits Rectangle {
         if !root.overflowing {
             return;
         }
-        if AppState.active-tab >= 0 {
-            let left = AppState.active-tab * (root.tab-width + root.spacing);
+        if AppState.active-document-tab >= 0 {
+            let left = AppState.active-document-tab * (root.tab-width + root.spacing);
             let right = left + root.tab-width;
             if left + flick.content-x < 0px {
                 flick.content-x = -left;
@@ -447,11 +454,11 @@ component TabStrip inherits Rectangle {
         root.reveal-active();
     }
 
-    property <int> active: AppState.active-tab;
+    property <int> active: AppState.active-document-tab;
     changed active => {
         root.reveal-active();
     }
-    property <int> count: AppState.tabs.length;
+    property <int> count: AppState.document-tabs.length;
     changed count => {
         root.reveal-active();
     }
@@ -466,10 +473,6 @@ component TabStrip inherits Rectangle {
     HorizontalLayout {
         padding: Theme.pad-xs;
         spacing: root.spacing;
-
-        SidebarToggle {
-            clicked => { AppState.toggle-sidebar(); }
-        }
 
         tab-area := TouchArea {
             // As wide as the tabs want; shrinks (to zero) before the fixed
@@ -506,22 +509,22 @@ component TabStrip inherits Rectangle {
                     alignment: start;
                     spacing: root.spacing;
 
-                    for tab[index] in AppState.tabs: TabButton {
+                    for tab[index] in AppState.document-tabs: TabButton {
                         info: tab;
-                        selected: index == AppState.active-tab;
+                        selected: index == AppState.active-document-tab;
                         dragged: index == root.drag-from;
-                        activate => { AppState.select-tab(index); }
-                        close => { AppState.close-tab(index); }
-                        action(name) => { AppState.tab-action(index, name); }
+                        activate => { AppState.select-tab(tab.index); }
+                        close => { AppState.close-tab(tab.index); }
+                        action(name) => { AppState.tab-action(tab.index, name); }
                         drag-moved(x) => {
                             root.drag-from = index;
                             root.drag-tab-width = self.width;
-                            root.drag-to = max(0, min(AppState.tabs.length - 1,
+                            root.drag-to = max(0, min(AppState.document-tabs.length - 1,
                                 floor((self.x + x) / (self.width + root.spacing))));
                         }
                         drag-ended(dropped) => {
                             if dropped && root.drag-from >= 0 && root.drag-to >= 0 && root.drag-to != root.drag-from {
-                                AppState.move-tab(root.drag-from, root.drag-to);
+                                AppState.move-tab(AppState.document-tabs[root.drag-from].index, AppState.document-tabs[root.drag-to].index);
                             }
                             root.drag-from = -1;
                             root.drag-to = -1;
@@ -559,36 +562,20 @@ component TabStrip inherits Rectangle {
             text: "+";
             text-color: Theme.text;
             width: 28px;
-            clicked => { AppState.new-tab(); }
+            clicked => { if AppState.active-kind == TabKindCode.rally { RallyState.open-page("teamboard"); } else { AppState.new-tab(); } }
         }
 
         Rectangle {
             horizontal-stretch: 1;
         }
 
-        LinkButton {
-            text: "Info";
-            text-color: (AppState.info-visible && AppState.info-fits) || AppState.info-drawer-open ? Theme.accent : Theme.text-muted;
-            clicked => { AppState.toggle-info(); }
-        }
-
-        if AppState.virtual-workspaces-available: LinkButton {
-            text: "Virtual";
-            clicked => { AppState.open-virtual-workspaces(); }
-        }
-
-        LinkButton {
-            text: "Settings";
-            text-color: Theme.text-muted;
-            clicked => { AppState.open-settings(); }
-        }
     }
 
     tab-list := PopupWindow {
         x: max(0px, min(root.width - self.width, tab-area.x + tab-area.width - self.width));
         y: root.height;
         width: min(320px, root.width - 2 * Theme.pad-m);
-        height: min(AppState.tabs.length * 28px, 420px) + 2 * Theme.pad-s;
+        height: min(AppState.document-tabs.length * 28px, 420px) + 2 * Theme.pad-s;
         close-policy: PopupClosePolicy.close-on-click-outside;
 
         Rectangle {
@@ -602,13 +589,150 @@ component TabStrip inherits Rectangle {
                 y: Theme.pad-s;
                 width: parent.width - 2 * Theme.pad-s;
                 height: parent.height - 2 * Theme.pad-s;
-                for tab[index] in AppState.tabs: TabListRow {
+                for tab[index] in AppState.document-tabs: TabListRow {
                     info: tab;
-                    selected: index == AppState.active-tab;
+                    selected: index == AppState.active-document-tab;
                     clicked => {
-                        AppState.select-tab(index);
+                        AppState.select-tab(tab.index);
                         tab-list.close();
                     }
+                }
+            }
+        }
+    }
+}
+
+// Native adaptation of T3 Code 0.1.5 workspace chrome and ChatHeader.
+component WorkspaceHeader inherits Rectangle {
+    in property <length> brand-width;
+    height: 52px;
+    background: Theme.sidebar-bg;
+    HorizontalLayout {
+        spacing: 8px;
+        HorizontalLayout {
+            width: max(36px, root.brand-width);
+            padding-left: 4px; padding-right: 8px;
+            spacing: 8px;
+            SidebarToggle { clicked => { AppState.toggle-sidebar(); } }
+            if root.brand-width > 100px: Text {
+                text: "Fastrock"; color: Theme.text; font-size: Theme.font-size;
+                font-weight: 600; vertical-alignment: center; horizontal-stretch: 1;
+            }
+        }
+        if AppState.active-scope != "": Text {
+            text: AppState.active-scope + "  /";
+            color: Theme.text-muted; font-size: Theme.font-size;
+            max-width: 180px; overflow: elide; vertical-alignment: center;
+        }
+        // Keep the Menu inline: Slint's inherited ContextMenuArea lowering
+        // cannot splice a Menu sibling together with @children.
+        title-menu := ContextMenuArea {
+            horizontal-stretch: 1;
+        Menu {
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Rename…";
+                activated => { AppState.tab-action(AppState.active-tab, "rename"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Fork";
+                activated => { AppState.tab-action(AppState.active-tab, "fork"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Side chat";
+                activated => { AppState.tab-action(AppState.active-tab, "side"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Continue in worktree";
+                activated => { AppState.tab-action(AppState.active-tab, "worktree"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Recap conversation";
+                activated => { AppState.tab-action(AppState.active-tab, "recap"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Compact context";
+                activated => { AppState.tab-action(AppState.active-tab, "compact"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Review changes…";
+                activated => { AppState.tab-action(AppState.active-tab, "review"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Create AGENTS.md";
+                activated => { AppState.tab-action(AppState.active-tab, "init"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Export as Markdown…";
+                activated => { AppState.tab-action(AppState.active-tab, "export"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "View as Text";
+                activated => { AppState.tab-action(AppState.active-tab, "view-text"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Copy thread id";
+                activated => { AppState.tab-action(AppState.active-tab, "copy-id"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Archive";
+                activated => { AppState.tab-action(AppState.active-tab, "archive"); }
+            }
+            MenuSeparator { }
+            MenuItem {
+                title: "Close other tabs";
+                activated => { AppState.tab-action(AppState.active-tab, "close-others"); }
+            }
+            MenuItem {
+                title: "Close";
+                activated => { AppState.close-tab(AppState.active-tab); }
+            }
+        }
+
+            Text {
+                text: AppState.has-active-tab ? AppState.active-info.title : "New conversation";
+                x: 0px; width: parent.width; height: parent.height;
+                color: Theme.text; font-size: Theme.font-size;
+                overflow: elide; vertical-alignment: center;
+            }
+            TouchArea {
+                enabled: AppState.has-active-tab;
+                mouse-cursor: pointer;
+                clicked => { title-menu.show({ x: self.mouse-x, y: self.mouse-y }); }
+                pointer-event(event) => {
+                    if event.button == PointerEventButton.right && event.kind == PointerEventKind.down {
+                        title-menu.show({ x: self.mouse-x, y: self.mouse-y });
+                    }
+                }
+            }
+        }
+        LinkButton {
+            text: "Open tabs"; text-color: Theme.text-muted;
+            clicked => { open-tabs.show(); }
+        }
+        if AppState.active-kind == TabKindCode.thread: LinkButton {
+            text: "Info";
+            text-color: AppState.info-visible ? Theme.accent : Theme.text-muted;
+            clicked => { AppState.toggle-info(); }
+        }
+        if AppState.virtual-workspaces-available: LinkButton {
+            text: "Virtual"; text-color: Theme.text-muted;
+            clicked => { AppState.open-virtual-workspaces(); }
+        }
+        Rectangle { width: 8px; }
+    }
+    open-tabs := PopupWindow {
+        x: max(0px, root.width - self.width - 8px); y: root.height;
+        width: min(340px, root.width - 16px);
+        height: min(AppState.tabs.length * 28px, 420px) + 8px;
+        close-policy: PopupClosePolicy.close-on-click-outside;
+        Rectangle {
+            background: Theme.surface; border-color: Theme.border;
+            border-width: 1px; border-radius: 6px;
+            ListView {
+                x: 4px; y: 4px; width: parent.width - 8px; height: parent.height - 8px;
+                for tab in AppState.tabs: TabListRow {
+                    info: tab; selected: tab.index == AppState.active-tab;
+                    clicked => { AppState.select-tab(tab.index); open-tabs.close(); }
                 }
             }
         }
@@ -1073,7 +1197,7 @@ export component MainWindow inherits Window {
         }
 
         VerticalLayout {
-            strip := TabStrip { }
+            strip := WorkspaceHeader { brand-width: AppState.sidebar-visible && AppState.sidebar-fits ? root.sidebar-pane-width : 36px; }
             banner := WarningsBanner { }
 
             HorizontalLayout {
@@ -1104,11 +1228,17 @@ export component MainWindow inherits Window {
                 conversation-pane := Rectangle {
                     horizontal-stretch: 1;
 
+                    VerticalLayout {
+                        if AppState.active-kind == TabKindCode.rally || AppState.active-kind == TabKindCode.file: TabStrip { }
+                        Rectangle {
+                            vertical-stretch: 1;
                     if !AppState.has-active-tab || AppState.active-kind == TabKindCode.new-tab: NewTabView { }
                     if AppState.has-active-tab && AppState.active-kind == TabKindCode.thread: ThreadPane { }
                     if AppState.has-active-tab && AppState.active-kind == TabKindCode.file: FileView { }
                     if AppState.has-active-tab && AppState.active-kind == TabKindCode.settings: SettingsView { }
                     if AppState.has-active-tab && AppState.active-kind == TabKindCode.rally: RallyView { }
+                        }
+                    }
                 }
 
                 if AppState.info-visible && AppState.info-fits && AppState.has-active-tab && AppState.active-kind == TabKindCode.thread: Divider {
@@ -1164,8 +1294,11 @@ export component MainWindow inherits Window {
     }
 
     if AppState.server-status != "ready" && AppState.active-kind != TabKindCode.settings && AppState.active-kind != TabKindCode.rally: StatusOverlay {
-        width: parent.width;
-        height: parent.height;
+        // Backend availability must not block the independent Rally project.
+        x: conversation-pane.absolute-position.x;
+        y: conversation-pane.absolute-position.y;
+        width: conversation-pane.width;
+        height: conversation-pane.height;
     }
 
     PickerOverlay {

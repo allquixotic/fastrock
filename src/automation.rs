@@ -378,7 +378,19 @@ impl AppController {
                             if let Some(path) = args.get(1) {
                                 use slint::Model;
                                 let rows = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Thread).map(|row| serde_json::json!({"id":row.id.as_str(),"title":row.title.as_str(),"tooltip":row.tooltip.as_str(),"generated":row.generated_title,"age":row.detail.as_str(),"status":format!("{:?}",row.status)})).collect::<Vec<_>>();
-                                let _ = std::fs::write(path, serde_json::json!({"rows":rows,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string());
+                                let chrome = self.window.global::<crate::ui::AppState>();
+                                let navigation = serde_json::json!({
+                                    "activeKind": format!("{:?}", chrome.get_active_kind()),
+                                    "activeId": chrome.get_active_info().id,
+                                    "rallyCount": state.get_rally_count(),
+                                    "rallySelected": state.get_rally_selected(),
+                                    "documentKinds": chrome.get_document_tabs().iter().map(|tab| format!("{:?}", tab.kind)).collect::<Vec<_>>(),
+                                });
+                                let data = serde_json::json!({"rows":rows,"navigation":navigation,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string();
+                                let path = path.clone();
+                                self.backend.spawn(async move {
+                                    let _ = tokio::fs::write(path, data).await;
+                                });
                             }
                         }
                         Some("log") => {
@@ -584,6 +596,14 @@ impl AppController {
                 Step::Server(action) => {
                     let state = self.window.global::<crate::ui::AppState>();
                     match action.as_str() {
+                        "fixture-failed" => {
+                            state.set_server_status("failed".into());
+                            state.set_server_message("Fixture backend unavailable".into());
+                        }
+                        "fixture-ready" => {
+                            state.set_server_status("ready".into());
+                            state.set_server_message("".into());
+                        }
                         "retry" => state.invoke_retry_server(),
                         "use-embedded" => state.invoke_use_embedded_server(),
                         other => eprintln!("codex-gui automation: unknown server action {other}"),

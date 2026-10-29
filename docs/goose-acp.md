@@ -58,7 +58,12 @@ The Slint transcript retains its existing bounded render window and asynchronous
 history loader. This adapts Ghostty's cold-page idea to portable GUI data rather
 than relying on terminal page mappings. Original Goose sessions remain intact.
 
-Graphical provider/credential setup, full T3 orchestration/UI,
+The native sidebar/search/footer and active-title header follow T3 Code 0.1.5.
+Rally has a permanent sidebar entry and a separate document strip; returning to
+Rally selects the last document. Open tabs still exposes child conversations and
+files. This is the navigation foundation, not complete T3 feature parity.
+
+Graphical provider/credential setup, repository/workspace binding, full T3 orchestration/UI,
 large-history UI/performance acceptance and tray lifecycle
 remain tracked in `SPEC.md`. This development foundation is not a completed 0.4.0
 release. Historical 0.3.x transport details follow for old releases only.

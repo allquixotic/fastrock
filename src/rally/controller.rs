@@ -121,6 +121,10 @@ struct MoveUndo {
     neighbor: Option<(String, bool)>,
 }
 impl RallyTab {
+    pub(crate) fn can_close_without_prompt(&self) -> bool {
+        !self.busy && !self.editor.as_ref().is_some_and(Editor::dirty)
+    }
+
     fn new(view: View) -> Self {
         Self {
             identity: uuid::Uuid::new_v4().to_string(),
@@ -467,6 +471,19 @@ impl AppController {
             });
         });
     }
+    pub(crate) fn rally_open_project(&mut self) {
+        let remembered = self.rally.shown.and_then(|id| self.tab_index_by_id(id));
+        if let Some(index) = remembered.or_else(|| {
+            self.tabs
+                .iter()
+                .position(|tab| matches!(tab.kind, TabKind::Rally(_)))
+        }) {
+            self.activate_tab(index);
+        } else {
+            self.rally_open(View::default());
+        }
+    }
+
     pub(crate) fn rally_open(&mut self, view: View) {
         let index =
             self.replace_new_tab_page_or_push(TabKind::Rally(Box::new(RallyTab::new(view))));

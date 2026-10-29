@@ -3,7 +3,8 @@
 Native Rust/Slint workspace for Goose conversations and Rally work. The codebase is
 based on [allquixotic/codex-gui](https://github.com/allquixotic/codex-gui), with Rally
 rebuilt using Slint buttons, editors, lists, layouts and dialogs. Rally documents
-occupy horizontal tabs; the sidebar remains a list of LLM conversations.
+occupy their own horizontal tabs under the permanent Rally sidebar project.
+Conversations use the sidebar and a separate title/action header.
 
 The 0.4.0 development branch embeds unmodified Goose **1.57.0** and vwork
 **0.3.4**. No separate Goose or vwork installation is required. Goose runs on
@@ -16,8 +17,8 @@ Only Goose's Bedrock, direct OpenAI and direct Anthropic providers are enabled.
 Expand **Goose options** above Send for the session's model, mode and supported
 reasoning choices. External Codex and remote agent connections are removed;
 Codex files remain untouched. [Embedded runtime status and limitations](docs/goose-acp.md)
-describe the verified foundation and outstanding 0.4.0 work. The T3 interface,
-orchestration and compressed transcript view are still in progress.
+describe the verified foundation and outstanding 0.4.0 work. The T3 sidebar/header foundation is present; full repository/workspace binding,
+auxiliary panels, orchestration and large-history acceptance remain in progress.
 
 Search matches titles and current summaries locally, followed by bounded parallel
 fuzzy matching. After a completed turn, a background worker uses Goose's compaction
@@ -67,7 +68,7 @@ unsupported custom entries report an error. [Workspace details](docs/VIRTUAL_WOR
 
 ## Rally
 
-Open a page from the Rally menu, then configure the endpoint, workspace and API
+Choose **Rally** in the sidebar or open a page from the Rally menu, then configure the endpoint, workspace and API
 token in Rally Settings. Tokens stay in the OS credential vault, using the same
 Fastrock service/endpoint keys as the Go app. Existing `settings.json` and Rally
 `session.json` documents migrate to the new atomic `rally.json` store. Descriptions,

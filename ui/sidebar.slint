@@ -1,4 +1,5 @@
-// Sidebar: thread list grouped by folder, server-side search, archived view.
+// Native port of T3 Code's sidebar chrome/search layout. See NOTICE.
+// Conversation search is local; Rally is a permanent independent area.
 //
 // Rust (src/sidebar.rs) flattens folders and threads into `SidebarState.rows`
 // and keeps the open-tab status dots up to date.
@@ -31,6 +32,11 @@ export struct SidebarRow {
 }
 
 export global SidebarState {
+    in property <bool> rally-selected;
+    in property <int> rally-count;
+    callback open-rally();
+    callback new-thread();
+    callback open-settings();
     in property <[SidebarRow]> rows;
     // First page of a (re)load in flight.
     in property <bool> loading;
@@ -353,7 +359,7 @@ component MoreRowView inherits Rectangle {
 }
 
 export component Sidebar inherits Rectangle {
-    background: Theme.surface-alt;
+    background: Theme.sidebar-bg;
     // Representative prose estimates capacity; each final title is also measured.
     probe := Text { visible: false; text: "Updating project dependencies and fixing tests"; font-size: Theme.font-size; }
     property <length> glyph-width: probe.preferred-width / 46;
@@ -378,45 +384,58 @@ export component Sidebar inherits Rectangle {
 
     VerticalLayout {
         HorizontalLayout {
-            padding-left: Theme.pad-l;
-            padding-right: Theme.pad-s;
-            padding-top: Theme.pad-m;
-            spacing: Theme.pad-xs;
-            height: 40px;
-
-            Text {
-                text: SidebarState.archived ? "Archived threads" : "Threads";
-                color: Theme.text;
-                font-size: Theme.font-size-large;
-                font-weight: 600;
-                vertical-alignment: center;
-                overflow: elide;
-                horizontal-stretch: 1;
-            }
-            LinkButton {
-                text: SidebarState.archived ? "Show active" : "Archived";
-                text-color: Theme.text-muted;
-                clicked => { SidebarState.toggle-archived(); }
-            }
-            LinkButton {
-                text: "↻";
-                width: 26px;
-                text-color: Theme.text-muted;
-                enabled: !SidebarState.loading;
-                clicked => { SidebarState.refresh(); }
-            }
-        }
-
-        HorizontalLayout {
             padding-left: Theme.pad-m;
             padding-right: Theme.pad-m;
             padding-top: Theme.pad-xs;
             padding-bottom: Theme.pad-m;
+            spacing: 4px;
+            height: 40px;
 
             search := LineEdit {
                 text <=> SidebarState.search-text;
-                placeholder-text: "Search threads";
+                placeholder-text: "Search";
                 edited(text) => { SidebarState.search-edited(text); }
+            }
+            LinkButton {
+                text: "+";
+                width: 28px;
+                text-color: Theme.text-muted;
+                accessible-label: "New thread";
+                clicked => { SidebarState.new-thread(); }
+            }
+        }
+
+        Rectangle {
+            height: 36px;
+            rally-row := Rectangle {
+                x: 8px; y: 2px;
+                width: parent.width - 16px; height: 32px;
+                border-radius: 6px;
+                background: SidebarState.rally-selected ? Theme.selected : rally-touch.has-hover ? Theme.hover : transparent;
+                Path {
+                    x: 8px; y: 9px; width: 16px; height: 14px;
+                    viewbox-width: 16; viewbox-height: 14;
+                    commands: "M1 1 H15 V13 H1 Z M6 1 V13 M11 1 V13";
+                    stroke: Theme.text-muted; stroke-width: 1px;
+                }
+                Text {
+                    x: 32px; width: parent.width - 70px; height: parent.height;
+                    text: "Rally"; color: Theme.text; font-size: Theme.font-size;
+                    vertical-alignment: center;
+                }
+                Text {
+                    x: parent.width - 34px; width: 26px; height: parent.height;
+                    text: SidebarState.rally-count > 0 ? SidebarState.rally-count : "";
+                    color: Theme.text-faint; font-size: Theme.font-size-small;
+                    vertical-alignment: center; horizontal-alignment: right;
+                }
+                rally-touch := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { SidebarState.open-rally(); }
+                }
+                accessible-role: button;
+                accessible-label: "Rally project";
+                accessible-action-default => { SidebarState.open-rally(); }
             }
         }
 
@@ -484,6 +503,27 @@ export component Sidebar inherits Rectangle {
                         clicked => { SidebarState.refresh(); }
                     }
                 }
+            }
+        }
+        HorizontalLayout {
+            height: 40px;
+            padding-left: 12px; padding-right: 12px;
+            spacing: 8px;
+            LinkButton {
+                text: "Settings";
+                text-color: Theme.text-muted;
+                clicked => { SidebarState.open-settings(); }
+            }
+            LinkButton {
+                text: "↻"; width: 26px; text-color: Theme.text-muted;
+                enabled: !SidebarState.loading;
+                clicked => { SidebarState.refresh(); }
+            }
+            Rectangle { horizontal-stretch: 1; }
+            LinkButton {
+                text: SidebarState.archived ? "Show active" : "Archived";
+                text-color: Theme.text-muted;
+                clicked => { SidebarState.toggle-archived(); }
             }
         }
     }
