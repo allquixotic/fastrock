@@ -82,6 +82,7 @@ V34: Installed-Goose timing ! isolated config/local provider, successful extensi
 
 V35: Shared vwork MCP ! 127.0.0.1 listeners only; authenticated daemon, exact Host, no Origin/proxy/redirect; preserve per-request workspace, installed tools, timeout, restricted-session boundaries and restart recovery; warm conversation open ! zero vwork client spawns. Custom transports retain stdio. Verify: v35 fixtures + installed stack on games.
 V36: Compact ! entire selected redb, independent of workspace/catalog selection; multiple stores ! explicit selector; drafts and stale-response guards preserved. Verify: v36 browser fixture + Windows native smoke.
+V37: Conversation selection ! accept drags beginning in adjacent horizontal padding, preserve shaped offsets, links, keyboard and Copy; expanded tool/command details ! selectable full arguments/command and visible results, including no-output calls; Copy All ! retain complete details across virtual chunks. Verify: v37 render regressions and dev/windows-selection-smoke.py on games/CI.
 
 ## §T TASKS
 id|status|task|cites
@@ -128,6 +129,7 @@ T30|x|Native vwork storage compaction control, preserve drafts, verify Fastrock 
 T31|x|Retained Windows presentation, optimized render/text dependencies, finer transcript rows, games benchmark and 0.3.2 CI release|V15,V31,V32,V33,I.scroll,I.paint,I.distribution
 T32|x|Measure signed 0.3.2 opening on games/CI; installed Goose 1.57.0 local-provider/extension timing on games; confirm activation gates history, record unprofiled copy/UI candidates and real-config limits|V27,V33,V34,I.distribution,I.goose
 T33|x|Shared localhost vwork MCP, database-level compaction, actual Goose/games comparison, signed 0.3.3 CI release|V15,V27,V34,V35,V36,I.vwork,I.goose,I.distribution
+T34|~|Widen text selection hit areas, selectable tool/command details, Windows interaction/scroll checks, Mac compile and signed Fastrock 0.3.4; no vwork changes|V9,V15,V23,V32,V37,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 
@@ -289,3 +291,6 @@ B78|2026-10-29|Each Goose activation launches stdio vwork bridge despite persist
 B79|2026-10-29|Compaction targeted whole database but UI required selected workspace|V36; independent database selector and explicit whole-database action
 B80|2026-10-29|Manual Windows test launch omitted FASTROCK_TEST_PYTHON; eight embedded Goose fixtures failed before startup|Use installed Python path, matching CI setup; rerun passed 706 tests
 B81|2026-10-29|End-to-end MCP probe used internal workspace_info operation instead of advertised vwork_workspace_info tool|V35; use native MCP name; daemon correctly rejected unknown tool
+B82|2026-10-29|Selection touch areas stop at text bounds; adjacent layout padding never starts a drag|V37; horizontal selection gutters with unchanged glyph geometry and Windows pointer regression
+B83|2026-10-29|Tool results use passive labels; full arguments and single-line commands are absent from expanded details, and copy retains only results|V37; selectable detail text, complete call copy source, retain bounded virtual rows
+B84|2026-10-29|Shared-to-native selection focus cleanup resets the TextInput anchor after its pointer event|V9,V37; clear shared state while preserving the newly focused native selection; gutter-to-glyph Windows regression

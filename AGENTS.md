@@ -14,7 +14,7 @@ information, 256 codegen units, incremental builds, no stripping/packing pass.
 Optimized builds require Sean's explicit authorization. Prereleases use fast builds.
 Authorized 2026-10-26: allowlisted rendering/text dependencies use opt-level=2,
 lto="off" including local ThinLTO. Keep other fast settings; benchmark on games
-before each CI release. 0.3.3 continues these settings for shared vwork transport. Continue Windows ZIP distribution and Mac compatibility compile.
+before each CI release. 0.3.4 continues these settings for conversation selection. Continue Windows ZIP distribution and Mac compatibility compile.
 Stable 0.3.0 and 0.3.1 are explicitly authorized with the existing fast profile and Windows
 x64 ZIP publication only; compile Mac for compatibility but skip its release job.
 Explicit exception: official 0.2.0 uses profile official, opt-level=1, debug=2,

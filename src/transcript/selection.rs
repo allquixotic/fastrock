@@ -284,10 +284,7 @@ impl AppController {
             }
             "drag" | "click" | "menu" => {
                 let scene = nodes(self.window.window(), self.selection_viewport());
-                let Some(node) = scene
-                    .into_iter()
-                    .find(|node| node.text.contains(argument(1)))
-                else {
+                let Some(node) = scene.iter().find(|node| node.text.contains(argument(1))) else {
                     eprintln!(
                         "codex-gui automation: selection text not found: {:?}",
                         argument(1)
@@ -300,12 +297,15 @@ impl AppController {
                         .unwrap_or(0)
                         .min(node.text.len())
                 };
-                let point = |offset| {
+                let point = |node: &TextNode, offset| {
                     let (_, rect) =
                         node.cursor(self.window.window(), node.rect.origin, Some(offset));
                     slint::LogicalPosition::new(rect.min_x(), rect.min_y() + rect.height() / 2.0)
                 };
-                let start = point(offset(2));
+                let mut start = point(node, offset(2));
+                // Optional logical-pixel gutter offset; still dispatch real
+                // pointer events so hit-area regressions cannot bypass the UI.
+                start.x += argument(4).parse::<f32>().unwrap_or_default();
                 if argument(0) == "menu" {
                     use slint::platform::{PointerEventButton, WindowEvent};
                     self.automation_dispatch(vec![
@@ -320,11 +320,27 @@ impl AppController {
                     ]);
                     return;
                 }
-                let end = point(if argument(0) == "click" {
-                    offset(2)
+                let end_node = if argument(5).is_empty() {
+                    node
                 } else {
-                    offset(3)
-                });
+                    let Some(end) = scene.iter().find(|node| node.text.contains(argument(5)))
+                    else {
+                        eprintln!("codex-gui automation: selection end text not found");
+                        return;
+                    };
+                    end
+                };
+                let end = point(
+                    end_node,
+                    if argument(0) == "click" {
+                        offset(2)
+                    } else {
+                        argument(3)
+                            .parse::<usize>()
+                            .unwrap_or(0)
+                            .min(end_node.text.len())
+                    },
+                );
                 eprintln!("codex-gui automation: selection points {start:?} -> {end:?}");
                 use slint::platform::{PointerEventButton, WindowEvent};
                 self.automation_dispatch(vec![
@@ -357,6 +373,16 @@ impl AppController {
         self.window
             .global::<TranscriptState>()
             .set_selection_active(false);
+    }
+    pub(crate) fn selection_native_focus(&mut self) {
+        // TextInput has already placed its new anchor by the time its focus
+        // callback runs. Retire shared selection without resetting that anchor.
+        self.transcript_selection.highlighted.retain(|node| {
+            node.item
+                .downcast::<TextInput>()
+                .is_none_or(|input| !input.as_pin_ref().has_focus())
+        });
+        self.selection_clear();
     }
     pub(crate) fn selection_blur(&mut self) {
         for node in &self.transcript_selection.highlighted {

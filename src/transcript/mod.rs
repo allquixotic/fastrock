@@ -132,6 +132,9 @@ impl AppController {
         });
         state.on_selection_copy(|| crate::ui_thread::with_app(AppController::selection_copy));
         state.on_selection_clear(|| crate::ui_thread::with_app(AppController::selection_clear));
+        state.on_selection_native_focus(|| {
+            crate::ui_thread::with_app(AppController::selection_native_focus)
+        });
         state.on_selection_blur(|| crate::ui_thread::with_app(AppController::selection_blur));
         state.on_selection_key(|key, shift, primary| {
             let mut handled = false;

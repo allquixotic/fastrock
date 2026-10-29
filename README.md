@@ -32,7 +32,7 @@ prerelease builds retain the fast settings below.
 
 ## Test builds
 
-[Fastrock 0.3.3](https://github.com/allquixotic/fastrock/releases/tag/v0.3.3)
+[Fastrock 0.3.4](https://github.com/allquixotic/fastrock/releases/tag/v0.3.4)
 is available as a signed Windows x64 ZIP. Extract it and run `fastrock.exe`.
 All release assets are built and published by CI. Current releases compile
 macOS for compatibility; historical Mac releases include signed, notarized DMGs.

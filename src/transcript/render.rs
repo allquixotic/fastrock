@@ -1118,9 +1118,8 @@ fn exec_blocks(view: ExecView<'_>, expanded: bool) -> Vec<Block> {
     block.status = status;
     block.detail = detail.join(" · ");
     block.expanded = expanded;
-    if has_output || multi_line || is_exploring(view.source, view.actions) {
-        block.toggle = Some(TOGGLE_MAIN);
-    }
+    // Even a successful command with no output has details worth selecting.
+    block.toggle = Some(TOGGLE_MAIN);
     let lines = if expanded {
         EXPANDED_OUTPUT_LINES
     } else if running || status == Status::Failed {
@@ -1129,7 +1128,7 @@ fn exec_blocks(view: ExecView<'_>, expanded: bool) -> Vec<Block> {
         0
     };
     let mut text = String::new();
-    if expanded && multi_line {
+    if expanded {
         text.push_str(
             &display
                 .lines()
@@ -1144,9 +1143,7 @@ fn exec_blocks(view: ExecView<'_>, expanded: bool) -> Vec<Block> {
                 .collect::<Vec<_>>()
                 .join("\n"),
         );
-        if has_output {
-            text.push_str("\n\n");
-        }
+        text.push_str("\n\n");
     }
     if lines > 0 && has_output {
         let (tail, omitted) = output_tail(output, lines);
@@ -1159,10 +1156,12 @@ fn exec_blocks(view: ExecView<'_>, expanded: bool) -> Vec<Block> {
         text.push_str("(no output)");
     }
     block.text = text;
-    if has_output {
-        block.copyable = true;
-        block.copy_text = Some(strip_ansi(output).trim_end().to_string());
-    }
+    block.copyable = true;
+    block.copy_text = Some(if has_output {
+        format!("{display}\n\n{}", strip_ansi(output).trim_end())
+    } else {
+        display
+    });
     vec![block]
 }
 
@@ -1406,11 +1405,22 @@ fn tool_block(view: ToolView) -> Block {
     };
     block.text = truncate_chars(&view.arguments, ARGUMENTS_PREVIEW_CHARS);
     let result = view.result.trim_end();
+    block.toggle = Some(TOGGLE_MAIN);
+    block.expanded = view.expanded;
+    block.copyable = true;
+    let mut details = format!("{}\nArguments: {}", block.title, view.arguments);
     if !result.is_empty() {
-        block.toggle = Some(TOGGLE_MAIN);
-        block.expanded = view.expanded;
-        block.copyable = true;
-        block.copy_text = Some(result.to_string());
+        details.push_str("\n\n");
+        details.push_str(result);
+    }
+    block.copy_text = Some(details);
+    if view.expanded {
+        block.lines.push(Line::new(block.title.clone(), 4));
+        block
+            .lines
+            .push(Line::new(format!("Arguments: {}", view.arguments), 0));
+    }
+    if !result.is_empty() {
         let shown_lines = if view.expanded {
             EXPANDED_RESULT_LINES
         } else if view.status == Status::Failed {
@@ -1420,10 +1430,9 @@ fn tool_block(view: ToolView) -> Block {
         };
         if shown_lines > 0 {
             let (tail, omitted) = head_lines(result, shown_lines);
-            block.lines = tail
-                .lines()
-                .map(|line| Line::new(line.to_string(), 0))
-                .collect();
+            block
+                .lines
+                .extend(tail.lines().map(|line| Line::new(line.to_string(), 0)));
             if omitted > 0 {
                 block
                     .lines
@@ -1597,7 +1606,10 @@ mod tests {
         assert_eq!(block.status, Status::Failed);
         assert_eq!(block.detail, "exit 101 · 1.50s");
         assert_eq!(block.text, "… 2 earlier lines\n3\n4\n5\n6\n7");
-        assert_eq!(block.copy_text.as_deref(), Some("1\n2\n3\n4\n5\n6\n7"));
+        assert_eq!(
+            block.copy_text.as_deref(),
+            Some("cargo test\n\n1\n2\n3\n4\n5\n6\n7")
+        );
     }
 
     #[test]
@@ -1990,6 +2002,58 @@ mod tests {
         };
         assert!(render_item(&entry, hidden).is_empty());
     }
+    #[test]
+    fn v37_tool_details_retain_full_arguments_without_a_result() {
+        let arguments = format!(r#"{{"command":"echo {}"}}"#, "écho ".repeat(80));
+        let block = tool_block(ToolView {
+            title: "fixture.run".into(),
+            verb: "Called",
+            arguments: arguments.clone(),
+            status: Status::Ok,
+            duration_ms: None,
+            progress: None,
+            result: String::new(),
+            expanded: true,
+        });
+        assert!(block.toggle.is_some());
+        assert!(block.copyable);
+        assert!(
+            block
+                .lines
+                .iter()
+                .any(|line| line.text.contains(&arguments))
+        );
+        assert!(block.copy_text.as_deref().unwrap().contains(&arguments));
+        assert!(block.copy_text.as_deref().unwrap().contains("fixture.run"));
+    }
+
+    #[test]
+    fn v37_single_line_command_without_output_has_selectable_details() {
+        let blocks = exec_blocks(
+            ExecView {
+                command: "echo selection-command",
+                source: CommandExecutionSource::Agent,
+                status: CommandExecutionStatus::Completed,
+                actions: &[],
+                output: None,
+                dropped_lines: 0,
+                exit_code: Some(0),
+                duration_ms: None,
+                interaction: None,
+            },
+            true,
+        );
+        assert!(blocks[0].toggle.is_some());
+        assert!(blocks[0].text.contains("echo selection-command"));
+        assert!(
+            blocks[0]
+                .copy_text
+                .as_deref()
+                .unwrap()
+                .contains("echo selection-command")
+        );
+    }
+
     #[test]
     fn v32_expanded_tool_rows_preserve_order_and_copy_without_duplication() {
         let mut block = Block::new(BlockKind::Tool);

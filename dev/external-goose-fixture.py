@@ -43,6 +43,13 @@ def prompt(req):
             update(sid, dict(sessionUpdate='tool_call', toolCallId=tid, title=f'Fixture tool {n}', status='in_progress', rawInput={'fixture': n}))
             output = '\n'.join(f'Output {n}/{i}: line of tool text with preserved source order' for i in range(200))
             update(sid, dict(sessionUpdate='tool_call_update', toolCallId=tid, status='completed', content=[dict(type='content', content=dict(type='text', text=output))]))
+    if text == 'selection-tools':
+        tid = 'selection-' + sid
+        update(sid, dict(sessionUpdate='tool_call', toolCallId=tid, title='Selection tool', status='in_progress',
+                         rawInput={'command': 'echo ' + 'argument-é ' * 25 + 'ARGUMENT_END'}))
+        output = '\n'.join(f'Selection output {i:02d}: **literal** <tag> é 👩‍💻' for i in range(24))
+        update(sid, dict(sessionUpdate='tool_call_update', toolCallId=tid, status='completed',
+                         content=[dict(type='content', content=dict(type='text', text=output))]))
     if text == 'benchmark-stream':
         for n in range(1000):
             if cancel.wait(.02): break

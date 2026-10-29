@@ -673,3 +673,40 @@ new 97.5 ms, seeded reload 69.8 ms, and reload after app restart 83.5 ms. All
 three operations used HTTP, preserved the original workspace and rejected
 Origin/forged-Host probes, with zero vwork clients. Standalone Goose control
 launched four clients as expected. The receipt includes this separate final run.
+# Conversation selection, 2026-10-29
+
+Fastrock 0.3.4 adds 12-logical-pixel selection gutters beside rich/native text
+(table cells use half their inter-column spacing). Tool results use selectable
+native styled text. Expanded calls retain full arguments/commands and Copy All
+retains details plus output. Native input focus preserves a new glyph anchor
+when switching from a gutter selection. No vwork source or protocol changes.
+
+- Both new V37 Rust regressions failed on the 0.3.3 implementation, then passed.
+  All **708 Windows tests** passed on `games` (one existing live-vwork integration
+  test remains ignored). `FASTROCK_TEST_PYTHON` points to the installed Python.
+- `dev/windows-selection-smoke.py` passed on `games` at 100% and 200% scaling:
+  17 exact clipboard cases, three native Copy menus, margin/glyph transitions,
+  second-line code, UTF-8/graphemes, link drag versus click, real header expansion,
+  and selection across a virtual tool-row boundary. Copy All retains the full
+  arguments and all 24 fixture result lines. Screenshots inspected.
+- Mac compatibility compile, `cargo fmt --all -- --check`, build-policy audit
+  and `git diff --check` passed. No Mac GUI or tests ran. Additional Clippy audit
+  fails on 36 existing denied diagnostics in unchanged Rally/Goose/lib code;
+  each diagnostic's source line was checked against the committed baseline.
+  No diagnostics point to this change's transcript files. This is not a clean
+  Clippy claim; release CI's build, tests, policy and signed fixture gates remain.
+- Software-renderer comparison on `games`, 1440×1000, scale 1, 120 requested
+  frames per scenario, same fixture and signed 0.3.3 baseline. Frame p95 in ms:
+
+  | Scenario | 0.3.3 | 0.3.4 development build |
+  |---|---:|---:|
+  | Prose | 7.375 | 7.150 |
+  | Table | 6.114 | 7.316 |
+  | Code | 6.050 | 6.261 |
+  | Tools | 6.030 | 6.833 |
+  | Streaming | 8.744 | 8.163 |
+
+  These are single-run measurements, not a speedup claim. All measured p95
+  frame times remain below 8.2 ms with selection enabled. Restore smoke passed.
+  Development executable SHA-256:
+  `5843b144881475953420345ff01de9f351043758f7b6ce6854e70018d5bfc1b8`.

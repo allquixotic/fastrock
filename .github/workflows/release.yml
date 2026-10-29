@@ -118,6 +118,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-vwork-smoke.py build/release-inputs/fastrock.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/windows-selection-smoke.py build/release-inputs/fastrock.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-scroll-benchmark.py build/release-inputs/fastrock.exe --output build/scroll-smoke --frames 120
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         if: always()
@@ -131,6 +133,7 @@ jobs:
             build/windows-tests.log
             build/windows-signing.json
             build/scroll-smoke/
+            build/selection-smoke/
           compression-level: 0
           if-no-files-found: ignore
       - name: Package signed binary and matching symbols
@@ -154,7 +157,7 @@ jobs:
           compression-level: 0
           if-no-files-found: error
   macos:
-    if: "!startsWith(github.ref, 'refs/tags/v0.3.0') && !startsWith(github.ref, 'refs/tags/v0.3.1') && !startsWith(github.ref, 'refs/tags/v0.3.2') && !startsWith(github.ref, 'refs/tags/v0.3.3')"
+    if: "!startsWith(github.ref, 'refs/tags/v0.3.0') && !startsWith(github.ref, 'refs/tags/v0.3.1') && !startsWith(github.ref, 'refs/tags/v0.3.2') && !startsWith(github.ref, 'refs/tags/v0.3.3') && !startsWith(github.ref, 'refs/tags/v0.3.4')"
     needs: [build, windows]
     runs-on: [self-hosted, macOS, ARM64, fastrock-signing]
     timeout-minutes: 60

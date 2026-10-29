@@ -1,5 +1,14 @@
 # Stable releases and rapid signed prereleases
 
+## Stable 0.3.4
+
+Conversation text accepts drags from adjacent padding. Tool results support
+selection and native clipboard actions across visible virtual rows. Expanded
+calls expose complete arguments/commands, including calls without output;
+Copy All includes details and retained results. Fastrock-only update with no
+vwork changes. Existing optimization/no-LTO settings and Windows signed ZIP
+distribution continue, with a Mac compatibility compile.
+
 ## Stable 0.3.3
 
 Conversation startup uses shared localhost vwork MCP with vwork 0.3.3 and an

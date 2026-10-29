@@ -98,6 +98,7 @@ export global TranscriptState {
     callback selection-key(string, bool, bool) -> bool;
     callback selection-copy();
     callback selection-clear();
+    callback selection-native-focus();
     callback selection-blur();
     callback copy-block(string);
     callback toggle-block(string);
@@ -238,100 +239,12 @@ component StatusGlyph inherits Rectangle {
     }
 }
 
-// Read-only selectable text. All transcript blocks wrap within the pane;
-// Copy / Select All retain the original text, including code formatting.
-component SelectableText inherits Rectangle {
-    min-width: 0px;
-    in property <string> text;
-    in property <bool> mono: false;
-    in property <color> text-color: Theme.text;
-    in property <length> text-size: Theme.font-size;
-    in property <bool> message: false;
-    in property <string> row-id;
-
-    min-height: input.preferred-height;
-    preferred-height: input.preferred-height;
-    clip: true;
-
-    menu := ContextMenuArea {
-        Menu {
-            MenuItem {
-                title: "Copy";
-                enabled: input.anchor-position-byte-offset != input.cursor-position-byte-offset;
-                activated => {
-                    input.copy();
-                }
-            }
-            MenuItem {
-                title: "Select All";
-                activated => {
-                    input.focus();
-                    input.select-all();
-                }
-            }
-            MenuSeparator { }
-            MenuItem {
-                title: root.message ? "Copy Message" : "Copy All";
-                activated => {
-                    TranscriptState.block-action(root.row-id, root.message ? "copy-message" : "copy");
-                }
-            }
-            MenuItem {
-                title: root.message ? "View Message as Text" : "View as Text";
-                activated => {
-                    TranscriptState.block-action(root.row-id, "view-text");
-                }
-            }
-            if root.message: MenuItem {
-                title: "Quote in Reply";
-                activated => {
-                    TranscriptState.block-action(root.row-id, "quote");
-                }
-            }
-            if root.message: MenuItem {
-                title: "Send to Tab…";
-                activated => {
-                    TranscriptState.block-action(root.row-id, "forward");
-                }
-            }
-        }
-
-        TouchArea {
-            input := TextInput {
-                x: 0;
-                y: 0;
-                width: root.width;
-                height: self.preferred-height;
-                text: root.text;
-                read-only: true;
-                changed has-focus => { if self.has-focus { TranscriptState.selection-clear(); } }
-                single-line: false;
-                wrap: TextWrap.word-wrap;
-                font-family: root.mono ? Theme.mono-font : Theme.ui-font;
-                font-size: root.text-size;
-                color: root.text-color;
-                selection-background-color: Theme.selected;
-                selection-foreground-color: Theme.text;
-            }
-            pointer-event(event) => {
-                if event.button == PointerEventButton.right && event.kind == PointerEventKind.down {
-                    menu.show({ x: self.mouse-x, y: self.mouse-y });
-                }
-            }
-            scroll-event(event) => {
-                if event.delta-y > 0px { TranscriptState.follow-tail = false; }
-                reject
-            }
-        }
-    }
-
-}
-
 // Shared web/file interaction. Keep the selected menu destination stable even
 // when moving into the native menu dismisses the hover tooltip.
 component LinkInteraction inherits Rectangle {
     in property <string> target;
     in property <bool> selectable: false;
+    in property <bool> detect-links: true;
     in property <bool> message: false;
     in property <string> row-id;
     out property <bool> has-hover <=> touch.has-hover;
@@ -347,7 +260,7 @@ component LinkInteraction inherits Rectangle {
     }
 
     function update-link() {
-        root.link = root.target != "" ? root.target : TranscriptState.link-at(
+        root.link = root.target != "" ? root.target : !root.detect-links ? "" : TranscriptState.link-at(
             (self.absolute-position.x + touch.mouse-x) / 1px,
             (self.absolute-position.y + touch.mouse-y) / 1px);
     }
@@ -398,6 +311,14 @@ component LinkInteraction inherits Rectangle {
                 if root.selectable: MenuItem {
                     title: "Select All";
                     activated => { selection-focus.focus(); TranscriptState.selection-key("a", false, true); }
+                }
+                if root.selectable && !root.message && root.row-id != "": MenuItem {
+                    title: "Copy All";
+                    activated => { TranscriptState.block-action(root.row-id, "copy"); }
+                }
+                if root.selectable && !root.message && root.row-id != "": MenuItem {
+                    title: "View as Text";
+                    activated => { TranscriptState.block-action(root.row-id, "view-text"); }
                 }
                 if root.menu-link != "": MenuItem {
                     title: "Copy link";
@@ -481,12 +402,111 @@ component LinkInteraction inherits Rectangle {
     }
 }
 
+// Read-only selectable text. All transcript blocks wrap within the pane;
+// Copy / Select All retain the original text, including code formatting.
+component SelectableText inherits Rectangle {
+    min-width: 0px;
+    in property <string> text;
+    in property <bool> mono: false;
+    in property <color> text-color: Theme.text;
+    in property <length> text-size: Theme.font-size;
+    in property <bool> message: false;
+    in property <string> row-id;
+
+    min-height: input.preferred-height;
+    preferred-height: input.preferred-height;
+    menu := ContextMenuArea {
+        Menu {
+            MenuItem {
+                title: "Copy";
+                enabled: input.anchor-position-byte-offset != input.cursor-position-byte-offset;
+                activated => {
+                    input.copy();
+                }
+            }
+            MenuItem {
+                title: "Select All";
+                activated => {
+                    input.focus();
+                    input.select-all();
+                }
+            }
+            MenuSeparator { }
+            MenuItem {
+                title: root.message ? "Copy Message" : "Copy All";
+                activated => {
+                    TranscriptState.block-action(root.row-id, root.message ? "copy-message" : "copy");
+                }
+            }
+            MenuItem {
+                title: root.message ? "View Message as Text" : "View as Text";
+                activated => {
+                    TranscriptState.block-action(root.row-id, "view-text");
+                }
+            }
+            if root.message: MenuItem {
+                title: "Quote in Reply";
+                activated => {
+                    TranscriptState.block-action(root.row-id, "quote");
+                }
+            }
+            if root.message: MenuItem {
+                title: "Send to Tab…";
+                activated => {
+                    TranscriptState.block-action(root.row-id, "forward");
+                }
+            }
+        }
+
+        TouchArea {
+            input := TextInput {
+                x: 0;
+                y: 0;
+                width: root.width;
+                height: self.preferred-height;
+                text: root.text;
+                read-only: true;
+                changed has-focus => { if self.has-focus { TranscriptState.selection-native-focus(); } }
+                single-line: false;
+                wrap: TextWrap.word-wrap;
+                font-family: root.mono ? Theme.mono-font : Theme.ui-font;
+                font-size: root.text-size;
+                color: root.text-color;
+                selection-background-color: Theme.selected;
+                selection-foreground-color: Theme.text;
+            }
+            pointer-event(event) => {
+                if event.button == PointerEventButton.right && event.kind == PointerEventKind.down {
+                    menu.show({ x: self.mouse-x, y: self.mouse-y });
+                }
+            }
+            scroll-event(event) => {
+                if event.delta-y > 0px { TranscriptState.follow-tail = false; }
+                reject
+            }
+        }
+    }
+    // Keep native TextInput word selection and keyboard behavior over the text;
+    // adjacent padding starts the shared drag without moving any glyphs.
+    for side in [0, 1]: LinkInteraction {
+        x: side == 0 ? -12px : root.width;
+        width: 12px;
+        height: root.height;
+        selectable: true;
+        detect-links: false;
+        message: root.message;
+        row-id: root.row-id;
+    }
+}
+
 // Rich text and table cells share glyph hit-testing, link menus and tooltips.
 component RichText inherits Rectangle {
     min-width: 0px;
     in property <styled-text> rich;
     in property <color> text-color: Theme.text;
     in property <length> text-size: Theme.font-size;
+    in property <string> text-font: Theme.ui-font;
+    in property <length> selection-gutter: 12px;
     in property <bool> message: false;
     in property <string> row-id;
     in property <TextHorizontalAlignment> alignment: TextHorizontalAlignment.left;
@@ -497,10 +517,17 @@ component RichText inherits Rectangle {
         text: root.rich;
         default-color: root.text-color;
         default-font-size: root.text-size;
+        default-font-family: root.text-font;
         link-color: Theme.accent;
         horizontal-alignment: root.alignment;
     }
-    LinkInteraction { selectable: true; message: root.message; row-id: root.row-id; }
+    LinkInteraction {
+        x: -root.selection-gutter;
+        width: root.width + 2 * root.selection-gutter;
+        selectable: true;
+        message: root.message;
+        row-id: root.row-id;
+    }
 }
 
 // Disclosure chevron.
@@ -584,9 +611,9 @@ component OutputBox inherits Rectangle {
     if root.show-copy: LinkButton {
         x: parent.width - self.width - Theme.pad-s;
         y: Theme.pad-s;
-        width: 44px;
+        width: 60px;
         height: 20px;
-        text: "Copy";
+        text: "Copy All";
         text-color: Theme.text-muted;
         clicked => {
             TranscriptState.copy-block(root.row-id);
@@ -702,6 +729,7 @@ component TableRow inherits Card {
                     spacing: root.cell-spacing;
                     for cell[c] in row: RichText {
                         width: root.inner * root.block.widths[c];
+                        selection-gutter: root.cell-spacing / 2;
                         rich: cell;
                         message: root.block.message;
                         row-id: root.block.id;
@@ -1170,20 +1198,21 @@ component ToolRow inherits Card {
                     padding-top: root.block.part <= 1 ? Theme.pad-m : 0px;
                     padding-bottom: root.block.part == 0 || root.block.part == 3 ? Theme.pad-m : 0px;
                     padding-left: Theme.pad-l;
-                    for line in root.block.lines: Text {
-                        text: line.text;
-                        color: line.kind == 4 ? Theme.text-faint : root.block.status == 3 ? Theme.danger : Theme.text-muted;
-                        font-family: Theme.mono-font;
-                        font-size: Look.code-font-size;
-                        wrap: word-wrap;
+                    for line in root.block.lines: RichText {
+                        // Interpolation treats the tool's bytes as plain text.
+                        rich: @markdown("\{line.text}");
+                        text-color: line.kind == 4 ? Theme.text-faint : root.block.status == 3 ? Theme.danger : Theme.text-muted;
+                        text-font: Theme.mono-font;
+                        text-size: Look.code-font-size;
+                        row-id: root.block.id;
                     }
                 }
                 if root.block.expanded && root.block.copyable: LinkButton {
                     x: parent.width - self.width - Theme.pad-s;
                     y: Theme.pad-s;
-                    width: 44px;
+                    width: 60px;
                     height: 20px;
-                    text: "Copy";
+                    text: "Copy All";
                     text-color: Theme.text-muted;
                     clicked => {
                         TranscriptState.copy-block(root.block.id);
