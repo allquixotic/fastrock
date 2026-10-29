@@ -738,8 +738,8 @@ impl AppController {
         self.connection_choice.cli_token_env = None;
         self.embedded_target = true;
         self.set_server_status("restarting", "");
-        self.backend.reconnect(ConnectionTarget::Embedded);
-        self.toast("Using the installed Codex server for this session");
+        self.backend.reconnect(ConnectionTarget::Goose);
+        self.toast("Using embedded Goose");
     }
 
     /// Removes a banner warning by its text.

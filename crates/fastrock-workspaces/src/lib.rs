@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::{future::Future, pin::Pin};
 use thiserror::Error;
 
+pub mod embedded;
+pub mod summaries;
 pub mod vwork;
 
 pub const PAGE_SIZE: usize = 200;
@@ -97,7 +99,7 @@ pub enum Reply {
 pub enum WorkspaceError {
     #[error("{0}")]
     Message(String),
-    #[error("Workspace transport failed; check the configured daemon")]
+    #[error("Workspace operation failed; check the embedded store")]
     Transport,
     #[error("Invalid workspace response")]
     Protocol,

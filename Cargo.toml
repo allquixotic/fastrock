@@ -2,6 +2,7 @@
 name = "fastrock"
 version = "0.4.0-alpha.1"
 edition = "2024"
+rust-version = "1.94.1"
 license = "Apache-2.0"
 build = "build.rs"
 autobins = false
@@ -11,6 +12,10 @@ description = "Native Slint Goose ACP, Codex and Rally workspace"
 [[bin]]
 name = "fastrock"
 path = "src/main.rs"
+
+[[test]]
+name = "embedded_goose"
+harness = false
 
 [lib]
 name = "codex_gui"
@@ -50,6 +55,11 @@ dirs = { workspace = true }
 # `std::fs::canonicalize` without Windows `\\?\` verbatim prefixes.
 dunce = { workspace = true }
 futures = { workspace = true }
+# Goose's optional source-symbol parser conflicts with the retained UI protocol's
+# native tree-sitter ABI. Tools and code mode do not require that feature.
+goose-runtime = { package = "goose", git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12", default-features = false, features = ["aws-providers", "rustls-tls", "system-keyring", "code-mode"] }
+goose-mcp = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12", default-features = false, features = ["bundled-mcp", "rustls-tls"] }
+tokio-util = { version = "0.7", features = ["compat"] }
 image = { workspace = true, features = ["png", "jpeg", "gif", "webp"] }
 # Version matches Slint: native glyph hit-testing and renderer invalidation.
 i-slint-core = { version = "=1.18.1", features = ["shared-parley"] }
@@ -125,6 +135,7 @@ ignored = ["i-slint-common"]
 slint-build = { workspace = true, features = ["compat-1-18"] }
 
 [dev-dependencies]
+goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12" }
 wiremock = "0.6"
 codex-model-provider-info = { workspace = true }
 pretty_assertions = { workspace = true }
@@ -271,11 +282,13 @@ incremental = true
 opt-level = 0
 debug = 0
 codegen-units = 256
+strip = "none"
 
 [profile.release.build-override]
 opt-level = 0
 debug = 0
 codegen-units = 256
+strip = "none"
 
 # Sean's explicitly authorized 0.2.0 official release: -O with full symbols.
 # "off" disables even LLVM's local ThinLTO, unlike lto = false at opt-level > 0.
@@ -293,6 +306,7 @@ incremental = true
 opt-level = 0
 debug = 0
 codegen-units = 256
+strip = "none"
 
 [patch.crates-io]
 i-slint-core = { path = "third_party/slint/i-slint-core" }

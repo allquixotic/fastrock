@@ -1,3 +1,26 @@
+# Embedded workspaces in Fastrock 0.4.0
+
+The development branch links unmodified vwork 0.3.4 at
+`c53cea4879bc0e12735ae1c89bd7d5ca3e9b1910`. Existing stores use the same Engine,
+redb schema, compression settings, revisions and leases. Fastrock holds one owner
+per canonical store path. Workspace I/O runs on bounded blocking workers;
+compaction excludes active readers and writers. No vwork installation or daemon
+is required. Fresh installations receive a default local store.
+
+Current search summaries have a separate compressed table inside that same redb.
+Replacement is atomic and checks the requested turn revision; stale background
+results cannot overwrite a newer request. Summary generation and search wiring
+are still in progress. The hook helper uses the original vwork policy.
+
+Existing enabled `vwork mcp --home <absolute-path> --workspace <id>` entries map
+to embedded MCP handlers. Unsupported environment overrides, custom working
+directories, tool filters or CLI forms fail explicitly instead of launching a
+standalone core service. Keep the old files intact when diagnosing a migration.
+
+The sections below document historical 0.3.x behavior only.
+
+---
+
 # Virtual files with Goose and vwork
 
 Fastrock can browse and edit virtual workspaces in a running [vwork](https://github.com/allquixotic/vwork)

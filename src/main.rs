@@ -1,5 +1,11 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 fn main() -> anyhow::Result<()> {
+    if std::env::args_os().nth(1).as_deref() == Some(std::ffi::OsStr::new("--vwork-hook")) {
+        return fastrock_workspaces::embedded::run_hook(
+            std::io::stdin().lock(),
+            std::io::stdout().lock(),
+        );
+    }
     codex_gui::prepare_process_env();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

@@ -1,19 +1,57 @@
-//! Reuse the vwork owner through its authenticated MCP API, without per-chat bridges.
+//! Map legacy and new vwork sessions to the embedded owner before activation.
 use super::*;
-use fastrock_workspaces::vwork::{DiscoveryPaths, McpBinding, discover_mcp};
+use fastrock_workspaces::vwork::{McpBinding, discover_mcp};
 
 impl Adapter {
-    pub(super) async fn new_vwork_servers(&self) -> (Vec<Value>, Vec<McpBinding>) {
+    pub(super) async fn new_vwork_servers(
+        &self,
+        cwd: &str,
+    ) -> Result<(Vec<Value>, Vec<McpBinding>), JSONRPCErrorError> {
         if self.capabilities.lock().await["mcpCapabilities"]["http"] != true {
-            return (vec![], vec![]);
+            return Ok((vec![], vec![]));
         }
-        let bindings = discover_mcp(&DiscoveryPaths::current())
-            .await
-            .unwrap_or_default();
+        let bindings = self.configured_vwork(cwd).await?;
         self.vwork_servers(bindings).await
     }
 
-    async fn vwork_servers(&self, bindings: Vec<McpBinding>) -> (Vec<Value>, Vec<McpBinding>) {
+    async fn configured_vwork(&self, cwd: &str) -> Result<Vec<McpBinding>, JSONRPCErrorError> {
+        if !self.embedded_runtime {
+            return discover_mcp(&self.vwork_paths)
+                .await
+                .map_err(|e| error(e.to_string()));
+        }
+        super::hooks::prepare(std::path::PathBuf::from(cwd))
+            .await
+            .map_err(|_| error("Unable to prepare embedded vwork hooks"))?;
+        let paths = self.vwork_paths.clone();
+        let cwd = std::path::PathBuf::from(cwd);
+        tokio::task::spawn_blocking(move || {
+            let mut entries = serde_json::Map::new();
+            for entry in goose_runtime::config::extensions::get_all_extensions() {
+                let mut value = serde_json::to_value(&entry.config)
+                    .map_err(|_| error("Invalid Goose extension"))?;
+                value["enabled"] = json!(entry.enabled);
+                entries.insert(entry.config.name(), value);
+            }
+            for extension in
+                goose_runtime::plugins::mcp_servers::enabled_plugin_mcp_servers(Some(&cwd))
+            {
+                let mut value = serde_json::to_value(&extension)
+                    .map_err(|_| error("Invalid Goose plugin extension"))?;
+                value["enabled"] = json!(true);
+                entries.insert(extension.name(), value);
+            }
+            fastrock_workspaces::vwork::bindings_from_extensions(&paths, Value::Object(entries))
+                .map_err(|e| error(e.to_string()))
+        })
+        .await
+        .map_err(|_| error("Goose extension discovery failed"))?
+    }
+
+    async fn vwork_servers(
+        &self,
+        bindings: Vec<McpBinding>,
+    ) -> Result<(Vec<Value>, Vec<McpBinding>), JSONRPCErrorError> {
         let mut servers = Vec::new();
         let mut shared = Vec::new();
         for binding in bindings {
@@ -24,11 +62,11 @@ impl Adapter {
                 }
                 Ok(None) => {}
                 Err(error) => {
-                    tracing::warn!(%error, "Shared vwork unavailable; retain Goose's configured transport")
+                    return Err(super::error(format!("Embedded vwork unavailable: {error}")));
                 }
             }
         }
-        (servers, shared)
+        Ok((servers, shared))
     }
 
     pub(super) fn save_vwork_bindings(
@@ -48,13 +86,12 @@ impl Adapter {
     pub(super) async fn load_vwork_servers(
         &self,
         id: &str,
+        cwd: &str,
     ) -> Result<Vec<Value>, JSONRPCErrorError> {
         if self.capabilities.lock().await["mcpCapabilities"]["http"] != true {
             return Ok(vec![]);
         }
-        let configured = discover_mcp(&DiscoveryPaths::current())
-            .await
-            .unwrap_or_default();
+        let configured = self.configured_vwork(cwd).await?;
         let path = self.queue_path(id).with_extension("vwork.json");
         let saved: Vec<McpBinding> = match tokio::fs::metadata(&path).await {
             Ok(meta) => {
@@ -91,6 +128,7 @@ impl Adapter {
         let mut bindings = Vec::new();
         for entry in selection["extensions"].as_array().into_iter().flatten() {
             let extension = &entry["extension"];
+            let server = &extension["server"];
             if extension["type"] != "mcp"
                 || extension["envKeys"]
                     .as_array()
@@ -99,14 +137,22 @@ impl Adapter {
                     .as_array()
                     .is_some_and(|v| !v.is_empty())
             {
+                if is_vwork_stdio(server) {
+                    return Err(error(
+                        "This session has unsupported vwork environment or tool restrictions; update its extension before resuming",
+                    ));
+                }
                 continue;
             }
-            let server = &extension["server"];
             if let Some(binding) = configured
                 .iter()
                 .find(|binding| binding.matches_stdio(server))
             {
                 bindings.push(binding.clone());
+            } else if is_vwork_stdio(server) {
+                return Err(error(
+                    "This session's vwork configuration cannot be mapped to the embedded store; update its vwork extension before resuming",
+                ));
             } else if local_shared_server(server)
                 && let Some(binding) = saved.iter().find(|binding| server["name"] == binding.name)
             {
@@ -123,17 +169,21 @@ impl Adapter {
                     servers.push(server);
                     persisted.push(binding);
                 }
-                _ if saved.contains(&binding) => {
-                    // A downgraded/unavailable daemon can still use the original stdio
-                    // definition. Never leave a stale HTTP route in a saved conversation.
-                    servers.push(json!({"name":binding.name,"command":binding.executable,"args":binding.args,"env":[],"_meta":{"timeout":binding.timeout_seconds}}));
-                }
-                _ => {}
+                Err(e) => return Err(error(format!("Embedded vwork unavailable: {e}"))),
+                Ok(None) => return Err(error("Embedded vwork MCP unavailable")),
             }
         }
         self.save_vwork_bindings(id, &persisted)?;
         Ok(servers)
     }
+}
+
+fn is_vwork_stdio(server: &Value) -> bool {
+    server["command"].as_str().is_some_and(|command| {
+        command.rsplit(['/', '\\']).next().is_some_and(|binary| {
+            binary.eq_ignore_ascii_case("vwork") || binary.eq_ignore_ascii_case("vwork.exe")
+        })
+    })
 }
 
 fn local_shared_server(server: &Value) -> bool {

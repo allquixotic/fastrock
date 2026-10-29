@@ -16,7 +16,7 @@ for key,value in official.items():
 assert 'package' not in data['profile']['official']
 for name in ('dev','release','official'):
     build=data['profile'][name]['build-override']
-    assert build=={'opt-level':0,'debug':0,'codegen-units':256}, (name,build)
+    assert build=={'opt-level':0,'debug':0,'codegen-units':256,'strip':'none'}, (name,build)
 
 allowed = {'parley', 'i-slint-core', 'swash', 'harfrust', 'unicode-linebreak', 'tiny-skia', 'read-fonts', 'yazi', 'euclid', 'skrifa', 'fontique', 'unicode-segmentation', 'pulldown-cmark', 'i-slint-renderer-software', 'i-slint-backend-winit', 'tiny-skia-path', 'zeno'}
 for profile in ('dev', 'release'):

@@ -5,14 +5,30 @@ edition = "2024"
 license = "Apache-2.0"
 publish = false
 
+[features]
+http-fixtures = []
+
+[[test]]
+name = "vwork"
+required-features = ["http-fixtures"]
+
+[[test]]
+name = "live_vwork"
+required-features = ["http-fixtures"]
+
 [dependencies]
+anyhow.workspace = true
+vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "c53cea4879bc0e12735ae1c89bd7d5ca3e9b1910" }
+redb = "4.4"
+zstd = "0.13"
 base64.workspace = true
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde_yaml = "0.9"
 thiserror.workspace = true
-tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "rt", "time"] }
+tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "rt", "sync", "time"] }
 
 [dev-dependencies]
 tempfile.workspace = true
+git2 = "0.21"

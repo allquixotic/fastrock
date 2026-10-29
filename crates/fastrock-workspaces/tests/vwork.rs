@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[tokio::test]
-async fn v22_discovery_requires_enabled_installed_vwork() {
+async fn v40_discovery_uses_existing_store_or_default_without_installed_vwork() {
     let dir = tempfile::tempdir().unwrap();
     let executable = dir
         .path()
@@ -23,17 +23,20 @@ async fn v22_discovery_requires_enabled_installed_vwork() {
         search: vec![dir.path().into()],
         default_vwork_home: dir.path().join("state"),
     };
-    assert!(discover(&paths).await.unwrap().is_empty());
+    assert_eq!(
+        discover(&paths).await.unwrap()[0].home,
+        paths.default_vwork_home
+    );
     for enabled in [false, true] {
         std::fs::write(&config, serde_yaml::to_string(&json!({"extensions":{"virtual":{"enabled":enabled,"type":"stdio","cmd":executable,"args":["--home",dir.path().join("other-state"),"mcp","--workspace","one"]}}})).unwrap()).unwrap();
         let found = discover(&paths).await.unwrap();
-        assert_eq!(found.len(), usize::from(enabled));
+        assert_eq!(found.len(), 1);
         if enabled {
             assert_eq!(found[0].home, dir.path().join("other-state"));
         }
     }
     std::fs::remove_file(executable).unwrap();
-    assert!(discover(&paths).await.unwrap().is_empty());
+    assert_eq!(discover(&paths).await.unwrap().len(), 1);
 }
 
 #[test]
@@ -122,7 +125,7 @@ async fn v23_exact_bytes_modes_pagination_and_conflict() {
         json!({"result":{"revision":"r1","base64":base64::engine::general_purpose::STANDARD.encode(text)}}),
         json!({"error":"revision conflict"}),
     ]).await;
-    let provider = VworkProvider::new(&installation).unwrap();
+    let provider = VworkProvider::fixture(&installation).unwrap();
     let Reply::Files(page) = provider
         .execute(Request::Files {
             workspace: "one".into(),
@@ -174,7 +177,7 @@ async fn v23_rejects_nontext_unsafe_paths_and_changed_reads() {
             json!({"result":{"revision":"r1","entries":[{"path":"file","size":size,"mode":mode}]}}),
         ])
         .await;
-        let provider = VworkProvider::new(&installation).unwrap();
+        let provider = VworkProvider::fixture(&installation).unwrap();
         let result = provider
             .execute(Request::Read {
                 workspace: "one".into(),
@@ -193,7 +196,7 @@ async fn v23_rejects_nontext_unsafe_paths_and_changed_reads() {
             json!({"result":{"revision":"r1","entries":[{"path":"file","size":raw.len(),"mode":"100644"}]}}),
             json!({"result":{"revision":"r1","base64":base64::engine::general_purpose::STANDARD.encode(raw)}}),
         ]).await;
-        let result = VworkProvider::new(&installation)
+        let result = VworkProvider::fixture(&installation)
             .unwrap()
             .execute(Request::Read {
                 workspace: "one".into(),
@@ -212,7 +215,7 @@ async fn v23_rejects_nontext_unsafe_paths_and_changed_reads() {
         json!({"result":{"revision":"r2","base64":"YQ=="}}),
     ])
     .await;
-    let result = VworkProvider::new(&installation)
+    let result = VworkProvider::fixture(&installation)
         .unwrap()
         .execute(Request::Read {
             workspace: "one".into(),
@@ -281,7 +284,7 @@ async fn v30_compaction_rpc_reports_skips_success_and_errors() {
         json!({"result":{"reason":"compacted","reclaimed_bytes":1_200_000_000,"after_bytes":680_000_000}}),
         json!({"error":"database maintenance failed; restart vwork for recovery"}),
     ]).await;
-    let provider = VworkProvider::new(&installation).unwrap();
+    let provider = VworkProvider::fixture(&installation).unwrap();
     for expected in ["active", "threshold", "1.20 GB"] {
         let Reply::Report(report) = provider.execute(Request::Compact).await.unwrap() else {
             panic!()
@@ -304,7 +307,7 @@ async fn v30_compaction_rpc_reports_skips_success_and_errors() {
 }
 
 #[tokio::test]
-async fn v35_mcp_discovery_preserves_custom_transports_and_bindings() {
+async fn v38_mcp_discovery_rejects_external_vwork_fallback() {
     let dir = tempfile::tempdir().unwrap();
     let executable = dir
         .path()
@@ -336,7 +339,7 @@ async fn v35_mcp_discovery_preserves_custom_transports_and_bindings() {
             json!({"extensions":{"vwork":extension}}).to_string(),
         )
         .unwrap();
-        assert!(discover_mcp(&paths).await.unwrap().is_empty(), "{field}");
+        assert!(discover_mcp(&paths).await.is_err(), "{field}");
     }
     std::fs::write(config, json!({"extensions":{"vwork":valid}}).to_string()).unwrap();
     let bindings = discover_mcp(&paths).await.unwrap();

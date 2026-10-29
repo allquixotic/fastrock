@@ -687,7 +687,7 @@ component StatusOverlay inherits Rectangle {
                 clicked => { AppState.retry-server(); }
             }
             if AppState.server-can-use-embedded: FlatButton {
-                text: "Use the installed Codex server";
+                text: "Use embedded Goose";
                 clicked => { AppState.use-embedded-server(); }
             }
             FlatButton {

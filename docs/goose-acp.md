@@ -1,3 +1,50 @@
+# Embedded Goose in Fastrock 0.4.0
+
+Goose 1.57.0 is pinned at `30bba95105e59bc3e7df624cf6b4d433690cfe12`.
+Its source is unchanged. Fastrock calls the public `GooseAcpAgent` and `serve`
+APIs on its own Tokio runtime, connected to the UI adapter by a bounded memory
+stream. There is no Goose process or HTTP/stdio hop to an external Goose service.
+The existing adapter preserves native transcript, permission and queue behavior.
+
+Goose's built-in extensions use its public built-in registry. The Fastrock tools
+and vwork MCP adapters use session-scoped loopback routes inside the same process;
+the routes call embedded Rust handlers. They never connect to a vwork daemon.
+Configured third-party extensions, hooks, AWS credential helpers and user/LLM
+tools retain their authorized ability to launch programs.
+
+The provider factory permits `aws_bedrock`, `openai` and `anthropic`. Existing
+Goose configuration and credential entries remain authoritative. Codex and remote
+agent transports are removed; legacy Codex files are not migrated or deleted.
+
+## Verification and remaining acceptance
+
+The standalone `embedded_goose` test isolates environment/configuration before
+starting threads and disables access to the user's Goose keyring. It sends requests
+to a local Bedrock Runtime fixture with model IDs `openai.gpt-6.1-sol`,
+`openai.gpt-6-luna`, and `us.anthropic.claude-opus-5-5`. These strings test route
+preservation; they do not establish AWS model availability or account access.
+Working profiles and final model acceptance are validated by the user.
+
+Unchanged Goose currently has these integration limits:
+
+- Bedrock construction reads process-global Goose/AWS configuration. Independent
+  concurrent AWS credential/region profiles cannot be implemented by changing
+  environment variables around requests; doing that would race. A supported
+  per-provider construction API is needed for that degree of profile isolation.
+- ACP reasoning configuration accepts Goose's supported effort values. Arbitrary
+  custom reasoning strings are rejected by upstream and must not be advertised.
+- Goose hooks are command actions; its agent hook manager is private. Fastrock's
+  `--vwork-hook` helper evaluates the original vwork policy without opening a UI
+  or database. Setup installs a Goose plugin and migrates recognized vwork hook
+  commands, preserving custom actions and a first-migration backup.
+
+Graphical provider setup, full T3 orchestration/UI, background summary generation,
+search, compressed transcript paging, tray lifecycle and performance acceptance
+remain tracked in `SPEC.md`. This development foundation is not a completed 0.4.0
+release. Historical 0.3.x transport details follow for old releases only.
+
+---
+
 # Goose ACP in Fastrock
 
 Fastrock 0.3 uses an installed `goose acp` process by default. One child serves all

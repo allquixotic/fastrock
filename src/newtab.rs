@@ -13,7 +13,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::transport::RemoteAppServerEndpoint;
 use codex_app_server_protocol::Account;
 use codex_app_server_protocol::ClientRequest;
 use codex_app_server_protocol::ConfigBatchWriteParams;
@@ -1122,11 +1121,8 @@ impl AppController {
 /// A local daemon does (like the TUI, which treats it as a local workspace);
 /// a WebSocket server is treated as remote even on a loopback address,
 /// which may be a tunnel to another machine.
-pub(crate) fn files_are_local(target: &ConnectionTarget) -> bool {
-    !matches!(
-        target,
-        ConnectionTarget::Remote(RemoteAppServerEndpoint::WebSocket { .. })
-    )
+pub(crate) fn files_are_local(_target: &ConnectionTarget) -> bool {
+    true
 }
 
 fn not_absolute_message(text: &str) -> String {
@@ -1529,22 +1525,8 @@ mod tests {
     }
 
     #[test]
-    fn only_websocket_servers_have_remote_files() {
-        assert!(files_are_local(&ConnectionTarget::Embedded));
-        assert!(files_are_local(&ConnectionTarget::Remote(
-            RemoteAppServerEndpoint::UnixSocket {
-                socket_path: AbsolutePathBuf::from_absolute_path_checked(
-                    codex_utils_absolute_path::test_support::test_path_buf("/tmp/codex.sock"),
-                )
-                .unwrap_or_else(|err| panic!("{err}")),
-            }
-        )));
-        assert!(!files_are_local(&ConnectionTarget::Remote(
-            RemoteAppServerEndpoint::WebSocket {
-                websocket_url: "ws://127.0.0.1:4500/".to_string(),
-                auth_token: None,
-            }
-        )));
+    fn embedded_goose_uses_local_files() {
+        assert!(files_are_local(&ConnectionTarget::Goose));
     }
 
     #[test]

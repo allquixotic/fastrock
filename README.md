@@ -5,23 +5,19 @@ based on [allquixotic/codex-gui](https://github.com/allquixotic/codex-gui), with
 rebuilt using Slint buttons, editors, lists, layouts and dialogs. Rally documents
 occupy horizontal tabs; the sidebar remains a list of LLM conversations.
 
-Goose is the default agent. Install/configure **Goose CLI 1.56.0 or newer** separately;
-Fastrock starts one `goose acp` child over stdio and multiplexes concurrent
-conversations. It inherits Goose's environment, provider configuration, extensions,
-and session store. Set `FASTROCK_GOOSE` to select an installed executable.
-No Goose crates, agent runtime, inference engine or server are compiled into Fastrock.
-Update Goose independently to receive its model support and fixes.
+The 0.4.0 development branch embeds unmodified Goose **1.57.0** and vwork
+**0.3.4**. No separate Goose or vwork installation is required. Goose runs on
+Fastrock's Tokio runtime through bounded memory streams. Existing Goose
+configuration, credentials, extensions and sessions remain separate from Fastrock
+UI settings. Configured extensions, hooks, credential helpers and user tools may
+start processes.
 
-Open a conversation and expand **Goose options** above Send for the provider,
-model, mode and other choices advertised by Goose. Configure credentials and
-extensions using `goose configure`. [Architecture and capability details](docs/goose-acp.md)
-explain why stdio ACP supports this design and where the two backends differ.
-
-Installed Codex CLI **0.162.0 or newer** remains an explicit option under Settings →
-Connection, or `fastrock --remote codex`. `FASTROCK_CODEX` selects its executable.
-Existing Codex conversations remain available through that connection. Explicit
-saved Codex/remote selections are preserved; an unset connection now selects Goose.
-Fastrock never installs or updates either backend.
+Only Goose's Bedrock, direct OpenAI and direct Anthropic providers are enabled.
+Expand **Goose options** above Send for the session's model, mode and supported
+reasoning choices. External Codex and remote agent connections are removed;
+Codex files remain untouched. [Embedded runtime status and limitations](docs/goose-acp.md)
+describe the verified foundation and outstanding 0.4.0 work. The T3 interface,
+orchestration, search summaries and compressed transcript view are still in progress.
 
 ## Releases
 
@@ -36,9 +32,9 @@ prerelease builds retain the fast settings below.
 is available as a signed Windows x64 ZIP. Extract it and run `fastrock.exe`.
 All release assets are built and published by CI. Current releases compile
 macOS for compatibility; historical Mac releases include signed, notarized DMGs.
-Application code uses optimization level 0, no debug information, no LTO,
-256 codegen units and incremental compilation. The explicitly authorized
-rendering/text dependency allowlist uses optimization level 2. The `official`
+The 0.4.0 branch uses optimization level 2 for application code and dependencies,
+no debug information, no LTO, 256 codegen units and incremental compilation.
+Build scripts remain unoptimized; symbol stripping is disabled. The `official`
 0.2.0 profile is separate. The software renderer avoids compiling a second GPU
 stack. See [build/release instructions](docs/releases.md).
 
@@ -48,18 +44,18 @@ cargo build --locked --bin fastrock
 ```
 
 The executable is `target/debug/fastrock` (`fastrock.exe` on Windows). Windows and
-macOS build scripts use the same fast development profile. Never launch the app or
-tests on Sean's Mac; execute tests on Windows. The Mac compiles and signs only.
+macOS build scripts use the same development profile. Never launch the app or
+tests on Sean's Mac; execute tests on Windows. The Mac compiles only for current releases.
 
 ## Virtual workspaces
 
-When Goose is configured with an enabled, installed vwork MCP extension, the
-toolbar offers **Virtual** to browse and edit all configured stores, repositories
-and workspaces. Files stay in vwork; saves check revisions and preserve drafts
-on conflict. The controls disappear when vwork is not configured. See
-[setup and usage](docs/VIRTUAL_WORKSPACES.md). With vwork 0.3.3, conversations
-reuse its daemon through localhost HTTP without per-conversation client processes.
-The Compact control covers the entire selected database.
+The **Virtual** toolbar opens the embedded vwork stores, repositories and
+workspaces. Existing vwork homes are retained; fresh installations receive a
+default local store. Files remain compressed in vwork, and saves enforce revision
+checks. Compact covers the selected database. Fastrock exclusively owns each
+open store, including the compressed current-summary table. Legacy vwork MCP
+entries are mapped to the same in-process owner before session activation;
+unsupported custom entries report an error. [Workspace details](docs/VIRTUAL_WORKSPACES.md).
 
 ## Rally
 
@@ -78,6 +74,6 @@ Tests use local HTTP/process fixtures and never make real Rally writes.
 
 `codex-gui-base.json` pins the imported codex-gui revision and preserved Fastrock
 baseline. `upstream.json` and Cargo.lock pin the Codex protocol/config utility
-crates; the actual server always belongs to the installed CLI. The original Go
+crates retained as presentation/configuration types, without a Codex agent runtime. The original Go
 app remains recoverable in Git history. Apache-2.0; see LICENSE and NOTICE.
 This is an independent community app, not an official OpenAI product.

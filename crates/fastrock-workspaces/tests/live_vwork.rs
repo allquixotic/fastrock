@@ -91,7 +91,7 @@ async fn v23_live_vwork_roundtrip_does_not_export_files() {
         "repo_register",
         json!({"repo":"mono","path":repo}),
     );
-    let provider = VworkProvider::new(&Installation {
+    let provider = VworkProvider::fixture(&Installation {
         id: "live".into(),
         label: "live".into(),
         home: home.clone(),

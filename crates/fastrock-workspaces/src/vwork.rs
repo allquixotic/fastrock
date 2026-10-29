@@ -1,4 +1,4 @@
-//! Optional Goose/vwork adapter. Never opens redb, starts a process, or exports files.
+//! Existing vwork configuration and file operations, backed by the embedded owner.
 use super::*;
 use base64::Engine;
 use serde_json::{Value, json};
@@ -86,8 +86,6 @@ impl DiscoveryPaths {
 struct GooseConfig {
     #[serde(default)]
     extensions: BTreeMap<String, Extension>,
-    #[serde(default, rename = "GOOSE_SEARCH_PATHS")]
-    search_paths: Vec<String>,
 }
 #[derive(Deserialize, Default)]
 struct Extension {
@@ -113,7 +111,7 @@ struct Extension {
     cwd: Option<String>,
 }
 
-/// A stateless vwork MCP binding eligible for the daemon's shared transport.
+/// A vwork MCP binding mapped onto the embedded database owner.
 /// Credentials and arbitrary extension environment are deliberately not copied.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct McpBinding {
@@ -144,94 +142,135 @@ impl McpBinding {
     }
 }
 
-/// Unknown CLI forms and customized environment/tool filters retain Goose's stdio path.
+/// Reject unsupported vwork settings rather than silently launching a daemon.
 pub async fn discover_mcp(paths: &DiscoveryPaths) -> Result<Vec<McpBinding>, WorkspaceError> {
-    let mut bindings = Vec::new();
+    let mut extensions = BTreeMap::new();
     for path in &paths.configs {
-        let Ok(bytes) = limited_file(path, 1024 * 1024).await else {
+        if !tokio::fs::try_exists(path)
+            .await
+            .map_err(|_| WorkspaceError::Transport)?
+        {
+            continue;
+        }
+        let bytes = limited_file(path, 1024 * 1024).await?;
+        let config: GooseConfig =
+            serde_yaml::from_slice(&bytes).map_err(|_| WorkspaceError::Protocol)?;
+        extensions.extend(config.extensions);
+    }
+    configured_bindings(paths, extensions)
+}
+
+/// Public Goose configuration/plugin snapshots use the same checked migration.
+/// The caller must retain disabled entries so explicit disabling is respected.
+pub fn bindings_from_extensions(
+    paths: &DiscoveryPaths,
+    extensions: Value,
+) -> Result<Vec<McpBinding>, WorkspaceError> {
+    let extensions = serde_json::from_value(extensions).map_err(|_| WorkspaceError::Protocol)?;
+    configured_bindings(paths, extensions)
+}
+
+fn configured_bindings(
+    paths: &DiscoveryPaths,
+    extensions: BTreeMap<String, Extension>,
+) -> Result<Vec<McpBinding>, WorkspaceError> {
+    let mut bindings = Vec::new();
+    let mut configured_vwork = false;
+    for (key, extension) in extensions {
+        if extension.kind != "stdio" {
+            continue;
+        }
+        let name = if extension.name.is_empty() {
+            key
+        } else {
+            extension.name
+        };
+        let command = expand(&extension.cmd, &paths.user_home);
+        let Some(binary) = command.file_name().and_then(|p| p.to_str()) else {
             continue;
         };
-        let Ok(config) = serde_yaml::from_slice::<GooseConfig>(&bytes) else {
+        if !binary.eq_ignore_ascii_case("vwork") && !binary.eq_ignore_ascii_case("vwork.exe") {
             continue;
+        }
+        configured_vwork = true;
+        if !extension.enabled {
+            continue;
+        }
+        let unsupported = || {
+            WorkspaceError::Message(format!(
+                "vwork extension {name:?} cannot be embedded: use mcp with an absolute --home, optional --workspace, and no custom environment, cwd or tool filter"
+            ))
         };
-        for (key, extension) in config.extensions {
-            if !extension.enabled
-                || extension.kind != "stdio"
-                || !extension.env_keys.is_empty()
-                || !extension.available_tools.is_empty()
-                || extension.cwd.is_some()
-                || !(extension.envs.is_null()
-                    || extension.envs.as_object().is_some_and(|v| v.is_empty()))
-            {
-                continue;
-            }
-            let name = if extension.name.is_empty() {
-                key
-            } else {
-                extension.name
-            };
-            if name == "fastrock" {
-                continue;
-            }
-            let command = expand(&extension.cmd, &paths.user_home);
-            let Some(binary) = command.file_name().and_then(|p| p.to_str()) else {
-                continue;
-            };
-            if !binary.eq_ignore_ascii_case("vwork") && !binary.eq_ignore_ascii_case("vwork.exe") {
-                continue;
-            }
-            let executable = if command.is_absolute() {
-                Some(command.clone()).filter(|p| installed(p))
-            } else {
-                config
-                    .search_paths
-                    .iter()
-                    .map(|p| expand(p, &paths.user_home))
-                    .chain(paths.search.iter().cloned())
-                    .flat_map(|p| [p.join(&command), p.join(format!("{binary}.exe"))])
-                    .find(|p| installed(p))
-            };
-            let Some(executable) = executable.filter(|p| p.is_absolute()) else {
-                continue;
-            };
-            let mut home = paths.default_vwork_home.clone();
-            let mut workspace = None;
-            let mut auto_start = true;
-            let mut mcp = false;
-            let mut valid = true;
-            let mut args = extension.args.iter();
-            while let Some(arg) = args.next() {
-                match arg.as_str() {
-                    "mcp" if !mcp => mcp = true,
-                    "--no-auto-start" => auto_start = false,
-                    "--home" => match args.next() {
-                        Some(v) => home = expand(v, &paths.user_home),
-                        None => valid = false,
-                    },
-                    "--workspace" => match args.next() {
-                        Some(v) => workspace = Some(v.clone()),
-                        None => valid = false,
-                    },
-                    _ if arg.starts_with("--home=") => home = expand(&arg[7..], &paths.user_home),
-                    _ if arg.starts_with("--workspace=") => workspace = Some(arg[12..].into()),
-                    _ => valid = false,
-                }
-            }
-            if valid && mcp && home.is_absolute() {
-                bindings.push(McpBinding {
-                    name,
-                    executable,
-                    command: extension.cmd,
-                    args: extension.args,
-                    home,
-                    workspace,
-                    auto_start,
-                    timeout_seconds: extension.timeout.unwrap_or(300).clamp(1, 86400),
-                });
+        if name == "fastrock"
+            || !extension.env_keys.is_empty()
+            || !extension.available_tools.is_empty()
+            || extension.cwd.is_some()
+            || !(extension.envs.is_null()
+                || extension.envs.as_object().is_some_and(|v| v.is_empty()))
+        {
+            return Err(unsupported());
+        }
+        // The executable path is legacy metadata, never launched. Existing
+        // configuration continues to work after uninstalling standalone vwork.
+        let executable = command.clone();
+        let mut home = paths.default_vwork_home.clone();
+        let mut workspace = None;
+        let mut auto_start = true;
+        let mut mcp = false;
+        let mut valid = true;
+        let mut args = extension.args.iter();
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "mcp" if !mcp => mcp = true,
+                "--no-auto-start" => auto_start = false,
+                "--home" => match args.next() {
+                    Some(v) => home = expand(v, &paths.user_home),
+                    None => valid = false,
+                },
+                "--workspace" => match args.next() {
+                    Some(v) => workspace = Some(v.clone()),
+                    None => valid = false,
+                },
+                _ if arg.starts_with("--home=") => home = expand(&arg[7..], &paths.user_home),
+                _ if arg.starts_with("--workspace=") => workspace = Some(arg[12..].into()),
+                _ => valid = false,
             }
         }
+        if !valid || !mcp || !home.is_absolute() {
+            return Err(unsupported());
+        }
+        {
+            bindings.push(McpBinding {
+                name,
+                executable,
+                command: extension.cmd,
+                args: extension.args,
+                home,
+                workspace,
+                auto_start,
+                timeout_seconds: extension.timeout.unwrap_or(300).clamp(1, 86400),
+            });
+        }
+    }
+    if !configured_vwork {
+        bindings.push(McpBinding::default_for(paths));
     }
     Ok(bindings)
+}
+
+impl McpBinding {
+    pub fn default_for(paths: &DiscoveryPaths) -> Self {
+        Self {
+            name: "vwork".into(),
+            executable: PathBuf::new(),
+            command: String::new(),
+            args: Vec::new(),
+            home: paths.default_vwork_home.clone(),
+            workspace: None,
+            auto_start: false,
+            timeout_seconds: 900,
+        }
+    }
 }
 
 fn expand(path: &str, user_home: &Path) -> PathBuf {
@@ -243,24 +282,7 @@ fn expand(path: &str, user_home: &Path) -> PathBuf {
         PathBuf::from(path)
     }
 }
-fn installed(command: &Path) -> bool {
-    if !command.is_file() {
-        return false;
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        command
-            .metadata()
-            .is_ok_and(|m| m.permissions().mode() & 0o111 != 0)
-    }
-    #[cfg(not(unix))]
-    {
-        true
-    }
-}
-
-/// Read only configuration, and only accept a real vwork executable + `mcp` invocation.
+/// Read existing vwork configuration without requiring an installed executable.
 pub async fn discover(paths: &DiscoveryPaths) -> Result<Vec<Installation>, WorkspaceError> {
     let mut result = Vec::new();
     let mut seen = BTreeSet::new();
@@ -284,22 +306,6 @@ pub async fn discover(paths: &DiscoveryPaths) -> Result<Vec<Installation>, Works
                 continue;
             };
             if !binary.eq_ignore_ascii_case("vwork") && !binary.eq_ignore_ascii_case("vwork.exe") {
-                continue;
-            }
-            let search = config
-                .search_paths
-                .iter()
-                .map(|p| expand(p, &paths.user_home))
-                .chain(paths.search.iter().cloned());
-            let available = if command.is_absolute() {
-                installed(&command)
-            } else {
-                search.into_iter().any(|p| {
-                    installed(&p.join(&command))
-                        || (cfg!(windows) && installed(&p.join(format!("{binary}.exe"))))
-                })
-            };
-            if !available {
                 continue;
             }
             let mut home = paths.default_vwork_home.clone();
@@ -329,6 +335,9 @@ pub async fn discover(paths: &DiscoveryPaths) -> Result<Vec<Installation>, Works
             });
         }
     }
+    if result.is_empty() {
+        result.push(McpBinding::default_for(paths).installation());
+    }
     Ok(result)
 }
 
@@ -349,11 +358,17 @@ async fn limited_file(path: &Path, limit: usize) -> Result<Vec<u8>, WorkspaceErr
 }
 
 pub struct VworkProvider {
+    embedded: crate::embedded::Connection,
+    #[cfg(feature = "http-fixtures")]
+    fixture: bool,
+    #[cfg(feature = "http-fixtures")]
     home: PathBuf,
+    #[cfg(feature = "http-fixtures")]
     client: reqwest::Client,
 }
 impl VworkProvider {
     pub fn new(installation: &Installation) -> Result<Self, WorkspaceError> {
+        #[cfg(feature = "http-fixtures")]
         let client = reqwest::Client::builder()
             .no_proxy()
             .redirect(reqwest::redirect::Policy::none())
@@ -361,9 +376,22 @@ impl VworkProvider {
             .build()
             .map_err(|_| WorkspaceError::Transport)?;
         Ok(Self {
+            embedded: crate::embedded::Connection::new(installation.home.clone()),
+            #[cfg(feature = "http-fixtures")]
+            fixture: false,
+            #[cfg(feature = "http-fixtures")]
             home: installation.home.clone(),
+            #[cfg(feature = "http-fixtures")]
             client,
         })
+    }
+
+    /// Historical wire fixtures only. Release builds have no daemon transport.
+    #[cfg(feature = "http-fixtures")]
+    pub fn fixture(installation: &Installation) -> Result<Self, WorkspaceError> {
+        let mut provider = Self::new(installation)?;
+        provider.fixture = true;
+        Ok(provider)
     }
 
     async fn call(&self, op: &str, arguments: Value) -> Result<Value, WorkspaceError> {
@@ -401,6 +429,29 @@ impl VworkProvider {
     }
 
     async fn call_with_timeout(
+        &self,
+        op: &str,
+        arguments: Value,
+        timeout: Duration,
+    ) -> Result<Value, WorkspaceError> {
+        #[cfg(feature = "http-fixtures")]
+        if self.fixture {
+            return self.fixture_call(op, arguments, timeout).await;
+        }
+        // Timeouts do not imply rollback. The owner retains its concurrency
+        // permit until a started mutation finishes, and never retries it.
+        tokio::time::timeout(timeout, self.embedded.call(op.into(), arguments))
+            .await
+            .map_err(|_| {
+                WorkspaceError::Message(
+                    "Workspace operation is still running; check its state before retrying".into(),
+                )
+            })?
+            .map_err(|e| WorkspaceError::Message(format!("{e:#}")))
+    }
+
+    #[cfg(feature = "http-fixtures")]
+    async fn fixture_call(
         &self,
         op: &str,
         arguments: Value,

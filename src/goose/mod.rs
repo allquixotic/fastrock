@@ -1,5 +1,7 @@
-//! External Goose ACP adapter. Goose owns agents/config/storage; these are UI projections.
+//! Embedded Goose adapter. Goose owns agents/config/storage; these are UI projections.
 mod controls;
+mod embedded;
+mod hooks;
 mod mcp;
 mod model;
 mod queue;
@@ -18,6 +20,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex as StdMutex};
+#[cfg(test)]
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::{Mutex, mpsc, oneshot};
 
@@ -62,6 +65,8 @@ struct Adapter {
     mcp: mcp::Bridge,
     queue: Mutex<HashMap<String, Vec<Value>>>,
     queue_root: std::path::PathBuf,
+    vwork_paths: fastrock_workspaces::vwork::DiscoveryPaths,
+    embedded_runtime: bool,
 }
 
 pub(crate) async fn connect(
@@ -69,29 +74,30 @@ pub(crate) async fn connect(
 ) -> anyhow::Result<AppServerClient> {
     anyhow::ensure!(
         options.cli_overrides.is_empty(),
-        "Codex -c overrides do not apply to Goose. Configure Goose with `goose configure` or its environment variables."
+        "Codex -c overrides do not apply to embedded Goose. Use Goose configuration or provider profiles."
     );
-    let exe = std::env::var_os("FASTROCK_GOOSE").unwrap_or_else(|| "goose".into());
     let cwd = options
         .cwd
         .clone()
         .or_else(|| std::env::current_dir().ok())
         .ok_or_else(|| anyhow::anyhow!("Working directory unavailable"))?;
-    let mut command = tokio::process::Command::new(exe);
-    if let Some(script) = std::env::var_os("FASTROCK_GOOSE_FIXTURE") {
-        command.arg(script);
-    }
-    command.arg("acp");
-    connect_command(
-        command,
+    hooks::prepare(cwd.clone()).await?;
+    let connection = embedded::connect().await?;
+    connect_streams(
+        connection.reader,
+        connection.writer,
+        vec![connection.task],
+        None,
         cwd,
         crate::rally::store::Store::new()
             .directory
             .join("goose-queues"),
+        fastrock_workspaces::vwork::DiscoveryPaths::current(),
     )
     .await
 }
 
+#[cfg(test)]
 async fn connect_command(
     mut command: tokio::process::Command,
     cwd: std::path::PathBuf,
@@ -116,10 +122,9 @@ async fn connect_command(
         .take()
         .ok_or_else(|| anyhow::anyhow!("Goose stdout unavailable"))?;
     let stderr = child.stderr.take();
-    let (rpc, mut incoming, tasks) = Rpc::stream(output, input);
-    let mut guard = TaskGuard(tasks);
+    let mut tasks = Vec::new();
     if let Some(stderr) = stderr {
-        guard.0.push(tokio::spawn(async move {
+        tasks.push(tokio::spawn(async move {
             let mut reader = BufReader::new(stderr);
             // Provider errors can contain credentials. Drain without persisting stderr.
             loop {
@@ -133,6 +138,31 @@ async fn connect_command(
             }
         }));
     }
+    let paths = fastrock_workspaces::vwork::DiscoveryPaths {
+        user_home: cwd.clone(),
+        configs: vec![cwd.join("config.yaml")],
+        search: vec![],
+        default_vwork_home: cwd.join("vwork"),
+    };
+    connect_streams(output, input, tasks, Some(child), cwd, queue_root, paths).await
+}
+
+async fn connect_streams<R, W>(
+    output: R,
+    input: W,
+    tasks: Vec<tokio::task::JoinHandle<()>>,
+    child: Option<tokio::process::Child>,
+    cwd: std::path::PathBuf,
+    queue_root: std::path::PathBuf,
+    vwork_paths: fastrock_workspaces::vwork::DiscoveryPaths,
+) -> anyhow::Result<AppServerClient>
+where
+    R: tokio::io::AsyncRead + Unpin + Send + 'static,
+    W: tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
+    let mut guard = TaskGuard(tasks);
+    let (rpc, mut incoming, io_tasks) = Rpc::stream(output, input);
+    guard.0.extend(io_tasks);
     let (events_tx, events) = mpsc::channel(512);
     let (jobs_tx, mut jobs_rx) = mpsc::channel::<Job>(256);
     guard.0.push(tokio::spawn(async move {
@@ -156,6 +186,8 @@ async fn connect_command(
         mcp: bridge,
         queue: Mutex::new(HashMap::new()),
         queue_root,
+        vwork_paths,
+        embedded_runtime: child.is_none(),
     });
     let read_adapter = adapter.clone();
     let pending: Pending = Arc::new(StdMutex::new(HashMap::new()));
@@ -241,7 +273,7 @@ async fn connect_command(
             _ = running.join_next(), if !running.is_empty() => {},
         }}
     }));
-    let metadata = json!({"userAgent":format!("Goose {} (ACP)",text(&hello["agentInfo"],"version")),
+    let metadata = json!({"gooseAdapter":true,"userAgent":format!("Goose {} (ACP)",text(&hello["agentInfo"],"version")),
         "platformOs":std::env::consts::OS,"platformFamily":std::env::consts::FAMILY});
     Ok(AppServerClient::adapter(
         writer,
@@ -404,6 +436,14 @@ impl Adapter {
         let method = text(request, "method");
         let params = &request["params"];
         match method {
+            "fastrock/shutdown" => {
+                let ids: Vec<_> = self.sessions.lock().await.keys().cloned().collect();
+                for id in ids {
+                    self.close_session(&json!({"threadId":format!("goose:{id}")}))
+                        .await?;
+                }
+                Ok(json!({}))
+            }
             "config/read" => {
                 let defaults = self.defaults.lock().await;
                 Ok(

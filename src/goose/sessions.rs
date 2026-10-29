@@ -27,7 +27,7 @@ impl Adapter {
         let bindings = if restricted {
             vec![]
         } else {
-            let (vwork, bindings) = self.new_vwork_servers().await;
+            let (vwork, bindings) = self.new_vwork_servers(cwd).await?;
             servers.extend(vwork);
             bindings
         };
@@ -217,7 +217,7 @@ impl Adapter {
                     Err(e) => return Err(error(format!("Read session tools: {e}"))),
                 }
             }
-            servers.extend(self.load_vwork_servers(id).await?);
+            servers.extend(self.load_vwork_servers(id, &cwd).await?);
             {
                 let mut sessions = self.sessions.lock().await;
                 let s = sessions

@@ -1,5 +1,18 @@
 # Stable releases and rapid signed prereleases
 
+## 0.4.0 development
+
+Application code and dependencies use opt-level 2, no LTO or debug information,
+256 codegen units, incremental compilation and no stripping. Build scripts remain
+at opt-level 0. Goose and vwork are pinned, unmodified Rust dependencies;
+release archives include their licenses. Existing 0.3.x binaries retain the
+historical settings documented below.
+
+Windows x64 ZIP publication is authorized at usable verified prerelease milestones.
+Mac builds check compatibility without publishing Mac assets. Final 0.4.0 awaits
+all `SPEC.md` acceptance, including the user's live Bedrock profile validation.
+No release has been produced from the embedded foundation yet.
+
 ## Stable 0.3.4
 
 Conversation text accepts drags from adjacent padding. Tool results support

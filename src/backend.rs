@@ -1,4 +1,4 @@
-//! Bridge between the Tokio side (external Codex app-server) and the UI thread.
+//! Bridge between the Tokio side (embedded Goose runtime) and the UI thread.
 //!
 //! One pump task owns the [`AppServerClient`]. It drains server
 //! events, coalesces streaming deltas, and posts at most one batch per frame
@@ -20,10 +20,6 @@ use crate::startup::Config;
 use crate::transport::AppServerClient;
 use crate::transport::AppServerEvent;
 use crate::transport::AppServerRequestHandle;
-use crate::transport::DEFAULT_IN_PROCESS_CHANNEL_CAPACITY;
-use crate::transport::RemoteAppServerClient;
-use crate::transport::RemoteAppServerConnectArgs;
-use crate::transport::RemoteAppServerEndpoint;
 use crate::transport::TypedRequestError;
 use codex_app_server_protocol::ClientRequest;
 use codex_app_server_protocol::JSONRPCErrorError;
@@ -116,7 +112,7 @@ struct Shared {
     connection: std::sync::RwLock<Option<ConnectionTarget>>,
 }
 
-/// Cheap, cloneable, `Send` handle to the external Codex app-server.
+/// Cheap, cloneable, `Send` handle to the embedded Goose runtime.
 #[derive(Clone)]
 pub(crate) struct Backend {
     shared: Arc<Shared>,
@@ -138,7 +134,7 @@ impl Backend {
             .map_err(|e| e.to_string())?
             .map_err(|e| e.message)
     }
-    /// Creates the handle and starts the external Codex app-server in the background.
+    /// Creates the handle and starts the embedded Goose runtime in the background.
     ///
     /// Returns immediately; the UI is told about the outcome through
     /// [`AppController::on_server_ready`] or
@@ -282,7 +278,7 @@ impl Backend {
             .send(Control::Reject { request_id, error });
     }
 
-    /// Restarts the installed Codex server with config reloaded from disk.
+    /// Restarts the embedded Goose runtime with config reloaded from disk.
     ///
     /// Needed after the model provider changes. The UI receives
     /// [`AppController::on_server_ready`] again when the new server is up.
@@ -291,7 +287,7 @@ impl Backend {
     }
 
     /// Stops the current server, if any, and connects to `target` instead
-    /// (for example the installed Codex server after a remote one failed). Open
+    /// (for example the embedded Goose runtime after a remote one failed). Open
     /// threads are resumed on the new server like after a restart.
     pub(crate) fn reconnect(&self, target: ConnectionTarget) {
         match self.shared.connection.write() {
@@ -334,7 +330,7 @@ impl Backend {
 
 /// Summary of the running server passed to the UI on (re)start.
 pub(crate) struct ServerReady {
-    /// Local config of the installed Codex server; `None` for daemon/remote servers.
+    /// Local config of the embedded Goose runtime; `None` for daemon/remote servers.
     pub(crate) config: Option<Arc<Config>>,
     /// Human-readable connection description.
     pub(crate) connection: String,
@@ -344,7 +340,6 @@ pub(crate) struct ServerReady {
 /// How to bring the server back after `Backend::restart`.
 enum Relaunch {
     External(StartupOptions),
-    Remote(RemoteAppServerConnectArgs),
 }
 
 /// A connected server, ready for the pump.
@@ -415,7 +410,7 @@ async fn run_backend(
     let _ = state_tx.send(ServerState::Stopped);
 }
 
-/// Starts the installed Codex server or connects to a daemon/remote one.
+/// Starts the embedded Goose runtime or connects to a daemon/remote one.
 async fn start_server(
     _arg0_paths: &Arg0DispatchPaths,
     options: &StartupOptions,
@@ -423,7 +418,7 @@ async fn start_server(
 ) -> Result<Started, String> {
     let target = connection.clone()?;
     let started = match target {
-        ConnectionTarget::Embedded | ConnectionTarget::Goose => {
+        ConnectionTarget::Goose => {
             match AppServerClient::external(&StartupOptions {
                 connection: Ok(target.clone()),
                 ..options.clone()
@@ -445,14 +440,6 @@ async fn start_server(
                 }
                 Err(error) => Err(error),
             }
-        }
-        ConnectionTarget::Remote(endpoint) => {
-            let args = remote_connect_args(endpoint);
-            connect_remote(args.clone()).await.map(|client| Started {
-                client,
-                config: None,
-                relaunch: Relaunch::Remote(args),
-            })
         }
     };
     started.map_err(|err| format!("{err:#}"))
@@ -477,25 +464,6 @@ async fn wait_for_retry(control_rx: &mut mpsc::UnboundedReceiver<Control>) -> Op
             Control::Resolve { .. } | Control::Reject { .. } => {}
         }
     }
-}
-
-fn remote_connect_args(endpoint: RemoteAppServerEndpoint) -> RemoteAppServerConnectArgs {
-    RemoteAppServerConnectArgs {
-        endpoint,
-        client_name: crate::startup::GUI_CLIENT_NAME.to_string(),
-        client_version: env!("CARGO_PKG_VERSION").to_string(),
-        experimental_api: true,
-        mcp_server_openai_form_elicitation: false,
-        opt_out_notification_methods: Vec::new(),
-        channel_capacity: DEFAULT_IN_PROCESS_CHANNEL_CAPACITY.max(512),
-    }
-}
-
-async fn connect_remote(args: RemoteAppServerConnectArgs) -> anyhow::Result<AppServerClient> {
-    let client = RemoteAppServerClient::connect(args)
-        .await
-        .map_err(|err| anyhow::anyhow!("failed to connect to the app-server: {err}"))?;
-    Ok(client)
 }
 
 /// Message for the end of the event stream. The generic text is only used
@@ -633,13 +601,10 @@ impl Pump<'_> {
         if let Some(client) = self.client.take()
             && let Err(err) = client.shutdown().await
         {
-            tracing::warn!(%err, "failed to stop external Codex app-server for restart");
+            tracing::warn!(%err, "failed to stop embedded Goose runtime for restart");
         }
         let restarted = match &mut self.relaunch {
             Relaunch::External(options) => AppServerClient::external(options)
-                .await
-                .map(|client| (client, None)),
-            Relaunch::Remote(args) => connect_remote(args.clone())
                 .await
                 .map(|client| (client, None)),
         };
@@ -652,7 +617,7 @@ impl Pump<'_> {
             Err(err) => {
                 let _ = self.state_tx.send(ServerState::Stopped);
                 let message = format!("{err:#}");
-                tracing::error!(error = %message, "external Codex app-server failed to restart");
+                tracing::error!(error = %message, "embedded Goose runtime failed to restart");
                 ui_thread::post(move |app| app.on_server_failed(message));
             }
         }
@@ -685,7 +650,7 @@ impl Pump<'_> {
                 tracing::warn!("timed out unsubscribing threads during shutdown");
             }
             if let Err(err) = client.shutdown().await {
-                tracing::warn!(%err, "failed to shut down external Codex app-server");
+                tracing::warn!(%err, "failed to shut down embedded Goose runtime");
             }
         }
         let _ = self.state_tx.send(ServerState::Stopped);

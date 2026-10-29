@@ -322,13 +322,20 @@ fn v24_rejected_paste_preserves_the_previous_editor_buffer() {
 }
 
 #[test]
-fn v22_virtual_gui_is_conditional_and_separate_from_local_files() {
+fn v40_virtual_gui_keeps_storage_off_ui_thread_and_separate_from_local_files() {
     let main_ui = include_str!("../../ui/app.slint");
     assert!(main_ui.contains("if AppState.virtual-workspaces-available: LinkButton"));
     let ui = include_str!("../../ui/virtual-workspaces.slint");
     assert!(ui.contains("read-only: !root.workspace-editable"));
-    let manifest = include_str!("../../crates/fastrock-workspaces/Cargo.toml");
-    assert!(!manifest.contains("redb"));
+    let mut browser = opened();
+    let work = browser.action("virtual-compact");
+    assert!(matches!(
+        &work[..],
+        [Work::Call {
+            request: Request::Compact,
+            ..
+        }]
+    ));
 }
 
 #[test]

@@ -45,6 +45,9 @@ Broader GUI contract: repository `GUI.md`.
 R1: T3 Code v0.1.5, 6d450a4284852af137b2f3407fddd89eb76e7644; UI/orchestration-v2 reference, MIT attribution; https://github.com/pingdotgg/t3code/releases/tag/v0.1.5.
 R2: Goose v1.57.0, 30bba95105e59bc3e7df624cf6b4d433690cfe12; unmodified public Agent/extension APIs; https://github.com/aaif-goose/goose/releases/tag/v1.57.0.
 R3: Ghostty v1.4.0, 83fb95624b0439ee660c2679b43b38c8b63769cd; idle incremental LZ4 page compression/on-demand restoration; Windows requires portable adaptation; https://github.com/ghostty-org/ghostty/blob/v1.4.0/src/terminal/compress/Page.zig.
+R5: vwork 0.3.4, c53cea4879bc0e12735ae1c89bd7d5ca3e9b1910; public Engine/protocol, redb 4.4, zstd level/config retained; https://github.com/allquixotic/vwork.
+R6: Goose 1.57.0 hooks accept command actions only; Agent hook manager is private. Authorized hook exception permits Fastrock helper mode using vwork protocol::hook, no separate vwork install.
+R7: Goose Bedrock construction uses process-global config/environment; independent concurrent AWS credential/region profiles need a supported upstream API. ACP supports upstream effort values, not arbitrary custom strings. User authorizes fixture-only development and will validate live profiles on own machine.
 R4: AWS Runtime supports Converse/InvokeModel and OpenAI-compatible APIs; Runtime/Mantle routes differ; exact model/profile must preserve installed working configuration; https://docs.aws.amazon.com/bedrock/latest/userguide/endpoints.html.
 
 ## §V INVARIANTS
@@ -161,9 +164,9 @@ T32|x|Measure signed 0.3.2 opening on games/CI; installed Goose 1.57.0 local-pro
 T33|x|Shared localhost vwork MCP, database-level compaction, actual Goose/games comparison, signed 0.3.3 CI release|V15,V27,V34,V35,V36,I.vwork,I.goose,I.distribution
 T34|x|Widen text selection hit areas, selectable tool/command details, Windows interaction/scroll checks, Mac compile and signed Fastrock 0.3.4; no vwork changes|V9,V15,V23,V32,V37,I.distribution
 T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only release policy; policy audit passed, games ReleasePolicy 3 passed/1 Apple-only skipped|V46,I.distribution
-T36|~|Verify unmodified stable Goose embedding and exact working Bedrock routes/profiles|V38,V39,I.goose
-T37|.|Replace external backend/core bridges with embedded Goose; remove Codex UI/connection, preserve Goose configuration|V38,V39,I.goose
-T38|.|Embed vwork Engine/tools/browser/compaction; compressed current-summary table in same redb|V40,I.vwork
+T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
+T37|~|Replace external backend/core bridges with embedded Goose; remove Codex UI/connection, preserve Goose configuration|V38,V39,I.goose
+T38|~|Embed vwork Engine/tools/browser/compaction; compressed current-summary table in same redb|V40,I.vwork
 T39|.|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; no quotas|V41,I.orchestration
 T40|.|Native T3 main UI/sidebar/panels, repository projects and permanent independent Rally project|V42,I.questions,I.links
 T41|.|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
@@ -175,6 +178,8 @@ Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30
 
 Signed release acceptance: v0.2.0-alpha.4, source 32ab8aeb93dcd7401c32fc3392a19178daf01286, CI 38048069773 all jobs passed. Build 5m26s; 676 headless tests; signed Windows callback + games physical mouse each 82 requests/13 fixture writes; expected Authenticode publisher/timestamp; Mac pinned Developer ID, both Apple logs Accepted, app/DMG stapling and mounted Gatekeeper passed. Published checksums + attestations independently verified. Direct main push; temporary runners removed; no Mac GUI or real Rally writes. Full receipt: docs/PORT-VERIFICATION.md.
 
+
+Embedded foundation verification, 2026-10-29: games Rust application 689 passed plus one isolated native rendering test; workspace 5 embedded and 7 historical HTTP/config fixture tests passed; legacy real-daemon test skipped. Standalone unchanged Goose fixture passed initialization, session creation, prompt, assistant text, close and Runtime Converse routes for all three required model-name fixtures. No live provider/Rally calls. Mac `cargo check --locked --lib` passed, no Mac tests/GUI. Build policy and formatting/diff audits passed. T36–T38 remain open for live profile acceptance, graphical configuration, recipe/session migration and full workspace integration. No release tag.
 
 ## §B BUGS
 id|date|cause|fix
@@ -334,3 +339,16 @@ B81|2026-10-29|End-to-end MCP probe used internal workspace_info operation inste
 B82|2026-10-29|Selection touch areas stop at text bounds; adjacent layout padding never starts a drag|V37; horizontal selection gutters with unchanged glyph geometry and Windows pointer regression
 B83|2026-10-29|Tool results use passive labels; full arguments and single-line commands are absent from expanded details, and copy retains only results|V37; selectable detail text, complete call copy source, retain bounded virtual rows
 B84|2026-10-29|Shared-to-native selection focus cleanup resets the TextInput anchor after its pointer event|V9,V37; clear shared state while preserving the newly focused native selection; gutter-to-glyph Windows regression
+B85|2026-10-29|0.3.x lock pins shared chrono/uuid below embedded Goose 1.57.0 minimums; individual updates expose next locked conflict|T36; refresh compatible dependency resolution with upstream Git revisions pinned; migration-only, no new invariant
+
+B86|2026-10-29|Optional Goose symbol parser and retained Codex UI protocol link incompatible tree-sitter ABIs|T36; disable optional Goose tree-sitter feature; tools/code mode retained, Goose unchanged
+B87|2026-10-29|Broad resolver update chose transitive Rama crates requiring newer Rust than available toolchain|T36; declare Goose minimum Rust 1.94.1 and use compatible-version fallback
+B88|2026-10-29|Cargo strips host proc-macro debug symbols despite parent strip=none; rust-objcopy emits macOS 27-invalid LINKEDIT alignment|V46; explicit build-override strip=none, retain unoptimized build scripts; Rust issue 157750
+B89|2026-10-29|Embedded workspace fixture compared line-oriented MCP preview with byte-exact file content|T38; verify round-trip via editor read API; fixture-only correction, no new invariant
+B90|2026-10-29|Bedrock fixture selected optional Axum OriginalUri extractor absent from minimal build|T36; use standard HTTP Uri extractor; fixture API correction, no new invariant
+
+B91|2026-10-29|Temporary Windows runner used invalid PowerShell variable colon syntax and lost completed process exit codes|Use explicit variable delimiters and Process handle before waiting; fixture harness only
+B92|2026-10-29|Historical virtual UI test forbade redb after authorized embedded storage migration|Replace obsolete dependency assertion with queued background compaction contract; V38,V40
+B93|2026-10-29|Customized legacy vwork entries could silently retain external stdio fallback|Reject unmappable vwork configuration before activation; embedded discovery fixture; V38
+B94|2026-10-29|Session restore passed owned cwd into new borrowed discovery parameter|Borrow cwd at call site; compiler mechanical fix
+B95|2026-10-29|Graceful-close request made shutdown fail after a known disconnect|Always abort/join owned tasks after bounded close attempt; disconnect_fails_pending regression; V38,V47

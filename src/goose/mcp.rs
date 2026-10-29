@@ -84,35 +84,12 @@ impl Bridge {
     }
     /// One route per binding; all sessions call the same authenticated database owner.
     pub async fn vwork_server(&self, binding: &McpBinding) -> anyhow::Result<Option<Value>> {
-        // Serialize cold-start checks across bindings to avoid duplicate launcher processes.
         let mut shared = self.vwork.lock().await;
         let client = VworkProvider::new(&binding.installation())?;
-        let supported = match client.shared_mcp_supported().await {
-            Ok(supported) => supported,
-            Err(fastrock_workspaces::WorkspaceError::Transport) if binding.auto_start => {
-                crate::perf::mark("vwork-daemon-start");
-                let mut command = tokio::process::Command::new(&binding.executable);
-                command
-                    .args(["--home"])
-                    .arg(&binding.home)
-                    .arg("start")
-                    .stdin(std::process::Stdio::null())
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .kill_on_drop(true);
-                #[cfg(windows)]
-                command.creation_flags(0x08000000);
-                let status =
-                    tokio::time::timeout(std::time::Duration::from_secs(30), command.status())
-                        .await??;
-                anyhow::ensure!(status.success(), "vwork daemon startup failed");
-                client.shared_mcp_supported().await?
-            }
-            Err(error) => return Err(error.into()),
-        };
-        if !supported {
-            return Ok(None);
-        }
+        anyhow::ensure!(
+            client.shared_mcp_supported().await?,
+            "Embedded vwork MCP unavailable"
+        );
         let key = if let Some((_, key)) = shared.iter().find(|(b, _)| b == binding) {
             key.clone()
         } else {

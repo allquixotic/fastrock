@@ -1,45 +1,17 @@
-//! Bounded JSON-RPC transport to the user's installed Codex. No inference here.
+//! Bounded event/request channels shared by the UI and embedded Goose.
 use codex_app_server_protocol::{
     ClientRequest, JSONRPCErrorError, RequestId, ServerNotification, ServerRequest,
 };
-use codex_utils_absolute_path::AbsolutePathBuf;
-use futures::{SinkExt, StreamExt};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::io;
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::{mpsc, oneshot};
 const MAX_FRAME: usize = 32 * 1024 * 1024;
 pub(crate) const DEFAULT_IN_PROCESS_CHANNEL_CAPACITY: usize = 512;
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) enum RemoteAppServerEndpoint {
-    UnixSocket {
-        socket_path: AbsolutePathBuf,
-    },
-    WebSocket {
-        websocket_url: String,
-        auth_token: Option<String>,
-    },
-}
-pub(crate) fn app_server_control_socket_path(home: &Path) -> anyhow::Result<AbsolutePathBuf> {
-    Ok(AbsolutePathBuf::from_absolute_path(
-        home.join("app-server.sock"),
-    )?)
-}
-#[derive(Clone, Debug)]
-pub(crate) struct RemoteAppServerConnectArgs {
-    pub endpoint: RemoteAppServerEndpoint,
-    pub client_name: String,
-    pub client_version: String,
-    pub experimental_api: bool,
-    pub mcp_server_openai_form_elicitation: bool,
-    pub opt_out_notification_methods: Vec<String>,
-    pub channel_capacity: usize,
-}
 #[derive(Clone, Debug)]
 pub(crate) enum AppServerEvent {
     GooseConfig {
@@ -148,105 +120,27 @@ pub(crate) struct AppServerClient {
     metadata: Value,
 }
 impl AppServerClient {
-    /// Adapters share the bounded UI request/event channels, not an agent runtime.
+    /// Adapters share bounded UI request/event channels. Embedded runtimes own
+    /// tasks; external fixture transports may additionally own a child.
     pub(crate) fn adapter(
         writer: mpsc::Sender<Value>,
         pending: Pending,
         events: mpsc::Receiver<AppServerEvent>,
         tasks: Vec<tokio::task::JoinHandle<()>>,
-        child: tokio::process::Child,
+        child: Option<tokio::process::Child>,
         metadata: Value,
     ) -> Self {
         Self {
             handle: AppServerRequestHandle { writer, pending },
             events,
             tasks,
-            child: Some(child),
+            child,
             metadata,
         }
     }
 
     pub async fn external(options: &crate::startup::StartupOptions) -> anyhow::Result<Self> {
-        if matches!(
-            options.connection,
-            Ok(crate::connection::ConnectionTarget::Goose)
-        ) {
-            return crate::goose::connect(options).await;
-        }
-        let exe = std::env::var_os("FASTROCK_CODEX").unwrap_or_else(|| "codex".into());
-        // Only the explicit fixture executable bypasses the installed CLI version probe.
-        if std::env::var_os("FASTROCK_CODEX_FIXTURE").is_none() {
-            let mut probe = tokio::process::Command::new(&exe);
-            probe.arg("--version");
-            #[cfg(windows)]
-            probe.creation_flags(0x08000000);
-            let output = tokio::time::timeout(Duration::from_secs(15), probe.output()).await??;
-            let version = String::from_utf8_lossy(&output.stdout);
-            let numeric = version
-                .split_whitespace()
-                .find(|v| v.starts_with(|c: char| c.is_ascii_digit()))
-                .unwrap_or("");
-            let parts = numeric
-                .split('.')
-                .filter_map(|v| v.parse::<u32>().ok())
-                .collect::<Vec<_>>();
-            anyhow::ensure!(
-                output.status.success() && parts.len() >= 2 && (parts[0] > 0 || parts[1] >= 162),
-                "Install Codex CLI 0.162.0 or newer and put codex on PATH."
-            );
-        }
-        let mut command = tokio::process::Command::new(&exe);
-        if let Some(script) = std::env::var_os("FASTROCK_CODEX_FIXTURE") {
-            // Explicit local test injection: Python executable + checked-in fixture script.
-            command.arg(script);
-        }
-        command.arg("app-server");
-        for (key, value) in &options.cli_overrides {
-            command.arg("-c").arg(format!("{key}={value}"));
-        }
-        if let Some(cwd) = options.cwd.as_ref().filter(|p| p.is_dir()) {
-            command.current_dir(cwd);
-        }
-        command
-            .env_remove("FASTROCK_RALLY_TOKEN")
-            .kill_on_drop(true)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
-        #[cfg(windows)]
-        command.creation_flags(0x08000000);
-        let mut child = command
-            .spawn()
-            .map_err(|e| anyhow::anyhow!("Unable to launch installed codex app-server: {e}"))?;
-        let input = child
-            .stdin
-            .take()
-            .ok_or_else(|| anyhow::anyhow!("Codex stdin unavailable"))?;
-        let output = child
-            .stdout
-            .take()
-            .ok_or_else(|| anyhow::anyhow!("Codex stdout unavailable"))?;
-        let stderr = child.stderr.take();
-        let mut client = Self::stream(output, input, Some(child));
-        if let Some(stderr) = stderr {
-            client.tasks.push(tokio::spawn(async move {
-                let mut reader = BufReader::new(stderr);
-                // Drain without logging server/environment secrets.
-                loop {
-                    match reader.fill_buf().await {
-                        Ok([]) | Err(_) => break,
-                        Ok(bytes) => {
-                            let n = bytes.len();
-                            reader.consume(n);
-                        }
-                    }
-                }
-            }));
-        }
-        client
-            .initialize(crate::startup::GUI_CLIENT_NAME, env!("CARGO_PKG_VERSION"))
-            .await?;
-        Ok(client)
+        crate::goose::connect(options).await
     }
     fn stream<R, W>(reader: R, mut writer: W, child: Option<tokio::process::Child>) -> Self
     where
@@ -304,102 +198,6 @@ impl AppServerClient {
             metadata: Value::Null,
         }
     }
-    pub async fn connect(args: RemoteAppServerConnectArgs) -> anyhow::Result<Self> {
-        let mut client = match args.endpoint {
-            RemoteAppServerEndpoint::UnixSocket { socket_path } => {
-                #[cfg(unix)]
-                {
-                    let stream = tokio::net::UnixStream::connect(socket_path.as_path()).await?;
-                    let (r, w) = stream.into_split();
-                    Self::stream(r, w, None)
-                }
-                #[cfg(not(unix))]
-                {
-                    let _ = socket_path;
-                    anyhow::bail!(
-                        "Unix sockets are unavailable on Windows; use installed Codex or WebSocket."
-                    )
-                }
-            }
-            RemoteAppServerEndpoint::WebSocket {
-                websocket_url,
-                auth_token,
-            } => {
-                use tokio_tungstenite::tungstenite::client::IntoClientRequest;
-                let mut request = websocket_url.into_client_request()?;
-                if let Some(token) = auth_token {
-                    request
-                        .headers_mut()
-                        .insert("Authorization", format!("Bearer {token}").parse()?);
-                }
-                let (socket, _) = tokio_tungstenite::connect_async(request).await?;
-                let (mut sink, mut stream) = socket.split();
-                let (tx, mut rx) = mpsc::channel::<Value>(256);
-                let (events_tx, events) = mpsc::channel(512);
-                let pending: Pending = Arc::new(Mutex::new(HashMap::new()));
-                let read_pending = pending.clone();
-                let write_task = tokio::spawn(async move {
-                    while let Some(v) = rx.recv().await {
-                        if sink
-                            .send(tokio_tungstenite::tungstenite::Message::Text(
-                                v.to_string().into(),
-                            ))
-                            .await
-                            .is_err()
-                        {
-                            break;
-                        }
-                    }
-                });
-                let read_task = tokio::spawn(async move {
-                    while let Some(Ok(m)) = stream.next().await {
-                        if m.is_text() {
-                            if m.len() > MAX_FRAME {
-                                break;
-                            }
-                            let Ok(v) = serde_json::from_str(m.to_text().unwrap_or("")) else {
-                                break;
-                            };
-                            if dispatch(v, &read_pending, &events_tx).await.is_err() {
-                                break;
-                            }
-                        }
-                    }
-                    if let Ok(mut p) = read_pending.lock() {
-                        p.clear();
-                    }
-                    let _ = events_tx
-                        .send(AppServerEvent::Disconnected {
-                            message: "Remote Codex disconnected.".into(),
-                        })
-                        .await;
-                });
-                Self {
-                    handle: AppServerRequestHandle {
-                        writer: tx,
-                        pending,
-                    },
-                    events,
-                    tasks: vec![write_task, read_task],
-                    child: None,
-                    metadata: Value::Null,
-                }
-            }
-        };
-        client
-            .initialize(&args.client_name, &args.client_version)
-            .await?;
-        Ok(client)
-    }
-    async fn initialize(&mut self, name: &str, version: &str) -> anyhow::Result<()> {
-        self.metadata = self.handle.raw(json!({"id":"fastrock-initialize","method":"initialize","params":{"clientInfo":{"name":name,"version":version},"capabilities":{"experimentalApi":true}}})).await?
-            .map_err(|e|anyhow::anyhow!("Codex initialization failed: {}",e.message))?;
-        self.handle
-            .writer
-            .send(json!({"method":"initialized","params":{}}))
-            .await?;
-        Ok(())
-    }
     pub fn platform_os(&self) -> Option<&str> {
         self.metadata["platformOs"].as_str()
     }
@@ -437,8 +235,22 @@ impl AppServerClient {
             .map_err(io::Error::other)
     }
     pub async fn shutdown(mut self) -> io::Result<()> {
+        // Ask Goose to cancel and close owned sessions before dropping its
+        // runtime tasks. This also resolves permissions and ephemeral sessions.
+        if self.metadata["gooseAdapter"] == true {
+            // An already-disconnected runtime has nothing left to acknowledge.
+            // Cleanup still completes by aborting and joining every owned task.
+            let _ = tokio::time::timeout(
+                Duration::from_secs(10),
+                self.handle.raw(json!({
+                    "id":uuid::Uuid::new_v4().to_string(), "method":"fastrock/shutdown", "params":{}
+                })),
+            )
+            .await;
+        }
         for task in self.tasks.drain(..) {
             task.abort();
+            let _ = task.await;
         }
         if let Some(mut child) = self.child.take() {
             let _ = child.start_kill();
@@ -516,7 +328,6 @@ pub(crate) async fn dispatch(
     }
     Ok(())
 }
-pub(crate) type RemoteAppServerClient = AppServerClient;
 
 #[cfg(test)]
 mod tests {

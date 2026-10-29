@@ -401,6 +401,11 @@ async fn queued_drafts_are_persisted_before_acknowledgement() {
     client.shutdown().await.unwrap();
     let files = std::fs::read_dir(temp.path().join("queues"))
         .unwrap()
+        .filter(|entry| {
+            entry
+                .as_ref()
+                .is_ok_and(|entry| !entry.file_name().to_string_lossy().ends_with(".vwork.json"))
+        })
         .collect::<Result<Vec<_>, _>>()
         .unwrap();
     assert_eq!(files.len(), 1);
