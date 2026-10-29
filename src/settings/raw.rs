@@ -317,13 +317,13 @@ pub(crate) struct RawState {
 impl AppController {
     pub(super) fn settings_raw_bind(&mut self) {
         let state = self.window.global::<SettingsState>();
-        state.on_raw_save(|text| {
+        state.on_raw_save(crate::ui_thread::scoped_callback!(|text| {
             let text = text.to_string();
             crate::ui_thread::with_app(move |app| {
                 app.settings_raw_save(text, /*force*/ false)
             });
-        });
-        state.on_raw_reload(|| {
+        }));
+        state.on_raw_reload(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 if app.settings_raw_dirty() {
                     app.show_dialog(
@@ -343,7 +343,7 @@ impl AppController {
                     app.settings_raw_load(/*keep_dirty_draft*/ false);
                 }
             });
-        });
+        }));
     }
 
     fn settings_raw_location(&self) -> Result<RawLocation, String> {

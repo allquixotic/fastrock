@@ -98,7 +98,7 @@ const CONNECTION_LOST: &str = "The app-server stopped or the connection was lost
 #[derive(Clone)]
 enum ServerState {
     Starting,
-    Ready(AppServerRequestHandle),
+    Ready(AppServerRequestHandle, ServerReady),
     Stopped,
 }
 
@@ -116,9 +116,26 @@ struct Shared {
 #[derive(Clone)]
 pub(crate) struct Backend {
     shared: Arc<Shared>,
+    window_id: ui_thread::WindowId,
 }
 
 impl Backend {
+    pub(crate) fn window_id(&self) -> ui_thread::WindowId {
+        self.window_id
+    }
+    pub(crate) fn for_window(&self, window_id: ui_thread::WindowId) -> Self {
+        Self {
+            shared: self.shared.clone(),
+            window_id,
+        }
+    }
+    pub(crate) fn ready_snapshot(&self) -> Option<ServerReady> {
+        match &*self.shared.state.borrow() {
+            ServerState::Ready(_, ready) => Some(ready.clone()),
+            _ => None,
+        }
+    }
+
     pub(crate) fn is_goose(&self) -> bool {
         matches!(self.connection(), ConnectionTarget::Goose)
     }
@@ -147,6 +164,7 @@ impl Backend {
         let (control_tx, control_rx) = mpsc::unbounded_channel();
         let (state_tx, state_rx) = watch::channel(ServerState::Starting);
         let backend = Self {
+            window_id: ui_thread::MAIN,
             shared: Arc::new(Shared {
                 rt: rt.clone(),
                 control_tx,
@@ -197,7 +215,20 @@ impl Backend {
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
-        self.shared.rt.spawn(fut)
+        self.shared
+            .rt
+            .spawn(ui_thread::async_scope(self.window_id, fut))
+    }
+
+    pub(crate) fn spawn_blocking<F, T>(&self, work: F) -> tokio::task::JoinHandle<T>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let owner = self.window_id;
+        self.shared
+            .rt
+            .spawn_blocking(move || ui_thread::scope(owner, work))
     }
 
     /// Fresh request id, unique for this process.
@@ -312,7 +343,7 @@ impl Backend {
 
     /// Whether the server finished starting and has not stopped.
     pub(crate) fn is_ready(&self) -> bool {
-        matches!(*self.shared.state.borrow(), ServerState::Ready(_))
+        matches!(*self.shared.state.borrow(), ServerState::Ready(..))
     }
 
     async fn wait_ready(&self) -> Result<AppServerRequestHandle, BackendError> {
@@ -322,13 +353,14 @@ impl Backend {
             .await
             .map_err(|_| BackendError::Unavailable)?;
         match &*ready {
-            ServerState::Ready(handle) => Ok(handle.clone()),
+            ServerState::Ready(handle, _) => Ok(handle.clone()),
             ServerState::Starting | ServerState::Stopped => Err(BackendError::Unavailable),
         }
     }
 }
 
 /// Summary of the running server passed to the UI on (re)start.
+#[derive(Clone)]
 pub(crate) struct ServerReady {
     /// Local config of the embedded Goose runtime; `None` for daemon/remote servers.
     pub(crate) config: Option<Arc<Config>>,
@@ -395,7 +427,7 @@ async fn run_backend(
             Err(message) => {
                 crate::startup::log_startup_error(&message);
                 let _ = state_tx.send(ServerState::Stopped);
-                ui_thread::post(move |app| app.on_server_failed(message));
+                ui_thread::post_all(move |app| app.on_server_failed(message.clone()));
                 // Wait for a retry (for example after the user fixed
                 // config.toml) and keep answering shutdown so it cannot hang.
                 match wait_for_retry(&mut control_rx).await {
@@ -562,7 +594,7 @@ impl Pump<'_> {
                             self.client = None;
                             let _ = self.state_tx.send(ServerState::Stopped);
                             if let Some(message) = connection_lost_message(self.disconnect_reported) {
-                                ui_thread::post(move |app| app.on_server_failed(message));
+                                ui_thread::post_all(move |app| app.on_server_failed(message.clone()));
                             }
                         }
                     }
@@ -576,23 +608,23 @@ impl Pump<'_> {
     }
 
     fn announce_ready(&self, config: Option<Arc<Config>>, restarted: bool) {
-        if let Some(client) = self.client.as_ref() {
-            let _ = self
-                .state_tx
-                .send(ServerState::Ready(client.request_handle()));
-        }
         let ready = ServerReady {
             config,
             connection: self.connection.clone(),
             restarted,
         };
-        ui_thread::post(move |app| app.on_server_ready(ready));
+        if let Some(client) = self.client.as_ref() {
+            let _ = self
+                .state_tx
+                .send(ServerState::Ready(client.request_handle(), ready.clone()));
+        }
+        ui_thread::post_all(move |app| app.on_server_ready(ready.clone()));
     }
 
     fn flush(&mut self) {
         let events = self.batch.take();
         if !events.is_empty() {
-            ui_thread::post(move |app| app.handle_server_events(events));
+            ui_thread::post_events(events);
         }
     }
 
@@ -618,7 +650,7 @@ impl Pump<'_> {
                 let _ = self.state_tx.send(ServerState::Stopped);
                 let message = format!("{err:#}");
                 tracing::error!(error = %message, "embedded Goose runtime failed to restart");
-                ui_thread::post(move |app| app.on_server_failed(message));
+                ui_thread::post_all(move |app| app.on_server_failed(message.clone()));
             }
         }
     }

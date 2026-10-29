@@ -416,7 +416,7 @@ impl AppController {
             pending_sign_in: Vec::new(),
             connection_choice: ConnectionChoice::default(),
             embedded_target: true,
-            automation: crate::automation::Automation::from_env(),
+            automation: None,
             connection_label: String::new(),
             keymap: crate::shortcuts::Keymap::new(&std::collections::BTreeMap::new()).0,
         }
@@ -447,39 +447,45 @@ impl AppController {
 
     fn bind_chrome(&self) {
         let state = self.window.global::<AppState>();
-        state.on_select_tab(|index| {
+        state.on_select_tab(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| {
                 if let Ok(index) = usize::try_from(index) {
                     app.activate_tab(index);
                 }
             });
-        });
-        state.on_close_tab(|index| {
+        }));
+        state.on_close_tab(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| {
                 if let Ok(index) = usize::try_from(index) {
                     app.request_close_tab(index);
                 }
             });
-        });
-        state.on_new_tab(|| crate::ui_thread::with_app(AppController::open_new_tab_page));
-        state.on_open_rally(|| crate::ui_thread::with_app(AppController::rally_open_project));
-        state.on_move_tab(|from, to| {
+        }));
+        state.on_new_tab(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::open_new_tab_page)
+        }));
+        state.on_open_rally(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::rally_open_project)
+        }));
+        state.on_move_tab(crate::ui_thread::scoped_callback!(|from, to| {
             crate::ui_thread::with_app(move |app| {
                 if let (Ok(from), Ok(to)) = (usize::try_from(from), usize::try_from(to)) {
                     app.move_tab(from, to);
                 }
             });
-        });
-        state.on_tab_action(|index, action| {
+        }));
+        state.on_tab_action(crate::ui_thread::scoped_callback!(|index, action| {
             let action = action.to_string();
             crate::ui_thread::with_app(move |app| {
                 if let Ok(index) = usize::try_from(index) {
                     app.tab_action(index, &action);
                 }
             });
-        });
-        state.on_open_settings(|| crate::ui_thread::with_app(|app| app.open_settings(None)));
-        state.on_dismiss_warning(|index| {
+        }));
+        state.on_open_settings(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(|app| app.open_settings(None))
+        }));
+        state.on_dismiss_warning(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| {
                 if let Ok(index) = usize::try_from(index)
                     && index < app.warnings.len()
@@ -488,23 +494,31 @@ impl AppController {
                     app.refresh_warnings();
                 }
             });
-        });
-        state.on_retry_server(|| crate::ui_thread::with_app(AppController::retry_server));
-        state.on_use_embedded_server(|| {
+        }));
+        state.on_retry_server(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::retry_server)
+        }));
+        state.on_use_embedded_server(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::use_embedded_server);
-        });
-        state.on_dialog_finished(|accepted| {
+        }));
+        state.on_dialog_finished(crate::ui_thread::scoped_callback!(|accepted| {
             crate::ui_thread::with_app(move |app| app.finish_dialog(accepted));
-        });
-        state.on_overlay_closed(|| crate::ui_thread::with_app(AppController::restore_focus));
-        state.on_menu_action(|action| {
+        }));
+        state.on_overlay_closed(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::restore_focus)
+        }));
+        state.on_menu_action(crate::ui_thread::scoped_callback!(|action| {
             let action = action.to_string();
             crate::ui_thread::with_app(move |app| app.menu_action(&action));
-        });
+        }));
         state.set_version(env!("CARGO_PKG_VERSION").into());
-        state.on_toggle_sidebar(|| crate::ui_thread::with_app(AppController::toggle_sidebar));
-        state.on_toggle_info(|| crate::ui_thread::with_app(AppController::toggle_info));
-        state.on_shortcut(|name| {
+        state.on_toggle_sidebar(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::toggle_sidebar)
+        }));
+        state.on_toggle_info(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::toggle_info)
+        }));
+        state.on_shortcut(crate::ui_thread::scoped_callback!(|name| {
             // Must answer synchronously; the shortcut runs on the next tick.
             let name = name.to_string();
             let handled = crate::shortcuts::is_known(&name);
@@ -512,35 +526,44 @@ impl AppController {
                 crate::ui_thread::with_app(move |app| app.run_shortcut(&name));
             }
             handled
-        });
-        state.on_key_pressed(|text, primary, shift, alt, secondary| {
-            let press = crate::shortcuts::KeyPress {
-                text: text.to_string(),
-                primary,
-                shift,
-                alt,
-                secondary,
-            };
-            let mut action = None;
-            crate::ui_thread::with_app_now(|app| action = app.shortcut_for(&press));
-            match action {
-                Some(action) => {
-                    crate::ui_thread::with_app(move |app| app.run_shortcut(&action));
-                    true
+        }));
+        state.on_key_pressed(crate::ui_thread::scoped_callback!(
+            |text, primary, shift, alt, secondary| {
+                let press = crate::shortcuts::KeyPress {
+                    text: text.to_string(),
+                    primary,
+                    shift,
+                    alt,
+                    secondary,
+                };
+                let mut action = None;
+                crate::ui_thread::with_app_now(|app| action = app.shortcut_for(&press));
+                match action {
+                    Some(action) => {
+                        crate::ui_thread::with_app(move |app| app.run_shortcut(&action));
+                        true
+                    }
+                    None => false,
                 }
-                None => false,
             }
-        });
+        ));
 
-        self.window.window().on_close_requested(|| {
-            let mut response = slint::CloseRequestResponse::HideWindow;
-            crate::ui_thread::with_app_now(|app| {
-                if !app.confirm_quit() {
-                    response = slint::CloseRequestResponse::KeepWindowShown;
-                }
-            });
-            response
-        });
+        self.window
+            .window()
+            .on_close_requested(crate::ui_thread::scoped_callback!(|| {
+                let mut response = slint::CloseRequestResponse::KeepWindowShown;
+                crate::ui_thread::with_app_now(|app| {
+                    if crate::ui_thread::another_window_visible(app.backend.window_id()) {
+                        app.rally_stash();
+                        app.rally_save_session();
+                        app.remember_window_size();
+                        response = slint::CloseRequestResponse::HideWindow;
+                    } else {
+                        app.request_quit();
+                    }
+                });
+                response
+            }));
     }
 
     // ----- window state -----------------------------------------------------
@@ -1080,6 +1103,7 @@ impl AppController {
     }
 
     pub(crate) fn refresh_tabs(&self) {
+        crate::ui_thread::sync_threads(self.backend.window_id(), self.open_thread_ids());
         let infos: Vec<TabInfo> = self
             .tabs
             .iter()
@@ -1267,6 +1291,12 @@ impl AppController {
             TabKind::Rally(mut rally) => {
                 if let Some(task) = rally.task.take() {
                     task.abort();
+                }
+                if let Some(thread) = rally.assistant_thread.take() {
+                    let backend = self.backend.clone();
+                    self.backend.spawn(async move {
+                        crate::threads::recap::unsubscribe_temporary_thread(&backend, thread).await;
+                    });
                 }
                 self.rally_save_session();
             }
@@ -1558,14 +1588,17 @@ impl AppController {
     pub(crate) fn toast(&mut self, message: impl Into<String>) {
         let message: String = message.into();
         self.window.global::<AppState>().set_toast(message.into());
-        self.toast_timer
-            .start(slint::TimerMode::SingleShot, TOAST_DURATION, || {
+        self.toast_timer.start(
+            slint::TimerMode::SingleShot,
+            TOAST_DURATION,
+            crate::ui_thread::scoped_callback!(|| {
                 crate::ui_thread::with_app(|app| {
                     app.window
                         .global::<AppState>()
                         .set_toast(SharedString::new());
                 });
-            });
+            }),
+        );
     }
 
     /// Adds a dismissible banner warning (deduplicated).
@@ -1634,16 +1667,15 @@ impl AppController {
         if cfg!(target_os = "macos") {
             return;
         }
-        self.backend.runtime().spawn_blocking(|| {
-            match decode_icon(APP_ICON_PNG, WINDOW_ICON_SIZE) {
+        self.backend
+            .spawn_blocking(|| match decode_icon(APP_ICON_PNG, WINDOW_ICON_SIZE) {
                 Some(buffer) => {
                     crate::ui_thread::post(move |app| {
                         app.window.set_app_icon(slint::Image::from_rgba8(buffer));
                     });
                 }
                 None => tracing::warn!("could not decode the window icon"),
-            }
-        });
+            });
     }
 
     /// Opens a folder on this machine in Finder, Explorer, or the desktop's
@@ -1658,7 +1690,7 @@ impl AppController {
             "xdg-open"
         };
         let path = path.to_path_buf();
-        self.backend.runtime().spawn_blocking(move || {
+        self.backend.spawn_blocking(move || {
             match std::process::Command::new(program).arg(&path).spawn() {
                 // Reap the child; the exit status is not meaningful (explorer
                 // reports 1 on success).
@@ -1735,9 +1767,39 @@ impl AppController {
     /// confirmation [`AppController::confirm_quit`] asks for, leaving the
     /// event loop so the normal shutdown runs.
     pub(crate) fn request_quit(&mut self) {
-        if self.confirm_quit() {
-            let _ = slint::quit_event_loop();
-        }
+        crate::ui_thread::request_quit();
+    }
+
+    pub(crate) fn running_thread_count(&self) -> usize {
+        self.tabs
+            .iter()
+            .filter(|tab| tab.thread().is_some_and(ThreadTab::is_busy))
+            .count()
+    }
+    pub(crate) fn save_before_quit(&mut self) {
+        self.rally_stash();
+        self.rally_save_session();
+        self.composer_stash();
+        self.quitting = true;
+        self.remember_window_size();
+    }
+    pub(crate) fn confirm_process_quit(&mut self, running: usize) {
+        self.show_dialog(
+            DialogRequest::confirm(
+                "Quit Fastrock?",
+                format!(
+                    "{}. Quitting stops them; the threads stay in your history.",
+                    running_threads_phrase(running)
+                ),
+            )
+            .accept_label("Quit")
+            .destructive(),
+            Box::new(|_, accepted| {
+                if accepted.is_some() {
+                    crate::ui_thread::finish_quit();
+                }
+            }),
+        );
     }
 
     /// Last UI work before the process ends without leaving the event loop
@@ -1746,8 +1808,7 @@ impl AppController {
     #[cfg(target_os = "macos")]
     pub(crate) fn prepare_for_exit(&mut self) -> Vec<String> {
         if !self.quitting {
-            self.quitting = true;
-            self.remember_window_size();
+            self.save_before_quit();
             self.interrupt_running_tabs();
         }
         self.open_thread_ids()
@@ -1762,50 +1823,6 @@ impl AppController {
         }
     }
 
-    /// Returns true when the window may close now.
-    fn confirm_quit(&mut self) -> bool {
-        if self.quitting {
-            return true;
-        }
-        if self.rally_has_pending_write() {
-            self.toast("Wait for Rally writes to finish before quitting");
-            return false;
-        }
-        self.rally_stash();
-        self.rally_save_session();
-        let running = self
-            .tabs
-            .iter()
-            .filter(|tab| tab.thread().is_some_and(ThreadTab::is_busy))
-            .count();
-        if running == 0 {
-            self.quitting = true;
-            self.remember_window_size();
-            return true;
-        }
-        self.show_dialog(
-            DialogRequest::confirm(
-                "Quit Fastrock?",
-                format!(
-                    "{}. Quitting stops them; the threads stay in your history.",
-                    running_threads_phrase(running)
-                ),
-            )
-            .accept_label("Quit")
-            .destructive(),
-            Box::new(|app, accepted| {
-                if accepted.is_some() {
-                    app.quitting = true;
-                    app.remember_window_size();
-                    app.toast("Stopping running threads…");
-                    app.stop_running_turns_then(|_| {
-                        let _ = slint::quit_event_loop();
-                    });
-                }
-            }),
-        );
-        false
-    }
     fn remember_window_size(&mut self) {
         let size = self.window.window().size();
         let scale = self.window.window().scale_factor();
@@ -1820,7 +1837,11 @@ impl AppController {
     pub(crate) fn open_thread_ids(&self) -> Vec<String> {
         self.tabs
             .iter()
-            .filter_map(|tab| tab.thread().and_then(|thread| thread.thread_id.clone()))
+            .filter_map(|tab| match &tab.kind {
+                TabKind::Thread(thread) => thread.thread_id.clone(),
+                TabKind::Rally(doc) => doc.assistant_thread.clone(),
+                _ => None,
+            })
             .collect()
     }
 }

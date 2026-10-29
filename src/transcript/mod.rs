@@ -127,35 +127,41 @@ fn phase_code(phase: ThreadPhase) -> i32 {
 impl AppController {
     pub(crate) fn transcript_bind(&mut self) {
         let state = self.window.global::<TranscriptState>();
-        state.on_selection_pointer(|x, y, start, extend| {
+        state.on_selection_pointer(crate::ui_thread::scoped_callback!(|x, y, start, extend| {
             crate::ui_thread::with_app(move |app| app.selection_pointer(x, y, start, extend))
-        });
-        state.on_selection_copy(|| crate::ui_thread::with_app(AppController::selection_copy));
-        state.on_selection_clear(|| crate::ui_thread::with_app(AppController::selection_clear));
-        state.on_selection_native_focus(|| {
+        }));
+        state.on_selection_copy(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::selection_copy)
+        }));
+        state.on_selection_clear(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::selection_clear)
+        }));
+        state.on_selection_native_focus(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::selection_native_focus)
-        });
-        state.on_selection_blur(|| crate::ui_thread::with_app(AppController::selection_blur));
-        state.on_selection_key(|key, shift, primary| {
+        }));
+        state.on_selection_blur(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::selection_blur)
+        }));
+        state.on_selection_key(crate::ui_thread::scoped_callback!(|key, shift, primary| {
             let mut handled = false;
             crate::ui_thread::with_app_now(|app| {
                 handled = app.selection_key(key.as_str(), shift, primary)
             });
             handled
-        });
-        state.on_link_clicked(|url| {
+        }));
+        state.on_link_clicked(crate::ui_thread::scoped_callback!(|url| {
             let url = url.to_string();
             crate::ui_thread::with_app(move |app| app.transcript_open_link(&url));
-        });
+        }));
         let weak = self.window.as_weak();
-        state.on_link_at(move |x, y| {
+        state.on_link_at(crate::ui_thread::scoped_callback!(move |x, y| {
             weak.upgrade()
                 .and_then(|window| crate::window_runtime::link_at(window.window(), x, y))
                 .unwrap_or_default()
                 .into()
-        });
+        }));
         let weak = self.window.as_weak();
-        state.on_link_destination(move |url| {
+        state.on_link_destination(crate::ui_thread::scoped_callback!(move |url| {
             let cwd = weak
                 .upgrade()
                 .map(|window| {
@@ -169,9 +175,9 @@ impl AppController {
                 .unwrap_or_default();
             let target = links::classify_link(&url, &cwd);
             target.destination().into()
-        });
+        }));
         let weak = self.window.as_weak();
-        state.on_link_is_file(move |url| {
+        state.on_link_is_file(crate::ui_thread::scoped_callback!(move |url| {
             let cwd = weak
                 .upgrade()
                 .map(|window| {
@@ -184,13 +190,13 @@ impl AppController {
                 })
                 .unwrap_or_default();
             matches!(links::classify_link(&url, &cwd), LinkTarget::File { .. })
-        });
-        state.on_link_action(|url, action| {
+        }));
+        state.on_link_action(crate::ui_thread::scoped_callback!(|url, action| {
             let url = url.to_string();
             let action = action.to_string();
             crate::ui_thread::with_app(move |app| app.transcript_link_action(&url, &action));
-        });
-        state.on_load_older(|requested| {
+        }));
+        state.on_load_older(crate::ui_thread::scoped_callback!(|requested| {
             crate::ui_thread::with_app(move |app| {
                 if let Some(index) = app.active_thread_index() {
                     if requested {
@@ -200,28 +206,28 @@ impl AppController {
                     }
                 }
             });
-        });
-        state.on_toggle_block(|id| {
+        }));
+        state.on_toggle_block(crate::ui_thread::scoped_callback!(|id| {
             let id = id.to_string();
             crate::ui_thread::with_app(move |app| app.transcript_toggle(&id));
-        });
-        state.on_copy_block(|id| {
+        }));
+        state.on_copy_block(crate::ui_thread::scoped_callback!(|id| {
             let id = id.to_string();
             crate::ui_thread::with_app(move |app| app.transcript_block_action(&id, "copy"));
-        });
-        state.on_block_action(|id, action| {
+        }));
+        state.on_block_action(crate::ui_thread::scoped_callback!(|id, action| {
             let id = id.to_string();
             let action = action.to_string();
             crate::ui_thread::with_app(move |app| app.transcript_block_action(&id, &action));
-        });
-        state.on_line_clicked(|id, line| {
+        }));
+        state.on_line_clicked(crate::ui_thread::scoped_callback!(|id, line| {
             let id = id.to_string();
             crate::ui_thread::with_app(move |app| app.transcript_line_clicked(&id, line));
-        });
-        state.on_suggestion(|text| {
+        }));
+        state.on_suggestion(crate::ui_thread::scoped_callback!(|text| {
             let text = text.to_string();
             crate::ui_thread::with_app(move |app| app.composer_insert_text(&text));
-        });
+        }));
     }
 
     fn transcript_flags(&self) -> (bool, bool) {

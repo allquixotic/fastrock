@@ -84,11 +84,11 @@ impl AppController {
     }
 
     pub(crate) fn virtual_workspaces_bind(&mut self) {
-        self.window
-            .global::<AppState>()
-            .on_open_virtual_workspaces(|| {
+        self.window.global::<AppState>().on_open_virtual_workspaces(
+            crate::ui_thread::scoped_callback!(|| {
                 crate::ui_thread::with_app(Self::virtual_workspaces_open);
-            });
+            }),
+        );
         self.virtual_workspaces.discovery = Some(self.backend.spawn(async {
             loop {
                 let event = browser::execute(Work::Discover).await;
@@ -112,9 +112,9 @@ impl AppController {
                     return;
                 }
             };
-            window.on_action(|action| {
+            window.on_action(crate::ui_thread::scoped_callback!(|action| {
                 crate::ui_thread::with_app(move |app| app.virtual_workspaces_action(&action));
-            });
+            }));
             self.virtual_workspaces.window = Some(window);
         }
         self.virtual_workspaces_render();

@@ -528,7 +528,7 @@ impl AppController {
         state.set_limits(ModelRc::from(models.limits.clone()));
         state.set_terminals(ModelRc::from(models.terminals.clone()));
 
-        state.on_open_folder(|| {
+        state.on_open_folder(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 if let Some(cwd) = app
                     .active_thread_index()
@@ -538,46 +538,46 @@ impl AppController {
                     app.open_in_file_manager(&cwd);
                 }
             });
-        });
-        state.on_open_diff(|| {
+        }));
+        state.on_open_diff(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 if let Some(index) = app.active_thread_index() {
                     app.info_open_diff(index);
                 }
             });
-        });
-        state.on_open_agent(|thread_id| {
+        }));
+        state.on_open_agent(crate::ui_thread::scoped_callback!(|thread_id| {
             let thread_id = thread_id.to_string();
             crate::ui_thread::with_app(move |app| app.open_thread(thread_id, None));
-        });
-        state.on_open_peer(|thread_id| {
+        }));
+        state.on_open_peer(crate::ui_thread::scoped_callback!(|thread_id| {
             let thread_id = thread_id.to_string();
             crate::ui_thread::with_app(move |app| {
                 if !thread_id.is_empty() {
                     app.open_thread(thread_id, None);
                 }
             });
-        });
-        state.on_queue_action(|id, action| {
+        }));
+        state.on_queue_action(crate::ui_thread::scoped_callback!(|id, action| {
             let (id, action) = (id.to_string(), action.to_string());
             crate::ui_thread::with_app(move |app| app.info_queue_action(&id, &action));
-        });
-        state.on_goal_action(|action| {
+        }));
+        state.on_goal_action(crate::ui_thread::scoped_callback!(|action| {
             let action = action.to_string();
             crate::ui_thread::with_app(move |app| app.info_goal_action(&action));
-        });
-        state.on_terminal_action(|process_id, action| {
+        }));
+        state.on_terminal_action(crate::ui_thread::scoped_callback!(|process_id, action| {
             let (process_id, action) = (process_id.to_string(), action.to_string());
             crate::ui_thread::with_app(move |app| app.info_terminal_action(&process_id, &action));
-        });
-        state.on_set_xtab(|enabled| {
+        }));
+        state.on_set_xtab(crate::ui_thread::scoped_callback!(|enabled| {
             crate::ui_thread::with_app(move |app| {
                 if let Some(index) = app.active_thread_index() {
                     app.xtab_set_enabled(index, enabled);
                     app.info_render();
                 }
             });
-        });
+        }));
     }
 
     pub(crate) fn info_show(&mut self) {

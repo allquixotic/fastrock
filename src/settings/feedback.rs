@@ -126,10 +126,10 @@ impl AppController {
             .map(|(_, label)| SharedString::from(*label))
             .collect();
         state.set_feedback_categories(ModelRc::new(VecModel::from(labels)));
-        state.on_feedback_submit(|| {
+        state.on_feedback_submit(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::settings_feedback_submit);
-        });
-        state.on_feedback_again(|| {
+        }));
+        state.on_feedback_again(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 let state = app.window.global::<SettingsState>();
                 state.set_feedback_result("".into());
@@ -138,7 +138,7 @@ impl AppController {
                 state.set_feedback_text("".into());
                 state.set_feedback_error("".into());
             });
-        });
+        }));
     }
 
     pub(super) fn settings_feedback_activate(&mut self) {

@@ -5,13 +5,17 @@ use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 
 impl AppController {
     pub(crate) fn goose_controls_install(&mut self) {
-        self.window.global::<GooseState>().on_choose(|id, value| {
-            let (id, value) = (id.to_string(), value.to_string());
-            crate::ui_thread::with_app(move |app| app.goose_choose(id, value));
-        });
-        self.window.global::<GooseState>().on_save_cheap(|| {
-            crate::ui_thread::with_app(AppController::goose_cheap_save);
-        });
+        self.window
+            .global::<GooseState>()
+            .on_choose(crate::ui_thread::scoped_callback!(|id, value| {
+                let (id, value) = (id.to_string(), value.to_string());
+                crate::ui_thread::with_app(move |app| app.goose_choose(id, value));
+            }));
+        self.window
+            .global::<GooseState>()
+            .on_save_cheap(crate::ui_thread::scoped_callback!(|| {
+                crate::ui_thread::with_app(AppController::goose_cheap_save);
+            }));
     }
     pub(crate) fn goose_controls_refresh(&self) {
         let state = self.window.global::<GooseState>();

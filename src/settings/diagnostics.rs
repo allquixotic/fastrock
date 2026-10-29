@@ -220,13 +220,13 @@ pub(crate) fn origin_rows(
 impl AppController {
     pub(super) fn settings_diagnostics_bind(&mut self) {
         let state = self.window.global::<SettingsState>();
-        state.on_diag_lookup(|key| {
+        state.on_diag_lookup(crate::ui_thread::scoped_callback!(|key| {
             let key = key.to_string();
             crate::ui_thread::with_app(move |app| app.settings_diagnostics_lookup(&key));
-        });
-        state.on_context_selected(|index| {
+        }));
+        state.on_context_selected(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| app.settings_select_context(index));
-        });
+        }));
     }
 
     pub(super) fn settings_diagnostics_activate(&mut self) {

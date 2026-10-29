@@ -185,31 +185,31 @@ impl AppController {
     pub(crate) fn picker_bind(&mut self) {
         let state = self.window.global::<PickerState>();
         state.set_items(ModelRc::from(self.newtab.picker.rows.clone()));
-        state.on_input_edited(|text| {
+        state.on_input_edited(crate::ui_thread::scoped_callback!(|text| {
             let text = text.to_string();
             crate::ui_thread::with_app(move |app| {
                 app.picker_event(PickerEvent::InputEdited(text));
             });
-        });
-        state.on_input_accepted(|| {
+        }));
+        state.on_input_accepted(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 let (text, selected) = app.picker_field_and_selection();
                 app.picker_event(PickerEvent::InputAccepted { text, selected });
             });
-        });
-        state.on_item_activated(|index| {
+        }));
+        state.on_item_activated(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| {
                 if let Ok(index) = usize::try_from(index) {
                     app.picker_event(PickerEvent::Activated(index));
                 }
             });
-        });
-        state.on_button(|name| {
+        }));
+        state.on_button(crate::ui_thread::scoped_callback!(|name| {
             let Some(button) = PickerButton::parse(name.as_str()) else {
                 return;
             };
             crate::ui_thread::with_app(move |app| app.picker_press(button));
-        });
+        }));
     }
 
     /// Shows `flow`, or queues it behind the flow on screen. Returns the id
@@ -242,9 +242,12 @@ impl AppController {
         if picker.dispatching {
             // A handler is running and re-renders when it returns; apply
             // this update right after it.
-            slint::Timer::single_shot(std::time::Duration::ZERO, move || {
-                crate::ui_thread::with_app(move |app| app.picker_update_boxed(id, update));
-            });
+            slint::Timer::single_shot(
+                std::time::Duration::ZERO,
+                crate::ui_thread::scoped_callback!(move || {
+                    crate::ui_thread::with_app(move |app| app.picker_update_boxed(id, update));
+                }),
+            );
             return;
         }
         if picker

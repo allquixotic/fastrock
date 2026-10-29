@@ -117,6 +117,8 @@ V45: Games workload ! 1,000 threads/eight streams/10,000 messages; benchmark wat
 V46: 0.4.0 application/dependencies ! opt=2, debug=0, LTO="off", 256 codegen units, incremental, no strip; Windows signed CI ZIP only, Mac compile only. Prerelease ! usable verified milestone; stable ! all acceptance and required routes. Verify: build/release policy tests, signed receipts and Windows acceptance.
 V47: Last window close ! tray continuation, explicit Quit ! cancel/save/exit, restart ! restore without executing pending work. Verify: native close/tray/Quit and recovery fixtures.
 
+V48: Native windows ! one embedded backend/store owner; callbacks, timers, async results and server requests route to owning window. Rally moves preserve drafts/recovery without starting a process. Verify: scoped routing tests and native two-window transfer/interaction fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -173,6 +175,7 @@ T41|x|Background per-turn summary replacement/backfill and immediate bounded det
 T42|~|Lossless compressed transcript cache, incremental rendering and efficient arbitrary scrolling|V1,V9,V32,V37,V43,I.scroll
 T43|.|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
 T44|.|Watchdog-protected games benchmarks, full Windows verification, Mac compile and signed CI milestones/final|V23,V38–V47,I.distribution
+T45|~|In-process Rally windows and scoped UI/backend routing|V38,V42,V47,V48
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 
@@ -188,6 +191,8 @@ Scrollback foundation verification, 2026-10-29: cold LZ4 pages, 16-page/8-MiB de
 Navigation foundation verification, 2026-10-29: native T3 sidebar/header adaptation, separate Rally document strip and permanent Rally project; same-area bulk close preserves dirty Rally documents. Games 694 application tests, one rendering regression, 16 workspace fixtures and standalone embedded Goose fixture passed. Native three-turn smoke also verified independent Rally selection/return/close/reopen, draft retention and navigation through an injected backend failure overlay; only GET requests to local Rally fixture, six local model calls, 162,045,952 peak process bytes. Binary SHA-256 `156cf30c6935f41c21463455f10bf433ae8bf4176196c2ac00ba37d67be47d91`; games receipt `C:\Users\SeanMcNamara\fastrock-040-policy\sidebar-native-2\acceptance.json`. Mac compile and static audits passed. T40 remains open for repository/workspace binding, composer/panel parity and complete orchestration UI; no release tag.
 
 Core startup audit, 2026-10-29: removed automatic login-shell PATH probing and renderer subprocess relaunch. Mac compile passed; Windows library compiled and 693 application tests passed (obsolete relaunch test removed), workspace and embedded Goose fixtures passed. Static audit finds no process launch in src/lib.rs or src/platform.rs. Rally window process migration remains open under T37/T40/T43.
+
+Native-window foundation verification, 2026-10-29: one shared embedded backend, explicit UI ownership for native callbacks/timers/async and blocking tasks, single-target tool/permission routing, per-window input queues, one ordered mailbox writer, and durable same-process Rally handoff. Games 699 application tests, one renderer test, 16 workspace fixtures and standalone Goose fixture passed. Native three-turn plus second-window conversation smoke preserved separate exports, found both current summaries, moved unsaved Rally name/filter drafts out and back, and observed both owner records under PID 1580. Eight local provider calls, local Rally GETs only; peak process memory 176,660,480 bytes. Binary SHA-256 `1c0dab9c60888b7c785a481716871dd9b1360d5994ce5628a65c558efe3602c5`; games receipt `C:\Users\SeanMcNamara\fastrock-040-policy\windows-native-2\acceptance.json`. Mac compile/static audits passed; no Mac execution. Last-window tray continuation and restart recovery remain T43/T45 acceptance work; no release tag.
 
 ## §B BUGS
 id|date|cause|fix
@@ -365,3 +370,7 @@ B96|2026-10-29|Shared Slint ContextMenuArea collided with inherited close functi
 B97|2026-10-29|Shared Close other tabs crossed Rally/conversation areas and bypassed Rally write/draft guards|Scope bulk close to same kind; reject bulk close while Rally writes/drafts need handling; native navigation fixture; V19,V42
 B98|2026-10-29|Backend status overlay covered the permanent Rally sidebar project|Limit overlay to conversation pane; native injected failure still permits Rally navigation; V42
 B99|2026-10-29|Inherited startup code launched a login shell and Linux renderer replacement process|Remove startup probes/relaunch; inherit environment and report renderer failures in process; V38
+
+B100|2026-10-29|Multiwindow compile used immutable method as mutable controller callback and lacked ComponentHandle import|Use closure adapter and import trait; V48
+B101|2026-10-29|New native windows exposed singleton callback routing, duplicate mailbox writers and Rally assistant registration/close races|Window-scoped callbacks/tasks/input, shared ordered mailbox writer, attach-before-prompt and temporary-session cleanup; V48,V42
+B102|2026-10-29|Weak mailbox registry could replace an actor while its last writes drained|Retain sender through runtime shutdown; dropped-handle reattachment regression; V48

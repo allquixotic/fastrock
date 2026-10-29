@@ -235,35 +235,35 @@ fn to_kv(rows: &[(String, String)]) -> ModelRc<KeyValue> {
 impl AppController {
     pub(super) fn settings_account_bind(&mut self) {
         let state = self.window.global::<SettingsState>();
-        state.on_account_login(|kind| {
+        state.on_account_login(crate::ui_thread::scoped_callback!(|kind| {
             let kind = if kind == "device" {
                 LoginKind::DeviceCode
             } else {
                 LoginKind::Browser
             };
             crate::ui_thread::with_app(move |app| app.settings_account_login(kind, None));
-        });
-        state.on_account_api_key(|key| {
+        }));
+        state.on_account_api_key(crate::ui_thread::scoped_callback!(|key| {
             let key = key.trim().to_string();
             crate::ui_thread::with_app(move |app| {
                 if !key.is_empty() {
                     app.settings_account_login(LoginKind::ApiKey, Some(key));
                 }
             });
-        });
-        state.on_account_cancel_login(|| {
+        }));
+        state.on_account_cancel_login(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::settings_account_cancel_login);
-        });
-        state.on_account_logout(|| {
+        }));
+        state.on_account_logout(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::settings_account_confirm_logout)
-        });
-        state.on_account_refresh(|| {
+        }));
+        state.on_account_refresh(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 app.settings.account.error = None;
                 app.settings.account.notice = None;
                 app.settings_account_refresh();
             });
-        });
+        }));
     }
 
     pub(super) fn settings_account_activate(&mut self) {

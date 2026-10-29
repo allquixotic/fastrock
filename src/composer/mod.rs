@@ -155,54 +155,62 @@ impl AppController {
         state.set_speeds(ModelRc::from(shared.speeds_model.clone()));
         state.set_permissions(ModelRc::from(shared.permissions_model.clone()));
 
-        state.on_send(|| crate::ui_thread::with_app(AppController::composer_submit));
-        state.on_steer(|| {
+        state.on_send(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::composer_submit)
+        }));
+        state.on_steer(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| app.composer_submit_mode(BusyInput::Steer))
-        });
-        state.on_interrupt(|| {
+        }));
+        state.on_interrupt(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 if let Some(index) = app.active_thread_index() {
                     app.interrupt_tab(index);
                 }
             });
-        });
-        state.on_input_changed(|text, cursor| {
+        }));
+        state.on_input_changed(crate::ui_thread::scoped_callback!(|text, cursor| {
             let text = text.to_string();
             let cursor = usize::try_from(cursor).unwrap_or_default();
             crate::ui_thread::with_app(move |app| app.composer_input_changed(&text, cursor));
-        });
-        state.on_accept_suggestion(|row| {
+        }));
+        state.on_accept_suggestion(crate::ui_thread::scoped_callback!(|row| {
             if let Ok(row) = usize::try_from(row) {
                 crate::ui_thread::with_app(move |app| app.composer_accept_suggestion(row));
             }
-        });
-        state.on_dismiss_suggestions(|| {
+        }));
+        state.on_dismiss_suggestions(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::composer_dismiss_popup);
-        });
-        state.on_paste_image(|| {
+        }));
+        state.on_paste_image(crate::ui_thread::scoped_callback!(|| {
             // Must answer now: `true` consumes the key so no text is pasted.
             let mut handled = false;
             crate::ui_thread::with_app_now(|app| handled = app.composer_paste_image());
             handled
-        });
-        state.on_attach(|| crate::ui_thread::with_app(AppController::composer_pick_images));
-        state.on_remove_attachment(|row| {
+        }));
+        state.on_attach(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::composer_pick_images)
+        }));
+        state.on_remove_attachment(crate::ui_thread::scoped_callback!(|row| {
             if let Ok(row) = usize::try_from(row) {
                 crate::ui_thread::with_app(move |app| app.composer_remove_attachment(row));
             }
-        });
-        state.on_choose(|picker, id| {
+        }));
+        state.on_choose(crate::ui_thread::scoped_callback!(|picker, id| {
             let (picker, id) = (picker.to_string(), id.to_string());
             crate::ui_thread::with_app(move |app| app.composer_choose(&picker, &id));
-        });
-        state.on_toggle_plan(|| crate::ui_thread::with_app(AppController::composer_toggle_plan));
-        state.on_enter_action(|enter_sends, shift, command, meta, alt| {
-            match text::enter_action(enter_sends, shift, command, meta, alt) {
-                EnterAction::Queue => 1,
-                EnterAction::Steer => 2,
-                EnterAction::Newline => 0,
+        }));
+        state.on_toggle_plan(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::composer_toggle_plan)
+        }));
+        state.on_enter_action(crate::ui_thread::scoped_callback!(
+            |enter_sends, shift, command, meta, alt| {
+                match text::enter_action(enter_sends, shift, command, meta, alt) {
+                    EnterAction::Queue => 1,
+                    EnterAction::Steer => 2,
+                    EnterAction::Newline => 0,
+                }
             }
-        });
+        ));
         self.composer_install_drop_handler();
         self.composer_refresh();
     }

@@ -551,17 +551,17 @@ impl AppController {
         state.set_import_items(self.settings.import.items.model_rc());
         state.set_import_results(self.settings.import.result_list.model_rc());
         state.set_import_history(self.settings.import.history_list.model_rc());
-        state.on_import_detect(|| {
+        state.on_import_detect(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| app.settings_import_detect(/*force*/ true));
-        });
-        state.on_import_source_selected(|index| {
+        }));
+        state.on_import_source_selected(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| {
                 if let Ok(index) = usize::try_from(index) {
                     app.settings_import_select_source(index);
                 }
             });
-        });
-        state.on_import_toggle(|id, on| {
+        }));
+        state.on_import_toggle(crate::ui_thread::scoped_callback!(|id, on| {
             let id = id.to_string();
             crate::ui_thread::with_app(move |app| {
                 if let Some(index) = item_index(&id) {
@@ -569,14 +569,16 @@ impl AppController {
                     app.settings_import_refresh();
                 }
             });
-        });
-        state.on_import_select_all(|on| {
+        }));
+        state.on_import_select_all(crate::ui_thread::scoped_callback!(|on| {
             crate::ui_thread::with_app(move |app| {
                 app.settings.import.selection.select_all(on);
                 app.settings_import_refresh();
             });
-        });
-        state.on_import_start(|| crate::ui_thread::with_app(AppController::settings_import_start));
+        }));
+        state.on_import_start(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::settings_import_start)
+        }));
     }
 
     /// The server restarted or stopped: a running import will never report

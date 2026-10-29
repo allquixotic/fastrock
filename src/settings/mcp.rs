@@ -376,9 +376,11 @@ fn mcp_rows(
 
 impl AppController {
     pub(super) fn settings_mcp_bind(&mut self) {
-        self.window
-            .global::<SettingsState>()
-            .on_mcp_form_submit(|| crate::ui_thread::with_app(AppController::settings_mcp_add));
+        self.window.global::<SettingsState>().on_mcp_form_submit(
+            crate::ui_thread::scoped_callback!(|| crate::ui_thread::with_app(
+                AppController::settings_mcp_add
+            )),
+        );
     }
 
     pub(super) fn settings_mcp_activate(&mut self) {

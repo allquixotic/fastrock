@@ -323,7 +323,7 @@ impl AppController {
         self.sidebar.purpose.resize_timer.start(
             slint::TimerMode::SingleShot,
             Duration::from_secs(10),
-            || {
+            crate::ui_thread::scoped_callback!(|| {
                 crate::ui_thread::with_app(|app| {
                     let prefs = app.prefs.clone();
                     let home = app.codex_home.clone();
@@ -334,7 +334,7 @@ impl AppController {
                     });
                     app.purpose_resize_settled();
                 });
-            },
+            }),
         );
         self.sidebar_render();
     }

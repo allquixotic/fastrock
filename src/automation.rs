@@ -31,8 +31,8 @@ const POLL: Duration = Duration::from_millis(100);
 
 thread_local! {
     /// Input from `key` and `pointer` steps waiting to be dispatched.
-    static INPUT_QUEUE: std::cell::RefCell<VecDeque<slint::platform::WindowEvent>> =
-        const { std::cell::RefCell::new(VecDeque::new()) };
+    static INPUT_QUEUE: std::cell::RefCell<std::collections::BTreeMap<crate::ui_thread::WindowId, VecDeque<slint::platform::WindowEvent>>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -187,41 +187,56 @@ struct ScrollBenchmark {
 }
 
 impl Automation {
-    /// Loads the script named by `CODEX_GUI_AUTOMATION`, if set.
-    pub(crate) fn from_env() -> Option<Self> {
-        let path = std::env::var_os(AUTOMATION_ENV_VAR)?;
-        let steps: Vec<Step> = match std::fs::read(&path)
-            .map_err(anyhow::Error::from)
-            .and_then(|bytes| serde_json::from_slice(&bytes).map_err(anyhow::Error::from))
-        {
-            Ok(steps) => steps,
-            Err(err) => {
-                tracing::error!(%err, "invalid automation script");
-                eprintln!("codex-gui: invalid automation script: {err}");
-                return None;
-            }
-        };
-        Some(Self {
+    pub(crate) fn from_steps(steps: Vec<Step>) -> Self {
+        Self {
             steps: steps.into(),
             waiting: None,
             timer: slint::Timer::default(),
             scroll_benchmark: None,
             benchmark_writing: false,
-        })
+        }
     }
 }
 
 impl AppController {
     /// Starts the automation script, if one was configured.
     pub(crate) fn automation_start(&mut self) {
+        if self.automation.is_none() {
+            let variable = if self.backend.window_id() == crate::ui_thread::MAIN {
+                AUTOMATION_ENV_VAR
+            } else {
+                "FASTROCK_RALLY_CHILD_AUTOMATION"
+            };
+            let Some(path) = std::env::var_os(variable) else {
+                return;
+            };
+            self.backend.spawn(async move {
+                let steps = tokio::fs::read(path)
+                    .await
+                    .map_err(anyhow::Error::from)
+                    .and_then(|bytes| {
+                        serde_json::from_slice::<Vec<Step>>(&bytes).map_err(anyhow::Error::from)
+                    });
+                crate::ui_thread::post(move |app| match steps {
+                    Ok(steps) => {
+                        app.automation = Some(Automation::from_steps(steps));
+                        app.automation_start();
+                    }
+                    Err(error) => tracing::error!(%error, "invalid automation script"),
+                });
+            });
+            return;
+        }
         let Some(automation) = self.automation.as_ref() else {
             return;
         };
-        automation
-            .timer
-            .start(slint::TimerMode::Repeated, POLL, || {
+        automation.timer.start(
+            slint::TimerMode::Repeated,
+            POLL,
+            crate::ui_thread::scoped_callback!(|| {
                 crate::ui_thread::with_app(AppController::automation_tick);
-            });
+            }),
+        );
     }
 
     fn automation_tick(&mut self) {
@@ -511,9 +526,9 @@ impl AppController {
                         automation.timer.start(
                             slint::TimerMode::Repeated,
                             Duration::from_micros(16_667),
-                            || {
+                            crate::ui_thread::scoped_callback!(|| {
                                 crate::ui_thread::with_app(AppController::automation_tick);
-                            },
+                            }),
                         );
                     }
                     return;
@@ -625,10 +640,7 @@ impl AppController {
                 Step::RestartServer(true) => self.backend.restart(),
                 Step::Quit(false) => {}
                 Step::Quit(true) => {
-                    self.rally_stash();
-                    self.rally_save_session();
-                    self.quitting = true;
-                    let _ = slint::quit_event_loop();
+                    crate::ui_thread::finish_quit();
                     return;
                 }
             }
@@ -668,11 +680,13 @@ impl AppController {
             return;
         };
         automation.benchmark_writing = true;
-        automation
-            .timer
-            .start(slint::TimerMode::Repeated, POLL, || {
+        automation.timer.start(
+            slint::TimerMode::Repeated,
+            POLL,
+            crate::ui_thread::scoped_callback!(|| {
                 crate::ui_thread::with_app(AppController::automation_tick);
-            });
+            }),
+        );
         let frames: Vec<_> = i_slint_backend_winit::software_metrics::take().into_iter().map(|frame| {
             serde_json::json!({"render_us":frame.render_us,"present_us":frame.present_us,
                 "total_us":frame.total_us,"dirty_pixels":frame.dirty_pixels,"window_pixels":frame.window_pixels})
@@ -698,8 +712,10 @@ impl AppController {
     /// callbacks that answer synchronously need the controller, which is
     /// borrowed while a step runs. Events keep their order across steps.
     pub(crate) fn automation_dispatch(&self, events: Vec<slint::platform::WindowEvent>) {
+        let owner = self.backend.window_id();
         let schedule = INPUT_QUEUE.with(|queue| {
-            let mut queue = queue.borrow_mut();
+            let mut queues = queue.borrow_mut();
+            let queue = queues.entry(owner).or_default();
             let was_empty = queue.is_empty();
             queue.extend(events);
             was_empty
@@ -711,7 +727,8 @@ impl AppController {
         // Native context menus run a nested event loop. Dispatch from the
         // platform queue, outside Slint's timer activation stack.
         let _ = window.upgrade_in_event_loop(move |window| {
-            let events: Vec<_> = INPUT_QUEUE.with(|queue| queue.borrow_mut().drain(..).collect());
+            let events =
+                INPUT_QUEUE.with(|queues| queues.borrow_mut().remove(&owner).unwrap_or_default());
             for event in events {
                 window.window().dispatch_event(event);
             }

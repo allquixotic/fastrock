@@ -238,50 +238,74 @@ impl BedrockController {
 impl AppController {
     pub(crate) fn bedrock_bind(&mut self) {
         let state = self.window.global::<BedrockState>();
-        state.on_page_shown(|| crate::ui_thread::with_app(AppController::bedrock_page_shown));
-        state.on_refresh(|| crate::ui_thread::with_app(AppController::bedrock_refresh_all));
-        state.on_rescan(|| crate::ui_thread::with_app(AppController::bedrock_discover));
-        state.on_set_endpoint(|code| {
+        state.on_page_shown(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_page_shown)
+        }));
+        state.on_refresh(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_refresh_all)
+        }));
+        state.on_rescan(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_discover)
+        }));
+        state.on_set_endpoint(crate::ui_thread::scoped_callback!(|code| {
             crate::ui_thread::with_app(move |app| app.bedrock_set_endpoint(code));
-        });
-        state.on_select_method(|index| {
+        }));
+        state.on_select_method(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| app.bedrock_select_method_index(index));
-        });
-        state.on_select_region(|index| {
+        }));
+        state.on_select_region(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| app.bedrock_select_region_index(index));
-        });
-        state.on_form_edited(|| crate::ui_thread::with_app(AppController::bedrock_form_edited));
-        state.on_validate(|| crate::ui_thread::with_app(AppController::bedrock_validate));
-        state.on_apply(|| crate::ui_thread::with_app(AppController::bedrock_apply));
-        state.on_cancel(|| crate::ui_thread::with_app(AppController::bedrock_cancel));
-        state.on_revert(|| crate::ui_thread::with_app(AppController::bedrock_confirm_revert));
-        state.on_restart_now(|| crate::ui_thread::with_app(AppController::bedrock_restart_now));
-        state.on_select_model(|index| {
+        }));
+        state.on_form_edited(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_form_edited)
+        }));
+        state.on_validate(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_validate)
+        }));
+        state.on_apply(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_apply)
+        }));
+        state.on_cancel(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_cancel)
+        }));
+        state.on_revert(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_confirm_revert)
+        }));
+        state.on_restart_now(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_restart_now)
+        }));
+        state.on_select_model(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| app.bedrock_select_model(index));
-        });
-        state.on_save_model(|| crate::ui_thread::with_app(AppController::bedrock_save_model));
-        state.on_local_refresh(|provider_id| {
+        }));
+        state.on_save_model(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_save_model)
+        }));
+        state.on_local_refresh(crate::ui_thread::scoped_callback!(|provider_id| {
             let provider_id = provider_id.to_string();
             crate::ui_thread::with_app(move |app| {
                 if let Some(kind) = LocalKind::from_provider_id(&provider_id) {
                     app.bedrock_probe_local(kind);
                 }
             });
-        });
-        state.on_local_use(|provider_id, model| {
+        }));
+        state.on_local_use(crate::ui_thread::scoped_callback!(|provider_id, model| {
             let provider_id = provider_id.to_string();
             let model = model.to_string();
             crate::ui_thread::with_app(move |app| app.bedrock_use_local(&provider_id, &model));
-        });
-        state.on_pull(|| crate::ui_thread::with_app(AppController::bedrock_start_pull));
-        state.on_cancel_pull(|| crate::ui_thread::with_app(AppController::bedrock_cancel_pull));
-        state.on_open_link(|link| {
+        }));
+        state.on_pull(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_start_pull)
+        }));
+        state.on_cancel_pull(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::bedrock_cancel_pull)
+        }));
+        state.on_open_link(crate::ui_thread::scoped_callback!(|link| {
             let url = match link.as_str() {
                 "gov-cloud" => flow::GOV_CLOUD_GUIDANCE_URL,
                 _ => flow::BEDROCK_SETUP_GUIDE_URL,
             };
             crate::ui_thread::with_app(move |app| app.bedrock_open_url(url));
-        });
+        }));
 
         let regions: Vec<SharedString> = flow::region_options()
             .iter()

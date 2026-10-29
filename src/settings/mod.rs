@@ -597,43 +597,43 @@ impl AppController {
         state.set_feature_items(self.settings.extensions.features.model_rc());
         state.set_diag_layers(self.settings.diagnostics.layers.model_rc());
 
-        state.on_open_page(|page| {
+        state.on_open_page(crate::ui_thread::scoped_callback!(|page| {
             let page = page.to_string();
             crate::ui_thread::with_app(move |app| app.settings_open_page(&page));
-        });
-        state.on_restart_server(|| {
+        }));
+        state.on_restart_server(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::settings_restart_server);
-        });
-        state.on_copy_text(|text| {
+        }));
+        state.on_copy_text(crate::ui_thread::scoped_callback!(|text| {
             let text = text.to_string();
             crate::ui_thread::with_app(move |app| app.copy_to_clipboard(&text));
-        });
-        state.on_open_url(|url| {
+        }));
+        state.on_open_url(crate::ui_thread::scoped_callback!(|url| {
             let url = url.to_string();
             crate::ui_thread::with_app(move |app| app.settings_open_url(&url));
-        });
-        state.on_open_path(|which| {
+        }));
+        state.on_open_path(crate::ui_thread::scoped_callback!(|which| {
             let which = which.to_string();
             crate::ui_thread::with_app(move |app| app.settings_open_path(&which));
-        });
-        state.on_reload_config(|| {
+        }));
+        state.on_reload_config(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 app.settings_reload_config();
                 app.settings_load_requirements();
             });
-        });
-        state.on_page_refresh(|page| {
+        }));
+        state.on_page_refresh(crate::ui_thread::scoped_callback!(|page| {
             let page = page.to_string();
             crate::ui_thread::with_app(move |app| app.settings_refresh_page(&page));
-        });
-        state.on_item_toggle(|page, id, on| {
+        }));
+        state.on_item_toggle(crate::ui_thread::scoped_callback!(|page, id, on| {
             let (page, id) = (page.to_string(), id.to_string());
             crate::ui_thread::with_app(move |app| app.settings_item_toggle(&page, &id, on));
-        });
-        state.on_item_action(|page, id, action| {
+        }));
+        state.on_item_action(crate::ui_thread::scoped_callback!(|page, id, action| {
             let (page, id, action) = (page.to_string(), id.to_string(), action.to_string());
             crate::ui_thread::with_app(move |app| app.settings_item_action(&page, &id, &action));
-        });
+        }));
         self.settings_fields_bind();
         self.settings_raw_bind();
         self.settings_account_bind();

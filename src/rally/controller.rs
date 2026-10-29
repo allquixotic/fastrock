@@ -37,6 +37,8 @@ pub(crate) struct RallyController {
     pub iterations: Vec<Object>,
     pub releases: Vec<Object>,
     store: Option<Store>,
+    initial_store: Option<Store>,
+    window_identity: Option<(std::path::PathBuf, String)>,
     epoch: u64,
     error: String,
     persist: Arc<tokio::sync::Mutex<()>>,
@@ -207,31 +209,35 @@ impl AppController {
         matches!(tab.kind, TabKind::Rally(_)).then_some(tab.id)
     }
     pub(crate) fn rally_bind(&mut self) {
-        self.rally
-            .window_timer
-            .start(slint::TimerMode::Repeated, Duration::from_secs(1), || {
+        self.rally.window_timer.start(
+            slint::TimerMode::Repeated,
+            Duration::from_secs(1),
+            crate::ui_thread::scoped_callback!(|| {
                 ui_thread::with_app(|app| app.rally_windows_tick())
-            });
+            }),
+        );
         let state = self.window.global::<RallyState>();
-        state.on_action(|action| ui_thread::with_app(move |app| app.rally_action(action.as_str())));
-        state.on_open_page(|page| {
+        state.on_action(crate::ui_thread::scoped_callback!(|action| {
+            ui_thread::with_app(move |app| app.rally_action(action.as_str()))
+        }));
+        state.on_open_page(crate::ui_thread::scoped_callback!(|page| {
             ui_thread::with_app(move |app| app.rally_open(View::new(page.as_str())))
-        });
-        state.on_scope(|name, index| {
+        }));
+        state.on_scope(crate::ui_thread::scoped_callback!(|name, index| {
             ui_thread::with_app(move |app| app.rally_scope(name.as_str(), index))
-        });
-        state.on_set_view(|key, value| {
+        }));
+        state.on_set_view(crate::ui_thread::scoped_callback!(|key, value| {
             ui_thread::with_app(move |app| app.rally_set_view(key.as_str(), value.as_str()))
-        });
-        state.on_edit(|key, value| {
+        }));
+        state.on_edit(crate::ui_thread::scoped_callback!(|key, value| {
             ui_thread::with_app(move |app| app.rally_edit(key.as_str(), value.as_str()))
-        });
-        state.on_rich_edit(|key, value, source| {
+        }));
+        state.on_rich_edit(crate::ui_thread::scoped_callback!(|key, value, source| {
             ui_thread::with_app(move |app| {
                 app.rally_rich_edit(key.as_str(), value.to_string(), source)
             })
-        });
-        state.on_format(|key, mark, a, b| {
+        }));
+        state.on_format(crate::ui_thread::scoped_callback!(|key, mark, a, b| {
             ui_thread::with_app(move |app| {
                 app.rally_format(
                     key.to_string(),
@@ -240,8 +246,8 @@ impl AppController {
                     b.max(0) as usize,
                 )
             })
-        });
-        state.on_select(|reference, selected| {
+        }));
+        state.on_select(crate::ui_thread::scoped_callback!(|reference, selected| {
             ui_thread::with_app(move |app| {
                 if let Some(id) = app.rally_active_id() {
                     if let Some(tab) = app.rally_tab_mut(id) {
@@ -260,23 +266,23 @@ impl AppController {
                     app.rally_show();
                 }
             })
-        });
-        state.on_row_action(|reference, action| {
+        }));
+        state.on_row_action(crate::ui_thread::scoped_callback!(|reference, action| {
             ui_thread::with_app(move |app| {
                 app.rally_row_action(reference.to_string(), action.as_str())
             })
-        });
-        state.on_open_item(|reference| {
+        }));
+        state.on_open_item(crate::ui_thread::scoped_callback!(|reference| {
             ui_thread::with_app(move |app| app.rally_detail(reference.to_string(), false, None))
-        });
-        state.on_inline(|reference, field| {
+        }));
+        state.on_inline(crate::ui_thread::scoped_callback!(|reference, field| {
             ui_thread::with_app(move |app| {
                 app.rally_detail(reference.to_string(), false, Some(field.to_string()))
             })
-        });
+        }));
         state.on_drag_data(slint::DataTransfer::from);
         let weak = self.window.as_weak();
-        state.on_drop_reference(move |data| {
+        state.on_drop_reference(crate::ui_thread::scoped_callback!(move |data| {
             let Ok(reference) = data.plain_text() else {
                 return "".into();
             };
@@ -294,24 +300,26 @@ impl AppController {
             } else {
                 reference
             }
-        });
-        state.on_drop_card(|reference, lane, group, neighbor, below| {
-            ui_thread::with_app(move |app| {
-                app.rally_move(
-                    reference.to_string(),
-                    lane.to_string(),
-                    group.to_string(),
-                    if neighbor.is_empty() {
-                        None
-                    } else {
-                        Some(neighbor.to_string())
-                    },
-                    below,
-                )
-            });
-        });
+        }));
+        state.on_drop_card(crate::ui_thread::scoped_callback!(
+            |reference, lane, group, neighbor, below| {
+                ui_thread::with_app(move |app| {
+                    app.rally_move(
+                        reference.to_string(),
+                        lane.to_string(),
+                        group.to_string(),
+                        if neighbor.is_empty() {
+                            None
+                        } else {
+                            Some(neighbor.to_string())
+                        },
+                        below,
+                    )
+                });
+            }
+        ));
         let weak = self.window.as_weak();
-        state.on_card_selected(move |field, _| {
+        state.on_card_selected(crate::ui_thread::scoped_callback!(move |field, _| {
             weak.upgrade().is_some_and(|window| {
                 window
                     .global::<RallyState>()
@@ -319,28 +327,30 @@ impl AppController {
                     .iter()
                     .any(|name| name == field)
             })
-        });
-        state.on_move_card(|reference, lane, group, below| {
-            ui_thread::with_app(move |app| {
-                app.rally_move(
-                    reference.to_string(),
-                    lane.to_string(),
-                    group.to_string(),
-                    None,
-                    below,
-                )
-            })
-        });
-        state.on_pick_reference(|field| {
+        }));
+        state.on_move_card(crate::ui_thread::scoped_callback!(
+            |reference, lane, group, below| {
+                ui_thread::with_app(move |app| {
+                    app.rally_move(
+                        reference.to_string(),
+                        lane.to_string(),
+                        group.to_string(),
+                        None,
+                        below,
+                    )
+                })
+            }
+        ));
+        state.on_pick_reference(crate::ui_thread::scoped_callback!(|field| {
             ui_thread::with_app(move |app| app.rally_picker_open(field.to_string()))
-        });
-        state.on_picker_action(|action| {
+        }));
+        state.on_picker_action(crate::ui_thread::scoped_callback!(|action| {
             ui_thread::with_app(move |app| app.rally_picker_action(action.as_str()))
-        });
-        state.on_choose_reference(|reference| {
+        }));
+        state.on_choose_reference(crate::ui_thread::scoped_callback!(|reference| {
             ui_thread::with_app(move |app| app.rally_picker_choose(reference.to_string()))
-        });
-        state.on_conflict(|field, local| {
+        }));
+        state.on_conflict(crate::ui_thread::scoped_callback!(|field, local| {
             ui_thread::with_app(move |app| {
                 if let Some(id) = app.rally_active_id() {
                     if let Some(editor) = app.rally_tab_mut(id).and_then(|t| t.editor.as_mut()) {
@@ -349,8 +359,8 @@ impl AppController {
                     app.rally_show();
                 }
             })
-        });
-        state.on_hide_row(|row| {
+        }));
+        state.on_hide_row(crate::ui_thread::scoped_callback!(|row| {
             ui_thread::with_app(move |app| {
                 if !app.rally.prefs.rally_hidden_rows.contains(&row.to_string()) {
                     app.rally.prefs.rally_hidden_rows.push(row.to_string());
@@ -358,8 +368,8 @@ impl AppController {
                 app.rally_save_session();
                 app.rally_show();
             })
-        });
-        state.on_restore_row(|row| {
+        }));
+        state.on_restore_row(crate::ui_thread::scoped_callback!(|row| {
             ui_thread::with_app(move |app| {
                 app.rally
                     .prefs
@@ -368,8 +378,8 @@ impl AppController {
                 app.rally_save_session();
                 app.rally_show();
             })
-        });
-        state.on_proposal_selected(|index, selected| {
+        }));
+        state.on_proposal_selected(crate::ui_thread::scoped_callback!(|index, selected| {
             ui_thread::with_app(move |app| {
                 if let Some(id) = app.rally_active_id() {
                     if let Some(change) = app
@@ -380,12 +390,14 @@ impl AppController {
                     }
                 }
             })
-        });
-        state.on_dirty_choice(|choice| {
+        }));
+        state.on_dirty_choice(crate::ui_thread::scoped_callback!(|choice| {
             ui_thread::with_app(move |app| app.rally_dirty_choice(choice.as_str()))
-        });
-        state.on_assistant_send(|| ui_thread::with_app(|app| app.rally_assistant_send()));
-        state.on_open_link(|url| {
+        }));
+        state.on_assistant_send(crate::ui_thread::scoped_callback!(|| ui_thread::with_app(
+            |app| app.rally_assistant_send()
+        )));
+        state.on_open_link(crate::ui_thread::scoped_callback!(|url| {
             if reqwest::Url::parse(&url)
                 .is_ok_and(|u| ["http", "https", "mailto"].contains(&u.scheme()))
             {
@@ -396,9 +408,11 @@ impl AppController {
                     });
                 });
             }
-        });
-        state.on_view_matches(|name, search| name.to_lowercase().contains(&search.to_lowercase()));
-        state.on_scrolled(|lane, value| {
+        }));
+        state.on_view_matches(crate::ui_thread::scoped_callback!(|name, search| name
+            .to_lowercase()
+            .contains(&search.to_lowercase())));
+        state.on_scrolled(crate::ui_thread::scoped_callback!(|lane, value| {
             ui_thread::with_app(move |app| {
                 if let Some(id) = app.rally_active_id() {
                     if !lane.is_empty() {
@@ -411,37 +425,40 @@ impl AppController {
                     app.rally_debounce_save();
                 }
             })
-        });
-        state.on_bulk_edit(|field, value| {
+        }));
+        state.on_bulk_edit(crate::ui_thread::scoped_callback!(|field, value| {
             ui_thread::with_app(move |app| app.rally_bulk_edit(field.as_str(), value.as_str()))
-        });
+        }));
         let weak = self.window.as_weak();
-        state.on_row_visible(move |row, _| {
+        state.on_row_visible(crate::ui_thread::scoped_callback!(move |row, _| {
             weak.upgrade().is_none_or(|w| {
                 !w.global::<RallyState>()
                     .get_hidden_rows()
                     .iter()
                     .any(|r| r.value == row)
             })
-        });
+        }));
         let weak = self.window.as_weak();
-        state.on_column_selected(move |column, _| {
+        state.on_column_selected(crate::ui_thread::scoped_callback!(move |column, _| {
             weak.upgrade().is_some_and(|w| {
                 w.global::<RallyState>()
                     .get_columns()
                     .iter()
                     .any(|c| c == column)
             })
-        });
-        state.on_choice_labels(|choices| p::strings(choices.iter().map(|c| c.label.to_string())));
-        self.rally
-            .refresh_timer
-            .start(slint::TimerMode::Repeated, Duration::from_secs(15), || {
-                ui_thread::with_app(|app| app.rally_poll())
-            });
-        self.backend.spawn(async {
-            let result = tokio::task::spawn_blocking(|| {
-                let store = Store::new();
+        }));
+        state.on_choice_labels(crate::ui_thread::scoped_callback!(|choices| p::strings(
+            choices.iter().map(|c| c.label.to_string())
+        )));
+        self.rally.refresh_timer.start(
+            slint::TimerMode::Repeated,
+            Duration::from_secs(15),
+            crate::ui_thread::scoped_callback!(|| { ui_thread::with_app(|app| app.rally_poll()) }),
+        );
+        let prepared = self.rally.initial_store.take();
+        self.backend.spawn(async move {
+            let result = tokio::task::spawn_blocking(move || {
+                let store = prepared.unwrap_or_else(Store::new);
                 let prefs = store.load()?;
                 Ok::<_, anyhow::Error>((store, prefs))
             })
@@ -1440,12 +1457,12 @@ impl AppController {
                     tab.debounce.start(
                         slint::TimerMode::SingleShot,
                         Duration::from_millis(305),
-                        move || {
+                        crate::ui_thread::scoped_callback!(move || {
                             ui_thread::with_app(move |app| {
                                 app.rally_load(id, false);
                                 app.rally_save_session();
                             })
-                        },
+                        }),
                     );
                 }
             }
@@ -2270,7 +2287,9 @@ impl AppController {
         self.rally.session_timer.start(
             slint::TimerMode::SingleShot,
             Duration::from_millis(250),
-            || ui_thread::with_app(|app| app.rally_save_session()),
+            crate::ui_thread::scoped_callback!(|| ui_thread::with_app(
+                |app| app.rally_save_session()
+            )),
         );
     }
     fn rally_reload_detail(&mut self, id: TabId) {
@@ -3523,11 +3542,18 @@ impl AppController {
                     let response: ThreadStartResponse = backend.request(request).await?;
                     let thread = response.thread.id;
                     let snapshot = thread.clone();
+                    let (attached_tx, attached_rx) = tokio::sync::oneshot::channel();
                     ui_thread::post(move |app| {
-                        if let Some(t) = app.rally_tab_mut(id) {
-                            t.assistant_thread = Some(snapshot);
-                        }
+                        let attached = if let Some(t) = app.rally_tab_mut(id) {
+                            t.assistant_thread = Some(snapshot); true
+                        } else { false };
+                        app.refresh_tabs();
+                        let _ = attached_tx.send(attached);
                     });
+                    if !matches!(attached_rx.await, Ok(true)) {
+                        crate::threads::recap::unsubscribe_temporary_thread(&backend, thread).await;
+                        anyhow::bail!("Rally document closed before assistant startup");
+                    }
                     thread
                 };
                 let mut prompt = format!(
@@ -3863,18 +3889,23 @@ impl AppController {
         self.rally.window_polling = true;
         let hub = self.rally.window_hub.clone();
         let first = hub.is_none();
+        let identity = self.rally.window_identity.clone();
+        let primary = identity.is_none();
         let prefs = self.rally.prefs.clone();
         self.backend.spawn(async move {
             let result = tokio::task::spawn_blocking(move || {
                 let hub = if let Some(hub) = hub {
                     hub
                 } else {
-                    super::windows::WindowHub::new(&store)?
+                    match identity {
+                        Some((root, id)) => super::windows::WindowHub::with_identity(&store, root, id)?,
+                        None => super::windows::WindowHub::new(&store)?,
+                    }
                 };
                 let owners = hub.owners()?;
                 let incoming = hub.incoming()?;
                 let mut recovered=vec![];
-                if first && std::env::var_os("FASTROCK_RALLY_WINDOW_ID").is_none() {
+                if first && primary {
                     for (directory,documents) in hub.retired_documents()? {
                         let old=Store{directory:directory.clone()}.load()?;
                         if super::windows::Scope::of(&old)==super::windows::Scope::of(&prefs){recovered.push((directory,documents));}
@@ -4024,44 +4055,26 @@ impl AppController {
             tab.busy = true;
         }
         self.rally_show();
-        let connection_choice = self.connection_choice.clone();
         self.backend.spawn(async move {
             let result = async {
                 let master = hub.root.clone();
                 let (child_id, store) =
                     tokio::task::spawn_blocking(move || hub.prepare_child(&prefs)).await??;
-                let mut command = tokio::process::Command::new(std::env::current_exe()?);
-                // Saved preferences are shared; explicit CLI choices must travel too.
-                if let Some(address) = connection_choice.cli_address {
-                    command.arg("--remote").arg(address);
-                    if let Some(variable) = connection_choice.cli_token_env {
-                        command.arg("--remote-auth-token-env").arg(variable);
-                    }
+                let (created_tx, created_rx) = tokio::sync::oneshot::channel();
+                let child_store = store.clone();
+                ui_thread::post(move |app| {
+                    let result = app.rally_create_window(master, child_id, child_store);
+                    let _ = created_tx.send(result);
+                });
+                if let Err(error) = created_rx.await? {
+                    let _ = tokio::fs::remove_file(store.directory.join("launching")).await;
+                    return Err(error);
                 }
-                command
-                    .env("FASTROCK_HOME", &store.directory)
-                    .env("FASTROCK_RALLY_MASTER_HOME", master)
-                    .env("FASTROCK_RALLY_WINDOW_ID", &child_id)
-                    .env_remove("CODEX_GUI_AUTOMATION");
-                if let Some(script) = std::env::var_os("FASTROCK_RALLY_CHILD_AUTOMATION") {
-                    command.env("CODEX_GUI_AUTOMATION", script);
-                }
-                command
-                    .stdin(std::process::Stdio::null())
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null());
-                #[cfg(windows)]
-                command.creation_flags(0x08000000);
-                let mut child = command.spawn()?;
                 let owner = store.directory.join("owner.json");
                 for _ in 0..200 {
                     if tokio::fs::try_exists(&owner).await? {
                         return Ok::<_, anyhow::Error>(());
                     }
-                    anyhow::ensure!(
-                        child.try_wait()?.is_none(),
-                        "New Rally window exited before loading"
-                    );
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 }
                 anyhow::bail!(
@@ -4072,6 +4085,49 @@ impl AppController {
             ui_thread::post(move |app| app.rally_finish_transfer(id, result));
         });
     }
+    fn rally_create_window(
+        &self,
+        root: std::path::PathBuf,
+        id: String,
+        store: Store,
+    ) -> Result<()> {
+        let window = crate::ui::MainWindow::new()?;
+        window.window().set_size(slint::LogicalSize::new(
+            self.prefs.window_width,
+            self.prefs.window_height,
+        ));
+        let owner = ui_thread::reserve();
+        let backend = self.backend.for_window(owner);
+        let ready = backend.ready_snapshot();
+        let mut app = AppController::new(
+            window.clone_strong(),
+            backend,
+            self.prefs.clone(),
+            self.codex_home.clone(),
+        );
+        app.connection_choice = self.connection_choice.clone();
+        app.rally.window_identity = Some((root, id));
+        // The prepared file contains exactly the moving document; loading remains
+        // off-thread in rally_bind, so creation never performs filesystem I/O.
+        app.rally.initial_store = Some(store);
+        app.rally.prefs = self.rally.prefs.clone();
+        app.rally.prefs.documents.clear();
+        app.rally.prefs.open_rally_tabs.clear();
+        ui_thread::install(app);
+        if let Err(error) = window.show() {
+            ui_thread::remove(owner);
+            return Err(error.into());
+        }
+        ui_thread::with_app_now_for(owner, |app| {
+            app.bind();
+            if let Some(ready) = ready {
+                app.on_server_ready(ready);
+            }
+        });
+        ui_thread::with_app_now_for(owner, |app| app.sync_system_dark());
+        Ok(())
+    }
+
     fn rally_transfer(&mut self, target: String) {
         let Some(id) = self.rally_active_id() else {
             return;

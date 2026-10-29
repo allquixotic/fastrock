@@ -205,15 +205,17 @@ impl AppController {
         self.xtab.loaded.set(self.codex_home.is_none());
         let state = self.window.global::<XtabState>();
         state.set_targets(ModelRc::from(self.xtab.targets.clone()));
-        state.on_cancel(|| crate::ui_thread::with_app(AppController::xtab_close_dialog));
-        state.on_submit(|queue| {
+        state.on_cancel(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::xtab_close_dialog)
+        }));
+        state.on_submit(crate::ui_thread::scoped_callback!(|queue| {
             let mode = if queue {
                 ForwardMode::Queue
             } else {
                 ForwardMode::SendNow
             };
             crate::ui_thread::with_app(move |app| app.xtab_submit_dialog(mode));
-        });
+        }));
     }
 
     /// Tools registered on every new thread when cross-tab messaging is on.
@@ -967,9 +969,13 @@ impl AppController {
         let timeout = wait.timeout;
         let id = self.xtab.waits.insert(wait);
         let timer = slint::Timer::default();
-        timer.start(slint::TimerMode::SingleShot, timeout, move || {
-            crate::ui_thread::with_app(move |app| app.xtab_wait_timed_out(id));
-        });
+        timer.start(
+            slint::TimerMode::SingleShot,
+            timeout,
+            crate::ui_thread::scoped_callback!(move || {
+                crate::ui_thread::with_app(move |app| app.xtab_wait_timed_out(id));
+            }),
+        );
         self.xtab.wait_guards.insert(
             id,
             WaitGuard {
@@ -1153,12 +1159,13 @@ impl AppController {
     /// The mailbox writer, started (and the log load queued) on first use.
     fn xtab_ensure_store(&self) -> Option<&mailbox::MailboxStore> {
         let codex_home = self.codex_home.as_deref()?;
+        let owner = self.backend.window_id();
         Some(self.xtab.store.get_or_init(|| {
             mailbox::MailboxStore::start(
                 self.backend.runtime(),
                 mailbox::mailbox_path(codex_home),
-                |loaded| {
-                    crate::ui_thread::post(move |app| app.xtab_mailbox_loaded(loaded));
+                move |loaded| {
+                    crate::ui_thread::post_for(owner, move |app| app.xtab_mailbox_loaded(loaded));
                 },
             )
         }))

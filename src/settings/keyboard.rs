@@ -300,43 +300,45 @@ impl AppController {
     pub(super) fn settings_keyboard_bind(&mut self) {
         let state = self.window.global::<SettingsState>();
         state.set_shortcut_rows(self.settings.keyboard.rows.model_rc());
-        state.on_shortcut_record(|action| {
+        state.on_shortcut_record(crate::ui_thread::scoped_callback!(|action| {
             let action = action.to_string();
             crate::ui_thread::with_app(move |app| app.settings_keyboard_record(&action));
-        });
-        state.on_shortcut_cancel(|| {
+        }));
+        state.on_shortcut_cancel(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::settings_keyboard_stop_recording);
-        });
-        state.on_shortcut_key(|text, primary, shift, alt, secondary| {
-            let press = KeyPress {
-                text: text.to_string(),
-                primary,
-                shift,
-                alt,
-                secondary,
-            };
-            crate::ui_thread::with_app(move |app| app.settings_keyboard_key(&press));
-        });
-        state.on_shortcut_reset(|action| {
+        }));
+        state.on_shortcut_key(crate::ui_thread::scoped_callback!(
+            |text, primary, shift, alt, secondary| {
+                let press = KeyPress {
+                    text: text.to_string(),
+                    primary,
+                    shift,
+                    alt,
+                    secondary,
+                };
+                crate::ui_thread::with_app(move |app| app.settings_keyboard_key(&press));
+            }
+        ));
+        state.on_shortcut_reset(crate::ui_thread::scoped_callback!(|action| {
             let action = action.to_string();
             crate::ui_thread::with_app(move |app| app.settings_keyboard_reset(&action));
-        });
-        state.on_shortcut_unbind(|action| {
+        }));
+        state.on_shortcut_unbind(crate::ui_thread::scoped_callback!(|action| {
             let action = action.to_string();
             crate::ui_thread::with_app(move |app| app.settings_keyboard_unbind(&action));
-        });
-        state.on_shortcut_reset_all(|| {
+        }));
+        state.on_shortcut_reset_all(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::settings_keyboard_reset_all);
-        });
-        state.on_shortcut_pending_confirm(|| {
+        }));
+        state.on_shortcut_pending_confirm(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::settings_keyboard_confirm_pending);
-        });
-        state.on_shortcut_pending_cancel(|| {
+        }));
+        state.on_shortcut_pending_cancel(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 app.settings.keyboard.pending = None;
                 app.settings_keyboard_refresh();
             });
-        });
+        }));
     }
 
     /// Whether the Keyboard page is capturing keys for a new binding; the
@@ -621,22 +623,25 @@ impl AppController {
                     .map(SharedString::from)
                     .collect();
                 let window = self.window.as_weak();
-                slint::Timer::single_shot(Duration::ZERO, move || {
-                    let Some(window) = window.upgrade() else {
-                        return;
-                    };
-                    let window = window.window();
-                    for modifier in &modifiers {
-                        window.dispatch_event(WindowEvent::KeyPressed {
-                            text: modifier.clone(),
-                        });
-                    }
-                    window.dispatch_event(WindowEvent::KeyPressed { text: text.clone() });
-                    window.dispatch_event(WindowEvent::KeyReleased { text });
-                    for modifier in modifiers.into_iter().rev() {
-                        window.dispatch_event(WindowEvent::KeyReleased { text: modifier });
-                    }
-                });
+                slint::Timer::single_shot(
+                    Duration::ZERO,
+                    crate::ui_thread::scoped_callback!(move || {
+                        let Some(window) = window.upgrade() else {
+                            return;
+                        };
+                        let window = window.window();
+                        for modifier in &modifiers {
+                            window.dispatch_event(WindowEvent::KeyPressed {
+                                text: modifier.clone(),
+                            });
+                        }
+                        window.dispatch_event(WindowEvent::KeyPressed { text: text.clone() });
+                        window.dispatch_event(WindowEvent::KeyReleased { text });
+                        for modifier in modifiers.into_iter().rev() {
+                            window.dispatch_event(WindowEvent::KeyReleased { text: modifier });
+                        }
+                    }),
+                );
             }
             "confirm" => state.invoke_shortcut_pending_confirm(),
             "cancel" => state.invoke_shortcut_pending_cancel(),

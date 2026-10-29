@@ -755,7 +755,7 @@ impl AppController {
         let generation = doc.load_generation;
         if let Some(memory) = &doc.memory {
             let text = Arc::clone(&memory.text);
-            self.backend.runtime().spawn_blocking(move || {
+            self.backend.spawn_blocking(move || {
                 let read = read_memory(&text, extent);
                 crate::ui_thread::post(move |app| {
                     app.files_text_loaded(tab_id, generation, Ok(read));
@@ -1142,13 +1142,13 @@ impl AppController {
             dialog = dialog.set_directory(folder);
         }
         let future = dialog.save_file();
-        let runtime = self.backend.runtime().clone();
-        let spawned = slint::spawn_local(async move {
+        let backend = self.backend.clone();
+        let spawned = crate::ui_thread::spawn_local(async move {
             let Some(handle) = future.await else {
                 return;
             };
             let path = handle.path().to_path_buf();
-            runtime.spawn_blocking(move || {
+            backend.spawn_blocking(move || {
                 let message = match std::fs::write(&path, content.as_bytes()) {
                     Ok(()) => format!("Saved {}", path.display()),
                     Err(err) => format!("Could not save {}: {err}", path.display()),
@@ -1187,7 +1187,7 @@ impl AppController {
             self.toast(format!("{} is on the server's machine", path.display()));
             return;
         }
-        self.backend.runtime().spawn_blocking(move || {
+        self.backend.spawn_blocking(move || {
             if action == external::ExternalAction::Open && external::is_executable_now(&path) {
                 crate::ui_thread::post(move |app| app.files_confirm_open_program(path));
                 return;
@@ -1210,12 +1210,12 @@ impl AppController {
         )
         .accept_label("Run")
         .destructive();
-        let runtime = self.backend.runtime().clone();
+        let backend = self.backend.clone();
         self.show_dialog(
             request,
             Box::new(move |_, accepted| {
                 if accepted.is_some() {
-                    runtime.spawn_blocking(move || {
+                    backend.spawn_blocking(move || {
                         files_launch(external::ExternalAction::Open, &path);
                     });
                 }
@@ -1386,15 +1386,17 @@ impl AppController {
             if doc.text.len() > FIND_DEBOUNCE_BYTES && !doc.find.query.is_empty() {
                 // Searching a large text on every keystroke would queue a
                 // full pass per character.
-                doc.find
-                    .debounce
-                    .start(slint::TimerMode::SingleShot, FIND_DEBOUNCE, move || {
+                doc.find.debounce.start(
+                    slint::TimerMode::SingleShot,
+                    FIND_DEBOUNCE,
+                    crate::ui_thread::scoped_callback!(move || {
                         crate::ui_thread::with_app(move |app| {
                             if let Some(index) = app.tab_index_by_id(tab_id) {
                                 app.files_run_find(index, /*select*/ true);
                             }
                         });
-                    });
+                    }),
+                );
                 return;
             }
             self.files_run_find(index, /*select*/ true);
@@ -1432,7 +1434,7 @@ impl AppController {
         let haystack = doc.text.clone();
         let needle = doc.find.query.clone();
         let latest = Arc::clone(&doc.find.latest);
-        self.backend.runtime().spawn_blocking(move || {
+        self.backend.spawn_blocking(move || {
             let cancelled = || latest.load(Ordering::Relaxed) != generation;
             let folded = match folded {
                 Some(folded) => folded,

@@ -97,12 +97,12 @@ impl AppController {
     pub(super) fn settings_memories_bind(&mut self) {
         let state = self.window.global::<SettingsState>();
         state.set_memory_fields(self.settings.fields.memories.model_rc());
-        state.on_memories_reset(|| {
+        state.on_memories_reset(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::settings_memories_confirm_reset);
-        });
-        state.on_memories_learn_more(|| {
+        }));
+        state.on_memories_learn_more(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| app.settings_open_url(DOCS_URL));
-        });
+        }));
     }
 
     pub(super) fn settings_memories_activate(&mut self) {

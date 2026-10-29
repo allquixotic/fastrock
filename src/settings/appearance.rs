@@ -56,10 +56,10 @@ impl AppController {
     pub(super) fn settings_appearance_bind(&mut self) {
         self.window
             .global::<SettingsState>()
-            .on_pref_changed(|name| {
+            .on_pref_changed(crate::ui_thread::scoped_callback!(|name| {
                 let name = name.to_string();
                 crate::ui_thread::with_app(move |app| app.settings_pref_changed(&name));
-            });
+            }));
     }
 
     /// Pushes the current preferences into the page.

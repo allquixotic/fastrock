@@ -68,25 +68,27 @@ impl AppController {
         // needs raw winit events.
         self.window
             .window()
-            .on_winit_window_event(|_window, event| match event {
-                WindowEvent::HoveredFile(_) => {
-                    crate::ui_thread::with_app(|app| app.composer_set_drop_hover(true));
-                    EventResult::Propagate
+            .on_winit_window_event(crate::ui_thread::scoped_callback!(
+                |_window, event| match event {
+                    WindowEvent::HoveredFile(_) => {
+                        crate::ui_thread::with_app(|app| app.composer_set_drop_hover(true));
+                        EventResult::Propagate
+                    }
+                    WindowEvent::HoveredFileCancelled => {
+                        crate::ui_thread::with_app(|app| app.composer_set_drop_hover(false));
+                        EventResult::Propagate
+                    }
+                    WindowEvent::DroppedFile(path) => {
+                        let path = path.clone();
+                        crate::ui_thread::with_app(move |app| {
+                            app.composer_set_drop_hover(false);
+                            app.composer_drop_paths(vec![path]);
+                        });
+                        EventResult::Propagate
+                    }
+                    _ => EventResult::Propagate,
                 }
-                WindowEvent::HoveredFileCancelled => {
-                    crate::ui_thread::with_app(|app| app.composer_set_drop_hover(false));
-                    EventResult::Propagate
-                }
-                WindowEvent::DroppedFile(path) => {
-                    let path = path.clone();
-                    crate::ui_thread::with_app(move |app| {
-                        app.composer_set_drop_hover(false);
-                        app.composer_drop_paths(vec![path]);
-                    });
-                    EventResult::Propagate
-                }
-                _ => EventResult::Propagate,
-            });
+            ));
     }
 
     pub(super) fn composer_set_drop_hover(&self, hover: bool) {

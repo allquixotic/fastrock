@@ -396,7 +396,7 @@ impl AppController {
         state.set_fields(ModelRc::from(models.fields.clone()));
         self.approvals.models = Some(models);
 
-        state.on_choose(|index| {
+        state.on_choose(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| {
                 if let Ok(index) = usize::try_from(index)
                     && app.approvals_input_ready()
@@ -404,64 +404,64 @@ impl AppController {
                     app.approvals_choose(index);
                 }
             });
-        });
-        state.on_key(|text| {
+        }));
+        state.on_key(crate::ui_thread::scoped_callback!(|text| {
             let mut handled = false;
             crate::ui_thread::with_app_now(|app| handled = app.approvals_key(text.as_str()));
             handled
-        });
-        state.on_toggle_choice(|field, choice| {
+        }));
+        state.on_toggle_choice(crate::ui_thread::scoped_callback!(|field, choice| {
             crate::ui_thread::with_app(move |app| {
                 if let (Ok(field), Ok(choice)) = (usize::try_from(field), usize::try_from(choice)) {
                     app.approvals_toggle_choice(field, choice);
                 }
             });
-        });
-        state.on_edit_text(|field, text| {
+        }));
+        state.on_edit_text(crate::ui_thread::scoped_callback!(|field, text| {
             let text = text.to_string();
             crate::ui_thread::with_app(move |app| {
                 if let Ok(field) = usize::try_from(field) {
                     app.approvals_edit_text(field, text);
                 }
             });
-        });
-        state.on_submit(|| {
+        }));
+        state.on_submit(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 if app.approvals_input_ready() {
                     app.approvals_submit();
                 }
             });
-        });
-        state.on_secondary(|| {
+        }));
+        state.on_secondary(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 if app.approvals_input_ready() {
                     app.approvals_secondary();
                 }
             });
-        });
-        state.on_tertiary(|| {
+        }));
+        state.on_tertiary(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 if app.approvals_input_ready() {
                     app.approvals_tertiary();
                 }
             });
-        });
-        state.on_rearm(|| {
+        }));
+        state.on_rearm(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| app.approvals.guard.arm(Instant::now()));
-        });
-        state.on_open_link(|| {
+        }));
+        state.on_open_link(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 let link = app.window.global::<ApprovalsState>().get_link().to_string();
                 app.approvals_open_url(&link);
             });
-        });
-        state.on_copy_code(|| {
+        }));
+        state.on_copy_code(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 let code = app.window.global::<ApprovalsState>().get_code().to_string();
                 let code = code.strip_prefix("$ ").unwrap_or(&code).to_string();
                 app.copy_to_clipboard(&code);
             });
-        });
+        }));
     }
 
     /// Number of undecided requests shown on tab `index`.
@@ -1551,15 +1551,19 @@ impl AppController {
                     other => other.into(),
                 };
                 let window = self.window.as_weak();
-                slint::Timer::single_shot(std::time::Duration::ZERO, move || {
-                    if let Some(window) = window.upgrade() {
-                        let window = window.window();
-                        window.dispatch_event(slint::platform::WindowEvent::KeyPressed {
-                            text: text.clone(),
-                        });
-                        window.dispatch_event(slint::platform::WindowEvent::KeyReleased { text });
-                    }
-                });
+                slint::Timer::single_shot(
+                    std::time::Duration::ZERO,
+                    crate::ui_thread::scoped_callback!(move || {
+                        if let Some(window) = window.upgrade() {
+                            let window = window.window();
+                            window.dispatch_event(slint::platform::WindowEvent::KeyPressed {
+                                text: text.clone(),
+                            });
+                            window
+                                .dispatch_event(slint::platform::WindowEvent::KeyReleased { text });
+                        }
+                    }),
+                );
             }
             "click" => {
                 // A real left click at logical "x,y" (e.g. to focus another
@@ -1571,24 +1575,27 @@ impl AppController {
                     return;
                 };
                 let window = self.window.as_weak();
-                slint::Timer::single_shot(std::time::Duration::ZERO, move || {
-                    if let Some(window) = window.upgrade() {
-                        let window = window.window();
-                        let position = slint::LogicalPosition::new(x, y);
-                        let button = slint::platform::PointerEventButton::Left;
-                        window.dispatch_event(slint::platform::WindowEvent::PointerMoved {
-                            position,
-                        });
-                        window.dispatch_event(slint::platform::WindowEvent::PointerPressed {
-                            position,
-                            button,
-                        });
-                        window.dispatch_event(slint::platform::WindowEvent::PointerReleased {
-                            position,
-                            button,
-                        });
-                    }
-                });
+                slint::Timer::single_shot(
+                    std::time::Duration::ZERO,
+                    crate::ui_thread::scoped_callback!(move || {
+                        if let Some(window) = window.upgrade() {
+                            let window = window.window();
+                            let position = slint::LogicalPosition::new(x, y);
+                            let button = slint::platform::PointerEventButton::Left;
+                            window.dispatch_event(slint::platform::WindowEvent::PointerMoved {
+                                position,
+                            });
+                            window.dispatch_event(slint::platform::WindowEvent::PointerPressed {
+                                position,
+                                button,
+                            });
+                            window.dispatch_event(slint::platform::WindowEvent::PointerReleased {
+                                position,
+                                button,
+                            });
+                        }
+                    }),
+                );
             }
             "option" => {
                 if let Ok(position) = rest.parse::<usize>() {

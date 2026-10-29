@@ -131,17 +131,17 @@ pub(crate) struct SandboxState {
 impl AppController {
     pub(super) fn settings_sandbox_bind(&mut self) {
         let state = self.window.global::<SettingsState>();
-        state.on_sandbox_setup(|mode| {
+        state.on_sandbox_setup(crate::ui_thread::scoped_callback!(|mode| {
             let mode = mode.to_string();
             crate::ui_thread::with_app(move |app| {
                 if let Some(mode) = parse_mode(&mode) {
                     app.settings_sandbox_setup(mode);
                 }
             });
-        });
-        state.on_sandbox_refresh(|| {
+        }));
+        state.on_sandbox_refresh(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::settings_sandbox_check);
-        });
+        }));
         self.settings_sandbox_refresh();
     }
 

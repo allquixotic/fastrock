@@ -350,9 +350,13 @@ impl AppController {
         );
         let timer = &self.info_shared.terminal_timer;
         if view.shown && !timer.running() {
-            timer.start(slint::TimerMode::Repeated, REFRESH_INTERVAL, || {
-                crate::ui_thread::with_app(AppController::info_terminals_tick);
-            });
+            timer.start(
+                slint::TimerMode::Repeated,
+                REFRESH_INTERVAL,
+                crate::ui_thread::scoped_callback!(|| {
+                    crate::ui_thread::with_app(AppController::info_terminals_tick);
+                }),
+            );
         } else if !view.shown && timer.running() {
             timer.stop();
         }
@@ -504,11 +508,14 @@ impl AppController {
                 match result {
                     Ok(_) => {
                         app.toast("Stopping background terminals…");
-                        slint::Timer::single_shot(CLEAN_SETTLE, move || {
-                            crate::ui_thread::with_app(move |app| {
-                                app.info_relist_terminals(tab_id)
-                            });
-                        });
+                        slint::Timer::single_shot(
+                            CLEAN_SETTLE,
+                            crate::ui_thread::scoped_callback!(move || {
+                                crate::ui_thread::with_app(move |app| {
+                                    app.info_relist_terminals(tab_id)
+                                });
+                            }),
+                        );
                     }
                     Err(err) => app.toast(format!(
                         "Could not stop background terminals: {}",

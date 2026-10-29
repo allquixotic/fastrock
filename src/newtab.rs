@@ -644,21 +644,29 @@ impl AppController {
     pub(crate) fn newtab_bind(&mut self) {
         let state = self.window.global::<NewTabState>();
         state.set_folders(ModelRc::from(self.newtab.folders.clone()));
-        state.on_folderless(|| crate::ui_thread::with_app(AppController::start_folderless_thread));
-        state.on_choose_folder(|| {
+        state.on_folderless(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::start_folderless_thread)
+        }));
+        state.on_choose_folder(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::newtab_pick_folder);
-        });
-        state.on_open_file(|| crate::ui_thread::with_app(AppController::files_pick_and_open));
-        state.on_resume_thread(|| crate::ui_thread::with_app(AppController::sidebar_focus_search));
-        state.on_sign_in(|| crate::ui_thread::with_app(|app| app.open_settings(Some("account"))));
-        state.on_open_folder(|path| {
+        }));
+        state.on_open_file(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_pick_and_open)
+        }));
+        state.on_resume_thread(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::sidebar_focus_search)
+        }));
+        state.on_sign_in(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(|app| app.open_settings(Some("account")))
+        }));
+        state.on_open_folder(crate::ui_thread::scoped_callback!(|path| {
             let path = PathBuf::from(path.as_str());
             crate::ui_thread::with_app(move |app| app.start_thread_checked(path));
-        });
-        state.on_folder_action(|path, action| {
+        }));
+        state.on_folder_action(crate::ui_thread::scoped_callback!(|path, action| {
             let (path, action) = (PathBuf::from(path.as_str()), action.to_string());
             crate::ui_thread::with_app(move |app| app.newtab_folder_action(path, &action));
-        });
+        }));
         self.picker_bind();
     }
 
@@ -829,7 +837,7 @@ impl AppController {
             dialog = dialog.set_directory(recent);
         }
         let future = dialog.pick_folder();
-        let spawned = slint::spawn_local(async move {
+        let spawned = crate::ui_thread::spawn_local(async move {
             if let Some(folder) = future.await {
                 let path = folder.path().to_path_buf();
                 crate::ui_thread::with_app(move |app| app.start_thread_checked(path));
@@ -1060,7 +1068,7 @@ impl AppController {
             }
             return;
         }
-        self.backend.runtime().spawn_blocking(move || {
+        self.backend.spawn_blocking(move || {
             let results: Vec<(PathBuf, bool)> = paths
                 .into_iter()
                 .map(|path| {

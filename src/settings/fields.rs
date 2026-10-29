@@ -963,38 +963,38 @@ impl FieldPage {
 impl AppController {
     pub(super) fn settings_fields_bind(&mut self) {
         let state = self.window.global::<SettingsState>();
-        state.on_all_search_edited(|text| {
+        state.on_all_search_edited(crate::ui_thread::scoped_callback!(|text| {
             let text = text.to_string();
             crate::ui_thread::with_app(move |app| {
                 app.settings.fields.search = text;
                 app.settings_fields_refresh();
             });
-        });
-        state.on_field_toggle(|page, key, value| {
+        }));
+        state.on_field_toggle(crate::ui_thread::scoped_callback!(|page, key, value| {
             let (page, key) = (page.to_string(), key.to_string());
             crate::ui_thread::with_app(move |app| {
                 app.settings_field_input(&page, &key, FieldInput::Toggle(value));
             });
-        });
-        state.on_field_select(|page, key, index| {
+        }));
+        state.on_field_select(crate::ui_thread::scoped_callback!(|page, key, index| {
             let (page, key) = (page.to_string(), key.to_string());
             crate::ui_thread::with_app(move |app| {
                 app.settings_field_input(&page, &key, FieldInput::Select(index));
             });
-        });
-        state.on_field_apply(|page, key, text| {
+        }));
+        state.on_field_apply(crate::ui_thread::scoped_callback!(|page, key, text| {
             let (page, key, text) = (page.to_string(), key.to_string(), text.to_string());
             crate::ui_thread::with_app(move |app| {
                 app.settings_field_input(&page, &key, FieldInput::Text(text));
             });
-        });
-        state.on_field_reset(|page, key| {
+        }));
+        state.on_field_reset(crate::ui_thread::scoped_callback!(|page, key| {
             let (page, key) = (page.to_string(), key.to_string());
             crate::ui_thread::with_app(move |app| {
                 app.settings_field_input(&page, &key, FieldInput::Reset);
             });
-        });
-        state.on_field_expand(|_page, key, open| {
+        }));
+        state.on_field_expand(crate::ui_thread::scoped_callback!(|_page, key, open| {
             let key = key.to_string();
             crate::ui_thread::with_app(move |app| {
                 if open {
@@ -1005,7 +1005,7 @@ impl AppController {
                 app.settings.fields.force.insert(key);
                 app.settings_fields_refresh();
             });
-        });
+        }));
     }
 
     pub(super) fn settings_fields_activate(&mut self, page: &str) {

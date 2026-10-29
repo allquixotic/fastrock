@@ -279,7 +279,7 @@ impl AppController {
             dialog = dialog.set_directory(&thread.cwd);
         }
         let future = dialog.pick_files();
-        let spawned = slint::spawn_local(async move {
+        let spawned = crate::ui_thread::spawn_local(async move {
             let Some(files) = future.await else {
                 return;
             };

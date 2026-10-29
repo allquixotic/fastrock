@@ -407,7 +407,7 @@ impl AppController {
             return;
         }
         let raw = doc.raw.clone();
-        self.backend.runtime().spawn_blocking(move || {
+        self.backend.spawn_blocking(move || {
             let parsed = diff::parse_unified_diff(&raw);
             crate::ui_thread::post(move |app| app.files_diff_parsed(tab_id, generation, parsed));
         });

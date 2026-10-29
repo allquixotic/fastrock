@@ -105,52 +105,74 @@ fn diff_doc_at(tabs: &mut [Tab], index: usize) -> Option<&mut DiffDoc> {
 impl AppController {
     pub(crate) fn files_bind(&mut self) {
         let state = self.window.global::<FilesState>();
-        state.on_toggle_wrap(|| crate::ui_thread::with_app(AppController::files_toggle_wrap));
-        state.on_open_find(|| crate::ui_thread::with_app(AppController::files_open_find));
-        state.on_find_edited(|query| {
+        state.on_toggle_wrap(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_toggle_wrap)
+        }));
+        state.on_open_find(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_open_find)
+        }));
+        state.on_find_edited(crate::ui_thread::scoped_callback!(|query| {
             let query = query.to_string();
             crate::ui_thread::with_app(move |app| app.files_find_edited(query));
-        });
-        state.on_find_next(|| {
+        }));
+        state.on_find_next(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| app.files_find_step(/*forward*/ true))
-        });
-        state.on_find_prev(|| {
+        }));
+        state.on_find_prev(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| app.files_find_step(/*forward*/ false))
-        });
-        state.on_close_find(|| crate::ui_thread::with_app(AppController::files_close_find));
-        state.on_go_to_line(|| crate::ui_thread::with_app(AppController::files_prompt_go_to_line));
-        state.on_copy_path(|| crate::ui_thread::with_app(AppController::files_copy_path));
-        state.on_reveal(|| {
+        }));
+        state.on_close_find(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_close_find)
+        }));
+        state.on_go_to_line(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_prompt_go_to_line)
+        }));
+        state.on_copy_path(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_copy_path)
+        }));
+        state.on_reveal(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 app.files_open_external(external::ExternalAction::Reveal)
             });
-        });
-        state.on_open_externally(|| {
+        }));
+        state.on_open_externally(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 app.files_open_external(external::ExternalAction::Open)
             });
-        });
-        state.on_reload(|| crate::ui_thread::with_app(AppController::files_reload_active));
-        state.on_load_more(|| crate::ui_thread::with_app(AppController::files_load_more));
-        state.on_show_as_text(|| crate::ui_thread::with_app(AppController::files_show_as_text));
-        state.on_cursor_moved(|offset| {
+        }));
+        state.on_reload(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_reload_active)
+        }));
+        state.on_load_more(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_load_more)
+        }));
+        state.on_show_as_text(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_show_as_text)
+        }));
+        state.on_cursor_moved(crate::ui_thread::scoped_callback!(|offset| {
             crate::ui_thread::with_app(move |app| app.files_cursor_moved(offset));
-        });
-        state.on_diff_toggle_file(|file| {
+        }));
+        state.on_diff_toggle_file(crate::ui_thread::scoped_callback!(|file| {
             crate::ui_thread::with_app(move |app| app.files_diff_toggle(file));
-        });
-        state.on_diff_set_collapsed(|collapsed| {
+        }));
+        state.on_diff_set_collapsed(crate::ui_thread::scoped_callback!(|collapsed| {
             crate::ui_thread::with_app(move |app| app.files_diff_set_collapsed(collapsed));
-        });
-        state.on_diff_open_file(|file| {
+        }));
+        state.on_diff_open_file(crate::ui_thread::scoped_callback!(|file| {
             crate::ui_thread::with_app(move |app| app.files_diff_open_file(file));
-        });
-        state.on_copy_diff(|| crate::ui_thread::with_app(AppController::files_copy_diff));
-        state.on_copy_all(|| crate::ui_thread::with_app(AppController::files_copy_all));
-        state.on_save_text_as(|| crate::ui_thread::with_app(AppController::files_save_text_as));
-        state.on_viewport_changed(|first, last| {
+        }));
+        state.on_copy_diff(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_copy_diff)
+        }));
+        state.on_copy_all(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_copy_all)
+        }));
+        state.on_save_text_as(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::files_save_text_as)
+        }));
+        state.on_viewport_changed(crate::ui_thread::scoped_callback!(|first, last| {
             crate::ui_thread::with_app(move |app| app.files_viewport_changed(first, last));
-        });
+        }));
     }
 
     /// Loads the active file tab into the `FilesState` global.
@@ -291,7 +313,7 @@ impl AppController {
             dialog = dialog.set_directory(folder);
         }
         let future = dialog.pick_file();
-        let spawned = slint::spawn_local(async move {
+        let spawned = crate::ui_thread::spawn_local(async move {
             if let Some(file) = future.await {
                 let path = file.path().to_path_buf();
                 crate::ui_thread::with_app(move |app| app.open_file_tab(path, None));

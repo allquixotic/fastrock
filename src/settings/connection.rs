@@ -8,11 +8,11 @@ pub(crate) struct ConnectionState;
 
 impl AppController {
     pub(super) fn settings_connection_bind(&mut self) {
-        self.window
-            .global::<SettingsState>()
-            .on_connection_revert(|| {
+        self.window.global::<SettingsState>().on_connection_revert(
+            crate::ui_thread::scoped_callback!(|| {
                 crate::ui_thread::with_app(AppController::settings_connection_activate);
-            });
+            }),
+        );
     }
     pub(super) fn settings_connection_activate(&mut self) {
         let state = self.window.global::<SettingsState>();

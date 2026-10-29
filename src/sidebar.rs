@@ -376,29 +376,43 @@ impl AppController {
         self.sidebar.purpose = purpose::PurposeController::load(self.codex_home.as_deref());
         self.sidebar.activity = activity::ActivityController::load(self.codex_home.as_deref());
         let state = self.window.global::<SidebarState>();
-        state.on_open_rally(|| crate::ui_thread::with_app(AppController::rally_open_project));
-        state.on_new_thread(|| crate::ui_thread::with_app(AppController::open_new_tab_page));
-        state.on_open_settings(|| crate::ui_thread::with_app(|app| app.open_settings(None)));
+        state.on_open_rally(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::rally_open_project)
+        }));
+        state.on_new_thread(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::open_new_tab_page)
+        }));
+        state.on_open_settings(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(|app| app.open_settings(None))
+        }));
         state.set_rows(ModelRc::from(self.sidebar.rows.clone()));
-        state.on_width_changed(|width| {
+        state.on_width_changed(crate::ui_thread::scoped_callback!(|width| {
             crate::ui_thread::with_app(move |app| app.purpose_width_changed(width))
-        });
-        state.on_fit_title(|text, available, measured| {
-            let maximum = ((text.len() as f32 * available / measured.max(1.0)).floor() as usize)
-                .min(text.len().saturating_sub(1));
-            purpose::fit_measured_title(&text, maximum).into()
-        });
-        state.on_budget_changed(|| crate::ui_thread::with_app(AppController::sidebar_render));
-        state.on_viewport_changed(|| {
-            slint::Timer::single_shot(Duration::ZERO, || {
-                crate::ui_thread::with_app(AppController::purpose_schedule_missing)
-            });
-        });
-        state.on_search_edited(|text| {
+        }));
+        state.on_fit_title(crate::ui_thread::scoped_callback!(
+            |text, available, measured| {
+                let maximum = ((text.len() as f32 * available / measured.max(1.0)).floor()
+                    as usize)
+                    .min(text.len().saturating_sub(1));
+                purpose::fit_measured_title(&text, maximum).into()
+            }
+        ));
+        state.on_budget_changed(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::sidebar_render)
+        }));
+        state.on_viewport_changed(crate::ui_thread::scoped_callback!(|| {
+            slint::Timer::single_shot(
+                Duration::ZERO,
+                crate::ui_thread::scoped_callback!(|| {
+                    crate::ui_thread::with_app(AppController::purpose_schedule_missing)
+                }),
+            );
+        }));
+        state.on_search_edited(crate::ui_thread::scoped_callback!(|text| {
             let text = text.to_string();
             crate::ui_thread::with_app(move |app| app.sidebar_search_edited(text));
-        });
-        state.on_toggle_archived(|| {
+        }));
+        state.on_toggle_archived(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| {
                 app.sidebar.archived = !app.sidebar.archived;
                 app.sidebar.threads.clear();
@@ -406,31 +420,38 @@ impl AppController {
                 app.sidebar_render();
                 app.sidebar_reload();
             });
-        });
-        state.on_refresh(|| crate::ui_thread::with_app(AppController::sidebar_reload));
-        state.on_load_more(|| {
+        }));
+        state.on_refresh(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::sidebar_reload)
+        }));
+        state.on_load_more(crate::ui_thread::scoped_callback!(|| {
             // Deferred: this can fire from inside a scroll update of the list.
-            slint::Timer::single_shot(Duration::ZERO, || {
-                crate::ui_thread::with_app(AppController::sidebar_load_more);
-            });
-        });
-        state.on_open_thread(|id, folder| {
+            slint::Timer::single_shot(
+                Duration::ZERO,
+                crate::ui_thread::scoped_callback!(|| {
+                    crate::ui_thread::with_app(AppController::sidebar_load_more);
+                }),
+            );
+        }));
+        state.on_open_thread(crate::ui_thread::scoped_callback!(|id, folder| {
             let (id, folder) = (id.to_string(), PathBuf::from(folder.as_str()));
             crate::ui_thread::with_app(move |app| app.open_thread(id, Some(folder)));
-        });
-        state.on_thread_action(|id, action| {
+        }));
+        state.on_thread_action(crate::ui_thread::scoped_callback!(|id, action| {
             let (id, action) = (id.to_string(), action.to_string());
             crate::ui_thread::with_app(move |app| app.sidebar_thread_action(&id, &action));
-        });
-        state.on_folder_action(|path, action| {
+        }));
+        state.on_folder_action(crate::ui_thread::scoped_callback!(|path, action| {
             let (path, action) = (PathBuf::from(path.as_str()), action.to_string());
             crate::ui_thread::with_app(move |app| app.sidebar_folder_action(path, &action));
-        });
-        self.sidebar
-            .clock_timer
-            .start(slint::TimerMode::Repeated, CLOCK_TICK, || {
+        }));
+        self.sidebar.clock_timer.start(
+            slint::TimerMode::Repeated,
+            CLOCK_TICK,
+            crate::ui_thread::scoped_callback!(|| {
                 crate::ui_thread::with_app(AppController::sidebar_render);
-            });
+            }),
+        );
         self.sidebar_render();
     }
 
@@ -440,11 +461,13 @@ impl AppController {
 
     /// Re-fetches the thread list (debounced).
     pub(crate) fn sidebar_refresh(&mut self) {
-        self.sidebar
-            .refresh_timer
-            .start(slint::TimerMode::SingleShot, REFRESH_DEBOUNCE, || {
+        self.sidebar.refresh_timer.start(
+            slint::TimerMode::SingleShot,
+            REFRESH_DEBOUNCE,
+            crate::ui_thread::scoped_callback!(|| {
                 crate::ui_thread::with_app(AppController::sidebar_reload)
-            });
+            }),
+        );
     }
 
     pub(crate) fn sidebar_on_notification(&mut self, notification: &ServerNotification) {
@@ -698,11 +721,13 @@ impl AppController {
             .cloned()
             .collect();
         self.sidebar_render();
-        self.sidebar
-            .search_timer
-            .start(slint::TimerMode::SingleShot, SEARCH_DEBOUNCE, || {
+        self.sidebar.search_timer.start(
+            slint::TimerMode::SingleShot,
+            SEARCH_DEBOUNCE,
+            crate::ui_thread::scoped_callback!(|| {
                 crate::ui_thread::with_app(AppController::sidebar_apply_search)
-            });
+            }),
+        );
     }
 
     fn sidebar_apply_search(&mut self) {

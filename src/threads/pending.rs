@@ -122,10 +122,10 @@ impl AppController {
         state.set_error("".into());
         state.set_saving(false);
         state.set_open(true);
-        state.on_action(move |action| {
+        state.on_action(crate::ui_thread::scoped_callback!(move |action| {
             let action = action.to_string();
             crate::ui_thread::with_app(move |app| app.pending_message_action(tab_id, &action));
-        });
+        }));
     }
 
     fn pending_message_action(&mut self, tab_id: TabId, action: &str) {

@@ -319,11 +319,21 @@ OS-vault service/target compatibility is checked without replacing live tokens.
 WSAPI revision preflight is not atomic compare-and-swap. Transfers require the
 same scope; retired windows in other scopes retain their recoverable files.
 
-Run `cargo test --locked --lib -- --skip window_runtime::tests` on the Mac, then
-`dev/windows-rally-smoke.py` on Windows. The single skipped test requires a GUI;
-no Mac GUI was launched. `dev/check-build-policy.py` and `cargo fmt --all --
---check` verify build settings and source formatting. Current acceptance evidence
-is described in `docs/PORT-VERIFICATION.md` rather than inherited upstream logs.
+Current policy: compile on the Mac; run all tests and GUI fixtures on `games`.
+Build Windows tests with `cargo xwin test --workspace --features
+fastrock-workspaces/http-fixtures --target x86_64-pc-windows-msvc --no-run`, then
+run those executables on Windows. Run the rendering test in the signed-in Windows
+session. `dev/check-build-policy.py` and `cargo fmt --all -- --check` verify build
+settings and source formatting.
+
+For 0.4.0, `dev/windows-summary-smoke.py --navigation --windows` exercises the
+embedded Goose runtime with local provider/Rally fixtures. Rally pop-out creates
+a native window in the same process; callbacks, tasks and tool requests retain
+their owning window. Draft/name/filter transfer and a conversation in each window
+passed on games. Explicit Quit saves every window before stopping the one backend.
+The older external-backend fixture below remains historical until its complete
+workflow is migrated. Current 0.4.0 receipts and outstanding acceptance are in
+`SPEC.md`; `docs/PORT-VERIFICATION.md` retains the original port evidence.
 
 ## Source evidence
 

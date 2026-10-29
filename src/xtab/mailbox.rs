@@ -352,46 +352,82 @@ pub(crate) fn apply_ops(path: &Path, ops: Vec<StoreOp>) -> std::io::Result<()> {
     append_log(path, &pending)
 }
 
-/// Handle to the writer task that owns the log file.
-pub(crate) struct MailboxStore {
-    tx: mpsc::UnboundedSender<StoreOp>,
+type OnLoaded = Box<dyn FnOnce(std::io::Result<LoadedLog>) + Send>;
+enum StoreCommand {
+    Read(OnLoaded),
+    Write(StoreOp),
 }
 
+/// All windows share one ordered writer for each mailbox path. Compaction reads
+/// the writer's current log, never a window's possibly stale in-memory snapshot.
+/// The registry retains a sender until runtime shutdown, including when every
+/// window drops its handle while writes are still draining.
+pub(crate) struct MailboxStore {
+    tx: mpsc::UnboundedSender<StoreCommand>,
+}
 impl MailboxStore {
-    /// Starts the writer task. Its first job is loading the log, reported
-    /// through `on_loaded` before any queued op runs.
     pub(crate) fn start(
         runtime: &tokio::runtime::Handle,
         path: PathBuf,
         on_loaded: impl FnOnce(std::io::Result<LoadedLog>) + Send + 'static,
     ) -> Self {
-        let (tx, mut rx) = mpsc::unbounded_channel::<StoreOp>();
-        runtime.spawn(async move {
-            let load_path = path.clone();
-            let loaded =
-                tokio::task::spawn_blocking(move || load_log(&load_path, MAILBOX_CAPACITY))
-                    .await
-                    .unwrap_or_else(|err| Err(std::io::Error::other(err)));
-            on_loaded(loaded);
-            while let Some(op) = rx.recv().await {
-                let mut ops = vec![op];
-                while let Ok(op) = rx.try_recv() {
-                    ops.push(op);
+        use std::{
+            collections::HashMap,
+            sync::{Mutex, OnceLock},
+        };
+        static WRITERS: OnceLock<Mutex<HashMap<PathBuf, mpsc::UnboundedSender<StoreCommand>>>> =
+            OnceLock::new();
+        let mut writers = WRITERS
+            .get_or_init(Default::default)
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        writers.retain(|_, writer| !writer.is_closed());
+        let tx = if let Some(tx) = writers.get(&path).cloned() {
+            tx
+        } else {
+            let (tx, mut rx) = mpsc::unbounded_channel::<StoreCommand>();
+            writers.insert(path.clone(), tx.clone());
+            runtime.spawn(async move {
+                let mut pending = VecDeque::new();
+                loop {
+                    let command = match pending.pop_front() { Some(c) => c, None => match rx.recv().await { Some(c) => c, None => break } };
+                    match command {
+                        StoreCommand::Read(on_loaded) => {
+                            let path = path.clone();
+                            let loaded = tokio::task::spawn_blocking(move || load_log(&path, MAILBOX_CAPACITY)).await
+                                .unwrap_or_else(|e| Err(std::io::Error::other(e)));
+                            on_loaded(loaded);
+                        }
+                        StoreCommand::Write(op) => {
+                            let mut ops = vec![op];
+                            while let Ok(command) = rx.try_recv() {
+                                match command { StoreCommand::Write(op) => ops.push(op), read => { pending.push_back(read); break; } }
+                            }
+                            let write_path = path.clone();
+                            let result = tokio::task::spawn_blocking(move || {
+                                let mut appends = vec![];
+                                for op in ops { match op {
+                                    StoreOp::Append(entry) => appends.push(entry),
+                                    StoreOp::Rewrite(_) => {
+                                        append_log(&write_path, &std::mem::take(&mut appends))?;
+                                        let latest = load_log(&write_path, MAILBOX_CAPACITY)?;
+                                        rewrite_log(&write_path, &latest.entries)?;
+                                    }
+                                } }
+                                append_log(&write_path, &appends)
+                            }).await.unwrap_or_else(|e| Err(std::io::Error::other(e)));
+                            if let Err(error) = result { tracing::warn!(%error, path=%path.display(), "failed to write the cross-tab mailbox"); }
+                        }
+                    }
                 }
-                let write_path = path.clone();
-                let result = tokio::task::spawn_blocking(move || apply_ops(&write_path, ops))
-                    .await
-                    .unwrap_or_else(|err| Err(std::io::Error::other(err)));
-                if let Err(err) = result {
-                    tracing::warn!(%err, path = %path.display(), "failed to write the cross-tab mailbox");
-                }
-            }
-        });
+            });
+            tx
+        };
+        let _ = tx.send(StoreCommand::Read(Box::new(on_loaded)));
         Self { tx }
     }
-
     pub(crate) fn send(&self, op: StoreOp) {
-        if self.tx.send(op).is_err() {
+        if self.tx.send(StoreCommand::Write(op)).is_err() {
             tracing::warn!("cross-tab mailbox writer stopped; change not saved");
         }
     }
@@ -417,6 +453,44 @@ mod tests {
             replied_at: None,
             error: None,
         }
+    }
+
+    #[tokio::test]
+    async fn v48_windows_share_writer_and_compaction_keeps_other_windows_messages() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("mailbox.jsonl");
+        let runtime = tokio::runtime::Handle::current();
+        let (a_tx, a_rx) = tokio::sync::oneshot::channel();
+        let a = MailboxStore::start(&runtime, path.clone(), move |loaded| {
+            let _ = a_tx.send(loaded);
+        });
+        a_rx.await.unwrap().unwrap();
+        a.send(StoreOp::Append(entry("a", "one", MailStatus::Sent)));
+        let (b_tx, b_rx) = tokio::sync::oneshot::channel();
+        let b = MailboxStore::start(&runtime, path.clone(), move |loaded| {
+            let _ = b_tx.send(loaded);
+        });
+        assert!(a.tx.same_channel(&b.tx));
+        assert_eq!(b_rx.await.unwrap().unwrap().entries.len(), 1);
+        b.send(StoreOp::Append(entry("b", "two", MailStatus::Sent)));
+        a.send(StoreOp::Rewrite(vec![])); // stale UI snapshot cannot erase b
+        let writer = a.tx.downgrade();
+        drop(a);
+        drop(b); // pending writes still belong to the same actor
+        let (read_tx, read_rx) = tokio::sync::oneshot::channel();
+        let _reader = MailboxStore::start(&runtime, path, move |loaded| {
+            let _ = read_tx.send(loaded);
+        });
+        assert!(writer.upgrade().unwrap().same_channel(&_reader.tx));
+        let loaded = read_rx.await.unwrap().unwrap();
+        assert_eq!(
+            loaded
+                .entries
+                .iter()
+                .map(|e| e.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["a", "b"]
+        );
     }
 
     #[test]

@@ -49,11 +49,13 @@ impl Scope {
 }
 impl WindowHub {
     pub fn new(store: &Store) -> Result<Self> {
-        let root = std::env::var_os("FASTROCK_RALLY_MASTER_HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| store.directory.clone());
-        let id = std::env::var("FASTROCK_RALLY_WINDOW_ID")
-            .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string());
+        Self::with_identity(
+            store,
+            store.directory.clone(),
+            uuid::Uuid::new_v4().to_string(),
+        )
+    }
+    pub fn with_identity(store: &Store, root: PathBuf, id: String) -> Result<Self> {
         ensure!(
             uuid::Uuid::parse_str(&id).is_ok(),
             "Invalid window identity"
@@ -172,15 +174,23 @@ impl WindowHub {
             directory: self.root.join("windows").join(&id),
         };
         store.save(prefs)?;
-        atomic_write(&store.directory.join("launching"), b"starting")?;
+        atomic_write(
+            &store.directory.join("launching"),
+            std::process::id().to_string().as_bytes(),
+        )?;
         Ok((id, store))
     }
     pub fn retired_documents(&self) -> Result<Vec<(PathBuf, Vec<Document>)>> {
         let mut documents = vec![];
         for entry in std::fs::read_dir(self.root.join("windows"))? {
             let directory = entry?.path();
-            if directory.join("launching").exists() {
-                continue;
+            let launching = directory.join("launching");
+            if let Ok(pid) = std::fs::read_to_string(&launching) {
+                if pid.trim().parse::<u32>().is_ok_and(process_alive) {
+                    continue;
+                }
+                // A crash before the new window registered must not strand drafts.
+                let _ = std::fs::remove_file(launching);
             }
             if directory == self.directory {
                 continue;
@@ -240,6 +250,45 @@ fn process_alive(pid: u32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn v48_explicit_window_identity_and_abandoned_launch_recovery() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store {
+            directory: temp.path().into(),
+        };
+        let parent = WindowHub::new(&store).unwrap();
+        let prefs = Preferences {
+            documents: vec![Document {
+                identity: "recover-me".into(),
+                assistant_draft: "draft".into(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let (id, child) = parent.prepare_child(&prefs).unwrap();
+        assert!(parent.retired_documents().unwrap().is_empty());
+        atomic_write(
+            &child.directory.join("launching"),
+            b"invalid-abandoned-owner",
+        )
+        .unwrap();
+        assert_eq!(
+            parent.retired_documents().unwrap()[0].1[0].identity,
+            "recover-me"
+        );
+        let child_hub = WindowHub::with_identity(&child, parent.root.clone(), id.clone()).unwrap();
+        assert_eq!(child_hub.id, id);
+        let owners = parent.owners().unwrap();
+        assert_eq!(owners.len(), 2);
+        assert!(owners.iter().all(|owner| owner.pid == std::process::id()));
+        assert!(parent.retired_documents().unwrap().is_empty());
+        child_hub.retire();
+        assert_eq!(
+            parent.retired_documents().unwrap()[0].1[0].assistant_draft,
+            "draft"
+        );
+    }
+
     #[test]
     fn v21_window_handoff_is_durable_and_token_free() {
         let temp = tempfile::tempdir().unwrap();

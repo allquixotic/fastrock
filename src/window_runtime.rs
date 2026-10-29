@@ -11,6 +11,12 @@ use i_slint_core::lengths::LogicalSize;
 use i_slint_core::lengths::ScaleFactor;
 use i_slint_core::window::WindowInner;
 
+/// Stable identity for the lifetime of a native Slint window. The UI registry
+/// is cleared before controllers are dropped.
+pub(crate) fn identity(window: &slint::Window) -> usize {
+    WindowInner::from_pub(window) as *const WindowInner as usize
+}
+
 /// Repaint lost pixels even when the presentation surface claims it retained them.
 /// Called before a Windows redraw, without requesting another frame.
 #[cfg(test)]
@@ -314,7 +320,7 @@ mod tests {
         state.set_sidebar_visible(false);
         state.set_info_visible(false);
         let transcript = app.global::<crate::ui::TranscriptState>();
-        transcript.on_link_destination(|url| url);
+        transcript.on_link_destination(crate::ui_thread::scoped_callback!(|url| url));
         let rows: Vec<_> = (0..40)
             .map(|i| crate::ui::BlockData {
                 id: format!("row{i}").into(),
@@ -384,13 +390,13 @@ mod tests {
             "upward scroll must persist"
         );
         let weak = app.as_weak();
-        transcript.on_link_at(move |x, y| {
+        transcript.on_link_at(crate::ui_thread::scoped_callback!(move |x, y| {
             let result = weak
                 .upgrade()
                 .and_then(|app| link_at(app.window(), x, y))
                 .unwrap_or_default();
             result.into()
-        });
+        }));
         transcript.set_blocks(
             Rc::new(slint::VecModel::from(vec![crate::ui::BlockData {
                 id: "link".into(),

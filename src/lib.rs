@@ -265,16 +265,19 @@ fn run_app(
     let _ = window.hide();
     perf::mark("event-loop-exit");
 
-    let app = ui_thread::take();
-    let thread_ids = app
-        .as_ref()
-        .map(|app| app.open_thread_ids())
-        .unwrap_or_default();
-    if let Some(app) = app.as_ref() {
-        // Drain the latest queued atomic session save off the UI thread before runtime shutdown.
+    let apps = ui_thread::take_all();
+    let mut thread_ids: Vec<_> = apps
+        .iter()
+        .flat_map(AppController::open_thread_ids)
+        .collect();
+    thread_ids.sort();
+    thread_ids.dedup();
+    for app in &apps {
+        let _ = app.window.hide();
+        // Flush each window's durable Rally session before the one runtime stops.
         rt.block_on(app.rally.flush());
     }
-    drop(app);
+    drop(apps);
     stop_backend(&rt, &backend, thread_ids);
     perf::mark("shutdown-done");
     Ok(())
@@ -305,7 +308,9 @@ fn install_termination_handler(rt: &tokio::runtime::Handle, backend: &Backend) {
             // The session is ending: AppKit exits right after this returns,
             // so shut down here, within a short budget.
             let mut thread_ids = Vec::new();
-            ui_thread::with_app_now(|app| thread_ids = app.prepare_for_exit());
+            for id in ui_thread::ids() {
+                ui_thread::with_app_now_for(id, |app| thread_ids.extend(app.prepare_for_exit()));
+            }
             let shutdown = rt.block_on(async {
                 tokio::time::timeout(SESSION_END_BUDGET, backend.shutdown(thread_ids)).await
             });
@@ -360,14 +365,17 @@ fn select_backend(renderer: RendererChoice) -> anyhow::Result<()> {
 /// only fire in the background) and OS light/dark changes (`Theme`).
 #[derive(Default)]
 struct WindowEvents {
-    pointer: Option<slint::LogicalPosition>,
+    pointers: std::collections::HashMap<
+        slint::winit_030::winit::window::WindowId,
+        slint::LogicalPosition,
+    >,
 }
 
 impl slint::winit_030::CustomApplicationHandler for WindowEvents {
     fn window_event(
         &mut self,
         _event_loop: &slint::winit_030::winit::event_loop::ActiveEventLoop,
-        _window_id: slint::winit_030::winit::window::WindowId,
+        window_id: slint::winit_030::winit::window::WindowId,
         winit_window: Option<&slint::winit_030::winit::window::Window>,
         slint_window: Option<&slint::Window>,
         event: &slint::winit_030::winit::event::WindowEvent,
@@ -375,42 +383,53 @@ impl slint::winit_030::CustomApplicationHandler for WindowEvents {
         use slint::winit_030::winit::event::WindowEvent;
         use slint::winit_030::winit::window::Theme;
 
-        match event {
-            WindowEvent::CursorMoved { position, .. } => {
-                let scale = slint_window.map_or(1.0, slint::Window::scale_factor);
-                self.pointer = Some(slint::LogicalPosition::new(
-                    position.x as f32 / scale,
-                    position.y as f32 / scale,
-                ));
-            }
-            WindowEvent::CursorLeft { .. } => self.pointer = None,
-            WindowEvent::MouseWheel { delta, .. } => {
-                use slint::winit_030::winit::event::MouseScrollDelta;
-                let dy = match delta {
-                    MouseScrollDelta::LineDelta(_, dy) => *dy,
-                    MouseScrollDelta::PixelDelta(delta) => delta.y as f32,
-                };
-                if let Some(position) = self.pointer {
-                    ui_thread::with_app(move |app| app.transcript_before_scroll(position, dy));
+        if let Some(owner) = slint_window.and_then(ui_thread::window_owner) {
+            match event {
+                WindowEvent::CursorMoved { position, .. } => {
+                    let scale = slint_window.map_or(1.0, slint::Window::scale_factor);
+                    self.pointers.insert(
+                        window_id,
+                        slint::LogicalPosition::new(
+                            position.x as f32 / scale,
+                            position.y as f32 / scale,
+                        ),
+                    );
                 }
-            }
-            WindowEvent::MouseInput { state, button, .. }
-                if *state == slint::winit_030::winit::event::ElementState::Pressed
-                    && *button == slint::winit_030::winit::event::MouseButton::Left =>
-            {
-                if let Some(position) = self.pointer {
-                    ui_thread::with_app(move |app| app.transcript_before_scrollbar_press(position));
+                WindowEvent::CursorLeft { .. } => {
+                    self.pointers.remove(&window_id);
                 }
+                WindowEvent::MouseWheel { delta, .. } => {
+                    use slint::winit_030::winit::event::MouseScrollDelta;
+                    let dy = match delta {
+                        MouseScrollDelta::LineDelta(_, dy) => *dy,
+                        MouseScrollDelta::PixelDelta(delta) => delta.y as f32,
+                    };
+                    if let Some(position) = self.pointers.get(&window_id).copied() {
+                        ui_thread::with_app_for(owner, move |app| {
+                            app.transcript_before_scroll(position, dy)
+                        });
+                    }
+                }
+                WindowEvent::MouseInput { state, button, .. }
+                    if *state == slint::winit_030::winit::event::ElementState::Pressed
+                        && *button == slint::winit_030::winit::event::MouseButton::Left =>
+                {
+                    if let Some(position) = self.pointers.get(&window_id).copied() {
+                        ui_thread::with_app_for(owner, move |app| {
+                            app.transcript_before_scrollbar_press(position)
+                        });
+                    }
+                }
+                WindowEvent::Focused(focused) => {
+                    let focused = *focused;
+                    ui_thread::with_app_for(owner, move |app| app.on_window_focus_changed(focused));
+                }
+                WindowEvent::ThemeChanged(theme) => {
+                    let dark = *theme == Theme::Dark;
+                    ui_thread::with_app_for(owner, move |app| app.on_system_theme_changed(dark));
+                }
+                _ => {}
             }
-            WindowEvent::Focused(focused) => {
-                let focused = *focused;
-                ui_thread::with_app(move |app| app.on_window_focus_changed(focused));
-            }
-            WindowEvent::ThemeChanged(theme) => {
-                let dark = *theme == Theme::Dark;
-                ui_thread::with_app(move |app| app.on_system_theme_changed(dark));
-            }
-            _ => {}
         }
         // The software backend restores every presentation pixel from its private
         // retained framebuffer. Ordinary redraws keep Slint's dirty-region tracking.

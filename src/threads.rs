@@ -16,6 +16,7 @@ mod review;
 mod side;
 mod worktree;
 
+use slint::ComponentHandle;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
@@ -265,6 +266,18 @@ impl AppController {
 
     /// Opens an existing thread, or focuses its tab when already open.
     pub(crate) fn open_thread(&mut self, thread_id: String, cwd_hint: Option<PathBuf>) {
+        if let Some(owner) = crate::ui_thread::thread_owner(&thread_id)
+            && owner != self.backend.window_id()
+        {
+            crate::ui_thread::with_app_for(owner, move |app| {
+                if let Some(index) = app.tab_index_for_thread(&thread_id) {
+                    app.activate_tab(index);
+                }
+                let _ = app.window.show();
+            });
+            return;
+        }
+
         if let Some(index) = self.tab_index_for_thread(&thread_id) {
             self.activate_tab(index);
             return;
@@ -953,11 +966,14 @@ impl AppController {
                         {
                             thread.active_turn_id = Some(turn_id.clone());
                         }
-                        slint::Timer::single_shot(delay, move || {
-                            crate::ui_thread::with_app(move |app| {
-                                app.send_interrupt(tab_id, thread_id, turn_id, attempt + 1);
-                            });
-                        });
+                        slint::Timer::single_shot(
+                            delay,
+                            crate::ui_thread::scoped_callback!(move || {
+                                crate::ui_thread::with_app(move |app| {
+                                    app.send_interrupt(tab_id, thread_id, turn_id, attempt + 1);
+                                });
+                            }),
+                        );
                     }
                     InterruptNext::Report => match index {
                         Some(index) => app.transcript_push_notice(
@@ -1111,7 +1127,7 @@ impl AppController {
             dialog = dialog.set_directory(directory);
         }
         let future = dialog.save_file();
-        let spawned = slint::spawn_local(async move {
+        let spawned = crate::ui_thread::spawn_local(async move {
             let Some(handle) = future.await else {
                 return;
             };
