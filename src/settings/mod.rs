@@ -710,6 +710,7 @@ impl AppController {
             return;
         }
         match page {
+            "goose" => self.goose_cheap_load(),
             "common" | "all" => self.settings_fields_activate(page),
             "raw" => self.settings_raw_activate(),
             "account" => self.settings_account_activate(),

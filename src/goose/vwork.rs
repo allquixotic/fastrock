@@ -23,29 +23,7 @@ impl Adapter {
         super::hooks::prepare(std::path::PathBuf::from(cwd))
             .await
             .map_err(|_| error("Unable to prepare embedded vwork hooks"))?;
-        let paths = self.vwork_paths.clone();
-        let cwd = std::path::PathBuf::from(cwd);
-        tokio::task::spawn_blocking(move || {
-            let mut entries = serde_json::Map::new();
-            for entry in goose_runtime::config::extensions::get_all_extensions() {
-                let mut value = serde_json::to_value(&entry.config)
-                    .map_err(|_| error("Invalid Goose extension"))?;
-                value["enabled"] = json!(entry.enabled);
-                entries.insert(entry.config.name(), value);
-            }
-            for extension in
-                goose_runtime::plugins::mcp_servers::enabled_plugin_mcp_servers(Some(&cwd))
-            {
-                let mut value = serde_json::to_value(&extension)
-                    .map_err(|_| error("Invalid Goose plugin extension"))?;
-                value["enabled"] = json!(true);
-                entries.insert(extension.name(), value);
-            }
-            fastrock_workspaces::vwork::bindings_from_extensions(&paths, Value::Object(entries))
-                .map_err(|e| error(e.to_string()))
-        })
-        .await
-        .map_err(|_| error("Goose extension discovery failed"))?
+        configured_embedded(self.vwork_paths.clone(), std::path::PathBuf::from(cwd)).await
     }
 
     async fn vwork_servers(
@@ -227,4 +205,31 @@ mod tests {
             assert!(!local_shared_server(&server(url.clone())), "{url}");
         }
     }
+}
+
+/// One public Goose configuration snapshot for both tools and search storage.
+pub(super) async fn configured_embedded(
+    paths: fastrock_workspaces::vwork::DiscoveryPaths,
+    cwd: std::path::PathBuf,
+) -> Result<Vec<McpBinding>, JSONRPCErrorError> {
+    tokio::task::spawn_blocking(move || {
+        let mut entries = serde_json::Map::new();
+        for entry in goose_runtime::config::extensions::get_all_extensions() {
+            let mut value = serde_json::to_value(&entry.config)
+                .map_err(|_| error("Invalid Goose extension"))?;
+            value["enabled"] = json!(entry.enabled);
+            entries.insert(entry.config.name(), value);
+        }
+        for extension in goose_runtime::plugins::mcp_servers::enabled_plugin_mcp_servers(Some(&cwd))
+        {
+            let mut value = serde_json::to_value(&extension)
+                .map_err(|_| error("Invalid Goose plugin extension"))?;
+            value["enabled"] = json!(true);
+            entries.insert(extension.name(), value);
+        }
+        fastrock_workspaces::vwork::bindings_from_extensions(&paths, Value::Object(entries))
+            .map_err(|e| error(e.to_string()))
+    })
+    .await
+    .map_err(|_| error("Goose extension discovery failed"))?
 }

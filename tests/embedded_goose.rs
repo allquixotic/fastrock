@@ -1,6 +1,17 @@
 //! Standalone fixture process: environment isolation precedes any runtime threads.
+#[path = "../src/goose/cheap_profile.rs"]
+mod cheap_profile;
 #[path = "../src/goose/embedded.rs"]
 mod embedded;
+#[path = "../src/goose/summary_service.rs"]
+mod summary_service;
+#[path = "../src/goose/summary_worker.rs"]
+mod summary_worker;
+mod model {
+    pub fn ui_id(id: &str) -> String {
+        format!("goose:{id}")
+    }
+}
 
 use anyhow::{Context, Result, ensure};
 use goose_provider_types::{base::Provider, conversation::message::Message, model::ModelConfig};
@@ -210,9 +221,99 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
     drop(writer);
     drop(reader);
     connection.task.abort();
+
+    // Backfill the actual persisted Goose session through the public compaction
+    // provider API, then replace it on another completed turn. No agent tools.
+    let home = std::path::PathBuf::from(std::env::var("GOOSE_PATH_ROOT")?).join("vwork");
+    let summaries = fastrock_workspaces::summaries::Summaries(
+        fastrock_workspaces::embedded::Connection::new(home.clone()),
+    );
+    let worker = summary_service::Service::start(home.clone());
+    worker.wait_idle().await;
+    let key = model::ui_id(&session);
+    let first = summaries
+        .get(key.clone())
+        .await?
+        .context("Missing backfilled summary")?;
+    ensure!(
+        first.text.contains("fixture reply"),
+        "Invalid backfill response"
+    );
+    ensure!(
+        captured.lock().await.len() == 5,
+        "Backfill must call the cheap model exactly once"
+    );
+    let manager = goose_runtime::session::SessionManager::new(
+        goose_runtime::config::paths::Paths::data_dir(),
+    );
+    let original = manager
+        .get_session(&session, true)
+        .await?
+        .conversation
+        .context("Missing source")?;
+    manager
+        .add_message(
+            &session,
+            &Message::user().with_text("A later unique search keyword: ZirconBridge"),
+        )
+        .await?;
+    manager
+        .add_message(
+            &session,
+            &Message::assistant().with_text("New completed answer"),
+        )
+        .await?;
+    worker.completed(session.clone()).await;
+    worker.wait_idle().await;
+    let latest = summaries
+        .get(key.clone())
+        .await?
+        .context("Missing replacement")?;
+    ensure!(
+        latest.revision > first.revision && latest.source_messages > first.source_messages,
+        "Summary did not advance"
+    );
+    ensure!(
+        summaries.page(None, 10).await?.len() == 1,
+        "Historical summaries retained"
+    );
+    let unchanged = manager
+        .get_session(&session, true)
+        .await?
+        .conversation
+        .context("Missing source")?;
+    ensure!(
+        serde_json::to_value(&unchanged.messages()[..original.messages().len()])?
+            == serde_json::to_value(original.messages())?,
+        "Summarization changed the source conversation"
+    );
+    let requests = captured.lock().await;
+    ensure!(
+        requests.len() == 6,
+        "Completed turn must make one summary call"
+    );
+    for (path, body) in &requests[4..] {
+        ensure!(
+            path.contains("openai.gpt-6-luna"),
+            "Summary used an expensive fallback"
+        );
+        ensure!(
+            body.get("toolConfig").is_none(),
+            "Summary request exposed agent tools"
+        );
+    }
+    drop(requests);
+    drop(worker);
+    let restarted = summary_service::Service::start(home);
+    restarted.wait_idle().await;
+    ensure!(
+        captured.lock().await.len() == 6,
+        "Restart repeated an up-to-date summary"
+    );
+    drop(restarted);
     http.abort();
     println!(
-        "V38/V39: embedded Goose initialize/session/prompt/text/close and three Bedrock Runtime model routes passed (fixtures only)."
+        "V38/V39/V40/V44: embedded Goose routes and sessions; cheap-model backfill, replacement, source preservation and restart passed (fixtures only)."
     );
     Ok(())
 }

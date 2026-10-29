@@ -9,17 +9,44 @@ const CURRENT: TableDefinition<&str, &[u8]> = TableDefinition::new("fastrock_sea
 const REQUESTED: TableDefinition<&str, u64> = TableDefinition::new("fastrock_search_requested_v1");
 const MAX_SUMMARY_BYTES: usize = 8 * 1024 * 1024;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Summary {
     pub revision: u64,
     pub text: String,
     pub profile: String,
+    #[serde(default)]
+    pub source_messages: usize,
+    #[serde(default)]
+    pub source_digest: String,
 }
 
 #[derive(Clone)]
 pub struct Summaries(pub Connection);
 
 impl Summaries {
+    /// Allocate a durable generation even after a restart or a failed job.
+    pub async fn advance(&self, id: String) -> Result<u64> {
+        self.0
+            .run(move |store| {
+                store.with_engine(|engine| {
+                    let transaction = engine.db.begin_write()?;
+                    let next;
+                    {
+                        let mut requested = transaction.open_table(REQUESTED)?;
+                        let previous = requested.get(id.as_str())?.map(|v| v.value()).unwrap_or(0);
+                        next = previous
+                            .checked_add(1)
+                            .ok_or_else(|| anyhow::anyhow!("Summary generation exhausted"))?;
+                        requested.insert(id.as_str(), next)?;
+                        transaction.open_table(CURRENT)?;
+                    }
+                    transaction.commit()?;
+                    Ok(next)
+                })
+            })
+            .await
+    }
+
     /// The caller's persisted user-turn ordinal is monotonic. Duplicate delivery
     /// is harmless, and a slow old completion cannot replace a newer summary.
     pub async fn request(&self, id: String, revision: u64) -> Result<()> {

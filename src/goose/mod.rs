@@ -1,4 +1,5 @@
 //! Embedded Goose adapter. Goose owns agents/config/storage; these are UI projections.
+mod cheap_profile;
 mod controls;
 mod embedded;
 mod hooks;
@@ -7,6 +8,8 @@ mod model;
 mod queue;
 mod rpc;
 mod sessions;
+mod summary_service;
+mod summary_worker;
 #[cfg(test)]
 mod tests;
 mod vwork;
@@ -25,6 +28,9 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::{Mutex, mpsc, oneshot};
 
 type Job = Pin<Box<dyn Future<Output = ()> + Send>>;
+pub(crate) fn summary_store() -> Option<std::path::PathBuf> {
+    summary_service::home()
+}
 pub(super) fn error(message: impl Into<String>) -> JSONRPCErrorError {
     JSONRPCErrorError {
         code: -32000,
@@ -67,6 +73,7 @@ struct Adapter {
     queue_root: std::path::PathBuf,
     vwork_paths: fastrock_workspaces::vwork::DiscoveryPaths,
     embedded_runtime: bool,
+    summaries: Option<Arc<summary_service::Service>>,
 }
 
 pub(crate) async fn connect(
@@ -173,6 +180,18 @@ where
         }}
     }));
     let bridge = mcp::Bridge::new().await?;
+    let summaries = if child.is_none() {
+        let bindings = vwork::configured_embedded(vwork_paths.clone(), cwd.clone())
+            .await
+            .map_err(|e| anyhow::anyhow!(e.message))?;
+        let home = bindings
+            .first()
+            .map(|b| b.home.clone())
+            .unwrap_or_else(|| vwork_paths.default_vwork_home.clone());
+        Some(summary_service::Service::start(home))
+    } else {
+        None
+    };
     let adapter = Arc::new(Adapter {
         rpc: rpc.clone(),
         events: events_tx.clone(),
@@ -186,6 +205,7 @@ where
         mcp: bridge,
         queue: Mutex::new(HashMap::new()),
         queue_root,
+        summaries,
         vwork_paths,
         embedded_runtime: child.is_none(),
     });

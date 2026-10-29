@@ -55,7 +55,7 @@ const PAGE_SIZE: u32 = 50;
 const MAX_PAGE_SIZE: u32 = 100;
 /// Coalesces bursts of list-changing notifications into one reload.
 const REFRESH_DEBOUNCE: Duration = Duration::from_millis(500);
-const SEARCH_DEBOUNCE: Duration = Duration::from_millis(250);
+const SEARCH_DEBOUNCE: Duration = Duration::from_millis(16);
 /// How often relative timestamps ("5m ago") are re-rendered.
 const CLOCK_TICK: Duration = Duration::from_secs(30);
 const UNTITLED_THREAD: &str = "(no message yet)";
@@ -445,7 +445,6 @@ impl AppController {
     }
 
     pub(crate) fn sidebar_on_notification(&mut self, notification: &ServerNotification) {
-        self.sidebar_search_notification(notification);
         self.activity_notification(notification);
         self.purpose_on_notification(notification);
         match notification {
@@ -579,8 +578,7 @@ impl AppController {
     fn sidebar_fetch(&mut self, cursor: Option<String>, limit: u32) {
         let generation = self.sidebar.generation;
         let first_page = cursor.is_none();
-        let search_term =
-            (!self.sidebar.search_term.is_empty()).then(|| self.sidebar.search_term.clone());
+        let search_term = None;
         let params = list_params(
             cursor,
             limit,
@@ -632,6 +630,17 @@ impl AppController {
                     .data
                     .iter()
                     .filter(|thread| !thread.ephemeral)
+                    .filter(|thread| {
+                        let query = self.sidebar.search_term.to_lowercase();
+                        query.is_empty()
+                            || thread
+                                .name
+                                .as_deref()
+                                .unwrap_or("")
+                                .to_lowercase()
+                                .contains(&query)
+                            || thread.preview.to_lowercase().contains(&query)
+                    })
                     .map(ThreadSummary::from_thread)
                     .collect();
                 if first_page {
@@ -672,7 +681,20 @@ impl AppController {
         self.sidebar.search_run = None;
         self.sidebar.generation += 1;
         self.sidebar.pending_search = text;
-        self.sidebar_render_state();
+        self.sidebar.search_term = self.sidebar.pending_search.trim().to_owned();
+        self.sidebar.history_hits.clear();
+        let query = self.sidebar.search_term.to_lowercase();
+        let cached = if self.sidebar.archived {
+            &self.sidebar.threads
+        } else {
+            &self.sidebar.recent
+        };
+        self.sidebar.threads = cached
+            .iter()
+            .filter(|thread| query.is_empty() || thread.title.to_lowercase().contains(&query))
+            .cloned()
+            .collect();
+        self.sidebar_render();
         self.sidebar
             .search_timer
             .start(slint::TimerMode::SingleShot, SEARCH_DEBOUNCE, || {
@@ -684,7 +706,6 @@ impl AppController {
         let term = self.sidebar.pending_search.trim().to_string();
         self.sidebar.search_term = term;
         // A different query starts from one page again.
-        self.sidebar.threads.clear();
         self.sidebar.next_cursor = None;
         self.sidebar_reload();
     }

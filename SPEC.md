@@ -169,7 +169,7 @@ T37|~|Replace external backend/core bridges with embedded Goose; remove Codex UI
 T38|~|Embed vwork Engine/tools/browser/compaction; compressed current-summary table in same redb|V40,I.vwork
 T39|.|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; no quotas|V41,I.orchestration
 T40|.|Native T3 main UI/sidebar/panels, repository projects and permanent independent Rally project|V42,I.questions,I.links
-T41|.|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
+T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|.|Lossless compressed transcript cache, incremental rendering and efficient arbitrary scrolling|V1,V9,V32,V37,V43,I.scroll
 T43|.|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
 T44|.|Watchdog-protected games benchmarks, full Windows verification, Mac compile and signed CI milestones/final|V23,V38–V47,I.distribution
@@ -180,6 +180,8 @@ Signed release acceptance: v0.2.0-alpha.4, source 32ab8aeb93dcd7401c32fc3392a191
 
 
 Embedded foundation verification, 2026-10-29: games Rust application 689 passed plus one isolated native rendering test; workspace 5 embedded and 7 historical HTTP/config fixture tests passed; legacy real-daemon test skipped. Standalone unchanged Goose fixture passed initialization, session creation, prompt, assistant text, close and Runtime Converse routes for all three required model-name fixtures. No live provider/Rally calls. Mac `cargo check --locked --lib` passed, no Mac tests/GUI. Build policy and formatting/diff audits passed. T36–T38 remain open for live profile acceptance, graphical configuration, recipe/session migration and full workspace integration. No release tag.
+
+Search verification, 2026-10-29: games application 693 tests passed; workspace 2 bounded-search, 5 embedded-store and 7 historical fixture tests passed. Standalone Goose/Bedrock fixture verified Luna-only summary backfill/replacement, original-message preservation and restart deduplication. Native Windows smoke `dev/windows-summary-smoke.py` found a case-insensitive keyword present only in compressed summary, rejected absent keyword, saved visible cheap profile; exactly one Sol conversation request plus one Luna summary request, no query-time model call. Peak process memory 155,545,600 bytes; smoke stopped above 2 GB, not full V45 workload. Binary SHA-256 `48568ac6d90cbd8c721c91d777041e019bdab89110b4ab48a9c89c8588a1121b`; receipt on games `C:\Users\SeanMcNamara\fastrock-040-policy\summary-native-1\acceptance.json`. Mac library check, Windows app build, formatting and build-policy checks passed; no Mac execution or live model/Rally calls. T42/T44 performance acceptance remains open.
 
 ## §B BUGS
 id|date|cause|fix

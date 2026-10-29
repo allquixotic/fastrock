@@ -59,6 +59,9 @@ futures = { workspace = true }
 # native tree-sitter ABI. Tools and code mode do not require that feature.
 goose-runtime = { package = "goose", git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12", default-features = false, features = ["aws-providers", "rustls-tls", "system-keyring", "code-mode"] }
 goose-mcp = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12", default-features = false, features = ["bundled-mcp", "rustls-tls"] }
+goose-context-management = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12" }
+goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12" }
+sha2 = "0.10"
 tokio-util = { version = "0.7", features = ["compat"] }
 image = { workspace = true, features = ["png", "jpeg", "gif", "webp"] }
 # Version matches Slint: native glyph hit-testing and renderer invalidation.
@@ -135,7 +138,7 @@ ignored = ["i-slint-common"]
 slint-build = { workspace = true, features = ["compat-1-18"] }
 
 [dev-dependencies]
-goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12" }
+async-trait = "0.1"
 wiremock = "0.6"
 codex-model-provider-info = { workspace = true }
 pretty_assertions = { workspace = true }

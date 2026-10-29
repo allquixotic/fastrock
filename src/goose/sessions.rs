@@ -456,6 +456,7 @@ impl Adapter {
         s.echo_user = None;
         s.info["updatedAt"] = json!(chrono::Utc::now().to_rfc3339());
         s.info["_meta"]["lastMessageAt"] = s.info["updatedAt"].clone();
+        let summarize = completed && !s.ephemeral;
         let t = s.turn_mut();
         match reply {
             Ok(reply) => {
@@ -486,6 +487,11 @@ impl Adapter {
         let _ =
             self.emit(json!({"method":"turn/completed","params":{"threadId":ui_id(id),"turn":t}}));
         drop(sessions);
+        if summarize {
+            if let Some(service) = &self.summaries {
+                service.completed(id.to_owned()).await;
+            }
+        }
         if completed {
             self.schedule_queue(id.to_string()).await;
         }

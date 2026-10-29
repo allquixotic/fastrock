@@ -50,7 +50,8 @@ async fn v40_summaries_replace_atomically_and_reopen() {
                 Summary {
                     revision: 1,
                     text: text.clone(),
-                    profile: "cheap".into()
+                    profile: "cheap".into(),
+                    ..Summary::default()
                 }
             )
             .await
@@ -65,7 +66,8 @@ async fn v40_summaries_replace_atomically_and_reopen() {
                 Summary {
                     revision: 2,
                     text: "stale".into(),
-                    profile: "cheap".into()
+                    profile: "cheap".into(),
+                    ..Summary::default()
                 }
             )
             .await
@@ -82,16 +84,19 @@ async fn v40_summaries_replace_atomically_and_reopen() {
                 Summary {
                     revision: 3,
                     text: "latest only".into(),
-                    profile: "cheap".into()
+                    profile: "cheap".into(),
+                    ..Summary::default()
                 }
             )
             .await
             .unwrap()
     );
     assert_eq!(summaries.page(None, 100).await.unwrap().len(), 1);
+    assert_eq!(summaries.advance("thread".into()).await.unwrap(), 4);
     drop(summaries);
     drop(connection);
     let reopened = Summaries(Connection::new(temp.path().to_owned()));
+    assert_eq!(reopened.advance("thread".into()).await.unwrap(), 5);
     assert_eq!(
         reopened.get("thread".into()).await.unwrap().unwrap().text,
         "latest only"

@@ -9,6 +9,9 @@ impl AppController {
             let (id, value) = (id.to_string(), value.to_string());
             crate::ui_thread::with_app(move |app| app.goose_choose(id, value));
         });
+        self.window.global::<GooseState>().on_save_cheap(|| {
+            crate::ui_thread::with_app(AppController::goose_cheap_save);
+        });
     }
     pub(crate) fn goose_controls_refresh(&self) {
         let state = self.window.global::<GooseState>();
@@ -98,6 +101,73 @@ impl AppController {
                     Err(e) => state.set_error(e.into()),
                 }
                 app.goose_controls_refresh();
+            });
+        });
+    }
+
+    pub(crate) fn goose_cheap_load(&mut self) {
+        let state = self.window.global::<GooseState>();
+        if state.get_cheap_loading() {
+            return;
+        }
+        state.set_cheap_loading(true);
+        self.backend.spawn(async move {
+            let result = super::cheap_profile::load().await;
+            crate::ui_thread::post(move |app| {
+                let state = app.window.global::<GooseState>();
+                state.set_cheap_loading(false);
+                match result {
+                    Ok(profile) => {
+                        state.set_cheap_name(profile.name.into());
+                        state.set_cheap_model(profile.model.into());
+                        state.set_cheap_provider(
+                            ["aws_bedrock", "openai", "anthropic"]
+                                .iter()
+                                .position(|p| *p == profile.provider)
+                                .unwrap_or(0) as i32,
+                        );
+                        state.set_cheap_status(super::summary_service::status().into());
+                    }
+                    Err(_) => state.set_cheap_status(
+                        "Could not read the designated cheap profile. Search continues locally."
+                            .into(),
+                    ),
+                }
+            });
+        });
+    }
+
+    fn goose_cheap_save(&mut self) {
+        let state = self.window.global::<GooseState>();
+        if state.get_cheap_loading() {
+            return;
+        }
+        let profile = super::cheap_profile::CheapProfile {
+            name: state.get_cheap_name().trim().to_owned(),
+            provider: ["aws_bedrock", "openai", "anthropic"]
+                .get(state.get_cheap_provider() as usize)
+                .unwrap_or(&"")
+                .to_string(),
+            model: state.get_cheap_model().trim().to_owned(),
+        };
+        if let Err(error) = profile.validate() {
+            state.set_cheap_status(error.to_string().into());
+            return;
+        }
+        state.set_cheap_loading(true);
+        self.backend.spawn(async move {
+            let result = super::cheap_profile::save(profile).await;
+            crate::ui_thread::post(move |app| {
+                let state = app.window.global::<GooseState>();
+                state.set_cheap_loading(false);
+                state.set_cheap_status(
+                    if result.is_ok() {
+                        "Saved the cheap profile in Goose settings."
+                    } else {
+                        "Could not save the cheap profile."
+                    }
+                    .into(),
+                );
             });
         });
     }

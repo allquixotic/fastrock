@@ -6,6 +6,7 @@ use std::{future::Future, pin::Pin};
 use thiserror::Error;
 
 pub mod embedded;
+pub mod search;
 pub mod summaries;
 pub mod vwork;
 

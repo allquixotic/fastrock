@@ -17,7 +17,15 @@ Expand **Goose options** above Send for the session's model, mode and supported
 reasoning choices. External Codex and remote agent connections are removed;
 Codex files remain untouched. [Embedded runtime status and limitations](docs/goose-acp.md)
 describe the verified foundation and outstanding 0.4.0 work. The T3 interface,
-orchestration, search summaries and compressed transcript view are still in progress.
+orchestration and compressed transcript view are still in progress.
+
+Search matches titles and current summaries locally, followed by bounded parallel
+fuzzy matching. After a completed turn, a background worker uses Goose's compaction
+library to replace that conversation's compressed summary in the vwork database.
+Existing Goose conversations are backfilled once; their original messages stay
+intact. **Settings → Goose** shows the designated cheap profile (Bedrock Luna by
+default). An unavailable cheap model leaves existing summaries and local search
+available, without selecting a more expensive model.
 
 ## Releases
 

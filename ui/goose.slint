@@ -1,4 +1,4 @@
-import { ComboBox, ScrollView } from "std-widgets.slint";
+import { ComboBox, LineEdit, ScrollView } from "std-widgets.slint";
 import { Theme, FlatButton } from "theme.slint";
 
 export struct GooseOption {
@@ -16,6 +16,12 @@ export global GooseState {
     in property <string> summary: "Goose";
     in property <string> error;
     callback choose(id: string, value: string);
+    in-out property <string> cheap-name: "Bedrock Luna";
+    in-out property <string> cheap-model: "openai.gpt-6-luna";
+    in-out property <int> cheap-provider;
+    in property <bool> cheap-loading;
+    in property <string> cheap-status;
+    callback save-cheap();
 }
 export component GooseControls inherits Rectangle {
     property <bool> expanded;
@@ -53,10 +59,24 @@ export component GooseSettingsPage inherits Rectangle {
             spacing: Theme.pad-l;
             alignment: start;
             Text { text: "Goose"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; }
-            Text { text: "Fastrock uses your installed Goose. Configure providers, credentials, and extensions with goose configure; restart the backend after changing global configuration."; color: Theme.text; wrap: word-wrap; }
+            Text { text: "Goose runs inside Fastrock. Your existing Goose provider settings, credentials, extensions and conversations remain in place."; color: Theme.text; wrap: word-wrap; }
             Text { text: "Open a conversation and expand Goose options above its Send button to select the provider, model, mode, and thinking effort offered by Goose for that session."; color: Theme.text; wrap: word-wrap; }
-            Text { text: "One Goose process supports concurrent conversations. Model updates and fixes come from updating Goose separately. Fastrock does not install or update it."; color: Theme.text-muted; wrap: word-wrap; }
-            Text { text: "Use Connection settings to choose installed Codex or its remote server. Codex conversations remain with Codex; Goose conversations remain with Goose."; color: Theme.text-muted; wrap: word-wrap; }
+            Text { text: "Cheap model for search summaries"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; }
+            Text { text: "Search runs locally. Background summaries use this profile and the selected provider's saved Goose credentials. If unavailable, search uses existing titles and summaries without a more expensive model fallback."; color: Theme.text-muted; wrap: word-wrap; }
+            HorizontalLayout {
+                Text { text: "Profile name"; color: Theme.text-muted; width: 110px; vertical-alignment: center; }
+                LineEdit { text <=> GooseState.cheap-name; enabled: !GooseState.cheap-loading; }
+            }
+            HorizontalLayout {
+                Text { text: "Provider"; color: Theme.text-muted; width: 110px; vertical-alignment: center; }
+                ComboBox { model: ["Bedrock", "OpenAI", "Anthropic"]; current-index <=> GooseState.cheap-provider; enabled: !GooseState.cheap-loading; }
+            }
+            HorizontalLayout {
+                Text { text: "Model ID"; color: Theme.text-muted; width: 110px; vertical-alignment: center; }
+                LineEdit { text <=> GooseState.cheap-model; enabled: !GooseState.cheap-loading; }
+            }
+            FlatButton { text: "Save cheap profile"; enabled: !GooseState.cheap-loading; clicked => { GooseState.save-cheap(); } }
+            if GooseState.cheap-status != "": Text { text: GooseState.cheap-status; color: Theme.text-muted; wrap: word-wrap; }
         }
     }
 }

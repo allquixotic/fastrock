@@ -38,8 +38,19 @@ Unchanged Goose currently has these integration limits:
   or database. Setup installs a Goose plugin and migrates recognized vwork hook
   commands, preserving custom actions and a first-migration backup.
 
-Graphical provider setup, full T3 orchestration/UI, background summary generation,
-search, compressed transcript paging, tray lifecycle and performance acceptance
+Search uses immediate local substring matching, then bounded parallel fuzzy
+matching. One background worker calls the pinned public `goose-context-management`
+compaction API with no tools. It reuses the previous summary for later turns,
+chunks large histories, cancels obsolete work and atomically replaces a single
+compressed current record in the embedded vwork database. Startup backfills
+missing/stale summaries; unchanged summaries do not cause another model call.
+Hidden temporary sessions are excluded, and source conversations are never
+rewritten by search. Settings → Goose selects the cheap provider/model using
+Goose's existing credentials. Missing configuration or a provider failure preserves
+local search and never triggers an expensive fallback.
+
+Graphical provider/credential setup, full T3 orchestration/UI,
+compressed transcript paging, tray lifecycle and performance acceptance
 remain tracked in `SPEC.md`. This development foundation is not a completed 0.4.0
 release. Historical 0.3.x transport details follow for old releases only.
 
