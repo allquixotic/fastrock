@@ -70,7 +70,7 @@ const TOAST_DURATION: Duration = Duration::from_millis(2200);
 /// The app icon, embedded relative to this file so Cargo and Bazel builds
 /// find it the same way (a Slint `@image-url` would embed the build
 /// script's absolute path).
-const APP_ICON_PNG: &[u8] = include_bytes!("../ui/assets/icon.png");
+pub(crate) const APP_ICON_PNG: &[u8] = include_bytes!("../ui/assets/icon.png");
 /// Window icons are shown at most this large (taskbar, Alt+Tab).
 const WINDOW_ICON_SIZE: u32 = 256;
 
@@ -553,13 +553,15 @@ impl AppController {
             .on_close_requested(crate::ui_thread::scoped_callback!(|| {
                 let mut response = slint::CloseRequestResponse::KeepWindowShown;
                 crate::ui_thread::with_app_now(|app| {
-                    if crate::ui_thread::another_window_visible(app.backend.window_id()) {
+                    if crate::lifecycle::can_hide_last_window()
+                        || crate::ui_thread::another_window_visible(app.backend.window_id())
+                    {
                         app.rally_stash();
                         app.rally_save_session();
                         app.remember_window_size();
                         response = slint::CloseRequestResponse::HideWindow;
                     } else {
-                        app.request_quit();
+                        app.toast("Tray icon is not ready; keep this window open or choose Quit.");
                     }
                 });
                 response
@@ -572,6 +574,7 @@ impl AppController {
     pub(crate) fn on_window_focus_changed(&mut self, focused: bool) {
         self.window_focused = focused;
         if focused {
+            crate::lifecycle::focused(self.backend.window_id());
             self.activity_read_active();
             if let Some(index) = self.active_thread_index() {
                 self.tabs[index].unread = false;
@@ -1728,10 +1731,8 @@ impl AppController {
     }
 
     pub(crate) fn save_prefs(&self) {
-        if let Some(codex_home) = self.codex_home.as_deref()
-            && let Err(err) = self.prefs.save(codex_home)
-        {
-            tracing::warn!(%err, "failed to save gui.json");
+        if let Some(home) = &self.codex_home {
+            self.backend.save_prefs(home.clone(), self.prefs.clone());
         }
     }
 
@@ -1926,7 +1927,10 @@ pub(crate) fn truncate_chars(text: &str, max: usize) -> String {
 }
 
 /// Decodes a PNG into an RGBA buffer of at most `max_size` pixels square.
-fn decode_icon(png: &[u8], max_size: u32) -> Option<slint::SharedPixelBuffer<slint::Rgba8Pixel>> {
+pub(crate) fn decode_icon(
+    png: &[u8],
+    max_size: u32,
+) -> Option<slint::SharedPixelBuffer<slint::Rgba8Pixel>> {
     let image = image::load_from_memory_with_format(png, image::ImageFormat::Png).ok()?;
     let image = if image.width() > max_size || image.height() > max_size {
         image.resize(max_size, max_size, image::imageops::FilterType::Triangle)

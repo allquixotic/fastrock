@@ -308,10 +308,92 @@ fn backup_file(path: &Path) -> Option<PathBuf> {
     }
 }
 
+/// One coalescing writer per embedded backend. UI callbacks only copy settings;
+/// disk writes are serialized, and explicit shutdown waits for the latest save.
+pub(crate) struct Writer {
+    updates: tokio::sync::watch::Sender<Option<PendingSave>>,
+    finished: tokio::sync::watch::Receiver<(u64, Option<String>)>,
+}
+#[derive(Clone)]
+struct PendingSave {
+    revision: u64,
+    home: std::path::PathBuf,
+    prefs: Prefs,
+}
+impl Writer {
+    pub(crate) fn new(runtime: &tokio::runtime::Handle) -> Self {
+        let (updates, mut pending) = tokio::sync::watch::channel::<Option<PendingSave>>(None);
+        let (done, finished) = tokio::sync::watch::channel((0, None));
+        runtime.spawn(async move {
+            while pending.changed().await.is_ok() {
+                let Some(save) = pending.borrow_and_update().clone() else {
+                    continue;
+                };
+                let revision = save.revision;
+                let result = tokio::task::spawn_blocking(move || save.prefs.save(&save.home))
+                    .await
+                    .map_err(|error| error.to_string())
+                    .and_then(|result| result.map_err(|error| error.to_string()));
+                if let Err(error) = &result {
+                    tracing::warn!(%error,"could not save UI preferences");
+                }
+                done.send_replace((revision, result.err()));
+            }
+        });
+        Self { updates, finished }
+    }
+    pub(crate) fn save(&self, home: std::path::PathBuf, prefs: Prefs) {
+        self.updates.send_modify(|pending| {
+            let revision = pending.as_ref().map_or(1, |save| save.revision + 1);
+            *pending = Some(PendingSave {
+                revision,
+                home,
+                prefs,
+            });
+        });
+    }
+    pub(crate) async fn flush(&self) -> Result<(), String> {
+        let revision = self
+            .updates
+            .borrow()
+            .as_ref()
+            .map_or(0, |save| save.revision);
+        let mut finished = self.finished.clone();
+        let result = finished
+            .wait_for(|(done, _)| *done >= revision)
+            .await
+            .map_err(|error| error.to_string())?;
+        match &result.1 {
+            Some(error) => Err(error.clone()),
+            None => Ok(()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[tokio::test]
+    async fn v47_preference_writer_flushes_latest_coalesced_snapshot() {
+        let temp = tempfile::tempdir().unwrap();
+        let writer = Writer::new(&tokio::runtime::Handle::current());
+        for width in 1000..1100 {
+            let mut prefs = Prefs::default();
+            prefs.window_width = width as f32;
+            writer.save(temp.path().into(), prefs);
+        }
+        writer.flush().await.unwrap();
+        let prefs = Prefs::load(Some(temp.path()));
+        assert_eq!(prefs.window_width, 1099.);
+        let bad = temp.path().join("not-a-directory");
+        std::fs::write(&bad, b"fixture").unwrap();
+        writer.save(bad, Prefs::default());
+        assert!(writer.flush().await.is_err());
+        writer.save(temp.path().into(), Prefs::default());
+        writer.flush().await.unwrap();
+    }
 
     #[test]
     fn round_trips_and_fills_missing_fields() -> std::io::Result<()> {

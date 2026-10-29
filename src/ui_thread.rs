@@ -157,7 +157,10 @@ pub(crate) fn request_quit() {
                 app.toast("Wait for Rally writes to finish before quitting");
             });
         } else if running > 0 {
-            with_app_for(caller, move |app| app.confirm_process_quit(running));
+            with_app_for(caller, move |app| {
+                let _ = app.window.show();
+                app.confirm_process_quit(running);
+            });
         } else {
             finish_quit();
         }

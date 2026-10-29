@@ -1,0 +1,17 @@
+// Native tray and menu share Slint's platform event loop.
+export component FastrockTray inherits SystemTrayIcon {
+    in property <image> tray-icon;
+    callback restore;
+    callback restore-all;
+    callback quit;
+    icon: root.tray-icon;
+    tooltip: "Fastrock";
+    visible: true;
+    clicked => { root.restore(); }
+    Menu {
+        MenuItem { title: "Open Fastrock"; activated => { root.restore(); } }
+        MenuItem { title: "Show all windows"; activated => { root.restore-all(); } }
+        MenuSeparator {}
+        MenuItem { title: "Quit Fastrock"; activated => { root.quit(); } }
+    }
+}

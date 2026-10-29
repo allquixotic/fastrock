@@ -463,8 +463,11 @@ impl Adapter {
         for item in t["items"].as_array().into_iter().flatten() {
             let _=self.emit(json!({"method":"item/completed","params":{"threadId":ui_id(id),"turnId":tid,"item":item}}));
         }
-        let _ =
-            self.emit(json!({"method":"turn/completed","params":{"threadId":ui_id(id),"turn":t}}));
+        if let Err(error) =
+            self.emit(json!({"method":"turn/completed","params":{"threadId":ui_id(id),"turn":t}}))
+        {
+            tracing::error!(error = %error.message, "could not deliver turn completion");
+        }
         drop(sessions);
         if summarize {
             if let Some(service) = &self.summaries {

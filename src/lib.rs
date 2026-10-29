@@ -16,6 +16,7 @@ mod composer;
 mod connection;
 mod files;
 mod info;
+mod lifecycle;
 mod newtab;
 mod notify;
 mod perf;
@@ -248,6 +249,7 @@ fn run_app(
     }
     ui_thread::install(app);
     ui_thread::with_app_now(AppController::bind);
+    lifecycle::start(&backend).context("failed to create the system tray")?;
 
     #[cfg(target_os = "macos")]
     install_termination_handler(&rt, &backend);
@@ -261,7 +263,8 @@ fn run_app(
     perf::mark_first_frame(window.window());
     // The window system knows the OS light/dark setting only now.
     ui_thread::with_app_now(|app| app.sync_system_dark());
-    slint::run_event_loop().context("event loop failed")?;
+    slint::run_event_loop_until_quit().context("event loop failed")?;
+    lifecycle::stop();
     let _ = window.hide();
     perf::mark("event-loop-exit");
 

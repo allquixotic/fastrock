@@ -80,6 +80,7 @@ slint = { workspace = true, features = [
     "backend-winit",
     "renderer-software",
     "accessibility",
+    "system-tray",
     "raw-window-handle-06",
     # File drops from the OS reach the app only as winit window events
     # (`composer::drop`), and so do focus, theme, and (macOS) termination

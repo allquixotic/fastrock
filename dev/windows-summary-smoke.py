@@ -23,6 +23,7 @@ parser.add_argument('binary', type=Path)
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--turns', type=int, default=1)
 parser.add_argument('--navigation', action='store_true')
+parser.add_argument('--tray', action='store_true', help='Close while a model runs, restore through the native tray, and quit from its menu')
 parser.add_argument('--windows', action='store_true', help='Exercise two in-process windows and draft transfer')
 args = parser.parse_args()
 assert 1 <= args.turns <= 100
@@ -37,6 +38,7 @@ for folder in ('home', 'codex', 'project', 'goose/config', 'local', 'roaming'):
     'BEDROCK_DISABLE_STREAMING: true\nBEDROCK_MAX_RETRIES: 0\n'
     'GOOSE_DISABLE_SESSION_NAMING: true\nextensions: {}\n', encoding='utf-8')
 requests = []
+release_first_turn = threading.Event()
 
 
 class Provider(BaseHTTPRequestHandler):
@@ -49,6 +51,8 @@ class Provider(BaseHTTPRequestHandler):
         requests.append({'path': self.path, 'summary': summary})
         assert self.path.startswith('/model/') and self.path.endswith('/converse'), self.path
         turn = sum(not request['summary'] for request in requests)
+        if args.tray and not summary and turn == 1:
+            assert release_first_turn.wait(20), 'Native window was not hidden during the active turn'
         text = ('ObsidianNeedle: compaction-length keyword fixture for searching this conversation.'
                 if summary else f'Native embedded Goose answer {turn}, produced by the local fixture.')
         response = json.dumps({'output': {'message': {'role': 'assistant', 'content': [{'text': text}]}},
@@ -140,6 +144,8 @@ if args.windows:
               {'rally': ['close']}, {'wait': 500}]
 steps += [{'open_settings': 'goose'}, {'wait': 1000}, {'snapshot': str(out / 'settings.png')},
          {'click_text': 'Save cheap profile'}, {'wait': 500}, {'quit': True}]
+if args.tray:
+    steps[-1:] = [{'sidebar': ['dump', str(out / 'tray-finish.json')]}, {'wait': 60000}]
 (out / 'script.json').write_text(json.dumps(steps), encoding='utf-8')
 env = dict(os.environ)
 for key in ('AWS_PROFILE', 'AWS_SESSION_TOKEN', 'AWS_BEARER_TOKEN_BEDROCK', 'GOOSE_PROVIDER',
@@ -181,17 +187,118 @@ user32.EnumWindows.argtypes = [window_callback, wintypes.LPARAM]
 user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 user32.IsWindowVisible.argtypes = [wintypes.HWND]
 
-def visible_windows(pid):
+def native_windows(pid):
     windows = []
     @window_callback
     def collect(hwnd, _):
         owner = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
-        if owner.value == pid and user32.IsWindowVisible(hwnd):
+        name = ctypes.create_unicode_buffer(80)
+        user32.GetClassNameW(hwnd, name, len(name))
+        # Winit marks its zero-size, transparent event target WS_VISIBLE.
+        # Closing it destroys delivery of backend callbacks to the UI.
+        if owner.value == pid and user32.IsWindowVisible(hwnd) and name.value != 'Winit Thread Event Target':
             windows.append(hwnd)
         return True
     user32.EnumWindows(collect, 0)
-    return len(windows)
+    return windows
+
+def visible_windows(pid):
+    return len(native_windows(pid))
+
+user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+user32.FindWindowExW.argtypes = [wintypes.HWND, wintypes.HWND, wintypes.LPCWSTR, wintypes.LPCWSTR]
+user32.FindWindowExW.restype = wintypes.HWND
+user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+user32.GetForegroundWindow.restype = wintypes.HWND
+user32.SetForegroundWindow.argtypes = [wintypes.HWND]
+
+def tray_window(pid):
+    after = None
+    while True:
+        hwnd = user32.FindWindowExW(wintypes.HWND(-3), after, 'SlintSystemTrayWindow', None)
+        if not hwnd:
+            return None
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value == pid:
+            return hwnd
+        after = hwnd
+
+def is_menu(hwnd):
+    name = ctypes.create_unicode_buffer(80)
+    user32.GetClassNameW(hwnd, name, len(name))
+    return name.value == '#32768'
+
+
+def activate_quit_menu(hwnd, pid):
+    """Invoke the actual native menu item, scoped to this fixture's process.
+
+    Windows' modal menu loop does not reliably accept synthetic key events.
+    Use the same accessibility action as the existing native Copy fixture.
+    """
+    import uuid
+    class GUIThreadInfo(ctypes.Structure):
+        _fields_ = [('size', wintypes.DWORD), ('flags', wintypes.DWORD)] + [
+            (name, wintypes.HWND) for name in ('active', 'focus', 'capture', 'menu_owner', 'move_size', 'caret')
+        ] + [('caret_rect', wintypes.RECT)]
+    class VariantValue(ctypes.Union):
+        _fields_ = [('integer', wintypes.LONG), ('pointer', ctypes.c_void_p), ('record', ctypes.c_byte * 16)]
+    class Variant(ctypes.Structure):
+        _fields_ = [('kind', wintypes.WORD), ('r1', wintypes.WORD), ('r2', wintypes.WORD), ('r3', wintypes.WORD), ('value', VariantValue)]
+    user32.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+    user32.SendMessageW.restype = wintypes.HMENU
+    user32.GetMenuItemCount.argtypes = [wintypes.HMENU]
+    user32.GetMenuStringW.argtypes = [wintypes.HMENU, wintypes.UINT, wintypes.LPWSTR, ctypes.c_int, wintypes.UINT]
+    user32.GetMenuState.argtypes = [wintypes.HMENU, wintypes.UINT, wintypes.UINT]
+    user32.GetGUIThreadInfo.argtypes = [wintypes.DWORD, ctypes.POINTER(GUIThreadInfo)]
+    owner = wintypes.DWORD()
+    thread = user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+    assert owner.value == pid, 'Refusing another process menu'
+    info = GUIThreadInfo(size=ctypes.sizeof(GUIThreadInfo))
+    assert user32.GetGUIThreadInfo(thread, ctypes.byref(info))
+    user32.GetWindowThreadProcessId(info.menu_owner, ctypes.byref(owner))
+    assert owner.value == pid, 'Native menu lost fixture ownership'
+    menu = user32.SendMessageW(hwnd, 0x01E1, 0, 0)
+    labels = []
+    for index in range(user32.GetMenuItemCount(menu)):
+        label = ctypes.create_unicode_buffer(256)
+        user32.GetMenuStringW(menu, index, label, len(label), 0x400)
+        labels.append(label.value.replace('&', ''))
+    index = labels.index('Quit Fastrock')
+    assert user32.GetMenuState(menu, index, 0x400) & 3 == 0, 'Quit is disabled'
+    ole32, oleacc = ctypes.WinDLL('ole32'), ctypes.WinDLL('oleacc')
+    oleacc.AccessibleObjectFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    oleacc.AccessibleObjectFromWindow.restype = ctypes.HRESULT
+    initialized = ole32.CoInitializeEx(None, 2) >= 0
+    interface = ctypes.c_void_p()
+    iid = (ctypes.c_byte * 16).from_buffer_copy(uuid.UUID('618736e0-3c3d-11cf-810c-00aa00389b71').bytes_le)
+    try:
+        assert oleacc.AccessibleObjectFromWindow(hwnd, 0xFFFFFFFC, ctypes.byref(iid), ctypes.byref(interface)) >= 0
+        table = ctypes.cast(interface, ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))).contents
+        invoke = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, Variant)(table[25])
+        try:
+            assert invoke(interface, Variant(kind=3, value=VariantValue(integer=index + 1))) >= 0
+        finally:
+            ctypes.WINFUNCTYPE(wintypes.ULONG, ctypes.c_void_p)(table[2])(interface)
+    finally:
+        if initialized:
+            ole32.CoUninitialize()
+    return labels
+
+
+tray_state = dict(close_requested=False, turn_completed_hidden=False, restore_requested=False,
+                 restored=False, quit_menu_requested=False, quit_selected=False)
+menu_driver = None
+menu_errors = []
+menu_labels = []
+
+def quit_from_menu(hwnd, pid):
+    try:
+        menu_labels.extend(activate_quit_menu(hwnd, pid))
+        tray_state['quit_selected'] = True
+    except Exception as error:
+        menu_errors.append(repr(error))
 
 with (out / 'app.log').open('w', encoding='utf-8') as log:
     process = subprocess.Popen([str(args.binary.resolve()), '--remote', 'goose'], cwd=out,
@@ -210,6 +317,31 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
             # benchmark allowance; leave additional headroom on the VM host.
             if peak >= 2_000_000_000 or time.monotonic() > deadline:
                 raise RuntimeError('Fixture memory/time limit exceeded')
+            if args.tray:
+                windows = native_windows(process.pid)
+                tray = tray_window(process.pid)
+                if requests and not tray_state['close_requested'] and tray:
+                    for hwnd in windows:
+                        assert user32.PostMessageW(hwnd, 0x10, 0, 0)  # real WM_CLOSE
+                    tray_state['close_requested'] = True
+                if tray_state['close_requested'] and not windows and not tray_state['restore_requested']:
+                    release_first_turn.set()
+                    if any(request['summary'] for request in requests):
+                        tray_state['turn_completed_hidden'] = True
+                        # The same Shell_NotifyIcon callback Windows sends on a left click.
+                        assert user32.PostMessageW(tray, 0x8001, 1, 0x202)
+                        tray_state['restore_requested'] = True
+                if tray_state['restore_requested'] and windows:
+                    tray_state['restored'] = True
+                if tray_state['restored'] and (out / 'tray-finish.json').exists() and not tray_state['quit_menu_requested']:
+                    user32.SetForegroundWindow(windows[0])
+                    assert user32.PostMessageW(tray, 0x8001, 1, 0x205)  # native tray context menu
+                    tray_state['quit_menu_requested'] = True
+                menus = [hwnd for hwnd in windows if is_menu(hwnd)]
+                if tray_state['quit_menu_requested'] and menus and menu_driver is None:
+                    menu_driver = threading.Thread(target=quit_from_menu, args=(menus[0], process.pid), daemon=True)
+                    menu_driver.start()
+                assert not menu_errors, menu_errors
             if args.windows:
                 peak_windows = max(peak_windows, visible_windows(process.pid))
                 for path in (out / 'home/windows').glob('*/owner.json'):
@@ -221,9 +353,14 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
             time.sleep(0.1)
         assert process.returncode == 0, f'App exited {process.returncode}; see app.log'
     finally:
+        if menu_driver is not None:
+            menu_driver.join(timeout=2)
+        if args.tray:
+            (out / 'tray-diagnostics.json').write_text(json.dumps(dict(tray_state=tray_state, provider_requests=requests, peak_process_bytes=peak), indent=2), encoding='utf-8')
         if process.poll() is None:
             process.kill()
             process.wait(timeout=10)
+        release_first_turn.set()
         server.shutdown()
         if rally is not None:
             rally.server.shutdown()
@@ -279,11 +416,14 @@ if args.windows:
     assert len(child_hits) == 2, child_hits
     assert peak_windows >= 2 and len(owners_seen) == 2, (peak_windows, owners_seen)
     assert set(owners_seen.values()) == {process.pid}, owners_seen
+if args.tray:
+    assert all(tray_state.values()), tray_state
+    assert (out / 'codex/gui.json').exists(), 'Explicit Quit did not flush UI preferences'
 receipt = dict(result='PASS', binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                peak_process_bytes=peak, requests=requests, summary_only_match=True,
                exported_turns=args.turns, complete_history_preserved=True,
                native_cheap_profile_saved=True, all_provider_requests_local=True,
                independent_rally_navigation=args.navigation, backend_overlay_navigation=args.navigation,
-               in_process_windows=args.windows, peak_native_windows=peak_windows, window_owner_pids=owners_seen)
+               in_process_windows=args.windows, peak_native_windows=peak_windows, window_owner_pids=owners_seen, tray_lifecycle=tray_state if args.tray else None)
 (out / 'acceptance.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
 print(json.dumps(receipt, indent=2), flush=True)

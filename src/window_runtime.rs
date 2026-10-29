@@ -464,3 +464,30 @@ mod tests {
         Ok(())
     }
 }
+
+/// Slint 1.18.1 creates this message-only window only after the shell accepts
+/// its icon. Keep OS-specific implementation knowledge in this pinned bridge.
+#[cfg(windows)]
+pub(crate) fn native_tray_registered() -> bool {
+    use windows_sys::Win32::{
+        System::Threading::GetCurrentProcessId,
+        UI::WindowsAndMessaging::{FindWindowExW, GetWindowThreadProcessId, HWND_MESSAGE},
+    };
+    let class: Vec<u16> = "SlintSystemTrayWindow\0".encode_utf16().collect();
+    let mut after = std::ptr::null_mut();
+    loop {
+        let window =
+            unsafe { FindWindowExW(HWND_MESSAGE, after, class.as_ptr(), std::ptr::null()) };
+        if window.is_null() {
+            return false;
+        }
+        let mut pid = 0;
+        unsafe {
+            GetWindowThreadProcessId(window, &mut pid);
+        }
+        if pid == unsafe { GetCurrentProcessId() } {
+            return true;
+        }
+        after = window;
+    }
+}

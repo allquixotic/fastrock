@@ -880,6 +880,20 @@ impl AppController {
                             && !thread.is_busy()
                             && thread.phase != crate::app::ThreadPhase::Starting
                     });
+                if !idle && elapsed >= Duration::from_millis(*timeout) {
+                    eprintln!("Fastrock idle timeout: active={:?}", self.active);
+                    for tab in &self.tabs {
+                        if let Some(thread) = tab.thread() {
+                            eprintln!(
+                                "thread {:?}: phase={:?}, turn={:?}, starts={}",
+                                thread.thread_id,
+                                thread.phase,
+                                thread.active_turn_id,
+                                thread.extras.turn_starts_in_flight
+                            );
+                        }
+                    }
+                }
                 idle || timed_out(elapsed, *timeout, "thread idle")
             }
             _ => true,
