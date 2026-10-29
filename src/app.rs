@@ -1313,6 +1313,7 @@ impl AppController {
                     });
                 }
                 self.rally_save_session();
+                self.rally_release_closed_documents();
             }
             TabKind::Settings | TabKind::NewTab => {}
         }

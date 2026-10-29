@@ -394,12 +394,15 @@ impl AppController {
                                 use slint::Model;
                                 let rows = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Thread).map(|row| serde_json::json!({"id":row.id.as_str(),"title":row.title.as_str(),"tooltip":row.tooltip.as_str(),"generated":row.generated_title,"age":row.detail.as_str(),"status":format!("{:?}",row.status)})).collect::<Vec<_>>();
                                 let chrome = self.window.global::<crate::ui::AppState>();
+                                let rally = self.window.global::<crate::ui::RallyState>();
                                 let navigation = serde_json::json!({
                                     "activeKind": format!("{:?}", chrome.get_active_kind()),
                                     "activeId": chrome.get_active_info().id,
                                     "rallyCount": state.get_rally_count(),
                                     "rallySelected": state.get_rally_selected(),
                                     "documentKinds": chrome.get_document_tabs().iter().map(|tab| format!("{:?}", tab.kind)).collect::<Vec<_>>(),
+                                    "rallyResidentModels": [rally.get_rows().row_count(), rally.get_lanes().row_count(), rally.get_board_groups().row_count(), rally.get_details().row_count(), rally.get_rich_fields().row_count(), rally.get_relations().row_count(), rally.get_picker_choices().row_count(), rally.get_bulk_fields().row_count(), rally.get_bulk_preview().row_count(), rally.get_proposal().row_count()],
+                                    "rallyAssistantBytes": rally.get_assistant_history().len() + rally.get_assistant_draft().len(),
                                 });
                                 let data = serde_json::json!({"rows":rows,"navigation":navigation,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string();
                                 let path = path.clone();

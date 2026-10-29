@@ -769,3 +769,21 @@ belonged to one process. The receipt is
 peak process memory was 183,476,224 bytes under the 2 GB fixture cap. Executable
 SHA-256: `e4155727cbcd460d63bcdcb50af174f7b5192bea5b1eee70661ecd305b5eb0f9`.
 All eight provider requests and all Rally reads used local fixtures.
+
+## 0.4.0 development: Rally model release
+
+On 2026-10-29, switching Rally documents clears obsolete Slint editor models,
+and closing the displayed document releases its rows, nested cards, editors and
+assistant buffers. Open documents retain their own drafts. The native fixture
+verified empty detached editor models, zero retained models after the final
+close, reopening, and the existing multiwindow draft-transfer/tray behavior.
+
+Games passed 702 application tests, 16 workspace fixtures, the embedded-Goose
+fixture and the native renderer regression. Mac compatibility compilation and
+static audits passed; no Mac execution. The combined native fixture made eight
+local provider calls and only local Rally reads, with 184,406,016 peak process
+bytes under its 2 GB cap. Receipt:
+`C:\Users\SeanMcNamara\fastrock-040-policy\rally-release-native-1\acceptance.json`.
+Executable SHA-256:
+`2570f2dcae2f4a4a87132b9ec9b912572fa77e86d17fe6f75a1fee4c2319de30`.
+Full 0.4.0 feature/performance acceptance remains open; no release tag.

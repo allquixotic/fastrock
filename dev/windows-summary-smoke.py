@@ -438,11 +438,14 @@ if args.navigation:
                                   for field in draft['fields']), draft
     assert navigation['rally-bulk-closed']['rallyCount'] == 1, navigation
     assert navigation['rally-two']['rallyCount'] == 2, navigation
+    assert navigation['rally-two']['rallyResidentModels'][3:6] == [0, 0, 0], navigation['rally-two']
     assert navigation['rally-two']['documentKinds'] == ['Rally', 'Rally'], navigation
     assert navigation['conversation-nav']['activeKind'] == 'Thread', navigation
     assert navigation['conversation-nav']['documentKinds'] == [], navigation
     assert navigation['rally-return']['activeId'] == navigation['rally-two-final']['activeId'], navigation
     assert navigation['rally-closed']['rallyCount'] == 0, navigation
+    assert all(size == 0 for size in navigation['rally-closed']['rallyResidentModels']), navigation['rally-closed']
+    assert navigation['rally-closed']['rallyAssistantBytes'] == 0, navigation['rally-closed']
     assert navigation['rally-reopened']['rallyCount'] == 1, navigation
     assert navigation['rally-reopened']['activeKind'] == 'Rally', navigation
     assert all(request['method'] == 'GET' for request in rally.requests), rally.requests

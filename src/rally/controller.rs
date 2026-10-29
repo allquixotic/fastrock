@@ -513,6 +513,9 @@ impl AppController {
             return;
         };
         let switching = self.rally.shown != Some(id);
+        if switching {
+            self.rally_clear_document_models();
+        }
         self.rally.shown = Some(id);
         let Some(tab) = self.rally_tab(id) else {
             return;
@@ -903,6 +906,74 @@ impl AppController {
         state.set_assistant_status(tab.assistant_status.clone().into());
         state.set_proposal(p::proposals(&tab.proposal));
         state.set_proposal_summary(tab.proposal.summary.clone().into());
+    }
+    /// Slint globals outlive the document widgets. Release their references
+    /// when the final document closes, including nested cards and rich fields.
+    pub(crate) fn rally_release_closed_documents(&mut self) {
+        if self
+            .rally
+            .shown
+            .is_some_and(|id| self.rally_tab(id).is_some())
+        {
+            return;
+        }
+        self.rally.shown = None;
+        self.rally_clear_document_models();
+    }
+    fn rally_clear_document_models(&self) {
+        let state = self.window.global::<RallyState>();
+        macro_rules! clear {
+            ($($setter:ident),* $(,)?) => { $(state.$setter(Default::default());)* };
+        }
+        clear!(
+            set_rows,
+            set_lanes,
+            set_board_groups,
+            set_details,
+            set_rich_fields,
+            set_relations,
+            set_relation_tabs,
+            set_picker_choices,
+            set_bulk_fields,
+            set_bulk_preview,
+            set_proposal,
+            set_totals,
+            set_metrics,
+            set_hidden_rows,
+            set_filter_chips,
+            set_column_options,
+            set_columns,
+            set_card_fields,
+            set_move_states,
+            set_move_groups,
+            set_inline_field,
+            set_assistant_history,
+            set_assistant_draft,
+            set_assistant_status,
+            set_proposal_summary,
+            set_detail_title,
+            set_inline_title,
+            set_comment,
+            set_relation_summary,
+            set_picker_summary,
+            set_bulk_summary,
+            set_row_menu_ref,
+            set_row_menu_title,
+            set_analytics,
+            set_summary,
+            set_error,
+            set_detail_open,
+            set_inline_open,
+            set_dirty_guard_open,
+            set_picker_open,
+            set_bulk_open,
+            set_assistant_visible,
+            set_row_menu_open,
+            set_move_open,
+            set_dirty,
+            set_busy,
+            set_loading,
+        );
     }
     fn rally_capture_ui(&mut self) {
         let Some(id) = self
