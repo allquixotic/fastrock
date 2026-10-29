@@ -22,6 +22,7 @@ vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork"
 redb = "4.4"
 zstd = "0.13"
 rayon = "1.11"
+lz4_flex = { version = "0.14", default-features = false, features = ["std", "safe-encode", "safe-decode"] }
 base64.workspace = true
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }

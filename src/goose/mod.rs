@@ -2,6 +2,7 @@
 mod cheap_profile;
 mod controls;
 mod embedded;
+mod history;
 mod hooks;
 mod mcp;
 mod model;

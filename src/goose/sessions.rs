@@ -250,9 +250,9 @@ impl Adapter {
             s.loaded = true;
             self.config_event(id, s.config.clone())?;
         }
-        let sessions = self.sessions.lock().await;
+        let mut sessions = self.sessions.lock().await;
         let s = sessions
-            .get(id)
+            .get_mut(id)
             .ok_or_else(|| error("Session unavailable"))?;
         let mut result = if resume {
             s.response()
@@ -260,58 +260,37 @@ impl Adapter {
             json!({"thread":s.thread()})
         };
         if params["includeTurns"] == true {
-            result["thread"]["turns"] = json!(s.turns);
+            result["thread"]["turns"] = json!(
+                s.turns
+                    .all_turns()
+                    .map_err(|_| error("Restore Goose history failed"))?
+            );
         }
         Ok(result)
     }
 
     pub(super) async fn history(&self, params: &Value, method: &str) -> Reply {
         let id = session_id(text(params, "threadId"))?;
-        let sessions = self.sessions.lock().await;
+        let mut sessions = self.sessions.lock().await;
         let s = sessions
-            .get(id)
+            .get_mut(id)
             .filter(|s| s.loaded)
             .ok_or_else(|| error("Load the Goose session before reading history"))?;
-        let mut data = if method == "thread/turns/list" {
-            s.turns
-                .iter()
-                .map(|t| {
-                    let mut t = t.clone();
-                    t["items"] = json!([]);
-                    t["itemsView"] = json!("notLoaded");
-                    t
-                })
-                .collect::<Vec<_>>()
+        let turns = method == "thread/turns/list";
+        let total = if turns {
+            s.turns.len()
+        } else {
+            s.turns.item_count()
+        };
+        let page = super::history::page(params, total, turns)?;
+        let data = if turns {
+            s.turns.turns_page(page.offset, page.limit, page.descending)
         } else {
             s.turns
-                .iter()
-                .flat_map(|t| {
-                    t["items"]
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                        .map(|i| json!({"turnId":t["id"],"item":i}))
-                })
-                .collect()
+                .items_page(page.offset, page.limit, page.descending)
+                .map_err(|_| error("Restore Goose history page failed"))?
         };
-        if params["sortDirection"] != "asc" {
-            data.reverse();
-        }
-        let offset = params["cursor"]
-            .as_str()
-            .map(|s| {
-                s.strip_prefix("goose-page:")
-                    .and_then(|n| n.parse::<usize>().ok())
-                    .ok_or_else(|| error("Invalid Goose history cursor"))
-            })
-            .transpose()?
-            .unwrap_or(0);
-        let limit = params["limit"].as_u64().unwrap_or(100).clamp(1, 100) as usize;
-        let next = (offset.saturating_add(limit) < data.len())
-            .then(|| format!("goose-page:{}", offset + limit));
-        Ok(
-            json!({"data":data.into_iter().skip(offset).take(limit).collect::<Vec<_>>(),"nextCursor":next,"backwardsCursor":null}),
-        )
+        Ok(json!({"data":data,"nextCursor":page.next,"backwardsCursor":null}))
     }
 
     pub(super) async fn set_config(&self, id: &str, config_id: &str, value: &Value) -> Reply {

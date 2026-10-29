@@ -26,3 +26,8 @@ Embedded vwork 0.3.4
 Copyright (c) 2026 Sean McNamara
 Licensed under the MIT License. Unmodified dependency pinned in Cargo.lock.
 https://github.com/allquixotic/vwork
+
+LZ4 Flex 0.14.0
+Copyright (c) 2020 Pascal Seitz
+Licensed under the MIT License. License included in licenses/lz4-flex/LICENSE.
+https://github.com/PSeitz/lz4_flex

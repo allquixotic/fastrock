@@ -49,8 +49,17 @@ rewritten by search. Settings → Goose selects the cheap provider/model using
 Goose's existing credentials. Missing configuration or a provider failure preserves
 local search and never triggers an expensive fallback.
 
+The transcript adapter stores older items in lossless LZ4 pages and retains at
+most 16 decoded pages within an 8 MiB estimated allocation budget. Oversized items
+are restored without admission to that cache. Metadata and item ordinals support
+direct page lookup; scrolling no longer clones the whole conversation for each
+request. Older-page cursors retain their position when streamed items arrive.
+The Slint transcript retains its existing bounded render window and asynchronous
+history loader. This adapts Ghostty's cold-page idea to portable GUI data rather
+than relying on terminal page mappings. Original Goose sessions remain intact.
+
 Graphical provider/credential setup, full T3 orchestration/UI,
-compressed transcript paging, tray lifecycle and performance acceptance
+large-history UI/performance acceptance and tray lifecycle
 remain tracked in `SPEC.md`. This development foundation is not a completed 0.4.0
 release. Historical 0.3.x transport details follow for old releases only.
 

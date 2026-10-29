@@ -5061,6 +5061,7 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "git2",
+ "lz4_flex",
  "rayon",
  "redb",
  "reqwest 0.12.28",
@@ -9065,6 +9066,12 @@ dependencies = [
  "lyon_geom",
  "num-traits",
 ]
+
+[[package]]
+name = "lz4_flex"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecbdfe44b1bd960b68170b417450a628c43f7cf56bb3c5317e61cb230ee7f226"
 
 [[package]]
 name = "mac-notification-sys"

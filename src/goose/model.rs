@@ -31,7 +31,7 @@ fn timestamp(value: &Value) -> i64 {
 pub(super) struct Session {
     pub info: Value,
     pub config: Vec<Value>,
-    pub turns: Vec<Value>,
+    pub turns: fastrock_workspaces::scrollback::History,
     pub active: Option<String>,
     pub run_id: Option<String>,
     pub cancel_requested: bool,

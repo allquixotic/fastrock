@@ -20,7 +20,9 @@ assert sys.platform == 'win32', "Run native acceptance on Windows only"
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('binary', type=Path)
 parser.add_argument('--output', type=Path, required=True)
+parser.add_argument('--turns', type=int, default=1)
 args = parser.parse_args()
+assert 1 <= args.turns <= 100
 out = args.output.resolve()
 out.mkdir(parents=True, exist_ok=False)
 for folder in ('home', 'codex', 'project', 'goose/config', 'local', 'roaming'):
@@ -42,8 +44,9 @@ class Provider(BaseHTTPRequestHandler):
         summary = 'search index sidecar' in json.dumps(body)
         requests.append({'path': self.path, 'summary': summary})
         assert self.path.startswith('/model/') and self.path.endswith('/converse'), self.path
+        turn = sum(not request['summary'] for request in requests)
         text = ('ObsidianNeedle: compaction-length keyword fixture for searching this conversation.'
-                if summary else 'Native embedded Goose answer, produced by the local fixture.')
+                if summary else f'Native embedded Goose answer {turn}, produced by the local fixture.')
         response = json.dumps({'output': {'message': {'role': 'assistant', 'content': [{'text': text}]}},
                               'stopReason': 'end_turn', 'usage': {'inputTokens': 3, 'outputTokens': 4, 'totalTokens': 7},
                               'metrics': {'latencyMs': 1}}).encode()
@@ -58,8 +61,10 @@ server = ThreadingHTTPServer(('127.0.0.1', 0), Provider)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 endpoint = f'http://127.0.0.1:{server.server_port}'
 steps = [{'wait_ready': 30000}, {'resize': [1440, 1000]},
-         {'new_thread': str(out / 'project')}, {'wait_idle': 30000},
-         {'send': 'Please give a short fixture answer'}, {'wait_idle': 30000}, {'wait': 2000},
+         {'new_thread': str(out / 'project')}, {'wait_idle': 30000}]
+for turn in range(1, args.turns + 1):
+    steps += [{'send': f'Please give a short fixture answer {turn}'}, {'wait_idle': 30000}, {'wait': 2000}]
+steps += [{'transcript': 'export-complete:' + str(out / 'complete.md')}, {'wait': 300},
          {'sidebar': ['search', 'OBSIDIANNEEDLE']}, {'wait': 1500},
          {'sidebar': ['dump', str(out / 'matches.json')]}, {'snapshot': str(out / 'search.png')},
          {'sidebar': ['search', 'absent-very-unique-keyword']}, {'wait': 1000},
@@ -121,14 +126,21 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
 matches = json.loads((out / 'matches.json').read_text())['rows']
 assert len(matches) == 1 and matches[0]['id'].startswith('goose:'), matches
 assert json.loads((out / 'empty.json').read_text())['rows'] == []
-assert len(requests) == 2, f'Search or settings caused extra model calls: {requests}'
-assert requests[0]['summary'] is False and 'openai.gpt-6.1-sol' in requests[0]['path']
-assert requests[1]['summary'] is True and 'openai.gpt-6-luna' in requests[1]['path']
+assert len(requests) == 2 * args.turns, f'Search or settings caused extra model calls: {requests}'
+for ordinary, summary in zip(requests[::2], requests[1::2]):
+    assert ordinary['summary'] is False and 'openai.gpt-6.1-sol' in ordinary['path']
+    assert summary['summary'] is True and 'openai.gpt-6-luna' in summary['path']
+transcript = (out / 'complete.md').read_text(encoding='utf-8')
+for turn in range(1, args.turns + 1):
+    assert transcript.count(f'Please give a short fixture answer {turn}') == 1, transcript
+    assert transcript.count(f'Native embedded Goose answer {turn},') == 1, transcript
+assert 'ObsidianNeedle' not in transcript, 'Search summary leaked into the source history'
 saved = (out / 'goose/config/config.yaml').read_text(encoding='utf-8')
 assert 'FASTROCK_CHEAP_PROFILE:' in saved and 'Bedrock Luna' in saved
 assert (out / 'local/vwork/workspaces.redb').exists()
 receipt = dict(result='PASS', binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                peak_process_bytes=peak, requests=requests, summary_only_match=True,
+               exported_turns=args.turns, complete_history_preserved=True,
                native_cheap_profile_saved=True, all_provider_requests_local=True)
 (out / 'acceptance.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
 print(json.dumps(receipt, indent=2), flush=True)

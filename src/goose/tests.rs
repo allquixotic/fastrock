@@ -290,14 +290,15 @@ fn replay_groups_messages_and_preserves_tool_output() {
         assert!(session.update(&update).is_empty());
     }
     assert_eq!(session.turns.len(), 2);
-    assert_eq!(session.turns[0]["items"][1]["text"], "Hello world");
+    let restored = session.turns.all_turns().unwrap();
+    assert_eq!(restored[0]["items"][1]["text"], "Hello world");
     assert_eq!(
-        session.turns[0]["items"][2]["result"]["content"][0]["text"],
+        restored[0]["items"][2]["result"]["content"][0]["text"],
         "file text"
     );
     let _: codex_app_server_protocol::ThreadStartResponse =
         serde_json::from_value(session.response()).unwrap();
-    for turn in session.turns {
+    for turn in restored {
         let _: codex_app_server_protocol::Turn = serde_json::from_value(turn).unwrap();
     }
 }
@@ -321,7 +322,7 @@ fn live_projection_satisfies_ui_lifecycle_schema() {
                 serde_json::from_value(event).unwrap();
         }
     }
-    let items = session.turns[0]["items"].as_array().unwrap();
+    let items = session.turns.last().unwrap()["items"].as_array().unwrap();
     assert!(
         items
             .iter()
