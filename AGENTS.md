@@ -3,18 +3,37 @@
 Based on allquixotic/codex-gui; upstream identity in codex-gui-base.json.
 Preserve upstream conversation features, Slint patches, licenses and attribution.
 All newly written UI must use native Slint controls/layouts; no canvas renderer.
-Rally documents use horizontal tabs; sidebar contains agent conversations only.
-Default backend: installed `goose acp` over stdio, one process for concurrent
-sessions. Installed `codex app-server` remains an explicit connection option.
-Never compile Goose crates or embed codex-core, inference, app-server, V8 or a
-second agent runtime in Fastrock. Inherit backend environment/configuration;
-never install/update either backend. Negotiate ACP capabilities at runtime.
-Build profiles prioritize compilation speed: application opt-level=0, no LTO, no debug
-information, 256 codegen units, incremental builds, no stripping/packing pass.
-Optimized builds require Sean's explicit authorization. Prereleases use fast builds.
-Authorized 2026-10-26: allowlisted rendering/text dependencies use opt-level=2,
-lto="off" including local ThinLTO. Keep other fast settings; benchmark on games
-before each CI release. 0.3.4 continues these settings for conversation selection. Continue Windows ZIP distribution and Mac compatibility compile.
+0.4.0 authorization, 2026-10-29: embed unmodified stable Goose and vwork in
+Fastrock; no installed backend, external core service, or Codex connection.
+Configured extensions, hooks, credential helpers and user/LLM tools may spawn
+processes. Use supported Goose APIs; report upstream blockers, never fork Goose.
+Preserve Goose configuration/credential entries; support Bedrock, direct OpenAI
+and direct Anthropic, tools/hooks/recipes/code mode. Exclude local inference,
+voice, remote agent servers and all T3 quota-related features.
+Required routes: Bedrock Runtime OpenAI GPT-6.1 Sol/GPT-6 Luna and Bedrock
+Anthropic Claude Opus 5.5 with US cross-region inference. Preserve working routes;
+reasoning choices follow Goose, including custom saved values if supported.
+Port pinned stable T3 UI/orchestration into native Slint/Rust. Include scheduling,
+isolated child vwork workspaces, explicit merge, durable queues and recovery.
+Restart restores state but needs Resume; never blindly replay uncertain tools.
+Projects represent repositories. Permanent Rally virtual project contains
+closable horizontal document tabs/boards without conversation binding. Retain
+on-demand temporary Rally assistance and human Apply. Web previews use browser.
+Close last window to tray; explicit Quit stops work and exits.
+Vwork exclusively owns its store in-process; preserve compressed virtual source,
+leases, revision guards and hooks. Search keeps one compressed compaction-length
+summary per conversation in the same redb, replaced after each completed user
+turn; backfill one current summary per old Goose conversation. Search is local,
+case-insensitive substring first then bounded parallel fuzzy search. Cheap model:
+explicit profile, else Bedrock GPT-6 Luna; unavailable means text search only.
+Codex conversation files stay untouched and disappear from the UI.
+Authorized 2026-10-29: application/dependencies opt-level=2, lto="off" including
+local ThinLTO, debug=0, 256 codegen units, incremental, no stripping/packing.
+Build scripts stay unoptimized. Signed usable 0.4.0 prereleases authorized;
+final release requires full acceptance. Windows x64 ZIP only; Mac compile only.
+Benchmark on games before releases: 1,000 conversations, eight streaming agents,
+10,000-message history against 0.3.x. Stop test at 32 GB process memory, then
+reduce workload tenfold; monitor host/guest headroom and preserve VM availability.
 Stable 0.3.0 and 0.3.1 are explicitly authorized with the existing fast profile and Windows
 x64 ZIP publication only; compile Mac for compatibility but skip its release job.
 Explicit exception: official 0.2.0 uses profile official, opt-level=1, debug=2,

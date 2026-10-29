@@ -10,12 +10,12 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from release_config import build_plan, release_tag
+from release_config import build_plan, release_tag, suffix
 from debug_symbols import verify_windows, verify_macos
 
 
 class ReleasePolicy(unittest.TestCase):
-    def test_v25_only_authorized_stable_version_optimizes(self):
+    def test_v46_only_authorized_stable_versions(self):
         self.assertEqual(build_plan('0.2.0')['profile'], 'official')
         self.assertEqual(build_plan('0.2.0')['lto'], 'off')
         self.assertEqual(build_plan('0.2.1-alpha.1')['profile'], 'dev')
@@ -28,14 +28,25 @@ class ReleasePolicy(unittest.TestCase):
         self.assertEqual(build_plan('0.3.2')['rendering_dependencies']['parley'], {'opt-level': 2})
         self.assertEqual(build_plan('0.3.3')['lto'], 'off')
         self.assertEqual(build_plan('0.3.4')['lto'], 'off')
+        for version in ('0.4.0-alpha.1', '0.4.0-beta.2', '0.4.0-rc.1', '0.4.0'):
+            plan = build_plan(version)
+            self.assertEqual(plan['opt_level'], 2)
+            self.assertEqual(plan['lto'], 'off')
+            self.assertEqual(plan['debug_info'], 0)
+            self.assertEqual(plan['codegen_units'], 256)
+            self.assertTrue(plan['incremental'])
+            self.assertEqual(plan['strip'], 'none')
+            self.assertEqual(suffix(plan), '')
         for version in ('0.2.1', '0.3.5', '0.2.0-arbitrary'):
             with self.assertRaises(AssertionError):
                 build_plan(version)
 
-    def test_v25_policy_rejects_lto_and_fast_profile_optimization(self):
+    def test_v46_policy_rejects_lto_and_optimization_overrides(self):
         for name, value in [('CARGO_PROFILE_OFFICIAL_LTO', 'false'),
                             ('CARGO_PROFILE_OFFICIAL_DEBUG', '0'),
                             ('CARGO_PROFILE_DEV_OPT_LEVEL', '1'),
+                            ('CARGO_PROFILE_DEV_OPT_LEVEL', '0'),
+                            ('CARGO_PROFILE_RELEASE_OPT_LEVEL', '3'),
                             ('RUSTFLAGS', '-C lto=thin'), ('RUSTFLAGS', '-C lto=false')]:
             result = subprocess.run([sys.executable, str(ROOT / 'dev/check-build-policy.py')],
                                     env={**os.environ, name: value}, capture_output=True)

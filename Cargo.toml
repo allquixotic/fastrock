@@ -1,6 +1,6 @@
 [package]
 name = "fastrock"
-version = "0.3.4"
+version = "0.4.0-alpha.1"
 edition = "2024"
 license = "Apache-2.0"
 build = "build.rs"
@@ -233,7 +233,7 @@ unnecessary_to_owned = "deny"
 unwrap_used = "deny"
 
 [profile.dev]
-opt-level = 0
+opt-level = 2
 debug = 0
 split-debuginfo = "off"
 strip = "none"
@@ -245,7 +245,7 @@ overflow-checks = false
 debug-assertions = false
 
 [profile.release]
-opt-level = 0
+opt-level = 2
 debug = 0
 split-debuginfo = "off"
 strip = "none"
@@ -259,7 +259,7 @@ debug-assertions = false
 [profile.test]
 debug-assertions = false
 overflow-checks = false
-opt-level = 0
+opt-level = 2
 debug = 0
 split-debuginfo = "off"
 strip = "none"
@@ -278,7 +278,7 @@ debug = 0
 codegen-units = 256
 
 # Sean's explicitly authorized 0.2.0 official release: -O with full symbols.
-# "off" disables even LLVM's local ThinLTO, unlike lto = "off" at opt-level > 0.
+# "off" disables even LLVM's local ThinLTO, unlike lto = false at opt-level > 0.
 [profile.official]
 inherits = "release"
 opt-level = 1
@@ -304,7 +304,7 @@ tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev 
 [patch."ssh://git@github.com/openai-oss-forks/tungstenite-rs.git"]
 tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "4fffad30fe373adbdcffab9545e9e9bf4f2fc19f" }
 
-# Authorized rendering/text hot paths; application and build scripts stay fast.
+# Explicit rendering/text entries retained for historical release receipts; runtime defaults also use opt=2.
 
 [profile.dev.package."i-slint-core"]
 opt-level = 2
@@ -357,7 +357,7 @@ opt-level = 2
 [profile.dev.package."pulldown-cmark"]
 opt-level = 2
 
-# Authorized rendering/text hot paths; application and build scripts stay fast.
+# Explicit rendering/text entries retained for historical release receipts; runtime defaults also use opt=2.
 
 [profile.release.package."i-slint-core"]
 opt-level = 2

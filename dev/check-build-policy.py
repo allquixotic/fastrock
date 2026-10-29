@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""V15: every supported build entrypoint favors compilation speed."""
+"""V46: explicitly authorized 0.4.0 optimization, with LTO fully disabled."""
 import os, pathlib, re, sys, tomllib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "scripts"))
 root=pathlib.Path(__file__).resolve().parents[1]
 data=tomllib.loads((root/'Cargo.toml').read_text())
-expected={'opt-level':0,'debug':0,'split-debuginfo':'off','lto':'off',
+expected={'opt-level':2,'debug':0,'split-debuginfo':'off','lto':'off',
           'codegen-units':256,'incremental':True,'strip':'none','debug-assertions':False,'overflow-checks':False}
 for name in ('dev','release','test'):
     for key,value in expected.items():
@@ -38,4 +38,4 @@ for path in [*root.glob('.github/workflows/*'),*root.glob('scripts/*'),root/'.ca
     text=path.read_text(errors='replace')
     assert not re.search(r'(?:-C\s*opt-level\s*=\s*[1-3sz]|CARGO_INCREMENTAL\s*[:=]\s*["\']?0\b)',text),path
     assert not re.search(r'CARGO_PROFILE_\w+_(?:OPT_LEVEL|LTO|DEBUG|CODEGEN_UNITS)\s*[:=]\s*["\']?(?:[1-3sz]|true|thin|fat|4|16)\b',text),path
-print('V15/V25: application opt=0; allowlisted render/text opt=2; LTO=off; no entrypoint overrides.')
+print('V46/V25: application/dependencies opt=2; build scripts opt=0; LTO=off; no entrypoint overrides.')

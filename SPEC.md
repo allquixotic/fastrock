@@ -1,22 +1,31 @@
 # SPEC
 
 ## §G GOAL
-Native Rust/Slint Fastrock with external Goose ACP by default; retain external Codex option, Rally inventory and fast prerelease iteration.
+Fastrock 0.4.0: stable T3 UI/orchestration in native Slint/Rust, unmodified embedded Goose, embedded compressed vwork and full Rally support.
 Broader GUI contract: repository `GUI.md`.
 
 ## §C CONSTRAINTS
 - Fastrock derives from pinned allquixotic/codex-gui; Apache-2.0 and Slint attribution preserved.
-- Installed external Goose ACP over stdio; external Codex optional. No Goose crates or embedded runtime/core/V8. Existing Codex protocol types serve UI compatibility boundary.
-- Application compile speed retained; explicit 2026-10-26 exception permits allowlisted render/text dependency opt=2, LTO="off" including local ThinLTO; no stripping/packing.
-- New Rally UI uses native Slint controls/layouts; horizontal documents, conversation-only sidebar.
+- 2026-10-29 authorization supersedes external-backend rules: Goose/vwork/core orchestration in-process; configured MCPs/hooks/credential helpers and user/LLM tools may spawn. No Goose fork, Codex backend or remote agent servers.
+- Preserve Goose configuration/OS credentials. Bedrock/direct OpenAI/direct Anthropic, tools/hooks/recipes/code mode; no local inference or voice. Required model routes block final release; unsupported effort levels do not.
+- Application/dependencies opt=2, debug=0, LTO="off" including local ThinLTO, 256 codegen units, incremental, no stripping/packing; build scripts opt=0. Explicit 2026-10-29 authorization.
+- Native Slint controls/layouts. Repository projects; permanent Rally virtual project, closable horizontal documents/boards, no conversation binding. On-demand temporary Rally assistant retains human Apply.
+- All applicable stable T3 features including scheduling; exclude every quota feature. Native diff/review/files/terminal/palette/checkpoints; browser web previews.
+- Exclusive embedded vwork ownership; no standalone-client compatibility requirement. Preserve existing stores, compressed source, tool leases, hooks, revisions and explicit exports.
+- Close-to-tray; explicit Quit stops work. Restart restores drafts/queues but requires Resume; no uncertain tool replay. Isolated delegated workspaces; explicit integration.
+- Named independent provider/endpoint/AWS profile/region/credential/model/effort profiles where unchanged Goose permits. Display supported reasoning levels; accept custom saved levels only through supported Goose APIs.
+- Codex histories untouched on disk, absent from UI. Goose history retained; one current search summary backfilled per existing conversation.
+- One latest compaction-length keyword-focused summary per conversation; each completed user-facing turn replaces it asynchronously. Compressed summary shares vwork redb; no historical summaries; original conversation retained. Settings identify cheap profile, else Bedrock GPT-6 Luna; unavailable means deterministic search only.
+- Search performs immediate case-insensitive title/current-summary matching, then bounded multithreaded fuzzy search over current summaries. No model call per query; cancel obsolete searches.
 - Track Mac/games free space; clean identified stale build junk only when needed.
 - Native Slint 1.18.1; bound transcript memory; no idle repaint polling.
-- Fastrock alpha: signed Windows x64 fast ZIP and signed/notarized/stapled Apple Silicon Mac DMG via CI. Imported upstream universal release records remain historical.
+- 0.4.0: signed Windows x64 ZIP via CI, Mac compatibility compile only. Usable signed prereleases authorized; final requires full acceptance. Imported distribution records historical.
 - Commit/push main directly; no draft PR workflow. CI builds/signs/verifies/publishes releases with persistent incremental caches; no unsigned fallback.
 - Never run GUI tests or launch this project's GUI on Sean's Mac unless the user explicitly says "test the GUI on this Mac"; use Windows hosts.
 - Publish only after development verification passes. Explicit 0.2.0 exception: official profile optimizes at level 1 with full debug info, packed symbols, LTO off; fast defaults remain.
 - Stable 0.3.0 is authorized with the fast profile and Windows x64 ZIP publication only; compile the Mac build but do not publish it.
 - Verify GitHub asset digest before deleting local build outputs.
+- Games benchmark: 1,000 stored conversations, eight active streams, 10,000-message conversation; compare 0.3.x memory/scroll/switch latency. Stop fixture process at 32,000,000,000 bytes, reduce workload tenfold; low host/guest headroom also stops tests. Never risk host OOM.
 
 ## §I INTERFACES
 - I.scroll: wheel, scrollbar, Jump to latest in conversation pane.
@@ -26,8 +35,17 @@ Broader GUI contract: repository `GUI.md`.
 - I.summaries: sidebar titles/tooltips, resize handle; GUI-only persistent cache, ephemeral fast-model requests.
 - I.distribution: Azure Authenticode, Developer ID Application, Apple notarization/stapling, GitHub artifact attestations.
 - I.links: glyph hover, Copy link, Open in browser, Open file.
-- I.goose: installed `goose acp`; FASTROCK_GOOSE executable override; ACP session lifecycle, streaming, permissions, config options, optional Goose extensions.
-- I.vwork: optional storage-neutral workspace provider; discover installed enabled Goose vwork MCP extensions, use authenticated loopback daemon API, never direct redb/file exports.
+- I.goose: embedded stable Goose public Rust APIs; session lifecycle/streaming/permissions/profiles/extensions, no HTTP/stdio hop to external Goose.
+- I.vwork: embedded vwork Engine and public tool API, exclusive existing redb owner; workspace browser/editor/compaction and compressed current search summaries share database.
+- I.orchestration: persistent threads/runs/queues/lineage/mailboxes/schedules; delegate/message/wait/interrupt/fork/model switch/explicit merge/recovery; no quota features.
+- I.search: immediate deterministic substring plus bounded parallel fuzzy search; background cheap-model current-summary replacement and backfill.
+- I.lifecycle: close-to-tray, explicit Quit, restart Resume and safe cancellation.
+
+## §R REFERENCES
+R1: T3 Code v0.1.5, 6d450a4284852af137b2f3407fddd89eb76e7644; UI/orchestration-v2 reference, MIT attribution; https://github.com/pingdotgg/t3code/releases/tag/v0.1.5.
+R2: Goose v1.57.0, 30bba95105e59bc3e7df624cf6b4d433690cfe12; unmodified public Agent/extension APIs; https://github.com/aaif-goose/goose/releases/tag/v1.57.0.
+R3: Ghostty v1.4.0, 83fb95624b0439ee660c2679b43b38c8b63769cd; idle incremental LZ4 page compression/on-demand restoration; Windows requires portable adaptation; https://github.com/ghostty-org/ghostty/blob/v1.4.0/src/terminal/compress/Page.zig.
+R4: AWS Runtime supports Converse/InvokeModel and OpenAI-compatible APIs; Runtime/Mantle routes differ; exact model/profile must preserve installed working configuration; https://docs.aws.amazon.com/bedrock/latest/userguide/endpoints.html.
 
 ## §V INVARIANTS
 V1–V14 retain the imported upstream behavior/history. V10 describes its historical signed distributions; current Fastrock prereleases follow V15/V22.
@@ -84,6 +102,18 @@ V35: Shared vwork MCP ! 127.0.0.1 listeners only; authenticated daemon, exact Ho
 V36: Compact ! entire selected redb, independent of workspace/catalog selection; multiple stores ! explicit selector; drafts and stale-response guards preserved. Verify: v36 browser fixture + Windows native smoke.
 V37: Conversation selection ! accept drags beginning in adjacent horizontal padding, preserve shaped offsets, links, keyboard and Copy; expanded tool/command details ! selectable full arguments/command and visible results, including no-output calls; Copy All ! retain complete details across virtual chunks. Verify: v37 render regressions and dev/windows-selection-smoke.py on games/CI.
 
+0.4.0 overrides conflicting historical transport/storage/build/summary/distribution clauses in V7/V8/V15/V16/V22/V26–V30/V33–V35. Other correctness and attribution requirements remain.
+V38: Core ! one process, unmodified pinned Goose/public APIs plus vwork; no external Goose/Codex/vwork dependency or loopback core-service hop. Configured tool/extension/hook/credential subprocesses allowed. Verify: embedded backend/provider/extension fixtures and process-tree smoke.
+V39: Required Bedrock Runtime Sol/Luna and US cross-region Bedrock Opus routes ! preserve configured IDs/endpoints/auth; effort values ! Goose-supported/custom-public-API only; profiles ! isolated concurrently; no secret logging. Verify: route/request-body/stream/tool/cancel/resume fixtures, controlled working-profile smoke.
+V40: Vwork ! single embedded Engine, preserved source compression/revision/lease/compaction behavior. Summary ! same redb, atomic replace by monotonically newer completed turn; no summary history or secret material. Verify: embedded store reopen/conflict/summary-replacement/stale-generation tests.
+V41: Orchestration ! durable queues/lineage/messages/schedules, isolated child workspaces, explicit merge; restart ! awaiting Resume, uncertain tools ! never automatically replay. No quota feature. Verify: orchestration lifecycle/crash recovery/delegation/schedule fixtures.
+V42: T3 visual/interaction parity ! native Slint; project ! repository with workspace-bound chats; Rally project ! permanent, independent closable docs/boards, no conversation context. Rally assistant ! temporary/on-demand/human Apply. Web previews ! system browser. Verify: native games UI fixtures plus Rally inventory.
+V43: Huge history ! lossless compressed cold pages, bounded resident/render caches, asynchronous prefetch/restore, stable anchors/selection/copy/export; no whole-history layout or UI-thread IO. Verify: compressed-history roundtrip/random-jump/selection/stream-boundary fixtures.
+V44: Search ! deterministic local immediate case-insensitive title/summary matches, bounded parallel fuzzy continuation and cancellation. Every user-facing completed turn ! cheap-model compaction-length keyword summary replaces old summary off UI thread; no recursive summarizing of summary jobs. Backfill ! one latest per old Goose conversation. Cheap profile visible; no expensive fallback. Verify: search ordering/cancellation/budget and summary scheduling/replacement/backfill fixtures.
+V45: Games workload ! 1,000 threads/eight streams/10,000 messages; benchmark watchdog stops fixture at 32 GB process memory or inadequate host/guest headroom, records abort, retries at tenfold lower scale. Never terminate unrelated app/VM or exhaust host. Verify: watchdog fixtures and measured games comparison.
+V46: 0.4.0 application/dependencies ! opt=2, debug=0, LTO="off", 256 codegen units, incremental, no strip; Windows signed CI ZIP only, Mac compile only. Prerelease ! usable verified milestone; stable ! all acceptance and required routes. Verify: build/release policy tests, signed receipts and Windows acceptance.
+V47: Last window close ! tray continuation, explicit Quit ! cancel/save/exit, restart ! restore without executing pending work. Verify: native close/tray/Quit and recovery fixtures.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -130,6 +160,16 @@ T31|x|Retained Windows presentation, optimized render/text dependencies, finer t
 T32|x|Measure signed 0.3.2 opening on games/CI; installed Goose 1.57.0 local-provider/extension timing on games; confirm activation gates history, record unprofiled copy/UI candidates and real-config limits|V27,V33,V34,I.distribution,I.goose
 T33|x|Shared localhost vwork MCP, database-level compaction, actual Goose/games comparison, signed 0.3.3 CI release|V15,V27,V34,V35,V36,I.vwork,I.goose,I.distribution
 T34|x|Widen text selection hit areas, selectable tool/command details, Windows interaction/scroll checks, Mac compile and signed Fastrock 0.3.4; no vwork changes|V9,V15,V23,V32,V37,I.distribution
+T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only release policy; policy audit passed, games ReleasePolicy 3 passed/1 Apple-only skipped|V46,I.distribution
+T36|~|Verify unmodified stable Goose embedding and exact working Bedrock routes/profiles|V38,V39,I.goose
+T37|.|Replace external backend/core bridges with embedded Goose; remove Codex UI/connection, preserve Goose configuration|V38,V39,I.goose
+T38|.|Embed vwork Engine/tools/browser/compaction; compressed current-summary table in same redb|V40,I.vwork
+T39|.|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; no quotas|V41,I.orchestration
+T40|.|Native T3 main UI/sidebar/panels, repository projects and permanent independent Rally project|V42,I.questions,I.links
+T41|.|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
+T42|.|Lossless compressed transcript cache, incremental rendering and efficient arbitrary scrolling|V1,V9,V32,V37,V43,I.scroll
+T43|.|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
+T44|.|Watchdog-protected games benchmarks, full Windows verification, Mac compile and signed CI milestones/final|V23,V38–V47,I.distribution
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
 
