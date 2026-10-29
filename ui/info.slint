@@ -1,6 +1,6 @@
 // Info pane for the active thread: settings summary, context usage, plan,
 // turn changes, background terminals, goal, queued messages, sub-agents,
-// hooks, MCP servers, cross-tab messages, and account rate limits.
+// hooks, MCP servers and cross-tab messages.
 //
 // Rust (src/info.rs) fills `InfoState` for the active thread tab. Section
 // collapse state lives here and is shared by all tabs.
@@ -75,14 +75,6 @@ export struct InfoTerminal {
     stopping: bool,
 }
 
-export struct InfoLimit {
-    label: string,
-    // 0..1
-    used: float,
-    percent: string,
-    detail: string,
-}
-
 export global InfoState {
     // Thread summary.
     in property <string> title;
@@ -138,8 +130,6 @@ export global InfoState {
     in property <bool> xtab-enabled;
     in property <[InfoMail]> mailbox;
 
-    in property <[InfoLimit]> limits;
-    in property <string> limits-note;
 
     in-out property <bool> context-collapsed;
     in-out property <bool> plan-collapsed;
@@ -151,7 +141,6 @@ export global InfoState {
     in-out property <bool> hooks-collapsed;
     in-out property <bool> mcp-collapsed;
     in-out property <bool> xtab-collapsed;
-    in-out property <bool> limits-collapsed;
 
     callback open-folder();
     callback open-diff();
@@ -869,41 +858,6 @@ export component InfoPane inherits Rectangle {
                 }
             }
 
-            // Account rate limits
-            if InfoState.limits.length > 0: Divider { }
-            if InfoState.limits.length > 0: SectionHeader {
-                title: "Usage limits";
-                summary: InfoState.limits-note;
-                collapsed <=> InfoState.limits-collapsed;
-            }
-            if InfoState.limits.length > 0 && !InfoState.limits-collapsed: SectionBody {
-                spacing: Theme.pad-m;
-                for limit in InfoState.limits: VerticalLayout {
-                    spacing: Theme.pad-xs;
-
-                    HorizontalLayout {
-                        Text {
-                            text: limit.label;
-                            color: Theme.text;
-                            font-size: Theme.font-size-small;
-                            horizontal-stretch: 1;
-                        }
-                        Text {
-                            text: limit.percent;
-                            color: Theme.text-muted;
-                            font-size: Theme.font-size-small;
-                        }
-                    }
-                    Meter {
-                        value: limit.used;
-                    }
-                    if limit.detail != "": Text {
-                        text: limit.detail;
-                        color: Theme.text-faint;
-                        font-size: Theme.font-size-small;
-                    }
-                }
-            }
 
         }
     }

@@ -18,6 +18,8 @@ current process instead of launching a replacement Fastrock instance.
 The provider factory permits `aws_bedrock`, `openai` and `anthropic`. Existing
 Goose configuration and credential entries remain authoritative. Codex and remote
 agent transports are removed; legacy Codex files are not migrated or deleted.
+Account quota panels, snapshot storage and polling are removed. Conversation
+context and token-use information remain available independently of account limits.
 
 ## Verification and remaining acceptance
 

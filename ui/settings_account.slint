@@ -1,5 +1,5 @@
 // Settings › Account: sign-in state, ChatGPT browser and device-code login,
-// API key login, sign out, and usage limits.
+// API key login and sign out.
 //
 // OWNER: settings feature.
 
@@ -289,20 +289,6 @@ export component AccountPage inherits Rectangle {
                     }
                 }
 
-                if SettingsState.account-kind == "chatgpt": SectionTitle {
-                    title: "Usage limits";
-                    subtitle: "Reported by ChatGPT for the signed-in plan.";
-                }
-                if SettingsState.account-kind == "chatgpt": Card {
-                    VerticalLayout {
-                        padding: Theme.pad-l;
-                        KeyValueList {
-                            items: SettingsState.rate-limits;
-                            key-width: 220px;
-                            empty-text: SettingsState.rate-limits-status != "" ? SettingsState.rate-limits-status : "No usage limits reported.";
-                        }
-                    }
-                }
             }
         }
     }

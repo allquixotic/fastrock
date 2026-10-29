@@ -4,7 +4,7 @@
 //! or not its tab is visible; only the active tab is rendered into
 //! `InfoState`. Data that needs a request (queued messages, goal, existing
 //! sub-agents) is fetched the first time the pane shows a thread, and the
-//! account-wide pieces (rate limits, app-scoped MCP status) live in
+//! app-scoped MCP status lives in
 //! [`InfoShared`].
 
 mod terminals;
@@ -18,8 +18,6 @@ use codex_app_server_protocol::ClientRequest;
 use codex_app_server_protocol::CollabAgentState;
 use codex_app_server_protocol::CollabAgentStatus;
 use codex_app_server_protocol::CollabAgentTool;
-use codex_app_server_protocol::GetAccountRateLimitsParams;
-use codex_app_server_protocol::GetAccountRateLimitsResponse;
 use codex_app_server_protocol::HookExecutionMode;
 use codex_app_server_protocol::HookRunSummary;
 use codex_app_server_protocol::ListMcpServerStatusParams;
@@ -29,8 +27,6 @@ use codex_app_server_protocol::McpServerStartupState;
 use codex_app_server_protocol::McpServerStatus;
 use codex_app_server_protocol::McpServerStatusDetail;
 use codex_app_server_protocol::QueuedSubmission;
-use codex_app_server_protocol::RateLimitSnapshot;
-use codex_app_server_protocol::RateLimitWindow;
 use codex_app_server_protocol::SandboxPolicy;
 use codex_app_server_protocol::ServerNotification;
 use codex_app_server_protocol::SortDirection;
@@ -77,7 +73,6 @@ use crate::ui::InfoAgentStatus;
 use crate::ui::InfoDiffFile;
 use crate::ui::InfoField;
 use crate::ui::InfoHook;
-use crate::ui::InfoLimit;
 use crate::ui::InfoMail;
 use crate::ui::InfoMcp;
 use crate::ui::InfoMcpStatus;
@@ -388,84 +383,6 @@ fn prune_hooks_after_turn(hooks: &mut Vec<RunningHook>, turn_id: &str) {
     });
 }
 
-/// Account rate limits shown in the pane and the `account/rateLimits/read`
-/// that fills them.
-#[derive(Default)]
-struct RateLimits {
-    fetch: Fetch,
-    /// Latest snapshot per rate-limit bucket (`limit_id`, "codex" by default).
-    snapshots: BTreeMap<String, RateLimitSnapshot>,
-    /// Bumped per read and whenever the account or server changes; only the
-    /// read with the current number is applied.
-    seq: u64,
-    /// What notifications delivered while a read was in flight (merged per
-    /// bucket); these fields are newer than the read's.
-    notified: BTreeMap<String, RateLimitSnapshot>,
-}
-
-impl RateLimits {
-    /// The account or server changed: forget everything and ignore reads
-    /// already in flight.
-    fn reset(&mut self) {
-        self.snapshots.clear();
-        self.invalidate();
-    }
-
-    /// Keeps the snapshots but asks for a fresh read; reads in flight are
-    /// ignored.
-    fn invalidate(&mut self) {
-        self.fetch = Fetch::NotRequested;
-        self.seq = self.seq.wrapping_add(1);
-        self.notified.clear();
-    }
-
-    /// Starts a read; `None` while one is in flight.
-    fn begin_read(&mut self) -> Option<u64> {
-        if self.fetch == Fetch::Loading {
-            return None;
-        }
-        self.fetch = Fetch::Loading;
-        self.seq = self.seq.wrapping_add(1);
-        self.notified.clear();
-        Some(self.seq)
-    }
-
-    /// A sparse `account/rateLimits/updated` snapshot.
-    fn on_update(&mut self, snapshot: RateLimitSnapshot) {
-        let key = limit_key(&snapshot);
-        if self.fetch == Fetch::Loading {
-            let pending = merge_rate_limit(self.notified.get(&key), snapshot.clone());
-            self.notified.insert(key.clone(), pending);
-        } else {
-            self.fetch = Fetch::Done;
-        }
-        let merged = merge_rate_limit(self.snapshots.get(&key), snapshot);
-        self.snapshots.insert(key, merged);
-    }
-
-    /// Applies the answer to read `seq` (`None` when it failed). Returns
-    /// false for a stale answer, which is dropped.
-    fn finish_read(&mut self, seq: u64, read: Option<BTreeMap<String, RateLimitSnapshot>>) -> bool {
-        if seq != self.seq || self.fetch != Fetch::Loading {
-            return false;
-        }
-        let notified = std::mem::take(&mut self.notified);
-        match read {
-            Some(mut read) => {
-                for (key, update) in notified {
-                    let merged = merge_rate_limit(read.get(&key), update);
-                    read.insert(key, merged);
-                }
-                self.snapshots = read;
-                self.fetch = Fetch::Done;
-            }
-            None if self.snapshots.is_empty() => self.fetch = Fetch::Unavailable,
-            None => self.fetch = Fetch::Done,
-        }
-        true
-    }
-}
-
 /// Per-thread info pane data.
 #[derive(Debug, Default)]
 pub(crate) struct ThreadInfo {
@@ -491,7 +408,6 @@ pub(crate) struct ThreadInfo {
 /// Info pane state shared by all tabs.
 #[derive(Default)]
 pub(crate) struct InfoShared {
-    rate_limits: RateLimits,
     /// MCP startup states not scoped to a thread.
     app_mcp: BTreeMap<String, McpEntry>,
     models: InfoModels,
@@ -509,7 +425,6 @@ struct InfoModels {
     hooks: Rc<VecModel<InfoHook>>,
     mcp: Rc<VecModel<InfoMcp>>,
     mailbox: Rc<VecModel<InfoMail>>,
-    limits: Rc<VecModel<InfoLimit>>,
     terminals: Rc<VecModel<InfoTerminal>>,
 }
 
@@ -525,7 +440,6 @@ impl AppController {
         state.set_hooks(ModelRc::from(models.hooks.clone()));
         state.set_mcp(ModelRc::from(models.mcp.clone()));
         state.set_mailbox(ModelRc::from(models.mailbox.clone()));
-        state.set_limits(ModelRc::from(models.limits.clone()));
         state.set_terminals(ModelRc::from(models.terminals.clone()));
 
         state.on_open_folder(crate::ui_thread::scoped_callback!(|| {
@@ -585,9 +499,6 @@ impl AppController {
             return;
         };
         self.info_load_lazy(index);
-        if self.info_shared.rate_limits.fetch == Fetch::NotRequested {
-            self.info_fetch_rate_limits();
-        }
         self.info_render();
     }
 
@@ -602,11 +513,9 @@ impl AppController {
         let Some(thread) = self.thread_tab(index) else {
             return;
         };
-        let now = crate::sidebar::unix_now();
         let text = status_text(
             &summary_fields(thread),
             thread.info.usage.as_ref().map(context_view).as_ref(),
-            &limit_row_views(&self.info_shared.rate_limits.snapshots, now),
         );
         let title = thread.title();
         self.show_dialog(
@@ -622,7 +531,6 @@ impl AppController {
     /// Some notifications were dropped: re-read what they would have
     /// updated (transcripts and the sidebar resync themselves).
     pub(crate) fn info_on_lagged(&mut self) {
-        self.info_shared.rate_limits.invalidate();
         for index in 0..self.tabs.len() {
             if let Some(tab) = self.thread_tab_mut(index) {
                 tab.info.queue_state = Fetch::NotRequested;
@@ -745,24 +653,9 @@ impl AppController {
         }
     }
 
-    /// Notifications that are not routed to a tab: account rate limits,
-    /// app-scoped MCP status, and sub-agent threads of open tabs.
+    /// Notifications for app-scoped MCP status and child threads of open tabs.
     pub(crate) fn info_on_app_notification(&mut self, notification: &ServerNotification) {
         let changed = match notification {
-            ServerNotification::AccountRateLimitsUpdated(updated) => {
-                self.info_shared
-                    .rate_limits
-                    .on_update(updated.rate_limits.clone());
-                true
-            }
-            ServerNotification::AccountUpdated(_) => {
-                // A read still in flight is for the previous account.
-                self.info_shared.rate_limits.reset();
-                if self.active_thread_index().is_some() {
-                    self.info_fetch_rate_limits();
-                }
-                true
-            }
             ServerNotification::McpServerStatusUpdated(updated) if updated.thread_id.is_none() => {
                 self.info_shared.app_mcp.insert(
                     updated.name.clone(),
@@ -816,8 +709,6 @@ impl AppController {
     }
 
     pub(crate) fn info_on_server_ready(&mut self) {
-        // A read still in flight went to the old server.
-        self.info_shared.rate_limits.reset();
         self.info_shared.app_mcp.clear();
         for index in 0..self.tabs.len() {
             if let Some(tab) = self.thread_tab_mut(index) {
@@ -1114,40 +1005,6 @@ impl AppController {
                         .collect();
                 }
                 if app.active == Some(index) {
-                    app.info_render();
-                }
-            },
-        );
-    }
-
-    fn info_fetch_rate_limits(&mut self) {
-        let Some(seq) = self.info_shared.rate_limits.begin_read() else {
-            return;
-        };
-        self.backend.call(
-            |request_id| ClientRequest::GetAccountRateLimits {
-                request_id,
-                params: Some(GetAccountRateLimitsParams {
-                    supports_luna_reserve: false,
-                    exclude_reset_credit_details: true,
-                }),
-            },
-            move |app, result: Result<GetAccountRateLimitsResponse, BackendError>| {
-                let read = match result {
-                    Ok(response) => Some(match response.rate_limits_by_limit_id {
-                        Some(by_id) if !by_id.is_empty() => by_id.into_iter().collect(),
-                        _ => {
-                            let key = limit_key(&response.rate_limits);
-                            BTreeMap::from([(key, response.rate_limits)])
-                        }
-                    }),
-                    Err(err) => {
-                        // API-key and non-OpenAI providers have no limits.
-                        tracing::debug!(error = %err.user_message(), "account/rateLimits/read failed");
-                        None
-                    }
-                };
-                if app.info_shared.rate_limits.finish_read(seq, read) {
                     app.info_render();
                 }
             },
@@ -1607,18 +1464,6 @@ impl AppController {
         state.set_xtab_enabled(thread.xtab_enabled);
         sync_model(&models.mailbox, mailbox);
 
-        // Account rate limits.
-        let snapshots = &self.info_shared.rate_limits.snapshots;
-        let limits = limit_rows(snapshots, now);
-        state.set_limits_note(
-            snapshots
-                .values()
-                .find_map(|snapshot| snapshot.plan_type)
-                .map(|plan| format!("{plan:?} plan"))
-                .unwrap_or_default()
-                .into(),
-        );
-        sync_model(&models.limits, limits);
         self.info_render_terminals(index);
     }
 }
@@ -1696,11 +1541,7 @@ fn summary_fields(thread: &ThreadTab) -> Vec<(&'static str, String)> {
 }
 
 /// Plain-text status summary for `/status` in a narrow window.
-fn status_text(
-    fields: &[(&'static str, String)],
-    context: Option<&ContextView>,
-    limits: &[LimitRowView],
-) -> String {
+fn status_text(fields: &[(&'static str, String)], context: Option<&ContextView>) -> String {
     let mut lines: Vec<String> = fields
         .iter()
         .map(|(label, value)| format!("{label}: {value}"))
@@ -1712,13 +1553,6 @@ fn status_text(
         }
         lines.push(line);
         lines.push(context.totals.clone());
-    }
-    for limit in limits {
-        let mut line = format!("{}: {}", limit.label, limit.percent);
-        if !limit.detail.is_empty() {
-            line.push_str(&format!(" · {}", limit.detail));
-        }
-        lines.push(line);
     }
     lines.push(String::new());
     lines.push("Widen the window to see the info pane.".to_string());
@@ -2130,132 +1964,6 @@ pub(crate) fn parse_diff_stats(diff: &str) -> Vec<DiffFileStat> {
     files
 }
 
-fn limit_key(snapshot: &RateLimitSnapshot) -> String {
-    snapshot
-        .limit_id
-        .clone()
-        .unwrap_or_else(|| "codex".to_string())
-}
-
-/// Applies a sparse `account/rateLimits/updated` snapshot over the previous
-/// one: fields the update leaves out keep their last known value.
-pub(crate) fn merge_rate_limit(
-    previous: Option<&RateLimitSnapshot>,
-    update: RateLimitSnapshot,
-) -> RateLimitSnapshot {
-    let Some(previous) = previous else {
-        return update;
-    };
-    let previous = previous.clone();
-    RateLimitSnapshot {
-        limit_id: update.limit_id.or(previous.limit_id),
-        limit_name: update.limit_name.or(previous.limit_name),
-        normal_model_slug: update.normal_model_slug.or(previous.normal_model_slug),
-        primary: update.primary.or(previous.primary),
-        secondary: update.secondary.or(previous.secondary),
-        credits: update.credits.or(previous.credits),
-        individual_limit: update.individual_limit.or(previous.individual_limit),
-        spend_control_reached: update
-            .spend_control_reached
-            .or(previous.spend_control_reached),
-        plan_type: update.plan_type.or(previous.plan_type),
-        rate_limit_reached_type: update.rate_limit_reached_type,
-    }
-}
-
-/// Name of a rate-limit window ("5-hour limit", "Weekly limit").
-pub(crate) fn window_label(minutes: Option<i64>, secondary: bool) -> String {
-    const HOUR: i64 = 60;
-    const NAMED: [(i64, &str); 5] = [
-        (5 * HOUR, "5-hour limit"),
-        (24 * HOUR, "Daily limit"),
-        (7 * 24 * HOUR, "Weekly limit"),
-        (30 * 24 * HOUR, "Monthly limit"),
-        (365 * 24 * HOUR, "Annual limit"),
-    ];
-    let Some(minutes) = minutes.filter(|minutes| *minutes > 0) else {
-        return if secondary {
-            "Secondary limit"
-        } else {
-            "Usage limit"
-        }
-        .to_string();
-    };
-    if let Some((_, name)) = NAMED
-        .iter()
-        .find(|(window, _)| (minutes - window).abs() * 20 <= *window)
-    {
-        return (*name).to_string();
-    }
-    if minutes % HOUR == 0 {
-        format!("{}-hour limit", minutes / HOUR)
-    } else {
-        format!("{minutes}-minute limit")
-    }
-}
-
-/// One rendered usage-limit row.
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct LimitRowView {
-    pub(crate) label: String,
-    pub(crate) used: f32,
-    pub(crate) percent: String,
-    pub(crate) detail: String,
-}
-
-/// Rows for every window of every bucket; the default "codex" bucket first.
-pub(crate) fn limit_row_views(
-    snapshots: &BTreeMap<String, RateLimitSnapshot>,
-    now: i64,
-) -> Vec<LimitRowView> {
-    let mut buckets: Vec<(&String, &RateLimitSnapshot)> = snapshots.iter().collect();
-    buckets.sort_by_key(|(id, _)| !id.eq_ignore_ascii_case("codex"));
-    let mut rows = Vec::new();
-    for (id, snapshot) in buckets {
-        let prefix = (!id.eq_ignore_ascii_case("codex"))
-            .then(|| snapshot.limit_name.clone().unwrap_or_else(|| id.clone()));
-        let windows: [(Option<&RateLimitWindow>, bool); 2] = [
-            (snapshot.primary.as_ref(), false),
-            (snapshot.secondary.as_ref(), true),
-        ];
-        for (window, secondary) in windows {
-            let Some(window) = window else {
-                continue;
-            };
-            let name = window_label(window.window_duration_mins, secondary);
-            let label = match &prefix {
-                Some(prefix) => format!("{prefix} · {name}"),
-                None => name,
-            };
-            let used = window.used_percent.clamp(0, 100);
-            let detail = window
-                .resets_at
-                .filter(|resets_at| *resets_at > now)
-                .map(|resets_at| format!("Resets in {}", format_duration(resets_at - now)))
-                .unwrap_or_default();
-            rows.push(LimitRowView {
-                label,
-                used: used as f32 / 100.0,
-                percent: format!("{used}% used"),
-                detail,
-            });
-        }
-    }
-    rows
-}
-
-fn limit_rows(snapshots: &BTreeMap<String, RateLimitSnapshot>, now: i64) -> Vec<InfoLimit> {
-    limit_row_views(snapshots, now)
-        .into_iter()
-        .map(|row| InfoLimit {
-            label: row.label.into(),
-            used: row.used,
-            percent: row.percent.into(),
-            detail: row.detail.into(),
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2419,73 +2127,6 @@ deleted file mode 100644
     }
 
     #[test]
-    fn sparse_rate_limit_updates_keep_known_fields() {
-        let window = |used: i32| RateLimitWindow {
-            used_percent: used,
-            window_duration_mins: Some(300),
-            resets_at: Some(1_000),
-        };
-        let full = RateLimitSnapshot {
-            limit_id: Some("codex".to_string()),
-            limit_name: None,
-            normal_model_slug: None,
-            primary: Some(window(10)),
-            secondary: Some(window(20)),
-            credits: None,
-            individual_limit: None,
-            spend_control_reached: None,
-            plan_type: None,
-            rate_limit_reached_type: None,
-        };
-        let update = RateLimitSnapshot {
-            primary: Some(window(15)),
-            secondary: None,
-            ..full.clone()
-        };
-        let merged = merge_rate_limit(Some(&full), update);
-        assert_eq!(merged.primary, Some(window(15)));
-        assert_eq!(merged.secondary, Some(window(20)));
-    }
-
-    #[test]
-    fn rate_limit_rows_and_labels() {
-        assert_eq!(window_label(Some(300), /*secondary*/ false), "5-hour limit");
-        assert_eq!(
-            window_label(Some(10_080), /*secondary*/ true),
-            "Weekly limit"
-        );
-        assert_eq!(window_label(Some(120), /*secondary*/ false), "2-hour limit");
-        assert_eq!(window_label(None, /*secondary*/ true), "Secondary limit");
-
-        let snapshot = RateLimitSnapshot {
-            limit_id: None,
-            limit_name: None,
-            normal_model_slug: None,
-            primary: Some(RateLimitWindow {
-                used_percent: 42,
-                window_duration_mins: Some(300),
-                resets_at: Some(1_000 + 7_500),
-            }),
-            secondary: None,
-            credits: None,
-            individual_limit: None,
-            spend_control_reached: None,
-            plan_type: None,
-            rate_limit_reached_type: None,
-        };
-        let snapshots = BTreeMap::from([("codex".to_string(), snapshot)]);
-        assert_eq!(
-            limit_row_views(&snapshots, 1_000),
-            vec![LimitRowView {
-                label: "5-hour limit".to_string(),
-                used: 0.42,
-                percent: "42% used".to_string(),
-                detail: "Resets in 2h 5m".to_string(),
-            }]
-        );
-    }
-
-    #[test]
     fn durations_are_short() {
         assert_eq!(format_duration(45), "45s");
         assert_eq!(format_duration(720), "12m");
@@ -2566,117 +2207,6 @@ deleted file mode 100644
             }),
             "Read only + network"
         );
-    }
-
-    fn snapshot(limit_id: &str, used: i32) -> RateLimitSnapshot {
-        RateLimitSnapshot {
-            limit_id: Some(limit_id.to_string()),
-            limit_name: None,
-            normal_model_slug: None,
-            primary: Some(RateLimitWindow {
-                used_percent: used,
-                window_duration_mins: Some(300),
-                resets_at: None,
-            }),
-            secondary: None,
-            credits: None,
-            individual_limit: None,
-            spend_control_reached: None,
-            plan_type: None,
-            rate_limit_reached_type: None,
-        }
-    }
-
-    fn used(limits: &RateLimits, key: &str) -> Option<i32> {
-        limits
-            .snapshots
-            .get(key)
-            .and_then(|snapshot| snapshot.primary.as_ref())
-            .map(|window| window.used_percent)
-    }
-
-    #[test]
-    fn rate_limit_reads_from_before_an_account_change_are_dropped() {
-        let mut limits = RateLimits::default();
-        let first = limits.begin_read().expect("read starts");
-        // Only one read at a time.
-        assert_eq!(limits.begin_read(), None);
-        // Login, logout or account switch: the first read is for the old
-        // account, and a new read starts.
-        limits.reset();
-        let second = limits.begin_read().expect("new read starts");
-        assert_ne!(first, second);
-        // The old account's answer arrives first and is dropped...
-        assert!(!limits.finish_read(
-            first,
-            Some(BTreeMap::from([(
-                "codex".to_string(),
-                snapshot("codex", 90)
-            )]))
-        ));
-        assert_eq!(limits.fetch, Fetch::Loading);
-        assert_eq!(used(&limits, "codex"), None);
-        // ...and the new one is applied.
-        assert!(limits.finish_read(
-            second,
-            Some(BTreeMap::from([(
-                "codex".to_string(),
-                snapshot("codex", 5)
-            )]))
-        ));
-        assert_eq!(limits.fetch, Fetch::Done);
-        assert_eq!(used(&limits, "codex"), Some(5));
-        // A failure from a superseded read (old server) cannot mark the
-        // limits unavailable either.
-        limits.invalidate();
-        assert!(!limits.finish_read(second, None));
-        assert_eq!(limits.fetch, Fetch::NotRequested);
-        assert_eq!(used(&limits, "codex"), Some(5));
-    }
-
-    #[test]
-    fn rate_limit_updates_during_a_read_win_over_it() {
-        let mut limits = RateLimits::default();
-        // Known before the read: a stale secondary window.
-        limits.on_update(RateLimitSnapshot {
-            secondary: Some(RateLimitWindow {
-                used_percent: 99,
-                window_duration_mins: Some(10_080),
-                resets_at: None,
-            }),
-            ..snapshot("codex", 1)
-        });
-        let seq = limits.begin_read().expect("read starts");
-        // A sparse update (primary only) while the read is in flight.
-        limits.on_update(snapshot("codex", 40));
-        // A notification does not end the read.
-        assert_eq!(limits.fetch, Fetch::Loading);
-        assert!(limits.finish_read(
-            seq,
-            Some(BTreeMap::from([
-                ("codex".to_string(), snapshot("codex", 30)),
-                ("other".to_string(), snapshot("other", 7)),
-            ]))
-        ));
-        assert_eq!(used(&limits, "codex"), Some(40));
-        assert_eq!(used(&limits, "other"), Some(7));
-        // The read's (missing) secondary window is not replaced by the stale
-        // one known before the read.
-        assert_eq!(
-            limits
-                .snapshots
-                .get("codex")
-                .and_then(|snapshot| snapshot.secondary.as_ref()),
-            None
-        );
-        // A failed read keeps what notifications delivered.
-        let seq = limits.begin_read().expect("read starts");
-        assert!(limits.finish_read(seq, None));
-        assert_eq!(limits.fetch, Fetch::Done);
-        let mut empty = RateLimits::default();
-        let seq = empty.begin_read().expect("read starts");
-        assert!(empty.finish_read(seq, None));
-        assert_eq!(empty.fetch, Fetch::Unavailable);
     }
 
     fn hook(id: &str, turn_id: Option<&str>, mode: &str) -> RunningHook {
@@ -2790,7 +2320,7 @@ deleted file mode 100644
     }
 
     #[test]
-    fn status_text_lists_settings_context_and_limits() {
+    fn status_text_lists_settings_and_context() {
         let fields = vec![
             ("Model", "gpt-test".to_string()),
             ("Sandbox", "Read only".to_string()),
@@ -2801,24 +2331,15 @@ deleted file mode 100644
             detail: "50K of 200K tokens in context".to_string(),
             totals: "Thread total 80K · 70K in · 10K out".to_string(),
         };
-        let limits = vec![LimitRowView {
-            label: "5-hour limit".to_string(),
-            used: 0.1,
-            percent: "10% used".to_string(),
-            detail: "Resets in 2h".to_string(),
-        }];
         assert_eq!(
-            status_text(&fields, Some(&context), &limits),
+            status_text(&fields, Some(&context)),
             "Model: gpt-test\n\
              Sandbox: Read only\n\
              Context: 25% used (50K of 200K tokens in context)\n\
              Thread total 80K · 70K in · 10K out\n\
-             5-hour limit: 10% used · Resets in 2h\n\
              \n\
              Widen the window to see the info pane."
         );
-        assert!(
-            status_text(&fields, None, &[]).starts_with("Model: gpt-test\nSandbox: Read only\n\n")
-        );
+        assert!(status_text(&fields, None).starts_with("Model: gpt-test\nSandbox: Read only\n\n"));
     }
 }

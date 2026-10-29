@@ -798,9 +798,6 @@ impl AppController {
                 self.settings_account_on_login_completed(completed);
             }
             ServerNotification::AccountUpdated(_) => self.settings_account_on_updated(),
-            ServerNotification::AccountRateLimitsUpdated(updated) => {
-                self.settings_account_on_rate_limits(&updated.rate_limits);
-            }
             ServerNotification::McpServerStatusUpdated(updated) => {
                 self.settings_mcp_on_status(updated);
             }

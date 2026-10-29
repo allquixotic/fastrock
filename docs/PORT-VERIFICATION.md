@@ -752,3 +752,20 @@ Peak process memory was 149,364,736 bytes under a 2 GB fixture cap.
 This is queue/backend-restart acceptance, not complete process/draft recovery or
 the large-workload benchmark. No live model credentials or production Rally
 endpoint were used. No 0.4.0 release was published.
+
+## 0.4.0 development: account quota removal
+
+Account quota panels, notification handling, snapshots, formatting and polling
+were removed on 2026-10-29. Conversation context information remains. All 702
+remaining application tests passed on `games` (six obsolete quota tests were
+removed), along with 16 workspace tests, the embedded-Goose fixture and native
+renderer test. Mac compatibility compilation and formatting passed.
+
+The combined native fixture passed three main-window turns, a second-window
+turn, summary replacement/search, independent Rally navigation and draft handoff,
+close-to-tray background completion, restore and native-menu Quit. Both windows
+belonged to one process. The receipt is
+`C:\Users\SeanMcNamara\fastrock-040-policy\no-quota-native-1\acceptance.json`;
+peak process memory was 183,476,224 bytes under the 2 GB fixture cap. Executable
+SHA-256: `e4155727cbcd460d63bcdcb50af174f7b5192bea5b1eee70661ecd305b5eb0f9`.
+All eight provider requests and all Rally reads used local fixtures.

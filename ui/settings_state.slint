@@ -160,8 +160,6 @@ export global SettingsState {
     in property <bool> api-login-allowed: true;
     in property <bool> can-logout;
     in property <bool> account-busy;
-    in property <[KeyValue]> rate-limits;
-    in property <string> rate-limits-status;
     // "browser" | "device"
     callback account-login(string);
     callback account-api-key(string);
