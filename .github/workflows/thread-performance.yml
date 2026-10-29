@@ -1,0 +1,49 @@
+name: Windows conversation opening benchmark
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Published signed release to measure
+        required: true
+        default: v0.3.2
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download and verify the published executable
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        shell: pwsh
+        run: |
+          gh release download $env:RELEASE_TAG --pattern '*windows-x64*.zip' --pattern '*windows-x64*.zip.sha256' --dir build/thread-release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $zip = @(Get-ChildItem build/thread-release/*.zip)
+          if ($zip.Count -ne 1) { throw 'Expected one Windows application ZIP' }
+          $expected = (Get-Content "$($zip[0].FullName).sha256").Split(' ')[0]
+          if ((Get-FileHash $zip[0].FullName -Algorithm SHA256).Hash -ne $expected) { throw 'ZIP checksum mismatch' }
+          gh attestation verify $zip[0].FullName --repo $env:GITHUB_REPOSITORY --signer-workflow "$env:GITHUB_REPOSITORY/.github/workflows/release.yml" --source-ref "refs/tags/$env:RELEASE_TAG"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Expand-Archive $zip[0].FullName build/thread-release/extracted
+          $binary = 'build/thread-release/extracted/fastrock.exe'
+          $receipt = Get-Content build/thread-release/extracted/BUILD.json | ConvertFrom-Json
+          $signature = Get-AuthenticodeSignature $binary
+          if ($signature.Status -ne 'Valid' -or $null -eq $signature.TimeStamperCertificate -or $signature.SignerCertificate.Subject -ne $receipt.signing.publisher) { throw 'Invalid publisher signature or timestamp' }
+          if ((Get-FileHash $binary -Algorithm SHA256).Hash -ne $receipt.binary_sha256) { throw 'Executable checksum mismatch' }
+      - name: Measure native software-rendered conversation opening
+        run: python dev/windows-thread-benchmark.py build/thread-release/extracted/fastrock.exe --output build/thread-benchmark
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        if: always()
+        with:
+          name: windows-thread-benchmark
+          path: build/thread-benchmark
+          if-no-files-found: warn
