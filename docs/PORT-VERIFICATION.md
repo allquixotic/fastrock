@@ -1853,3 +1853,43 @@ to describe the completed scope. The unpublished RC1 tag remains intact.
 All seven checkpoint tests passed on games with an isolated synthetic global
 `autocrlf=true` configuration and exact CRLF seed-blob validation. The regression
 uses per-repository config objects, leaving user Git configuration unchanged.
+
+### RC2 signed publication and independent verification
+
+[Fastrock 0.4.0-rc.2](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.2)
+was published by [CI run 41099188723](https://github.com/allquixotic/fastrock/actions/runs/41099188723)
+from `d2bb0434c4aa38078f26d68ab69cec6913c755c3`. Both platforms compiled; Windows
+passed 775 application tests, one isolated renderer test, 30 workspace tests,
+the standalone embedded Goose fixture, release-policy tests (one Mac-only skip)
+and four watchdog tests. macOS was compile-only, with no Mac release assets.
+
+All 33 native acceptance cases passed on the exact signed executable in 919.9
+seconds. Additional catalog acceptance covered 100 stored conversations and an
+older pinned conversation outside the first page without provider activation.
+The signed binary also passed native prose, table, code, tool and streaming
+scroll checks. These hosted-runner measurements supplement the games comparison
+above; they are not a second full-scale baseline comparison.
+
+The published Windows ZIP is 137,763,432 bytes, SHA-256
+`00f5dc6b4466492cccbe90beb627b2f5f6e699132e8bd5c6fc592eeb2047b709`.
+Its executable SHA-256 is
+`becdedf2b03504dcd06dd540e26cc3b4b352d4aa15a451ea86832f2ad49d1d2f`.
+An independent download verified the checksum, embedded build settings and
+licenses, and GitHub attestation bound to the exact source commit, RC2 tag and
+release workflow. Read-only Windows checks on games verified the same executable,
+Sean McNamara's expected Authenticode publisher and a Microsoft timestamp; the
+application was not launched. The temporary build runner removed its registration.
+
+The successful Windows job was attempt 2, reusing the original verified build
+inputs. A [GitHub Actions incident](https://www.githubstatus.com/incidents/pwxsjgnvrk6b)
+delayed status updates: attempt 1 was cancelled on stale queued status while its
+native matrix was actually running. Its nine passing cases were not counted as
+complete acceptance. Attempt 2 repeated the full signed matrix before packaging,
+attestation and publication. No source changes or replacement of published bytes
+were involved in the retry.
+
+The [release receipt](benchmarks/rc2-release-ci-2026-10-30.json) records all 33 case
+results, supplementary measurements, artifact identity and independent signature
+verification. This completes release-candidate acceptance. Live Bedrock profiles
+remain the final 0.4.0 acceptance gate. The documented limitations of unchanged
+Goose's public APIs continue to apply.

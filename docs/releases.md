@@ -9,10 +9,14 @@ release archives include their licenses. Existing 0.3.x binaries retain the
 historical settings documented below.
 
 Binary publication is gated on feature-complete, verified release-candidate
-readiness. RC2 contains the completed implementation; CI must verify its signed artifact. Development source is committed and pushed to main; local fixture builds
-are not releases. RC assets must pass signed CI acceptance. Mac builds check
-compatibility without publishing Mac assets. Final 0.4.0 also requires the user's
-live Bedrock profile validation; fixture acceptance does not establish live access.
+readiness. [RC2 is published](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.2)
+with the completed implementation and all 33 native acceptance cases passing on
+its exact signed executable. The downloaded ZIP's checksum, source/tag/workflow
+attestation and Windows signature were independently verified. See the
+[release receipt](benchmarks/rc2-release-ci-2026-10-30.json). Development source is
+committed and pushed to main; local fixture builds are not releases. Mac builds
+check compatibility without publishing Mac assets. Final 0.4.0 also requires the
+user's live Bedrock profile validation; fixtures do not establish live access.
 
 The published alpha.1–alpha.3 builds are historical development milestones, not
 release candidates. Their [published notes](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-alpha.3) describe that

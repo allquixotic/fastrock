@@ -44,8 +44,8 @@ authorized opt-level 2 settings below.
 ## Test builds
 
 The feature-complete [Fastrock 0.4.0-rc.2](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.2)
-is published as a signed Windows x64 ZIP after CI acceptance. Extract it and run
-`fastrock.exe`; no separate Goose or vwork installation is needed. Live Bedrock
+is available as a signed Windows x64 ZIP after passing CI acceptance. Extract it
+and run `fastrock.exe`; no separate Goose or vwork installation is needed. Live Bedrock
 profile validation remains required before the final 0.4.0 release. See
 [verification evidence](docs/PORT-VERIFICATION.md) for fixture coverage and limits.
 All release assets are built and published by CI. Current releases compile

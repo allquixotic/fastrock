@@ -1,0 +1,466 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.2",
+  "verified_at": "2026-10-30T18:28:18.609063+00:00",
+  "source_commit": "d2bb0434c4aa38078f26d68ab69cec6913c755c3",
+  "release": {
+    "url": "https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.2",
+    "prerelease": true,
+    "windows_x64_zip": "fastrock-0.4.0-rc.2-windows-x64.zip",
+    "zip_sha256": "00f5dc6b4466492cccbe90beb627b2f5f6e699132e8bd5c6fc592eeb2047b709",
+    "zip_bytes": 137763432,
+    "binary_sha256": "becdedf2b03504dcd06dd540e26cc3b4b352d4aa15a451ea86832f2ad49d1d2f",
+    "macos_assets": false
+  },
+  "ci": {
+    "url": "https://github.com/allquixotic/fastrock/actions/runs/41099188723",
+    "run_id": 41099188723,
+    "successful_windows_attempt": 2,
+    "conclusion": "success",
+    "evidence_artifact_id": 13001626665,
+    "evidence_artifact_sha256": "96c4a748ce2267ad890864f85da6b76b9c696350ea7237738b5ef233fc6d24e8",
+    "build": "PASS; Windows and macOS compile",
+    "macos_release_job": "skipped; no Mac application or tests executed",
+    "registered_temporary_runners_afterward": 0
+  },
+  "windows_rust": {
+    "application_tests": 775,
+    "renderer_tests": 1,
+    "workspace_tests": 30,
+    "embedded_goose_fixture": "PASS"
+  },
+  "release_policy": {
+    "tests": 5,
+    "skipped_macos_only": 1,
+    "result": "PASS"
+  },
+  "watchdog_tests": {
+    "tests": 4,
+    "result": "PASS"
+  },
+  "native_matrix": {
+    "binary_sha256": "becdedf2b03504dcd06dd540e26cc3b4b352d4aa15a451ea86832f2ad49d1d2f",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 49.51,
+        "peak_tree_bytes": 153255936
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 4.0,
+        "peak_tree_bytes": 152002560
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.08,
+        "peak_tree_bytes": 156819456
+      },
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 23.45,
+        "peak_tree_bytes": 157048832
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 63.73,
+        "peak_tree_bytes": 155201536
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 82.39,
+        "peak_tree_bytes": 154103808
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.83,
+        "peak_tree_bytes": 152707072
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 27.08,
+        "peak_tree_bytes": 153387008
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 17.08,
+        "peak_tree_bytes": 152236032
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.45,
+        "peak_tree_bytes": 152690688
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.7,
+        "peak_tree_bytes": 153436160
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.24,
+        "peak_tree_bytes": 152141824
+      },
+      {
+        "name": "commands",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.23,
+        "peak_tree_bytes": 152317952
+      },
+      {
+        "name": "palette",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.03,
+        "peak_tree_bytes": 152080384
+      },
+      {
+        "name": "terminal",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.06,
+        "peak_tree_bytes": 152653824
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 41.5,
+        "peak_tree_bytes": 156016640
+      },
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.23,
+        "peak_tree_bytes": 152240128
+      },
+      {
+        "name": "organization",
+        "result": "PASS",
+        "error": null,
+        "seconds": 44.09,
+        "peak_tree_bytes": 153956352
+      },
+      {
+        "name": "sidebar-drag",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.27,
+        "peak_tree_bytes": 152391680
+      },
+      {
+        "name": "sidebar-policy",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.45,
+        "peak_tree_bytes": 152317952
+      },
+      {
+        "name": "titles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.49,
+        "peak_tree_bytes": 152920064
+      },
+      {
+        "name": "queue",
+        "result": "PASS",
+        "error": null,
+        "seconds": 17.64,
+        "peak_tree_bytes": 152137728
+      },
+      {
+        "name": "mentions",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.44,
+        "peak_tree_bytes": 152014848
+      },
+      {
+        "name": "review",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.03,
+        "peak_tree_bytes": 153608192
+      },
+      {
+        "name": "shell",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.25,
+        "peak_tree_bytes": 152637440
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.66,
+        "peak_tree_bytes": 154091520
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.28,
+        "peak_tree_bytes": 154546176
+      },
+      {
+        "name": "delete",
+        "result": "PASS",
+        "error": null,
+        "seconds": 42.5,
+        "peak_tree_bytes": 154955776
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.83,
+        "peak_tree_bytes": 154808320
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.25,
+        "peak_tree_bytes": 154898432
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 29.66,
+        "peak_tree_bytes": 156209152
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.44,
+        "peak_tree_bytes": 153927680
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 19.03,
+        "peak_tree_bytes": 154365952
+      }
+    ]
+  },
+  "organization_catalog": {
+    "result": "PASS",
+    "binary_sha256": "becdedf2b03504dcd06dd540e26cc3b4b352d4aa15a451ea86832f2ad49d1d2f",
+    "peak_process_bytes": 67768320,
+    "stored_conversations": 100,
+    "first_page": 50,
+    "pinned_outside_first_page": "goose:benchmark-0000",
+    "provider_activation": false
+  },
+  "scroll": {
+    "result": "PASS",
+    "backend": "embedded-goose",
+    "peak_process_bytes": 166043648,
+    "binary_sha256": "becdedf2b03504dcd06dd540e26cc3b4b352d4aa15a451ea86832f2ad49d1d2f",
+    "host": "runnervmdaln5",
+    "os": "Windows-2025Server-10.0.26100-SP0",
+    "requested_frames": 120,
+    "input": "Slint native wheel events, 16.667 ms timer; tick latency includes event-loop work",
+    "scenarios": {
+      "prose": {
+        "frames": 117,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 7.36,
+          "p95_ms": 8.486,
+          "p99_ms": 8.581
+        },
+        "present": {
+          "p50_ms": 0.617,
+          "p95_ms": 1.079,
+          "p99_ms": 1.13
+        },
+        "frame": {
+          "p50_ms": 8.039,
+          "p95_ms": 9.177,
+          "p99_ms": 9.249
+        },
+        "event_loop": {
+          "p50_ms": 16.259,
+          "p95_ms": 22.117,
+          "p99_ms": 23.752
+        },
+        "dirty_fraction": 0.4585
+      },
+      "table": {
+        "frames": 110,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.785,
+          "p95_ms": 6.028,
+          "p99_ms": 6.316
+        },
+        "present": {
+          "p50_ms": 0.599,
+          "p95_ms": 0.695,
+          "p99_ms": 0.848
+        },
+        "frame": {
+          "p50_ms": 5.399,
+          "p95_ms": 6.661,
+          "p99_ms": 6.993
+        },
+        "event_loop": {
+          "p50_ms": 16.268,
+          "p95_ms": 16.89,
+          "p99_ms": 17.138
+        },
+        "dirty_fraction": 0.5206
+      },
+      "code": {
+        "frames": 119,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.479,
+          "p95_ms": 5.605,
+          "p99_ms": 5.758
+        },
+        "present": {
+          "p50_ms": 0.603,
+          "p95_ms": 0.715,
+          "p99_ms": 0.996
+        },
+        "frame": {
+          "p50_ms": 5.07,
+          "p95_ms": 6.247,
+          "p99_ms": 6.365
+        },
+        "event_loop": {
+          "p50_ms": 16.252,
+          "p95_ms": 19.165,
+          "p99_ms": 21.098
+        },
+        "dirty_fraction": 0.4767
+      },
+      "tools": {
+        "frames": 111,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 5.232,
+          "p95_ms": 6.25,
+          "p99_ms": 6.387
+        },
+        "present": {
+          "p50_ms": 0.595,
+          "p95_ms": 1.039,
+          "p99_ms": 1.123
+        },
+        "frame": {
+          "p50_ms": 5.821,
+          "p95_ms": 6.873,
+          "p99_ms": 7.011
+        },
+        "event_loop": {
+          "p50_ms": 16.21,
+          "p95_ms": 17.116,
+          "p99_ms": 17.249
+        },
+        "dirty_fraction": 0.5159
+      },
+      "streaming": {
+        "frames": 118,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 7.518,
+          "p95_ms": 8.444,
+          "p99_ms": 8.706
+        },
+        "present": {
+          "p50_ms": 0.596,
+          "p95_ms": 0.705,
+          "p99_ms": 0.786
+        },
+        "frame": {
+          "p50_ms": 8.126,
+          "p95_ms": 9.1,
+          "p99_ms": 9.391
+        },
+        "event_loop": {
+          "p50_ms": 16.218,
+          "p95_ms": 20.21,
+          "p99_ms": 22.043
+        },
+        "dirty_fraction": 0.4852
+      }
+    }
+  },
+  "independent_download_verification": {
+    "checksum": "PASS",
+    "package_metadata_and_licenses": "PASS",
+    "attestation": "PASS",
+    "signer_workflow": "allquixotic/fastrock/.github/workflows/release.yml",
+    "source_ref": "refs/tags/v0.4.0-rc.2",
+    "source_digest": "d2bb0434c4aa38078f26d68ab69cec6913c755c3",
+    "windows_authenticode_on_games": {
+      "status": "Valid",
+      "publisher": "CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US",
+      "certificate_sha1": "B4C197DDBFC0092F3CBAF88FE3F39F8D690707C9",
+      "timestamp_publisher": "CN=Microsoft Public RSA Time Stamping Authority, OU=nShield TSS ESN:A500-05E0-D947, OU=Microsoft America Operations, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+      "binary_sha256": "becdedf2b03504dcd06dd540e26cc3b4b352d4aa15a451ea86832f2ad49d1d2f"
+    },
+    "application_launched": false
+  },
+  "notes": [
+    "GitHub Actions incident pwxsjgnvrk6b delayed status updates. Attempt 1 was cancelled on stale queued status; its nine passing native cases do not constitute full acceptance. Attempt 2 reused the same successful build and passed the complete signed matrix.",
+    "The final publication followed successful CI tests, signature verification, package attestation and provenance verification. Windows ZIP, checksum and Sigstore bundle only.",
+    "Full-scale 1,000-conversation/eight-stream/10,000-message games comparison used the application-equivalent local RC1 candidate; RC2 changed fixture portability, version and documentation only. See rc1-scale-*-games-2026-10-30.json.",
+    "Live Bedrock profiles remain final 0.4.0 acceptance; local fixtures do not establish AWS model/account availability. Unmodified Goose public API constraints remain documented."
+  ]
+}

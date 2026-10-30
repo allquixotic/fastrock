@@ -245,7 +245,7 @@ T40|x|Native T3 main UI/sidebar/panels and repository projects, independent Rall
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|x|Lossless cold transcript compression, bounded decoded/rendered caches and arbitrary indexed history verified at 1,000 conversations/eight streams/10,000 messages; comparison recorded without blanket scrolling-speedup claim|V1,V9,V32,V37,V43,V53,I.scroll
 T43|x|Tray continuation, explicit Quit, original-window restoration and restart Resume verified|V41,V47,I.lifecycle
-T44|~|Watchdog-protected games benchmarks, full Windows verification, Mac compile and feature-complete signed CI RC/final|V23,V38–V47,V54,I.distribution
+T44|~|Full games comparison, Windows tests, Mac compile and signed RC2 publication verified; final 0.4.0 awaits live-profile acceptance T36|V23,V38–V47,V54,I.distribution
 T45|x|In-process Rally windows and scoped UI/backend routing|V38,V42,V47,V48
 T46|x|Native command palette with bounded matching, keyboard/pointer navigation and retained drafts|V42,V60
 T47|x|Native interactive terminal panels with isolated user-requested processes, bounded scrollback and lifecycle checks|V38,V42,V43,V47,V61
@@ -309,6 +309,8 @@ Side-chat verification, 2026-10-30: games 765 application tests, isolated render
 Window recovery verification, 2026-10-30: games 767 application tests, isolated renderer, original-window native fixture and full native Rally regression passed. Window grouping/geometry, removed-monitor fallback, active chat/document, side and Rally drafts, registry ownership and Quit/crash recovery without dispatch or document flattening verified. Mac compile only and static policy/format checks passed. SHA-256 `1edba0f4bac2f612be38a2b8a2314fc644800a3347067f87e2c05fd818b8613d`; peak 160,894,976 bytes; receipt `docs/benchmarks/window-recovery-games-2026-10-30.json`. T53 complete; guarded deletion/UI audit/full acceptance remain open. No release tag.
 
 RC preparation acceptance, 2026-10-30: 775 Windows application tests, renderer, 30 workspace tests, embedded Goose fixture and Mac compile passed. Native core matrix 33/33 passed; final UI project/command/200%-scale selection checks passed. Full 1,000/eight/10,000 comparison passed without scale reduction; candidate peak process 228,163,584 bytes, tree commit 166,637,568 bytes. Final local SHA-256 `3284f028eb47250efe5ed17fe47556a61c1d3ae3f6813170f3f547ec593ca009`. Exact signed CI matrix remains publication gate; live AWS profiles/final release remain T36/T44. Evidence: docs/benchmarks/rc1-acceptance-games-2026-10-30.json and rc1-scale-{baseline,candidate}-games-2026-10-30.json.
+
+RC2 publication, 2026-10-30: source d2bb0434c4aa38078f26d68ab69cec6913c755c3; CI 41099188723 attempt 2 passed 775 application/one renderer/30 workspace tests, embedded Goose, policy/watchdog and 33 signed native cases plus catalog/scroll. Windows ZIP/checksum/attestation published; independent source/tag/workflow provenance and games Authenticode/timestamp passed. Mac compile only; temporary runner removed. GitHub incident delayed status; cancelled attempt 1 excluded from acceptance. Receipt docs/benchmarks/rc2-release-ci-2026-10-30.json. RC complete; T36/T44 final acceptance remain open.
 
 ## §B BUGS
 id|date|cause|fix
