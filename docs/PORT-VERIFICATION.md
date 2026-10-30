@@ -1223,3 +1223,46 @@ static policy/formatting checks passed; no Mac tests or GUI execution.
 Named independent profiles, vault-only credential setup and live model-account
 acceptance remain open. This is source development, not RC readiness or release
 publication.
+
+## 0.4.0 native webhook schedules — 2026-10-30
+
+Settings → Schedules now supports JSON webhooks as well as timed runs. The
+in-process listener binds `127.0.0.1:43153`; `FASTROCK_WEBHOOK_BIND` may choose
+another loopback socket. The editor shows the actual URL and provides explicit
+Copy signing key and Rotate signing key actions. Keys use separate Fastrock OS
+vault entries, without a plaintext fallback or changes to existing Rally/Goose
+credentials. No proxy or external service is started.
+
+Every request requires HMAC-SHA256 over its exact JSON body (hex or base64,
+configurable header/prefix). Bodies are limited to 64 KiB, reads to five seconds,
+and concurrent handlers to sixteen. Origin-bearing requests and mismatched Host
+headers are rejected. Authorization, cookies, API keys and the signing header
+are excluded from prompt context. Prompt/replay/coalescing templates support
+`{{body.field}}`, `{{headers.name}}`, `{{query.name}}` and `{{request}}`.
+Sixteen bounded filters support Equals, Not equals, Starts with, In and Exists;
+array paths use `.[]`.
+
+A durable receipt precedes HTTP acceptance and dispatch. Pending requests
+survive Pause and restart; Resume is explicit. Replay identities are retained
+for at least 24 hours, with a bounded 4,096-receipt capacity per task. At capacity,
+new deliveries are rejected while existing work remains usable. Coalescing
+retains superseded receipts, and expired pending deliveries are skipped. The
+editor shows the latest 100 receipts and links to each retained run. Uncertain
+crash-interrupted work is marked for review and never automatically replayed.
+Editing/deleting a task with pending work requires completing or explicitly
+discarding it. Deletion removes its signing key and retains run conversations.
+
+The native local-provider fixture passed authentication/request bounds,
+filtering/coalescing, duplicate suppression, paused delivery retention, key
+rotation/deletion, restart Resume, and crash recovery. It checked fresh child
+context and absence of keys in configuration/logs. Receipt:
+`docs/benchmarks/webhook-games-2026-10-30.json`; peak process usage 143,888,384
+bytes. Executable SHA-256:
+`f4dd890a6821d4732c7d10f83b9250a30e1f36654b623b5009383f2fba258251`.
+Windows passed 723 application tests, 17 workspace tests and standalone
+embedded Goose verification. Mac compilation and build-policy/format checks
+passed; no Mac execution. Remaining UI/provider and release acceptance work
+stays open. No release tag or binary publication.
+The same executable also passed the native renderer, timed scheduling/crash,
+delegation, concurrent streaming/cancellation, vwork/manual-fork/restart, and
+draft-recovery regressions on games.

@@ -1,8 +1,10 @@
 import { ComboBox, LineEdit, TextEdit, CheckBox, ScrollView } from "std-widgets.slint";
 import { Theme, FlatButton } from "theme.slint";
 
-export struct ScheduleRow { id: string, title: string, detail: string, next: string, paused: bool, running: bool, child: string }
+export struct ScheduleRow { id: string, title: string, detail: string, next: string, paused: bool, running: bool, child: string, webhook: bool }
 export struct ScheduleDay { label: string, enabled: bool }
+export struct WebhookFilter { path: string, op: int, value: string }
+export struct WebhookReceipt { detail: string, child: string }
 export global ScheduleState {
     in property <[ScheduleRow]> rows;
     in property <[string]> source-names;
@@ -18,6 +20,17 @@ export global ScheduleState {
     in-out property <string> time: "09:00";
     in-out property <string> once;
     in-out property <[ScheduleDay]> days;
+    in-out property <string> signature-header;
+    in-out property <string> signature-prefix;
+    in-out property <int> signature-encoding;
+    in-out property <string> replay-key;
+    in-out property <string> coalesce-key;
+    in-out property <string> coalesce-seconds;
+    in-out property <string> max-age;
+    in-out property <[WebhookFilter]> filters;
+    in property <[WebhookReceipt]> receipts;
+    in property <string> webhook-address;
+    in property <string> webhook-error;
     in property <bool> loading;
     in property <bool> saving;
     in property <string> status;
@@ -27,6 +40,7 @@ export global ScheduleState {
     callback save();
     callback action(id: string, action: string);
     callback open-run(id: string);
+    callback edit-filter(index: int);
 }
 export component SchedulesPage inherits Rectangle {
     ScrollView {
@@ -54,7 +68,7 @@ export component SchedulesPage inherits Rectangle {
                     Text { text: row.next; color: Theme.text-faint; wrap: word-wrap; }
                     HorizontalLayout {
                         FlatButton { text: row.paused ? "Resume schedule" : "Pause schedule"; enabled: !ScheduleState.saving; clicked => { ScheduleState.action(row.id, row.paused ? "resume" : "pause"); } }
-                        FlatButton { text: "Run now"; enabled: !row.running && !ScheduleState.saving; clicked => { ScheduleState.action(row.id, "run"); } }
+                        if !row.webhook: FlatButton { text: "Run now"; enabled: !row.running && !ScheduleState.saving; clicked => { ScheduleState.action(row.id, "run"); } }
                         if row.running: FlatButton { text: "Stop run"; enabled: !ScheduleState.saving; clicked => { ScheduleState.action(row.id, "stop"); } }
                         if row.child != "": FlatButton { text: "Open run"; clicked => { ScheduleState.open-run(row.child); } }
                         FlatButton { text: "Delete schedule"; enabled: !row.running && !ScheduleState.saving; clicked => { ScheduleState.action(row.id, "delete"); } }
@@ -67,7 +81,7 @@ export component SchedulesPage inherits Rectangle {
             if ScheduleState.source-ids.length == 0: Text { text: "Open a conversation from a project or virtual workspace first."; color: Theme.text-muted; wrap: word-wrap; }
             LineEdit { text <=> ScheduleState.title; placeholder-text: "Schedule title"; enabled: !ScheduleState.saving; }
             TextEdit { text <=> ScheduleState.prompt; height: 110px; wrap: word-wrap; enabled: !ScheduleState.saving; }
-            ComboBox { model: ["Every interval", "Daily / weekdays", "Once"]; current-index <=> ScheduleState.kind; enabled: !ScheduleState.saving; }
+            ComboBox { model: ["Every interval", "Daily / weekdays", "Once", "Webhook"]; current-index <=> ScheduleState.kind; enabled: !ScheduleState.saving; }
             if ScheduleState.kind == 0: HorizontalLayout {
                 Text { text: "Minutes between runs"; color: Theme.text-muted; vertical-alignment: center; }
                 LineEdit { text <=> ScheduleState.minutes; enabled: !ScheduleState.saving; }
@@ -82,6 +96,51 @@ export component SchedulesPage inherits Rectangle {
             if ScheduleState.kind == 2: VerticalLayout {
                 Text { text: "Local date and time (YYYY-MM-DD HH:MM:SS)"; color: Theme.text-muted; }
                 LineEdit { text <=> ScheduleState.once; enabled: !ScheduleState.saving; }
+            }
+            if ScheduleState.kind == 3: VerticalLayout {
+                spacing: Theme.pad-s;
+                Text { text: "Send a JSON POST signed with HMAC-SHA256. Prompt fields use {{body.field}}, {{headers.name}} or {{query.name}}. The local listener runs while Fastrock is open, including in the tray."; color: Theme.text-muted; wrap: word-wrap; }
+                if ScheduleState.webhook-error != "": Text { text: ScheduleState.webhook-error; color: Theme.text-muted; wrap: word-wrap; }
+                if ScheduleState.edit-id != "": VerticalLayout {
+                    Text { text: ScheduleState.webhook-address + "/hooks/" + ScheduleState.edit-id; color: Theme.text; wrap: word-wrap; }
+                    HorizontalLayout {
+                        FlatButton { text: "Copy URL"; clicked => { ScheduleState.action(ScheduleState.edit-id, "copy-url"); } }
+                        FlatButton { text: "Copy signing key"; enabled: !ScheduleState.saving; clicked => { ScheduleState.action(ScheduleState.edit-id, "copy-key"); } }
+                        FlatButton { text: "Rotate signing key"; enabled: !ScheduleState.saving; clicked => { ScheduleState.action(ScheduleState.edit-id, "rotate-key"); } }
+                    }
+                }
+                Text { text: "Signing keys stay in the OS credential vault. Rotation immediately invalidates the previous key. Paused schedules accept and retain deliveries until Resume or Discard pending."; color: Theme.text-faint; wrap: word-wrap; }
+                HorizontalLayout {
+                    LineEdit { text <=> ScheduleState.signature-header; placeholder-text: "Signature header"; }
+                    LineEdit { text <=> ScheduleState.signature-prefix; placeholder-text: "Signature prefix (optional)"; }
+                    ComboBox { model: ["Hex", "Base64"]; current-index <=> ScheduleState.signature-encoding; }
+                }
+                Text { text: "Replay key template (empty uses the exact body digest; receipts retained for at least 24 hours)"; color: Theme.text-muted; wrap: word-wrap; }
+                LineEdit { text <=> ScheduleState.replay-key; placeholder-text: "e.g. {{body.delivery_id}}"; }
+                Text { text: "Coalescing key template (empty disables; newest matching delivery replaces pending work within the window)"; color: Theme.text-muted; wrap: word-wrap; }
+                LineEdit { text <=> ScheduleState.coalesce-key; placeholder-text: "e.g. {{body.repository.name}}"; }
+                HorizontalLayout {
+                    Text { text: "Window (seconds)"; color: Theme.text-muted; vertical-alignment: center; }
+                    LineEdit { text <=> ScheduleState.coalesce-seconds; }
+                    Text { text: "Maximum age (minutes)"; color: Theme.text-muted; vertical-alignment: center; }
+                    LineEdit { text <=> ScheduleState.max-age; }
+                }
+                Text { text: "Filters must all match. Array paths use .[].; In accepts comma-separated values."; color: Theme.text-muted; wrap: word-wrap; }
+                for filter[index] in ScheduleState.filters: HorizontalLayout {
+                    LineEdit { text <=> filter.path; placeholder-text: "body.action"; }
+                    ComboBox { model: ["Equals", "Not equals", "Starts with", "In", "Exists"]; current-index <=> filter.op; }
+                    LineEdit { text <=> filter.value; placeholder-text: "Value"; enabled: filter.op != 4; }
+                    FlatButton { text: "Remove"; clicked => { ScheduleState.edit-filter(index); } }
+                }
+                FlatButton { text: "Add filter"; enabled: ScheduleState.filters.length < 16; clicked => { ScheduleState.edit-filter(-1); } }
+                if ScheduleState.edit-id != "": VerticalLayout {
+                    Text { text: "Recent deliveries (latest 100)"; color: Theme.text; font-weight: 600; }
+                    FlatButton { text: "Discard pending deliveries"; enabled: !ScheduleState.saving; clicked => { ScheduleState.action(ScheduleState.edit-id, "discard-pending"); } }
+                    for receipt in ScheduleState.receipts: HorizontalLayout {
+                        Text { text: receipt.detail; color: Theme.text-muted; wrap: word-wrap; horizontal-stretch: 1; }
+                        if receipt.child != "": FlatButton { text: "Open run"; clicked => { ScheduleState.open-run(receipt.child); } }
+                    }
+                }
             }
             Text { text: "Pause affects future runs. Stop run interrupts current work. Missed occurrences are skipped; an interrupted occurrence is never automatically repeated."; color: Theme.text-faint; wrap: word-wrap; }
             FlatButton { text: ScheduleState.edit-id == "" ? "Create schedule" : "Save schedule"; enabled: !ScheduleState.saving && ScheduleState.source-ids.length > 0; clicked => { ScheduleState.save(); } }

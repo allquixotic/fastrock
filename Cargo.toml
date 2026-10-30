@@ -61,6 +61,7 @@ goose-mcp = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59b
 goose-context-management = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12" }
 goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12" }
 sha2 = "0.10"
+hmac = "0.12.1"
 tokio-util = { version = "0.7", features = ["compat"] }
 image = { workspace = true, features = ["png", "jpeg", "gif", "webp"] }
 # Version matches Slint: native glyph hit-testing and renderer invalidation.

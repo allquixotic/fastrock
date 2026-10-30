@@ -34,6 +34,7 @@ mod transcript;
 mod transport;
 mod ui;
 mod ui_thread;
+mod vault;
 mod virtual_workspaces;
 mod window_runtime;
 mod xtab;

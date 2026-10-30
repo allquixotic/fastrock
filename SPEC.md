@@ -138,6 +138,8 @@ V56: Schedules ! in-process timer, durable occurrence claim before isolated fres
 
 V57: Embedded session creation/restoration/provider switching ! validate Bedrock/OpenAI/Anthropic scope before Goose agent construction; current default alias ! revalidated; excluded choices ! absent from native provider picker. Rejected selection ! preserve existing configuration/history. Verify: v57 provider policy tests and native provider-selection refusal/continued-stream fixture.
 
+V58: Webhook schedules ! in-process loopback listener, bounded requests, HMAC-SHA256 before acceptance, vault-only signing keys, no auth headers in model context. Accepted delivery/replay identity ! durable before dispatch; coalescing ! retain receipts; restart ! paused pending work and review-only uncertain runs. Expired deliveries ! skipped; stale edits/rotation ! guarded. Verify: v58 signature/template/filter/delivery tests and native webhook/vault/restart fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -188,7 +190,7 @@ T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only releas
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
 T37|~|Embedded Goose; remove Codex UI/connection; native provider defaults and creation/restore/switch scope guards; preserve configuration; vault-only credential setup blocked by R8|V38,V39,V52,V57,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
-T39|~|Port T3 V2 orchestration; isolated forks/delegation and native timed schedules verified; webhook scheduling and remaining coordination acceptance open; no quotas|V41,V50,V55,V56,I.orchestration
+T39|~|Port T3 V2 orchestration; isolated forks/delegation and native timed schedules verified; signed native webhook scheduling implemented; remaining coordination acceptance open; no quotas|V41,V50,V55,V56,V58,I.orchestration
 T40|~|Native T3 main UI/sidebar/panels, registered repository projects and permanent independent Rally project|V42,V51,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and bounded arbitrary history viewports|V1,V9,V32,V37,V43,V53,I.scroll
@@ -434,3 +436,7 @@ B133|2026-10-30|Restored schedule source absent from session cache could leave e
 B134|2026-10-30|Goose ACP session paths use internal provider registry instead of host factory, bypassing factory-only provider restrictions|Validate before new/load/switch and filter native choices; V38,V57
 B135|2026-10-30|Passing validated default provider explicitly makes Goose choose registry model instead of saved default|Validate default without changing ACP selection semantics; native saved-Luna route fixture; V52,V57
 B136|2026-10-30|New provider tests edited legacy GOOSE_PROVIDER after Goose migrated it to active_provider|Use public provider setter and current fixture schema; V52,V57
+
+B137|2026-10-30|Webhook wiring used parent-only listener visibility and compared String to SharedString|Expose listener to Goose module and compare string slices; compiler verification; V58
+B138|2026-10-30|Receipt validation omitted paused/idle outcomes used by delegated runs|Map uncertain terminal outcomes to review-only receipts; receipt recovery test; V56,V58
+B139|2026-10-30|Webhook saturation could exceed snapshot size at write time and disable existing schedules|Reject oversized proposed snapshots before storage mutation; v58 capacity-preservation test; V56,V58

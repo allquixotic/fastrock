@@ -5001,6 +5001,7 @@ dependencies = [
  "goose-context-management",
  "goose-mcp",
  "goose-provider-types",
+ "hmac 0.12.1",
  "i-slint-backend-winit",
  "i-slint-common",
  "i-slint-core",

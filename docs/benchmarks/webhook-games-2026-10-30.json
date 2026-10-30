@@ -1,0 +1,22 @@
+{
+  "binarySha256": "f4dd890a6821d4732c7d10f83b9250a30e1f36654b623b5009383f2fba258251",
+  "peakPrivateBytes": 143888384,
+  "passed": [
+    "native editor",
+    "HMAC and request boundaries",
+    "vault-only keys",
+    "replay guard",
+    "filters",
+    "coalescing",
+    "paused pending receipts",
+    "key rotation",
+    "restart Resume",
+    "uncertain run never replayed",
+    "key deletion"
+  ],
+  "date": "2026-10-30",
+  "host": "games",
+  "test": "dev/windows-webhook-smoke.py",
+  "evidence": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\webhook-native-2",
+  "distribution": "local development fixture only; no release publication"
+}

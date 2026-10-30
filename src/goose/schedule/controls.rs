@@ -1,7 +1,10 @@
-use super::model::{Pattern, Task};
+use super::{
+    model::{Pattern, Task},
+    webhook_model::{Filter, Hook},
+};
 use crate::{
     app::AppController,
-    ui::{ScheduleDay, ScheduleRow, ScheduleState, SettingsState},
+    ui::{ScheduleDay, ScheduleRow, ScheduleState, SettingsState, WebhookFilter, WebhookReceipt},
 };
 use chrono::{Local, NaiveDateTime, TimeZone};
 use serde_json::{Value, json};
@@ -30,6 +33,22 @@ impl AppController {
         state.on_open_run(crate::ui_thread::scoped_callback!(|id| {
             let id = id.to_string();
             crate::ui_thread::with_app(move |app| app.open_thread(id, None));
+        }));
+        state.on_edit_filter(crate::ui_thread::scoped_callback!(|index| {
+            crate::ui_thread::with_app(move |app| {
+                let state = app.window.global::<ScheduleState>();
+                let mut filters: Vec<_> = state.get_filters().iter().collect();
+                if index < 0 && filters.len() < 16 {
+                    filters.push(WebhookFilter {
+                        path: "body.action".into(),
+                        op: 0,
+                        value: "".into(),
+                    });
+                } else if index >= 0 && (index as usize) < filters.len() {
+                    filters.remove(index as usize);
+                }
+                state.set_filters(ModelRc::new(VecModel::from(filters)));
+            });
         }));
         self.schedules_select("");
     }
@@ -97,6 +116,9 @@ impl AppController {
                         );
                         let tasks: Vec<Task> =
                             serde_json::from_value(value["tasks"].clone()).unwrap_or_default();
+                        state.set_webhook_address(value["webhookAddress"].as_str().unwrap_or("").into());
+                        state.set_webhook_error(value["webhookError"].as_str().unwrap_or("").into());
+                        state.set_receipts(receipts(tasks.iter().find(|t|t.id == state.get_edit_id().as_str())));
                         state.set_rows(ModelRc::new(VecModel::from(
                             tasks.iter().map(row).collect::<Vec<_>>(),
                         )));
@@ -145,7 +167,30 @@ impl AppController {
             Pattern::Interval { .. } => 0,
             Pattern::Daily { .. } => 1,
             Pattern::Once { .. } => 2,
+            Pattern::Webhook { .. } => 3,
         });
+        let hook = match &pattern {
+            Pattern::Webhook { hook } => hook.clone(),
+            _ => Hook::default(),
+        };
+        state.set_signature_header(hook.header.into());
+        state.set_signature_prefix(hook.prefix.into());
+        state.set_signature_encoding(if hook.base64 { 1 } else { 0 });
+        state.set_replay_key(hook.replay_key.into());
+        state.set_coalesce_key(hook.coalesce_key.into());
+        state.set_coalesce_seconds(hook.coalesce_seconds.to_string().into());
+        state.set_max_age(hook.max_age_minutes.to_string().into());
+        state.set_filters(ModelRc::new(VecModel::from(
+            hook.filters
+                .iter()
+                .map(|f| WebhookFilter {
+                    path: f.path.as_str().into(),
+                    op: FILTER_OPS.iter().position(|op| *op == f.op).unwrap_or(0) as i32,
+                    value: f.value.as_str().into(),
+                })
+                .collect::<Vec<_>>(),
+        )));
+        state.set_receipts(receipts(task.as_ref()));
         if let Some(task) = &task {
             if let Some(index) = state
                 .get_source_ids()
@@ -219,6 +264,35 @@ impl AppController {
                             .collect(),
                     }
                 }
+                3 => Pattern::Webhook {
+                    hook: Hook {
+                        header: state.get_signature_header().trim().to_ascii_lowercase(),
+                        prefix: state.get_signature_prefix().to_string(),
+                        base64: state.get_signature_encoding() == 1,
+                        replay_key: state.get_replay_key().to_string(),
+                        coalesce_key: state.get_coalesce_key().to_string(),
+                        coalesce_seconds: state
+                            .get_coalesce_seconds()
+                            .parse()
+                            .map_err(|_| "Enter whole seconds for coalescing")?,
+                        max_age_minutes: state
+                            .get_max_age()
+                            .parse()
+                            .map_err(|_| "Enter whole minutes for delivery age")?,
+                        filters: state
+                            .get_filters()
+                            .iter()
+                            .map(|f| Filter {
+                                path: f.path.to_string(),
+                                op: FILTER_OPS
+                                    .get(f.op.max(0) as usize)
+                                    .unwrap_or(&"equals")
+                                    .to_string(),
+                                value: f.value.to_string(),
+                            })
+                            .collect(),
+                    },
+                },
                 _ => {
                     let date =
                         NaiveDateTime::parse_from_str(state.get_once().trim(), "%Y-%m-%d %H:%M:%S")
@@ -248,6 +322,13 @@ impl AppController {
         self.schedules_request("save", params);
     }
     fn schedules_action(&mut self, id: &str, action: &str) {
+        if action == "copy-url" {
+            let address = self.settings.schedules["webhookAddress"]
+                .as_str()
+                .unwrap_or("");
+            self.copy_to_clipboard(&format!("{address}/hooks/{id}"));
+            return;
+        }
         let task = self.settings.schedules["tasks"]
             .as_array()
             .and_then(|tasks| tasks.iter().find(|t| t["id"] == id));
@@ -275,6 +356,11 @@ impl AppController {
                 if action == "delete" && result.is_ok() {
                     app.schedules_select("");
                 }
+                if action == "copy-key" {
+                    if let Ok(reply) = &result {
+                        if let Some(key) = reply["key"].as_str() { app.copy_to_clipboard(key); }
+                    }
+                }
                 let state = app.window.global::<ScheduleState>();
                 state.set_saving(false);
                 match result {
@@ -293,7 +379,10 @@ impl AppController {
                             match action.as_str() {
                                 "save" => "Schedule saved",
                                 "pause" => "Future runs paused; a current run continues",
-                                "resume" => "Schedule resumed; missed occurrences skipped",
+                                "resume" => "Schedule resumed; queued webhooks may run; missed timed occurrences skipped",
+                                "copy-key" => "Signing key copied to clipboard",
+                                "rotate-key" => "Signing key rotated; update the sender with the new key",
+                                "discard-pending" => "Pending deliveries discarded; replay receipts retained",
                                 "run" => "New occurrence started in an isolated workspace",
                                 "stop" => "Run interruption requested",
                                 _ => "Schedule deleted; run conversations and workspaces retained",
@@ -329,13 +418,29 @@ impl AppController {
             "once" => state.set_once(arg(1).into()),
             "time" => state.set_time(arg(1).into()),
             "source" => state.set_source_index(arg(1).parse().unwrap_or(0)),
+            "signature-header" => state.set_signature_header(arg(1).into()),
+            "signature-prefix" => state.set_signature_prefix(arg(1).into()),
+            "signature-encoding" => state.set_signature_encoding(arg(1).parse().unwrap_or(0)),
+            "replay-key" => state.set_replay_key(arg(1).into()),
+            "coalesce-key" => state.set_coalesce_key(arg(1).into()),
+            "coalesce-seconds" => state.set_coalesce_seconds(arg(1).into()),
+            "max-age" => state.set_max_age(arg(1).into()),
+            "filter" => {
+                let mut filters: Vec<_> = state.get_filters().iter().collect();
+                filters.push(WebhookFilter {
+                    path: arg(1).into(),
+                    op: arg(2).parse().unwrap_or(0),
+                    value: arg(3).into(),
+                });
+                state.set_filters(ModelRc::new(VecModel::from(filters)));
+            }
             "save" => state.invoke_save(),
             // Simulate a lost creation receipt without changing its identity.
             "retry-create" => {
                 state.set_edit_id("".into());
                 state.invoke_save();
             }
-            "run" | "pause" | "resume" | "stop" | "delete" => {
+            "run" | "pause" | "resume" | "stop" | "delete" | "rotate-key" | "discard-pending" => {
                 state.invoke_action(selected().into(), arg(0).into())
             }
             "dump" => {
@@ -373,14 +478,45 @@ fn row(task: &Task) -> ScheduleRow {
         next: task
             .next_at
             .map(|at| format!("Next: {} (local)", display_time(at)))
-            .unwrap_or_else(|| "No future occurrence".into())
+            .unwrap_or_else(|| {
+                if matches!(task.pattern, Pattern::Webhook { .. }) {
+                    format!(
+                        "Webhook · {} pending deliveries",
+                        task.deliveries
+                            .iter()
+                            .filter(|d| d.status == "pending")
+                            .count()
+                    )
+                } else {
+                    "No future occurrence".into()
+                }
+            })
             .into(),
         paused: task.paused,
         running: task.active.is_some(),
+        webhook: matches!(task.pattern, Pattern::Webhook { .. }),
         child: run
             .and_then(|r| r.child.as_ref())
             .map(|id| format!("goose:{id}"))
             .unwrap_or_default()
             .into(),
     }
+}
+
+const FILTER_OPS: [&str; 5] = ["equals", "notEquals", "startsWith", "in", "exists"];
+fn receipts(task: Option<&Task>) -> ModelRc<WebhookReceipt> {
+    ModelRc::new(VecModel::from(
+        task.into_iter()
+            .flat_map(|t| t.deliveries.iter().rev().take(100))
+            .map(|d| WebhookReceipt {
+                detail: format!("{} · {} · {}", display_time(d.received), d.status, d.id).into(),
+                child: d
+                    .child
+                    .as_ref()
+                    .map(|c| format!("goose:{c}"))
+                    .unwrap_or_default()
+                    .into(),
+            })
+            .collect::<Vec<_>>(),
+    ))
 }

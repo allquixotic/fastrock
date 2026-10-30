@@ -10,6 +10,9 @@ const MAX_BYTES: u64 = 16 * 1024 * 1024;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Pattern {
+    Webhook {
+        hook: super::webhook_model::Hook,
+    },
     Once {
         at: i64,
     },
@@ -25,6 +28,7 @@ pub(crate) enum Pattern {
 impl Pattern {
     pub fn validate(&self) -> Result<()> {
         match self {
+            Self::Webhook { hook } => hook.validate().map_err(|e| error(e.to_string())),
             Self::Once { at } if DateTime::from_timestamp(*at, 0).is_some() => Ok(()),
             Self::Interval { minutes } if (1..=525600).contains(minutes) => Ok(()),
             Self::Daily {
@@ -46,6 +50,7 @@ impl Pattern {
     }
     pub fn next_after(&self, now: i64) -> Option<i64> {
         match self {
+            Self::Webhook { .. } => None,
             Self::Once { at } => (*at > now).then_some(*at),
             Self::Interval { minutes } => now.checked_add(i64::from(*minutes) * 60),
             Self::Daily {
@@ -111,6 +116,8 @@ pub(crate) struct Task {
     pub next_at: Option<i64>,
     pub active: Option<Run>,
     pub last: Option<Run>,
+    #[serde(default)]
+    pub deliveries: Vec<super::webhook_model::Delivery>,
 }
 impl Task {
     pub fn stop_target(&self, run_id: &str) -> Result<&str> {
@@ -136,7 +143,34 @@ impl Task {
                 "A schedule needs a title (1–256 bytes), task (1–32768 bytes), and source conversation",
             ));
         }
-        self.pattern.validate()
+        self.pattern.validate()?;
+        if let Pattern::Webhook { .. } = &self.pattern {
+            super::webhook_model::template_parts(&self.prompt).map_err(|e| error(e.to_string()))?;
+        }
+        if self.deliveries.len() > 4096
+            || self.deliveries.iter().any(|d| {
+                uuid::Uuid::parse_str(&d.id).is_err()
+                    || d.prompt.len() > 32768
+                    || d.replay.len() != 64
+                    || d.coalesce.as_ref().is_some_and(|k| k.len() != 64)
+                    || !matches!(
+                        d.status.as_str(),
+                        "pending"
+                            | "starting"
+                            | "completed"
+                            | "failed"
+                            | "interrupted"
+                            | "needs_review"
+                            | "expired"
+                            | "discarded"
+                            | "filtered"
+                            | "coalesced"
+                    )
+            })
+        {
+            return Err(error("Invalid webhook receipts; original file retained"));
+        }
+        Ok(())
     }
     pub fn claim(&mut self, now: i64, manual: bool) -> Result<Run> {
         if self.active.is_some() {
@@ -159,6 +193,19 @@ impl Task {
     }
     pub fn finish(&mut self, status: &str, detail: String, now: i64) {
         if let Some(mut run) = self.active.take() {
+            for delivery in self
+                .deliveries
+                .iter_mut()
+                .filter(|d| d.run.as_deref() == Some(&run.id))
+            {
+                delivery.status = if matches!(status, "paused" | "idle") {
+                    "needs_review"
+                } else {
+                    status
+                }
+                .into();
+                delivery.prompt.clear();
+            }
             run.status = status.into();
             run.detail = detail;
             self.last = Some(run);
@@ -196,6 +243,15 @@ impl Data {
                 return Err(error("Invalid schedule identity; original file retained"));
             }
             task.validate()?;
+        }
+        if serde_json::to_vec(self)
+            .map_err(|_| error("Cannot encode schedules"))?
+            .len() as u64
+            > MAX_BYTES
+        {
+            return Err(error(
+                "Schedule capacity reached; discard pending work or remove old schedules before adding more",
+            ));
         }
         Ok(())
     }
@@ -289,6 +345,70 @@ fn write(path: &std::path::Path, data: &Data) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn v58_capacity_rejection_preserves_dispatch_and_saved_work() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("schedules.json");
+        let mut state = State::open(path.clone());
+        let mut saved = Data::default();
+        saved.tasks.insert("task".into(), task());
+        state.commit(saved.clone()).await.unwrap();
+        let original = std::fs::read(&path).unwrap();
+        let mut large = saved;
+        for i in 0..520 {
+            let mut t = task();
+            t.id = format!("task-{i}");
+            t.prompt = "x".repeat(32768);
+            large.tasks.insert(t.id.clone(), t);
+        }
+        assert!(state.commit(large).await.is_err());
+        assert!(state.available().is_ok());
+        assert_eq!(state.data.tasks.len(), 1);
+        assert_eq!(std::fs::read(&path).unwrap(), original);
+    }
+    #[test]
+    fn v58_receipt_recovery_retains_pending_and_marks_uncertain() {
+        use super::super::webhook_model::{Hook, accept};
+        let mut task = task();
+        let hook = Hook::default();
+        task.pattern = Pattern::Webhook { hook: hook.clone() };
+        task.next_at = None;
+        accept(
+            &mut task.deliveries,
+            &hook,
+            &serde_json::json!({}),
+            b"a",
+            "First",
+            100,
+        )
+        .unwrap();
+        accept(
+            &mut task.deliveries,
+            &hook,
+            &serde_json::json!({}),
+            b"b",
+            "Second",
+            101,
+        )
+        .unwrap();
+        let run = task.claim(102, true).unwrap();
+        task.deliveries[0].status = "starting".into();
+        task.deliveries[0].run = Some(run.id);
+        let mut data = Data::default();
+        data.tasks.insert(task.id.clone(), task);
+        data.recover();
+        data.validate().unwrap();
+        let task = data.tasks.get_mut("task").unwrap();
+        assert!(task.paused && task.active.is_none());
+        assert_eq!(task.deliveries[0].status, "needs_review");
+        assert_eq!(task.deliveries[1].status, "pending");
+        assert_eq!(task.deliveries[1].prompt, "Second");
+        let run = task.claim(104, true).unwrap();
+        task.deliveries[1].run = Some(run.id);
+        task.finish("paused", String::new(), 105);
+        task.validate().unwrap();
+        assert_eq!(task.deliveries[1].status, "needs_review");
+    }
     fn task() -> Task {
         Task {
             id: "task".into(),
@@ -301,6 +421,7 @@ mod tests {
             next_at: Some(100),
             active: None,
             last: None,
+            deliveries: Vec::new(),
         }
     }
     #[test]

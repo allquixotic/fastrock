@@ -94,6 +94,7 @@ struct Adapter {
     changed: tokio::sync::Notify,
     schedules: Mutex<schedule::model::State>,
     schedule_gate: Mutex<()>,
+    webhook_listener: Mutex<schedule::webhook::Listener>,
 }
 
 pub(crate) async fn connect(
@@ -226,6 +227,7 @@ where
         queue: Mutex::new(HashMap::new()),
         schedules: Mutex::new(schedule::open(queue_root.join("schedules.json")).await?),
         schedule_gate: Mutex::new(()),
+        webhook_listener: Mutex::new(Default::default()),
         queue_root,
         summaries,
         vwork_paths,
@@ -298,6 +300,9 @@ where
     }
     let (writer, mut requests) = mpsc::channel::<Value>(256);
     if adapter.embedded_runtime {
+        if let Some(task) = schedule::webhook::listen(adapter.clone()).await {
+            guard.0.push(task);
+        }
         guard.0.push(tokio::spawn(schedule::drive(adapter.clone())));
     }
     let request_pending = pending.clone();
