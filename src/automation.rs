@@ -58,6 +58,8 @@ pub(crate) enum Step {
     ClickText(String),
     /// Wait for the active thread's cached purpose and background queue to settle.
     WaitPurpose(u64),
+    /// Wait for embedded current-summary generation and persistence.
+    WaitSummaries(u64),
     /// Wait for the pending editor to reach a settled open/closed state.
     WaitPending {
         open: bool,
@@ -279,6 +281,7 @@ impl AppController {
                 | Step::WaitIdle(_)
                 | Step::WaitRally { .. }
                 | Step::WaitPurpose(_)
+                | Step::WaitSummaries(_)
                 | Step::WaitPending { .. }
                 | Step::WaitSidebarTooltip(_) => {
                     if let Some(automation) = self.automation.as_mut() {
@@ -403,6 +406,8 @@ impl AppController {
                                     "documentKinds": chrome.get_document_tabs().iter().map(|tab| format!("{:?}", tab.kind)).collect::<Vec<_>>(),
                                     "rallyResidentModels": [rally.get_rows().row_count(), rally.get_lanes().row_count(), rally.get_board_groups().row_count(), rally.get_details().row_count(), rally.get_rich_fields().row_count(), rally.get_relations().row_count(), rally.get_picker_choices().row_count(), rally.get_bulk_fields().row_count(), rally.get_bulk_preview().row_count(), rally.get_proposal().row_count()],
                                     "rallyAssistantBytes": rally.get_assistant_history().len() + rally.get_assistant_draft().len(),
+                                    "restoredChatsReady": self.session_restore_ready,
+                                    "openChats": self.tabs.iter().filter_map(|tab| tab.thread().map(|thread| serde_json::json!({"id":thread.thread_id,"paused":thread.recovery_paused,"draft":if self.shown_composer_tab() == Some(tab.id) { self.window.global::<crate::ui::ComposerState>().get_text().to_string() } else { thread.composer.text.clone() },"attachments":thread.composer.attachments.iter().map(|a| &a.path).collect::<Vec<_>>(),"uncertain":thread.recovered_sends.len()}))).collect::<Vec<_>>(),
                                 });
                                 let data = serde_json::json!({"rows":rows,"navigation":navigation,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string();
                                 let path = path.clone();
@@ -872,6 +877,10 @@ impl AppController {
                     && state.get_rows().row_count() >= *rows
                     && detail.is_none_or(|value| value == state.get_detail_open()))
                     || timed_out(elapsed, *timeout_ms, "Rally loaded")
+            }
+            Step::WaitSummaries(timeout) => {
+                crate::goose::summaries_idle()
+                    || timed_out(elapsed, *timeout, "background summaries")
             }
             Step::WaitIdle(timeout) => {
                 let idle = self

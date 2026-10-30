@@ -104,6 +104,7 @@ enum ServerState {
 
 struct Shared {
     prefs: crate::prefs::Writer,
+    pub(crate) sessions: crate::session_restore::Writer,
     rt: tokio::runtime::Handle,
     control_tx: mpsc::UnboundedSender<Control>,
     state: watch::Receiver<ServerState>,
@@ -123,6 +124,10 @@ pub(crate) struct Backend {
 impl Backend {
     pub(crate) fn save_prefs(&self, home: std::path::PathBuf, prefs: crate::prefs::Prefs) {
         self.shared.prefs.save(home, prefs);
+    }
+
+    pub(crate) fn sessions(&self) -> &crate::session_restore::Writer {
+        &self.shared.sessions
     }
 
     pub(crate) fn window_id(&self) -> ui_thread::WindowId {
@@ -172,6 +177,7 @@ impl Backend {
             window_id: ui_thread::MAIN,
             shared: Arc::new(Shared {
                 prefs: crate::prefs::Writer::new(&rt),
+                sessions: crate::session_restore::Writer::new(&rt),
                 rt: rt.clone(),
                 control_tx,
                 state: state_rx,
@@ -338,6 +344,9 @@ impl Backend {
     pub(crate) async fn shutdown(&self, thread_ids: Vec<String>) {
         if let Err(error) = self.shared.prefs.flush().await {
             tracing::warn!(%error,"UI preferences not flushed at shutdown");
+        }
+        if let Err(error) = self.shared.sessions.flush().await {
+            tracing::warn!(%error, "Open chat drafts not flushed at shutdown");
         }
         let (done, done_rx) = oneshot::channel();
         if self

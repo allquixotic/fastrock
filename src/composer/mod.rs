@@ -7,7 +7,7 @@
 //! else (attachments, Plan mode, context gauge) always lives in the draft.
 
 mod approve;
-mod attachments;
+pub(crate) mod attachments;
 mod drop;
 mod file_search;
 mod input;
@@ -71,9 +71,9 @@ use crate::ui::SidebarState;
 #[derive(Clone, Debug)]
 pub(crate) struct PreparingMessage {
     /// Restored into the composer when preparing fails.
-    text: String,
-    attachments: Vec<Attachment>,
-    mode: BusyInput,
+    pub(crate) text: String,
+    pub(crate) attachments: Vec<Attachment>,
+    pub(crate) mode: BusyInput,
 }
 
 /// Per-tab composer state.
@@ -226,11 +226,7 @@ impl AppController {
         // Searches of the old server are gone with it.
         self.composer_close_popup();
         self.composer_load_catalogs();
-        let dir = attachments::attachment_dir(self.codex_home.as_deref());
-        self.backend.spawn(async move {
-            let _ =
-                tokio::task::spawn_blocking(move || attachments::prune_old_attachments(&dir)).await;
-        });
+
         if let Some(cwd) = self
             .active_thread_index()
             .and_then(|index| self.thread_tab(index))
@@ -239,6 +235,10 @@ impl AppController {
             self.composer_ensure_skills(cwd, /*force_reload*/ false);
         }
         self.composer_refresh();
+    }
+
+    pub(crate) fn shown_composer_tab(&self) -> Option<TabId> {
+        self.composer_shared.shown_tab
     }
 
     /// Saves the visible text into the tab it belongs to.
@@ -410,6 +410,10 @@ impl AppController {
             return false;
         };
         if matches!(thread.phase, ThreadPhase::Closed | ThreadPhase::Error) {
+            return false;
+        }
+        if self.thread_recovery_paused(thread) {
+            self.toast("Recovered work is paused. Choose Resume before sending.");
             return false;
         }
         if thread.composer.preparing.is_some() {
@@ -717,6 +721,7 @@ impl AppController {
         state.set_cursor_request(i32::try_from(cursor).unwrap_or(i32::MAX));
         state.set_cursor_serial(shared.cursor_serial);
         state.set_focus_serial(shared.focus_serial);
+        self.save_open_chats();
     }
 
     /// Moves keyboard focus to the input.
@@ -731,6 +736,7 @@ impl AppController {
     /// Pushes the active thread's state (phase, settings, attachments) into
     /// the view. Leaves the text alone.
     pub(crate) fn composer_refresh(&mut self) {
+        self.save_open_chats();
         self.goose_controls_refresh();
         let state = self.window.global::<ComposerState>();
         let enter_sends = self.prefs.enter_sends;

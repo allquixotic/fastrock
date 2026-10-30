@@ -115,7 +115,7 @@ V43: Huge history ! lossless compressed cold pages, bounded resident/render cach
 V44: Search ! deterministic local immediate case-insensitive title/summary matches, bounded parallel fuzzy continuation and cancellation. Every user-facing completed turn ! cheap-model compaction-length keyword summary replaces old summary off UI thread; no recursive summarizing of summary jobs. Backfill ! one latest per old Goose conversation. Cheap profile visible; no expensive fallback. Verify: search ordering/cancellation/budget and summary scheduling/replacement/backfill fixtures.
 V45: Games workload ! 1,000 threads/eight streams/10,000 messages; benchmark watchdog stops fixture at 32 GB process memory or inadequate host/guest headroom, records abort, retries at tenfold lower scale. Never terminate unrelated app/VM or exhaust host. Verify: watchdog fixtures and measured games comparison.
 V46: 0.4.0 application/dependencies ! opt=2, debug=0, LTO="off", 256 codegen units, incremental, no strip; Windows signed CI ZIP only, Mac compile only. Prerelease ! usable verified milestone; stable ! all acceptance and required routes. Verify: build/release policy tests, signed receipts and Windows acceptance.
-V47: Last window close ! tray continuation, explicit Quit ! cancel/save/exit, restart ! restore without executing pending work. Verify: native close/tray/Quit and recovery fixtures.
+V47: Last window close ! tray continuation, explicit Quit ! cancel/save/exit, restart ! restore chats/drafts/settings without executing pending work. Uncertain local sends ! review-only; malformed session snapshot ! preserved without overwrite; draft attachment files ! retained. Verify: native close/tray/Quit and recovery fixtures.
 
 V48: Native windows ! one embedded backend/store owner; callbacks, timers, async results and server requests route to owning window. Rally moves preserve drafts/recovery without starting a process. Verify: scoped routing tests and native two-window transfer/interaction fixture.
 
@@ -386,3 +386,9 @@ B109|2026-10-29|Goose replay changes turn/user IDs; retained live projection dup
 B110|2026-10-29|Failed completion persistence retained a dispatch claim that Resume could not clear|Quarantine the in-memory record; disk evidence remains recoverable; v41_failed_completion_save_remains_reviewable_and_resumable; V41,V47
 B111|2026-10-29|Recovery fixture expected live unpaused state after explicit Quit had closed the session|Assert persisted unresolved evidence is paused for next launch; native recovery fixture; V41,V47
 B112|2026-10-29|Slint globals retained rows/cards/editors after document switches and closing|Clear obsolete document models and assistant buffers; native navigation fixture checks detached editor models, zero retained rows after close and successful reopen; V42
+
+B113|2026-10-29|Open chats/drafts existed only in memory; backend reattachment dispatched pre-start inputs automatically|Atomic coalesced session snapshots, explicit Resume, review-only recovered local sends and durable attachment paths; V41,V47
+B114|2026-10-29|Snapshot capture moved non-Copy reasoning choices from borrowed state|Clone optional reasoning choices; compile oracle; no new invariant
+B115|2026-10-29|Native recovery fixture decoded UTF-8 dumps with Windows locale encoding|Read JSON explicitly as UTF-8; source/recovered files preserved identical Unicode; V47
+B116|2026-10-29|Composer cleared input before backend rejected a send to a recovered paused queue|Check local/backend recovery pause before changing the draft; native recovery send-refusal check; V41,V47
+B117|2026-10-29|Process-recovery fixture used a fixed delay for asynchronous summary completion|Wait on the shared worker becoming idle after turn completion; V44,V47

@@ -24,6 +24,7 @@ mod platform;
 mod prefs;
 mod rally;
 mod session;
+mod session_restore;
 mod settings;
 mod shortcuts;
 mod sidebar;

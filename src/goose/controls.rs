@@ -36,9 +36,8 @@ impl AppController {
         let state = self.window.global::<GooseState>();
         state.set_active(self.backend.is_goose());
         let thread = self.active_thread_index().and_then(|i| self.thread_tab(i));
-        let recovery = thread
-            .and_then(|t| t.thread_id.as_ref())
-            .and_then(|id| self.composer_shared.goose_recovery.get(id));
+        let combined = thread.map(|thread| self.combined_recovery(thread));
+        let recovery = combined.as_ref();
         state.set_recovery_paused(recovery.is_some_and(|r| r.paused));
         state
             .set_recovered_pending(recovery.map_or(0, |r| r.pending.min(i32::MAX as usize) as i32));
@@ -46,7 +45,9 @@ impl AppController {
             recovery.map_or(0, |r| r.uncertain.len().min(i32::MAX as usize) as i32),
         );
         state.set_recovery_details(recovery.map(recovery_preview).unwrap_or_default().into());
-        state.set_busy(thread.is_none_or(|t| t.is_busy()));
+        state.set_busy(
+            thread.is_none_or(|t| t.is_busy() || t.phase == crate::app::ThreadPhase::Starting),
+        );
         let options = thread
             .and_then(|t| t.thread_id.as_ref())
             .and_then(|id| self.composer_shared.goose_configs.get(id));
@@ -134,27 +135,50 @@ impl AppController {
         });
     }
 
-    fn goose_recovery_action(&mut self, action: &str) {
-        let Some(id) = self
-            .active_thread_index()
-            .and_then(|i| self.thread_tab(i))
-            .and_then(|t| t.thread_id.clone())
-        else {
-            return;
-        };
-        let recovery = self
-            .composer_shared
-            .goose_recovery
-            .get(&id)
+    pub(crate) fn thread_recovery_paused(&self, thread: &crate::app::ThreadTab) -> bool {
+        thread.recovery_paused
+            || thread
+                .thread_id
+                .as_ref()
+                .and_then(|id| self.composer_shared.goose_recovery.get(id))
+                .is_some_and(|recovery| recovery.paused)
+    }
+
+    fn combined_recovery(&self, thread: &crate::app::ThreadTab) -> super::Recovery {
+        let mut recovery = thread
+            .thread_id
+            .as_ref()
+            .and_then(|id| self.composer_shared.goose_recovery.get(id))
             .cloned()
             .unwrap_or_default();
+        recovery.paused |= thread.recovery_paused;
+        recovery.pending += thread.pending_inputs.len();
+        recovery.uncertain.extend(thread.recovered_sends.clone());
+        recovery
+    }
+    fn goose_recovery_action(&mut self, action: &str) {
+        let Some(index) = self.active_thread_index() else {
+            return;
+        };
+        let Some(thread) = self.thread_tab(index) else {
+            return;
+        };
+        let tab_id = self.tabs[index].id;
+        let id = thread.thread_id.clone();
+        let recovery = self.combined_recovery(thread);
         match action {
             "copy" => {
                 if let Ok(text) = serde_json::to_string_pretty(&recovery.uncertain) {
                     self.copy_to_clipboard(&text);
                 }
             }
-            "resume" => self.goose_recovery_request(id, "fastrock/goose/resumeQueue", json!({})),
+            "resume" => {
+                if let Some(id) = id {
+                    self.goose_recovery_request(id, "fastrock/goose/resumeQueue", json!({}));
+                } else {
+                    self.resume_local_inputs(tab_id);
+                }
+            }
             "dismiss" => {
                 let ids = recovery
                     .uncertain
@@ -165,7 +189,14 @@ impl AppController {
                     "Dismiss reviewed records?",
                     "This removes the selected recovery records. Conversation history and queued messages remain. Copy the records first if you need them.".to_owned(),
                 ).accept_label("Dismiss").destructive(), Box::new(move |app, accepted| {
-                    if accepted.is_some() { app.goose_recovery_request(id, "fastrock/goose/dismissRecovery", json!({"ids":ids})); }
+                    if accepted.is_some() {
+                        if let Some(index) = app.tab_index_by_id(tab_id) {
+                            if let Some(thread) = app.thread_tab_mut(index) { thread.recovered_sends.retain(|item| !ids.contains(&item["id"])); }
+                        }
+                        app.save_open_chats();
+                        if let Some(id) = id { app.goose_recovery_request(id, "fastrock/goose/dismissRecovery", json!({"ids":ids})); }
+                        app.goose_controls_refresh();
+                    }
                 }));
             }
             _ => {}
@@ -192,8 +223,14 @@ impl AppController {
                 app.window.global::<GooseState>().set_changing(false);
                 // Ordered backend events carry the current state. A response
                 // snapshot can arrive after the resumed queue advances.
-                if let Err(error) = result {
-                    app.window.global::<GooseState>().set_error(error.into());
+                match result {
+                    Err(error) => app.window.global::<GooseState>().set_error(error.into()),
+                    Ok(_) if method == "fastrock/goose/resumeQueue" => {
+                        if let Some(index) = app.tab_index_for_thread(&id) {
+                            app.resume_local_inputs(app.tabs[index].id);
+                        }
+                    }
+                    Ok(_) => {}
                 }
                 app.goose_controls_refresh();
             });

@@ -11,6 +11,11 @@ pub(crate) use queue::Recovery;
 mod rpc;
 mod sessions;
 mod summary_service;
+
+pub(crate) fn summaries_idle() -> bool {
+    summary_service::idle()
+}
+
 mod summary_worker;
 #[cfg(test)]
 mod tests;

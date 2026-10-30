@@ -787,3 +787,45 @@ bytes under its 2 GB cap. Receipt:
 Executable SHA-256:
 `2570f2dcae2f4a4a87132b9ec9b912572fa77e86d17fe6f75a1fee4c2319de30`.
 Full 0.4.0 feature/performance acceptance remains open; no release tag.
+
+## 0.4.0 development: process and draft recovery
+
+On 2026-10-29, Fastrock began saving open persistent chats, unsent composer text,
+attachment paths, model overrides and local recovery records through one atomic,
+coalescing background writer. Quit flushes the latest snapshots. Relaunch reloads
+history but requires Resume before sending; stale local submissions are retained
+for review and never automatically replayed. Unknown/malformed recovery files are
+preserved with a visible warning and saving disabled. Draft attachments are no
+longer removed solely because of age. Backend-paused queues also retain the draft
+when Send is pressed before Resume.
+
+Games passed 706 application tests, 16 workspace fixtures, the embedded-Goose
+fixture and the native renderer regression. New tests cover Unicode/image paths,
+model/Plan settings, interrupted image preparation, uncertain local input,
+multiple window snapshots, closed tabs, invalid files and failed-write recovery.
+Mac compilation, formatting and build-policy checks passed; no Mac execution.
+
+`process-recovery-native-5` forcibly killed only the fixture process after its
+draft had been persisted. Relaunch restored the Unicode draft and image,
+review/Copy exposed a simulated stale local submission, no provider request ran
+before Resume, and the draft was sent exactly once afterward. The uncertain
+submission was absent from history. Both completed turns had Luna summaries;
+the fixture now waits for the background worker rather than a fixed delay.
+Four local provider requests; 145,489,920 peak process bytes under a 2 GB cap.
+
+`restore-regression-native-1` passed three main turns, a second-window turn,
+summary/search, Rally document release and draft handoff, background completion
+while hidden, restore and native tray Quit. Both windows belonged to PID 3576;
+eight local provider requests and only local Rally reads. Peak process memory:
+183,062,528 bytes. These receipts live under
+`C:\Users\SeanMcNamara\fastrock-040-policy\<fixture>\acceptance.json`.
+Both used executable SHA-256:
+`c66a72c9660ababbe0adb2a9b7451446e2ed97c632c0c8d6e017c2c8c0c5830c`.
+The backend-restart draft-refusal fixture `recovery-native-5` also passed, on
+SHA-256 `4f2b8e84cbc4135876d7bdc7a3d19829400df9f7d9d9187eee45dd1d8c259739`,
+before the automation-only summary wait was added.
+
+Persistent chats from all windows currently reopen together in the main window.
+Original window layout and temporary side-session recovery remain under T43.
+Full-scale performance comparison and the remaining 0.4.0 features remain open;
+no release tag or live provider/Rally calls.

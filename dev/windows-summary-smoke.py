@@ -25,9 +25,11 @@ parser.add_argument('--turns', type=int, default=1)
 parser.add_argument('--navigation', action='store_true')
 parser.add_argument('--tray', action='store_true', help='Close while a model runs, restore through the native tray, and quit from its menu')
 parser.add_argument('--windows', action='store_true', help='Exercise two in-process windows and draft transfer')
+parser.add_argument('--process-recovery', action='store_true', help='Relaunch the process with saved drafts and review-only local sends')
 parser.add_argument('--recovery', action='store_true', help='Restart during a send, review it, and explicitly resume only queued work')
 args = parser.parse_args()
 assert 1 <= args.turns <= 100
+assert not args.process_recovery or (args.turns == 1 and not (args.windows or args.navigation or args.tray or args.recovery))
 assert not args.windows or args.navigation, '--windows requires --navigation'
 assert not args.recovery or (args.turns == 1 and not (args.windows or args.navigation or args.tray)), '--recovery is a separate one-turn scenario'
 out = args.output.resolve()
@@ -97,6 +99,7 @@ if args.recovery:
               {'restart_server': True}, {'wait': 1200}, {'wait_ready': 30000}, {'wait_idle': 30000},
               {'click_text': 'Review interrupted sends (1)'}, {'wait': 300},
               {'click_text': 'Copy recovery records'}, {'wait': 300}, {'selection': ['capture', str(out / 'recovery-records.json')]},
+              {'composer': ['type', 'Keep this draft while paused']}, {'composer': ['send']}, {'wait': 300},
               {'snapshot': str(out / 'recovery-paused.png')},
               {'transcript': 'export:' + str(out / 'recovery-visible.md')},
               {'sidebar': ['dump', str(out / 'recovery-paused.json')]}, {'wait': 2500},
@@ -166,6 +169,16 @@ steps += [{'open_settings': 'goose'}, {'wait': 1000}, {'snapshot': str(out / 'se
          {'click_text': 'Save cheap profile'}, {'wait': 500}, {'quit': True}]
 if args.tray:
     steps[-1:] = [{'sidebar': ['dump', str(out / 'tray-finish.json')]}, {'wait': 60000}]
+if args.process_recovery:
+    import struct
+    import zlib
+    def chunk(kind, data):
+        return struct.pack('!I', len(data)) + kind + data + struct.pack('!I', zlib.crc32(kind + data))
+    attachment = out / 'draft.png'
+    attachment.write_bytes(b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('!IIBBBBB', 1, 1, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(b'\x00\xff\x00\x00\xff')) + chunk(b'IEND', b''))
+    steps[-1:] = [{'select_tab': 0}, {'composer': ['type', 'Restored draft é 🔭']},
+                  {'composer': ['attach', str(attachment)]}, {'wait': 1000},
+                  {'sidebar': ['dump', str(out / 'before-relaunch.json')]}, {'wait': 60000}]
 (out / 'script.json').write_text(json.dumps(steps), encoding='utf-8')
 env = dict(os.environ)
 for key in ('AWS_PROFILE', 'AWS_SESSION_TOKEN', 'AWS_BEARER_TOKEN_BEDROCK', 'GOOSE_PROVIDER',
@@ -313,6 +326,7 @@ menu_driver = None
 menu_errors = []
 menu_labels = []
 observed_recovery_pause = False
+crashed_with_saved_draft = False
 
 def quit_from_menu(hwnd, pid):
     try:
@@ -338,6 +352,15 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
             # benchmark allowance; leave additional headroom on the VM host.
             if peak >= 2_000_000_000 or time.monotonic() > deadline:
                 raise RuntimeError('Fixture memory/time limit exceeded')
+            if args.process_recovery and (out / 'before-relaunch.json').exists():
+                saved_path = out / 'codex/fastrock-open-chats.json'
+                if saved_path.exists():
+                    saved_chat = json.loads(saved_path.read_text(encoding='utf-8'))['windows']['1']['chats'][0]
+                    if saved_chat['draft']['text'] == 'Restored draft é 🔭' and saved_chat['draft']['attachments'] == [str(attachment)]:
+                        process.kill()  # Only this fixture process; no graceful Quit/flush.
+                        process.wait(timeout=10)
+                        crashed_with_saved_draft = True
+                        break
             if args.recovery and not observed_recovery_pause and (out / 'recovery-paused.json').exists():
                 assert len(requests) == 1, f'Work ran before Resume: {requests}'
                 observed_recovery_pause = True
@@ -370,12 +393,69 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
                 peak_windows = max(peak_windows, visible_windows(process.pid))
                 for path in (out / 'home/windows').glob('*/owner.json'):
                     try:
-                        owner = json.loads(path.read_text())
+                        owner = json.loads(path.read_text(encoding='utf-8'))
                         owners_seen[owner['id']] = owner['pid']
                     except (OSError, ValueError):
                         pass  # An atomic retirement may race this read.
             time.sleep(0.1)
-        assert process.returncode == 0, f'App exited {process.returncode}; see app.log'
+        assert process.returncode == 0 or crashed_with_saved_draft, f'App exited {process.returncode}; see app.log'
+        if args.process_recovery:
+            assert crashed_with_saved_draft
+            path = out / 'codex/fastrock-open-chats.json'
+            snapshot = json.loads(path.read_text(encoding='utf-8'))
+            chat = snapshot['windows']['1']['chats'][0]
+            assert chat['draft']['text'] == 'Restored draft é 🔭', chat
+            assert chat['draft']['attachments'] == [str(attachment)], chat
+            # Simulate a crash snapshot taken before the UI learned delivery.
+            chat['pending'] = [{'client_id': 'fixture-uncertain-local', 'mode': 'steer',
+                                'input': [{'type': 'text', 'text': 'Never replay this saved send', 'text_elements': []}]}]
+            path.write_text(json.dumps(snapshot), encoding='utf-8')
+            restart_steps = [{'wait_ready': 30000}, {'wait': 2000}, {'wait_idle': 30000},
+                {'sidebar': ['dump', str(out / 'process-paused.json')]},
+                {'click_text': 'Review interrupted sends (1)'}, {'wait': 300},
+                {'click_text': 'Copy recovery records'}, {'wait': 300},
+                {'selection': ['capture', str(out / 'local-records.json')]}, {'wait': 2000},
+                {'snapshot': str(out / 'process-paused.png')}, {'click_text': 'Resume'},
+                {'wait': 700}, {'composer': ['send']}, {'wait': 300}, {'wait_idle': 30000}, {'wait': 2000}, {'wait_summaries': 30000},
+                {'transcript': 'export-complete:' + str(out / 'after-relaunch.md')}, {'wait': 300},
+                {'sidebar': ['dump', str(out / 'process-resumed.json')]}, {'quit': True}]
+            script = out / 'restart-script.json'
+            script.write_text(json.dumps(restart_steps), encoding='utf-8')
+            restart_env = dict(env, CODEX_GUI_AUTOMATION=str(script))
+            with (out / 'restart.log').open('w', encoding='utf-8') as restart_log:
+                process = subprocess.Popen([str(args.binary.resolve()), '--remote', 'goose'], cwd=out,
+                                           env=restart_env, stdout=restart_log, stderr=restart_log)
+                deadline = time.monotonic() + 60
+                verified_pause = False
+                while process.poll() is None:
+                    memory = Memory()
+                    memory.cb = ctypes.sizeof(memory)
+                    if not memory_info(int(process._handle), ctypes.byref(memory), memory.cb):
+                        if process.poll() is not None:
+                            break
+                        raise OSError('Could not monitor recovered process memory')
+                    peak = max(peak, memory.PeakWorkingSetSize, memory.PeakPagefileUsage, memory.PrivateUsage)
+                    if peak >= 2_000_000_000 or time.monotonic() > deadline:
+                        raise RuntimeError('Recovery fixture memory/time limit exceeded')
+                    if not verified_pause and (out / 'process-paused.json').exists():
+                        assert len(requests) == 2, f'Work ran before explicit Resume: {requests}'
+                        paused = json.loads((out / 'process-paused.json').read_text(encoding='utf-8'))['navigation']
+                        assert paused['restoredChatsReady'], paused
+                        assert len(paused['openChats']) == 1, paused
+                        restored = paused['openChats'][0]
+                        assert restored['paused'] and restored['draft'] == 'Restored draft é 🔭', restored
+                        assert restored['attachments'] == [str(attachment)] and restored['uncertain'] == 1, restored
+                        verified_pause = True
+                    time.sleep(0.1)
+                assert process.returncode == 0 and verified_pause, 'Process recovery failed; see restart.log'
+            records = json.loads((out / 'local-records.json').read_text(encoding='utf-8'))
+            assert len(records) == 1 and records[0]['clientUserMessageId'] == 'fixture-uncertain-local', records
+            history = (out / 'after-relaunch.md').read_text(encoding='utf-8')
+            assert history.count('Restored draft é 🔭') == 1 and history.count('Please give a short fixture answer 1') == 1, history
+            assert 'Never replay this saved send' not in history, history
+            resumed = json.loads((out / 'process-resumed.json').read_text(encoding='utf-8'))['navigation']['openChats'][0]
+            assert not resumed['paused'] and resumed['draft'] == '', resumed
+
     finally:
         if menu_driver is not None:
             menu_driver.join(timeout=2)
@@ -389,10 +469,10 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
         if rally is not None:
             rally.server.shutdown()
 
-matches = json.loads((out / 'matches.json').read_text())['rows']
+matches = json.loads((out / 'matches.json').read_text(encoding='utf-8'))['rows']
 assert len(matches) == 1 and matches[0]['id'].startswith('goose:'), matches
-assert json.loads((out / 'empty.json').read_text())['rows'] == []
-expected_requests = 3 if args.recovery else 2 * (args.turns + int(args.windows))
+assert json.loads((out / 'empty.json').read_text(encoding='utf-8'))['rows'] == []
+expected_requests = 3 if args.recovery else 2 * (args.turns + int(args.windows) + int(args.process_recovery))
 assert len(requests) == expected_requests, f'Unexpected model calls: {requests}'
 paired_requests = requests[1:] if args.recovery else requests
 for ordinary, summary in zip(paired_requests[::2], paired_requests[1::2]):
@@ -401,6 +481,8 @@ for ordinary, summary in zip(paired_requests[::2], paired_requests[1::2]):
 transcript = (out / 'complete.md').read_text(encoding='utf-8')
 if args.recovery:
     assert observed_recovery_pause
+    paused_chat = json.loads((out / 'recovery-paused.json').read_text(encoding='utf-8'))['navigation']['openChats'][0]
+    assert paused_chat['draft'] == 'Keep this draft while paused', paused_chat
     visible = (out / 'recovery-visible.md').read_text(encoding='utf-8')
     assert visible.count('Uncertain send: retain me for review') == 1, visible
     records = json.loads((out / 'recovery-records.json').read_text(encoding='utf-8'))
@@ -427,13 +509,13 @@ saved = (out / 'goose/config/config.yaml').read_text(encoding='utf-8')
 assert 'FASTROCK_CHEAP_PROFILE:' in saved and 'Bedrock Luna' in saved
 assert (out / 'local/vwork/workspaces.redb').exists()
 if args.navigation:
-    navigation = {name: json.loads((out / (name + '.json')).read_text())['navigation']
+    navigation = {name: json.loads((out / (name + '.json')).read_text(encoding='utf-8'))['navigation']
                   for name in ('rally-two', 'rally-bulk-blocked', 'rally-bulk-closed', 'rally-two-final', 'conversation-nav', 'rally-return', 'rally-closed', 'rally-reopened')}
     assert 'server failed \"Fixture backend unavailable\"' in (out / 'app.log').read_text(encoding='utf-8')
     assert navigation['rally-two']['rallySelected'] is True, navigation
     assert navigation['conversation-nav']['rallySelected'] is False, navigation
     assert navigation['rally-bulk-blocked']['rallyCount'] == 2, navigation
-    draft = json.loads((out / 'rally-kept-draft.json').read_text())
+    draft = json.loads((out / 'rally-kept-draft.json').read_text(encoding='utf-8'))
     assert draft['dirty'] and any(field['name'] == 'Name' and field['value'] == 'Keep this unsaved draft'
                                   for field in draft['fields']), draft
     assert navigation['rally-bulk-closed']['rallyCount'] == 1, navigation
@@ -450,8 +532,8 @@ if args.navigation:
     assert navigation['rally-reopened']['activeKind'] == 'Rally', navigation
     assert all(request['method'] == 'GET' for request in rally.requests), rally.requests
 if args.windows:
-    child = json.loads((out / 'child.json').read_text())
-    returned = json.loads((out / 'returned.json').read_text())
+    child = json.loads((out / 'child.json').read_text(encoding='utf-8'))
+    returned = json.loads((out / 'returned.json').read_text(encoding='utf-8'))
     for document in (child, returned):
         assert document['dirty'], document
         assert document['filterDraft'] == 'Unapplied window filter', document
@@ -461,7 +543,7 @@ if args.windows:
     assert child_transcript.count('Please answer from the second native window') == 1, child_transcript
     assert f'Native embedded Goose answer {args.turns + 1},' in child_transcript, child_transcript
     assert 'Please give a short fixture answer' not in child_transcript, child_transcript
-    child_hits = json.loads((out / 'child-search.json').read_text())['rows']
+    child_hits = json.loads((out / 'child-search.json').read_text(encoding='utf-8'))['rows']
     assert len(child_hits) == 2, child_hits
     assert peak_windows >= 2 and len(owners_seen) == 2, (peak_windows, owners_seen)
     assert set(owners_seen.values()) == {process.pid}, owners_seen
@@ -469,7 +551,7 @@ if args.tray:
     assert all(tray_state.values()), tray_state
     assert (out / 'codex/gui.json').exists(), 'Explicit Quit did not flush UI preferences'
 receipt = dict(result='PASS', binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
-               explicit_recovery_resume=args.recovery, uncertain_send_never_replayed=args.recovery,
+               process_draft_recovery=args.process_recovery, forced_process_crash=crashed_with_saved_draft, explicit_recovery_resume=args.recovery or args.process_recovery, uncertain_send_never_replayed=args.recovery or args.process_recovery,
                peak_process_bytes=peak, requests=requests, summary_only_match=True,
                exported_turns=args.turns, complete_history_preserved=True,
                native_cheap_profile_saved=True, all_provider_requests_local=True,

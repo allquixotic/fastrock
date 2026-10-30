@@ -150,7 +150,7 @@ pub(crate) fn items_page(
 }
 
 /// Per-turn overrides; all sticky for later turns on the thread.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub(crate) struct TurnOverrides {
     pub(crate) model: Option<String>,
     pub(crate) effort: Option<ReasoningEffort>,

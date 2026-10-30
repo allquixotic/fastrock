@@ -123,6 +123,19 @@ impl Service {
     }
 }
 
+pub(super) fn idle() -> bool {
+    let Some(service) = SERVICE
+        .get()
+        .and_then(|service| service.lock().ok()?.upgrade())
+    else {
+        return false;
+    };
+    let pending = service.queue.pending.lock().unwrap();
+    service.queue.ready.load(Ordering::Relaxed)
+        && pending.active.is_none()
+        && pending.ids.is_empty()
+}
+
 pub(super) fn home() -> Option<PathBuf> {
     SERVICE
         .get()?

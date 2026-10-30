@@ -248,6 +248,7 @@ impl AppController {
                 thread.extras.editing_pending = None;
             }
         }
+        self.save_open_chats();
         let state = self.window.global::<PendingMessageState>();
         state.set_open(false);
         state.set_saving(false);

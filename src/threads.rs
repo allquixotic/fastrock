@@ -123,7 +123,7 @@ fn side_chat_restriction(action: &str) -> Option<&'static str> {
 }
 
 /// Input submitted before its thread finished starting.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) struct PendingInput {
     pub(crate) input: Vec<UserInput>,
     pub(crate) client_id: String,
@@ -157,7 +157,7 @@ impl AppController {
 
     /// Starts a new thread in the folder of tab `index`. Input typed
     /// meanwhile waits in the tab and is sent once the thread exists.
-    fn start_thread_in_tab(&mut self, index: usize) {
+    pub(crate) fn start_thread_in_tab(&mut self, index: usize) {
         let tab_id = self.tabs[index].id;
         let Some(thread) = self.thread_tab_mut(index) else {
             return;
@@ -227,10 +227,13 @@ impl AppController {
     }
 
     /// Sends input that was submitted while the thread was starting.
-    fn dispatch_pending_inputs(&mut self, index: usize) {
+    pub(crate) fn dispatch_pending_inputs(&mut self, index: usize) {
         let Some(thread) = self.thread_tab_mut(index) else {
             return;
         };
+        if thread.recovery_paused {
+            return;
+        }
         let pending = std::mem::take(&mut thread.pending_inputs);
         for pending in pending {
             self.dispatch_input(index, pending.input, pending.client_id, pending.mode);
@@ -243,7 +246,8 @@ impl AppController {
         if let Some(thread) = self.thread_tab_mut(index) {
             thread.phase = ThreadPhase::Error;
             thread.last_error = Some(message.clone());
-            unsent = std::mem::take(&mut thread.pending_inputs);
+            unsent = thread.pending_inputs.clone();
+            thread.recovery_paused |= !unsent.is_empty();
         }
         for pending in unsent {
             self.transcript_echo_unsent(index, &pending.client_id);
@@ -297,7 +301,12 @@ impl AppController {
     /// thread the server cannot resume because nothing was ever sent in it
     /// (it has no rollout yet) is replaced by a new thread in the same
     /// folder, which is what the user had.
-    fn resume_thread_in_tab(&mut self, index: usize, thread_id: String, restart_unsaved: bool) {
+    pub(crate) fn resume_thread_in_tab(
+        &mut self,
+        index: usize,
+        thread_id: String,
+        restart_unsaved: bool,
+    ) {
         let tab_id = self.tabs[index].id;
         let Some(thread) = self.thread_tab_mut(index) else {
             return;
@@ -664,6 +673,10 @@ impl AppController {
         let Some(thread) = self.thread_tab(index) else {
             return false;
         };
+        if self.thread_recovery_paused(thread) {
+            self.toast("Recovered work is paused. Choose Resume before sending.");
+            return false;
+        }
         if let Some(reason) = input_refusal(thread) {
             self.toast(reason);
             return false;

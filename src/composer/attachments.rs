@@ -8,7 +8,6 @@
 
 use std::path::Path;
 use std::path::PathBuf;
-use std::time::Duration;
 use std::time::SystemTime;
 
 use slint::Rgba8Pixel;
@@ -19,8 +18,6 @@ use crate::app::TabId;
 
 /// Folder under `$CODEX_HOME` holding pasted clipboard images.
 const ATTACHMENT_DIR: &str = "tmp/gui-attachments";
-/// Pasted images older than this are deleted when the server starts.
-const ATTACHMENT_MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 /// Edge length of chip thumbnails in physical pixels (2x a 28px chip).
 const THUMBNAIL_SIZE: u32 = 56;
 
@@ -168,30 +165,6 @@ fn read_clipboard_bitmap(dir: &Path, accepts_images: bool) -> anyhow::Result<Pas
     }
     save_clipboard_png(dir, image.width, image.height, image.bytes.into_owned())
         .map(PastedBitmap::Saved)
-}
-
-/// Deletes pasted images older than [`ATTACHMENT_MAX_AGE`]. Errors are
-/// logged; this is housekeeping only.
-pub(crate) fn prune_old_attachments(dir: &Path) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    let now = SystemTime::now();
-    for entry in entries.flatten() {
-        let path = entry.path();
-        let expired = entry
-            .metadata()
-            .and_then(|metadata| metadata.modified())
-            .ok()
-            .and_then(|modified| now.duration_since(modified).ok())
-            .is_some_and(|age| age > ATTACHMENT_MAX_AGE);
-        if expired
-            && is_image_path(&path)
-            && let Err(err) = std::fs::remove_file(&path)
-        {
-            tracing::debug!(%err, path = %path.display(), "could not prune attachment");
-        }
-    }
 }
 
 impl AppController {

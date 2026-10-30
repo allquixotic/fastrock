@@ -151,6 +151,13 @@ impl AppController {
     /// The text or cursor of the composer changed (typing, clicks, arrows).
     pub(super) fn composer_input_changed(&mut self, text: &str, cursor: usize) {
         self.composer_shared.cursor = cursor;
+        if let Some(tab) = self
+            .active_thread_index()
+            .and_then(|index| self.thread_tab_mut(index))
+        {
+            tab.composer.text = text.to_owned();
+        }
+        self.save_open_chats();
         let Some(index) = self.active_thread_index() else {
             self.composer_close_popup();
             return;

@@ -120,6 +120,8 @@ pub(crate) struct ThreadTab {
     pub(crate) turn_overrides: crate::session::TurnOverrides,
     /// Inputs submitted before the thread finished starting.
     pub(crate) pending_inputs: Vec<crate::threads::PendingInput>,
+    pub(crate) recovery_paused: bool,
+    pub(crate) recovered_sends: Vec<serde_json::Value>,
     /// Whether cross-tab tools were registered for this thread.
     pub(crate) xtab_enabled: bool,
     pub(crate) transcript: Transcript,
@@ -150,6 +152,8 @@ impl ThreadTab {
             reported_turn_error: None,
             turn_overrides: crate::session::TurnOverrides::default(),
             pending_inputs: Vec::new(),
+            recovery_paused: false,
+            recovered_sends: Vec::new(),
             xtab_enabled: false,
             transcript: Transcript::new(),
             composer: ComposerDraft::default(),
@@ -333,6 +337,7 @@ pub(crate) struct AppController {
     pub(crate) composer_shared: crate::composer::ComposerShared,
     pub(crate) approvals: crate::approvals::ApprovalsController,
     pub(crate) info_shared: crate::info::InfoShared,
+    pub(crate) session_restore_ready: bool,
     next_tab_id: TabId,
     tab_model: Rc<VecModel<TabInfo>>,
     warnings_model: Rc<VecModel<SharedString>>,
@@ -403,6 +408,7 @@ impl AppController {
             composer_shared: crate::composer::ComposerShared::default(),
             approvals: crate::approvals::ApprovalsController::default(),
             info_shared: crate::info::InfoShared::default(),
+            session_restore_ready: false,
             next_tab_id: 1,
             tab_model,
             warnings_model,
@@ -442,6 +448,7 @@ impl AppController {
         self.rally_bind();
         self.virtual_workspaces_bind();
         self.show_active();
+        self.restore_open_chats();
         self.automation_start();
     }
 
@@ -644,7 +651,10 @@ impl AppController {
         self.newtab_on_server_ready();
         if ready.restarted {
             self.approvals_reset();
+            self.pause_local_inputs();
             self.resume_open_threads();
+        } else if self.session_restore_ready {
+            self.reattach_recovered_chats();
         }
         // A provider change (for example Bedrock) may have removed the need
         // to sign in.
@@ -1117,6 +1127,7 @@ impl AppController {
     }
 
     pub(crate) fn refresh_tabs(&self) {
+        self.save_open_chats();
         crate::ui_thread::sync_threads(self.backend.window_id(), self.open_thread_ids());
         let infos: Vec<TabInfo> = self
             .tabs
@@ -1793,6 +1804,7 @@ impl AppController {
         self.rally_stash();
         self.rally_save_session();
         self.composer_stash();
+        self.save_open_chats();
         self.quitting = true;
         self.remember_window_size();
     }
