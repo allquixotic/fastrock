@@ -265,6 +265,7 @@ T54|x|Connect native individual/batch deletion to Goose public delete API with a
 T55|x|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63,V74,V75
 T56|x|Native queue start/reorder, compressed-source mentions, Review, explicit shell, Goose slash commands and local Changes verified|V38,V40,V41,V42,V70,V71,V72,V73,V80
 T57|x|RC2 summary priority/config/hook fixes; 781 tests, eight native cases and guarded full-scale games workload passed; provider routes fixture-verified|V38,V39,V44,V65,V82,V83,V84
+T58|x|Bounded native effort-control completion verified on games; Windows/Mac compile passed; signed full matrix remains CI publication gate|V39,V54,V83,I.distribution
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -729,3 +730,7 @@ B243|2026-10-30|Mutable JSON indexing could panic on malformed user hook shapes 
 B244|2026-10-30|Unified serde_json arbitrary_precision serializes numbers as private marker objects through Goose generic YAML setters|Convert JSON-valued parameters via JSON text to YAML values before public setters; preserve numeric unknown fields; V83
 
 B245|2026-10-30|Native provider fixture assumed block YAML and migrated active_provider key; lossless preservation broke test-only scalar replacement|Accept current/legacy provider scalar in both YAML styles; V52,V83
+
+B246|2026-10-30|Signed RC3 effort fixture sampled Clear after fixed 600ms while sessionChanging=true; later new conversation correctly used cleared default|Bounded wait for Goose controls before dependent actions/assertions; preserve timing evidence; V39,V83
+
+B247|2026-10-30|New automation readiness predicate called ModelRc::row_count without Model trait import|Import Slint Model; Windows/Mac compile gate

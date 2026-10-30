@@ -22,7 +22,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 use serde::Deserialize;
-use slint::ComponentHandle;
+use slint::{ComponentHandle, Model};
 
 use crate::app::AppController;
 
@@ -44,6 +44,8 @@ pub(crate) enum Step {
     WaitReady(u64),
     /// Wait until the active thread has an id and no running turn.
     WaitIdle(u64),
+    /// Wait for session provider/model/effort controls to finish their request.
+    WaitGoose(u64),
     WaitRally {
         #[serde(default)]
         rows: usize,
@@ -288,6 +290,7 @@ impl AppController {
                 Step::Wait(_)
                 | Step::WaitReady(_)
                 | Step::WaitIdle(_)
+                | Step::WaitGoose(_)
                 | Step::WaitRally { .. }
                 | Step::WaitPurpose(_)
                 | Step::WaitSummaries(_)
@@ -1040,6 +1043,15 @@ impl AppController {
                     }
                 }
                 idle || timed_out(elapsed, *timeout, "thread idle")
+            }
+            Step::WaitGoose(timeout) => {
+                use crate::ui::GooseState;
+                let state = self.window.global::<GooseState>();
+                let ready = !state.get_busy()
+                    && !state.get_changing()
+                    && !state.get_setup_loading()
+                    && state.get_options().row_count() > 0;
+                ready || timed_out(elapsed, *timeout, "Goose session controls ready")
             }
             _ => true,
         }

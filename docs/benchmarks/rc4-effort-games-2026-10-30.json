@@ -1,0 +1,12 @@
+{
+  "result": "PASS",
+  "binary_sha256": "e7e8e502d2eecad791577470a2a9057c115cafaf57ac374b3578d8d66fafc6ec",
+  "peak_process_bytes": 140771328,
+  "native_save_control": true,
+  "per_model_defaults": true,
+  "new_session_and_switch": true,
+  "restored_effort_preserved": true,
+  "unsupported_choice_rejected": true,
+  "clear_is_scoped": true,
+  "original_credentials_preserved": true
+}

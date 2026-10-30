@@ -26,14 +26,15 @@ secrets.write_text('ANTHROPIC_API_KEY: unused-preserve\n', encoding='utf-8')
 original_secrets = secrets.read_bytes()
 
 def control(*args): return {'settings':['goose-setup',*args]}
-def choose(name, value): return [control('choose', name, value), {'wait':600}]
-def dump(name): return [control('dump',str(out/(name+'.json'))), {'wait':150}]
+def settled(): return [{'wait_goose':10000}]
+def choose(name, value): return [control('choose', name, value), *settled()]
+def dump(name): return [*settled(), control('dump',str(out/(name+'.json'))), {'wait':150}]
 def read(name): return json.loads((out/(name+'.json')).read_text(encoding='utf-8'))
 def effort(name):
     state = read(name)
     assert not state['sessionChanging'], state
     return next(o['current'] for o in state['sessionOptions'] if o['id']=='thinking_effort')
-def new(): return [{'new_thread':str(out/'project')}, {'wait_idle':30000}, {'wait':500}]
+def new(): return [{'new_thread':str(out/'project')}, {'wait_idle':30000}, *settled()]
 def run(name, steps):
     script = out/(name+'-steps.json')
     script.write_text(json.dumps(steps),encoding='utf-8')
@@ -45,13 +46,13 @@ try:
     peak = run('save', [{'wait_ready':30000}, {'resize':[1440,1100]}, *new(),
         {'sidebar':['dump',str(out/'first-tab.json')]}, *dump('initial'),
         {'click_text':f'Goose · {OPUS}  ▾'}, {'wait':200},
-        *choose('thinking_effort','high'), {'click_text':'Save effort default'}, {'wait':700}, *dump('saved'),
+        *choose('thinking_effort','high'), {'click_text':'Save effort default'}, {'wait':100}, *dump('saved'),
         {'snapshot':str(out/'effort-default.png')},
         *choose('thinking_effort','low'), {'send':'Keep explicit low effort in this conversation'}, {'wait_idle':30000}, {'wait':500},
         *dump('override'), *new(), *dump('new-default'),
         {'send':'Verify saved high default in a new conversation'}, {'wait_idle':30000}, {'wait':400},
-        *choose('model',SONNET), *choose('thinking_effort','medium'), control('save-effort'), {'wait':600}, *dump('second-model'),
-        control('custom-model',OPUS), {'click_text':'Use model ID'}, {'wait':700}, *dump('switched-back'),
+        *choose('model',SONNET), *choose('thinking_effort','medium'), control('save-effort'), *dump('second-model'),
+        control('custom-model',OPUS), {'click_text':'Use model ID'}, {'wait':100}, *dump('switched-back'),
         *choose('thinking_effort','not-offered'), *dump('unsupported'),
         {'select_tab':0}, {'wait':400}, *dump('original-unchanged'), {'quit':True}])
     assert effort('saved')=='high' and 'saved for this provider/model' in read('saved')['effortStatus'],read('saved')
@@ -64,7 +65,7 @@ try:
     original_id = read('first-tab')['navigation']['openChats'][0]['id']
     peak = max(peak, run('restart', [{'wait_ready':30000}, {'wait':1000}, {'resume':original_id},
         {'wait_idle':30000}, {'wait':400}, *dump('restored'), *new(), *dump('restart-default'),
-        control('clear-effort'), {'wait':600}, *dump('cleared'), *new(), *dump('after-clear'),
+        control('clear-effort'), *dump('cleared'), *new(), *dump('after-clear'),
         *choose('model',SONNET), *dump('other-default-retained'), {'quit':True}]))
     assert effort('restored')=='low',read('restored')
     assert effort('restart-default')=='high',read('restart-default')

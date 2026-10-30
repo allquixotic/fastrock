@@ -1,0 +1,82 @@
+{
+  "result": "PUBLICATION_BLOCKED",
+  "version": "0.4.0-rc.3",
+  "source_commit": "4a8f9babdae8ae7d581d3b29879b4d930407ae69",
+  "ci_run_id": 41118362332,
+  "ci_url": "https://github.com/allquixotic/fastrock/actions/runs/41118362332",
+  "evidence_artifact_id": 13008047788,
+  "evidence_artifact_sha256": "9ab6dbc4d2f6cf7c08216b7cf8337eb400ae011838ce27470e4292b8506dd04d",
+  "native_matrix": {
+    "binary_sha256": "bc824ea4674a16473a93569517c8ec01d1750d579e73c73764d2d8787e926ce0",
+    "result": "FAIL",
+    "cases": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 48.89,
+        "peak_tree_bytes": 153669632
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 3.81,
+        "peak_tree_bytes": 152203264
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.47,
+        "peak_tree_bytes": 157257728
+      },
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 23.25,
+        "peak_tree_bytes": 157306880
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 64.14,
+        "peak_tree_bytes": 155676672
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 82.38,
+        "peak_tree_bytes": 154521600
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.66,
+        "peak_tree_bytes": 152985600
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 26.86,
+        "peak_tree_bytes": 153776128
+      }
+    ],
+    "error": "effort failed (1); see D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\effort.log"
+  },
+  "failed_case": "effort",
+  "snapshot": {
+    "fixed_wait_ms": 600,
+    "session_changing": true,
+    "effort_status": "",
+    "later_new_conversation_effort": "off",
+    "other_model_effort": "medium"
+  },
+  "publication": false,
+  "correction": "Wait up to 10 seconds for native Goose controls to settle before dependent fixture actions and snapshots; ordinary application behavior unchanged."
+}

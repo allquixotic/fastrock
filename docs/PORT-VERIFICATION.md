@@ -1944,3 +1944,31 @@ three-minute delay is not yet attributed to one cause; these fixtures prove
 contention/migration fixes and turn boundaries, not AWS latency or account access.
 Previously discarded config comments cannot be reconstructed automatically.
 Full acceptance on the signed executable remains part of release CI.
+
+
+### RC3 publication gate and RC4 fixture correction
+
+[RC3 CI run 41118362332](https://github.com/allquixotic/fastrock/actions/runs/41118362332)
+compiled both platforms, passed the Windows Rust and release-policy checks, and
+signed and verified the candidate. Eight native cases passed before the effort
+fixture failed. Its Clear snapshot had `sessionChanging=true` after a fixed
+600 ms; the later conversation correctly used `thinking_effort=off` and the
+other model retained `medium`. Packaging, attestation and publication did not run.
+No RC3 release asset was published; its source tag remains intact.
+[Failed-gate receipt](benchmarks/rc3-publication-blocked-2026-10-30.json).
+
+RC4 adds an automation-only wait for Goose session controls to finish loading
+and changing, bounded at 10 seconds. The effort fixture uses this condition
+before dependent actions and snapshots. Ordinary application behavior is
+unchanged from the RC3 product fixes, so the guarded full-scale games benchmark
+above remains applicable. The corrected fixture and complete signed CI matrix
+remain required before RC4 publication.
+
+The corrected native effort fixture passed on games: save, model switch, restart,
+unsupported-choice refusal and scoped Clear all passed, with credentials intact.
+Peak process memory was 140,771,328 bytes.
+[RC4 effort receipt](benchmarks/rc4-effort-games-2026-10-30.json).
+
+RC4 Windows application/tests compiled and macOS library compilation passed.
+No application or tests ran on the Mac. The full signed CI matrix is the
+remaining publication gate.
