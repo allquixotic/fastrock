@@ -9,6 +9,7 @@ pub mod checkpoints;
 pub mod embedded;
 pub mod integration;
 pub mod projects;
+pub mod review;
 pub mod scrollback;
 pub mod search;
 pub mod session;

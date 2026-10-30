@@ -1,0 +1,12 @@
+{
+  "result": "PASS",
+  "binary_sha256": "f89c4f4d81d0c8479d257d8300576a2e4d9371cc510c58e0a8e30b09d441a289",
+  "peak_process_bytes": 152690688,
+  "native_picker": true,
+  "compressed_source": true,
+  "uncommitted_base_root_commit_custom": true,
+  "local_dirty_source": true,
+  "source_unchanged": true,
+  "draft_preserved": true,
+  "no_restart_replay": true
+}

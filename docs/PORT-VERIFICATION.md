@@ -1659,3 +1659,11 @@ and restart without any provider requests. Screenshot inspected. Peak memory
 Receipt: `docs/benchmarks/mentions-games-2026-10-30.json`. Mac library compile,
 formatting and build/release policy checks passed. T56 review and shell flows,
 T51 visual cleanup and remaining recovery/deletion acceptance stay open. No tag.
+
+## 0.4.0 inline Review — 2026-10-30
+
+Native Review now reads branches and commits with libgit2 and the shared vwork owner. The canonical `review/start` route prepares revision-labelled bounded patches and dispatches through the existing Goose turn, checkpoint and durable queue path. No Git subprocess or source checkout is used by Review. Binary omissions are explicit; reviews exceeding 100 files, 1 MiB per file, 8 MiB input or 256 KiB patch text fail with guidance to narrow the review. Custom instructions are bounded to 64 KiB.
+
+Games passed 760 application tests, three repository tests, the isolated renderer test, and `dev/windows-review-smoke.py`. The native fixture covers compressed-only edits, local dirty source, uncommitted/base/root-commit/custom selection, preserved drafts and no restart replay. Repository tests cover untracked files, size limits and exact comparisons; typed-route tests cover busy/recovery guards. A stale Review reply can no longer resurrect a completed turn. Mac compatibility compile passed (48.43 seconds, nine existing warnings); no Mac tests or GUI ran. Formatting, build policy and five release-policy tests passed.
+
+Tested binary SHA-256: `f89c4f4d81d0c8479d257d8300576a2e4d9371cc510c58e0a8e30b09d441a289`. Native peak: 152,690,688 bytes under the 2 GB fixture watchdog. Receipt: [review-games-2026-10-30.json](benchmarks/review-games-2026-10-30.json). Review-only fixtures used a local provider; no live provider acceptance claimed. Remaining shell/UI/recovery work keeps RC publication blocked.

@@ -2,22 +2,13 @@
 //! uncommitted changes, a base branch, a commit, or custom instructions, like
 //! the TUI's review popup (`tui/src/chatwidget/review_popups.rs`).
 //!
-//! Branches and commits come from Git on the machine that has the thread's
-//! files: through `codex-git-utils` here when the server's files are local,
-//! otherwise through `command/exec` on the server (`thread/shellCommand`
-//! would print into the conversation and returns no output).
+//! Branches and commits come from the embedded repository owner. Source remains
+//! compressed until the bounded review context is prepared off the UI thread.
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-
-use codex_app_server_protocol::ClientRequest;
-use codex_app_server_protocol::CommandExecParams;
-use codex_app_server_protocol::CommandExecResponse;
-use codex_app_server_protocol::ReviewDelivery;
-use codex_app_server_protocol::ReviewStartParams;
-use codex_app_server_protocol::ReviewStartResponse;
-use codex_app_server_protocol::ReviewTarget;
-use codex_git_utils::CommitLogEntry;
+use codex_app_server_protocol::{
+    ClientRequest, ReviewDelivery, ReviewStartParams, ReviewStartResponse, ReviewTarget,
+};
+use fastrock_workspaces::review::{Catalog, Commit as CommitLogEntry};
 
 use super::picker::PickerButton;
 use super::picker::PickerEvent;
@@ -29,23 +20,13 @@ use super::picker::PickerRowView;
 use super::picker::PickerView;
 use crate::app::AppController;
 use crate::app::TabId;
-use crate::app::ThreadPhase;
-use crate::backend::Backend;
 use crate::backend::BackendError;
 use crate::transcript::NoticeKind;
-
-/// Commits offered for a commit review (the TUI's limit).
-const COMMIT_LIMIT: usize = 100;
-/// Bound for each Git command run on the server.
-const SERVER_GIT_TIMEOUT_MS: i64 = 15_000;
-/// `git log` format: sha, committer time, subject, separated by US (0x1f).
-const COMMIT_LOG_FORMAT: &str = "--pretty=format:%H%x1f%ct%x1f%s";
 
 /// The review picker of one thread tab.
 pub(crate) struct ReviewPicker {
     tab_id: TabId,
     thread_id: String,
-    cwd: PathBuf,
     step: ReviewStep,
     /// Text of the step's field: the list filter, or custom instructions.
     text: String,
@@ -106,50 +87,6 @@ const PRESETS: [(ReviewPreset, &str, &str); 4] = [
     ),
 ];
 
-/// Branch names from `git for-each-ref --format=%(refname:short) refs/heads`,
-/// sorted, with the default branch (`main`, else `master`) first, like
-/// `codex_git_utils::local_git_branches`.
-pub(crate) fn parse_branches(output: &str) -> Vec<String> {
-    let mut branches: Vec<String> = output
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .map(str::to_string)
-        .collect();
-    branches.sort_unstable();
-    branches.dedup();
-    if let Some(position) = ["main", "master"]
-        .iter()
-        .find_map(|default| branches.iter().position(|branch| branch == default))
-    {
-        let default = branches.remove(position);
-        branches.insert(0, default);
-    }
-    branches
-}
-
-/// Commits from `git log` with [`COMMIT_LOG_FORMAT`], like
-/// `codex_git_utils::recent_commits`.
-pub(crate) fn parse_commits(output: &str) -> Vec<CommitLogEntry> {
-    output
-        .lines()
-        .filter_map(|line| {
-            let mut parts = line.split('\u{1f}');
-            let sha = parts.next()?.trim();
-            let timestamp = parts.next()?.trim();
-            let subject = parts.next().unwrap_or_default().trim();
-            if sha.is_empty() || timestamp.is_empty() {
-                return None;
-            }
-            Some(CommitLogEntry {
-                sha: sha.to_string(),
-                timestamp: timestamp.parse().unwrap_or(0),
-                subject: subject.to_string(),
-            })
-        })
-        .collect()
-}
-
 /// Case-insensitive substring match of every word of `filter`.
 fn matches_filter(haystack: &str, filter: &str) -> bool {
     let haystack = haystack.to_lowercase();
@@ -199,11 +136,10 @@ fn target_label(target: &ReviewTarget) -> String {
 }
 
 impl ReviewPicker {
-    fn new(tab_id: TabId, thread_id: String, cwd: PathBuf) -> Self {
+    fn new(tab_id: TabId, thread_id: String) -> Self {
         Self {
             tab_id,
             thread_id,
-            cwd,
             step: ReviewStep::Presets,
             text: String::new(),
         }
@@ -265,7 +201,7 @@ impl ReviewPicker {
                             Some(current) => format!(
                                 "Reviews what {current} changed since it split off the branch you pick."
                             ),
-                            None => "HEAD is detached. Reviews what the checked-out commit changed since it split off the branch you pick.".to_string(),
+                            None => "Reviews changes since the shared ancestor with the branch you pick, including current workspace edits.".to_string(),
                         };
                         let rows = filtered_branches(list, &self.text)
                             .into_iter()
@@ -329,9 +265,7 @@ impl ReviewPicker {
                 let (input, list) = filter_list("Filter by message or SHA", rows, empty);
                 PickerView {
                     title: "Review a commit".to_string(),
-                    message: format!(
-                        "The latest {COMMIT_LIMIT} commits of the checked-out branch."
-                    ),
+                    message: "The latest 100 commits reachable from this workspace’s base or local HEAD.".into(),
                     input,
                     list,
                     back_label: "Back".to_string(),
@@ -378,80 +312,6 @@ impl ReviewPicker {
 }
 
 /// Runs `git args` in `cwd` on the server and returns its stdout.
-async fn server_git(backend: &Backend, cwd: PathBuf, args: &[&str]) -> Result<String, String> {
-    let mut command = vec!["git".to_string()];
-    command.extend(args.iter().map(|arg| (*arg).to_string()));
-    let response: CommandExecResponse = backend
-        .request(ClientRequest::OneOffCommandExec {
-            request_id: backend.next_request_id(),
-            params: CommandExecParams {
-                command,
-                process_id: None,
-                tty: false,
-                stream_stdin: false,
-                stream_stdout_stderr: false,
-                output_bytes_cap: None,
-                disable_output_cap: false,
-                disable_timeout: false,
-                timeout_ms: Some(SERVER_GIT_TIMEOUT_MS),
-                cwd: Some(cwd),
-                env: Some(HashMap::from([(
-                    "GIT_OPTIONAL_LOCKS".to_string(),
-                    Some("0".to_string()),
-                )])),
-                size: None,
-                sandbox_policy: None,
-                permission_profile: None,
-            },
-        })
-        .await
-        .map_err(|err| err.user_message())?;
-    if response.exit_code != 0 {
-        let stderr = response.stderr.trim();
-        return Err(if stderr.is_empty() {
-            format!("git exited with status {}", response.exit_code)
-        } else {
-            stderr.lines().next().unwrap_or(stderr).to_string()
-        });
-    }
-    Ok(response.stdout)
-}
-
-async fn load_branches(backend: Backend, cwd: PathBuf, local: bool) -> GitList<BranchList> {
-    if local {
-        let branches = codex_git_utils::local_git_branches(&cwd).await;
-        let current = codex_git_utils::current_branch_name(&cwd).await;
-        return GitList::Ready(BranchList { branches, current });
-    }
-    let branches = match server_git(
-        &backend,
-        cwd.clone(),
-        &["for-each-ref", "--format=%(refname:short)", "refs/heads"],
-    )
-    .await
-    {
-        Ok(output) => parse_branches(&output),
-        Err(error) => return GitList::Failed(error),
-    };
-    let current = server_git(&backend, cwd, &["branch", "--show-current"])
-        .await
-        .ok()
-        .map(|output| output.trim().to_string())
-        .filter(|name| !name.is_empty());
-    GitList::Ready(BranchList { branches, current })
-}
-
-async fn load_commits(backend: Backend, cwd: PathBuf, local: bool) -> GitList<Vec<CommitLogEntry>> {
-    if local {
-        return GitList::Ready(codex_git_utils::recent_commits(&cwd, COMMIT_LIMIT).await);
-    }
-    let limit = COMMIT_LIMIT.to_string();
-    match server_git(&backend, cwd, &["log", "-n", &limit, COMMIT_LOG_FORMAT]).await {
-        Ok(output) => GitList::Ready(parse_commits(&output)),
-        Err(error) => GitList::Failed(error),
-    }
-}
-
 impl AppController {
     /// Opens the review picker for tab `index`. Non-empty `instructions`
     /// (`/review <text>`) start a custom review right away, like the TUI.
@@ -468,10 +328,7 @@ impl AppController {
             self.review_start(tab_id, thread_id, target);
             return;
         }
-        let cwd = thread.cwd.clone();
-        self.picker_open(PickerFlow::Review(ReviewPicker::new(
-            tab_id, thread_id, cwd,
-        )));
+        self.picker_open(PickerFlow::Review(ReviewPicker::new(tab_id, thread_id)));
     }
 
     /// Handles the review picker's events.
@@ -512,12 +369,12 @@ impl AppController {
                     ReviewPreset::Uncommitted => Some(ReviewTarget::UncommittedChanges),
                     ReviewPreset::BaseBranch => {
                         picker.step = ReviewStep::Branches(GitList::Loading);
-                        self.review_load(id, picker.cwd.clone(), *preset);
+                        self.review_load(id, picker.thread_id.clone(), *preset);
                         return PickerOutcome::NewStep;
                     }
                     ReviewPreset::Commit => {
                         picker.step = ReviewStep::Commits(GitList::Loading);
-                        self.review_load(id, picker.cwd.clone(), *preset);
+                        self.review_load(id, picker.thread_id.clone(), *preset);
                         return PickerOutcome::NewStep;
                     }
                     ReviewPreset::Custom => {
@@ -554,18 +411,33 @@ impl AppController {
     }
 
     /// Fetches branches or commits for review picker `id`.
-    fn review_load(&mut self, id: u64, cwd: PathBuf, preset: ReviewPreset) {
-        let local = self.server_files_are_local();
+    fn review_load(&mut self, id: u64, thread_id: String, preset: ReviewPreset) {
         let backend = self.backend.clone();
         self.backend.spawn(async move {
-            let step = match preset {
-                ReviewPreset::BaseBranch => {
-                    ReviewStep::Branches(load_branches(backend, cwd, local).await)
+            let result = backend
+                .goose_request(
+                    "fastrock/review/catalog",
+                    serde_json::json!({"threadId":thread_id}),
+                )
+                .await
+                .and_then(|value| {
+                    serde_json::from_value::<Catalog>(value).map_err(|e| e.to_string())
+                });
+            let step = match (preset, result) {
+                (ReviewPreset::BaseBranch, Ok(catalog)) => {
+                    ReviewStep::Branches(GitList::Ready(BranchList {
+                        branches: catalog.branches,
+                        current: catalog.current,
+                    }))
                 }
-                ReviewPreset::Commit => {
-                    ReviewStep::Commits(load_commits(backend, cwd, local).await)
+                (ReviewPreset::Commit, Ok(catalog)) => {
+                    ReviewStep::Commits(GitList::Ready(catalog.commits))
                 }
-                ReviewPreset::Uncommitted | ReviewPreset::Custom => return,
+                (ReviewPreset::BaseBranch, Err(error)) => {
+                    ReviewStep::Branches(GitList::Failed(error))
+                }
+                (ReviewPreset::Commit, Err(error)) => ReviewStep::Commits(GitList::Failed(error)),
+                _ => return,
             };
             crate::ui_thread::post(move |app| {
                 app.picker_update(id, move |_, flow| {
@@ -614,13 +486,9 @@ impl AppController {
                     return;
                 };
                 match result {
-                    Ok(response) => {
-                        if let Some(thread) = app.thread_tab_mut(index) {
-                            thread.active_turn_id = Some(response.turn.id);
-                            thread.phase = ThreadPhase::Running;
-                        }
-                        app.refresh_tabs();
-                    }
+                    // Turn events can finish before this reply reaches the UI.
+                    // They alone own the running state, just as for normal sends.
+                    Ok(_) => {}
                     Err(err) => app.transcript_push_notice(
                         index,
                         NoticeKind::Error,
@@ -644,7 +512,6 @@ mod tests {
         ReviewPicker {
             tab_id: 1,
             thread_id: "t".to_string(),
-            cwd: PathBuf::from("/repo"),
             step,
             text: text.to_string(),
         }
@@ -656,28 +523,6 @@ mod tests {
             timestamp: 100,
             subject: subject.to_string(),
         }
-    }
-
-    #[test]
-    fn branches_are_sorted_with_the_default_branch_first() {
-        assert_eq!(
-            parse_branches("zeta\nfeature/x\n\nmain\n  dev  \n"),
-            vec!["main", "dev", "feature/x", "zeta"]
-        );
-        assert_eq!(parse_branches("b\nmaster\na\n"), vec!["master", "a", "b"]);
-        assert_eq!(parse_branches(""), Vec::<String>::new());
-    }
-
-    #[test]
-    fn commits_parse_the_log_format() {
-        let output =
-            "abc123\u{1f}1700000000\u{1f}Fix auth\ndef456\u{1f}1600000000\u{1f}\nbroken line\n";
-        let commits = parse_commits(output);
-        assert_eq!(commits.len(), 2);
-        assert_eq!(commits[0].sha, "abc123");
-        assert_eq!(commits[0].timestamp, 1_700_000_000);
-        assert_eq!(commits[0].subject, "Fix auth");
-        assert_eq!(commits[1].subject, "");
     }
 
     #[test]

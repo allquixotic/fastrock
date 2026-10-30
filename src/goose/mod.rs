@@ -21,6 +21,7 @@ pub(crate) mod recipe_controls;
 mod recipe_storage;
 mod recipes;
 mod recovery_history;
+mod review;
 mod schedule;
 pub(crate) use queue::Recovery;
 mod effort_controls;
@@ -572,6 +573,8 @@ impl Adapter {
             "thread/turns/list" | "thread/items/list" => self.history(params, method).await,
             "fastrock/history/window" => self.history_window(params).await,
             "turn/start" => self.start_turn(params).await,
+            "review/start" => self.review_request(params, true).await,
+            "fastrock/review/catalog" => self.review_request(params, false).await,
             "turn/interrupt" => {
                 let id = session_id(text(params, "threadId"))?;
                 self.interrupt_tree(id).await?;

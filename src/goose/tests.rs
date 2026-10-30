@@ -54,6 +54,89 @@ async fn new(client: &AppServerClient, cwd: &std::path::Path) -> String {
         .to_owned()
 }
 #[tokio::test]
+async fn v72_typed_review_routes_and_busy_guards() {
+    use codex_app_server_protocol::{
+        ClientRequest, RequestId, ReviewDelivery, ReviewStartParams, ReviewStartResponse,
+        ReviewTarget,
+    };
+    let (mut client, temp) = fixture().await;
+    let id = new(&client, temp.path()).await;
+    let request = serde_json::to_value(ClientRequest::ReviewStart {
+        request_id: RequestId::String("review".into()),
+        params: ReviewStartParams {
+            thread_id: id.clone(),
+            target: ReviewTarget::Custom {
+                instructions: "Review fixture authentication".into(),
+            },
+            delivery: Some(ReviewDelivery::Inline),
+        },
+    })
+    .unwrap();
+    assert!(
+        call(
+            &client,
+            "review/start",
+            json!({"threadId":id,"target":{"type":"custom","instructions":""}})
+        )
+        .await
+        .is_err()
+    );
+    assert!(call(&client, "review/start", json!({"threadId":id,"delivery":"detached","target":{"type":"custom","instructions":"Review"}})).await.is_err());
+    send(&client, &id, "hold busy review").await;
+    assert!(
+        call(
+            &client,
+            request["method"].as_str().unwrap(),
+            request["params"].clone()
+        )
+        .await
+        .unwrap_err()
+        .message
+        .contains("current turn")
+    );
+    call(&client, "turn/interrupt", json!({"threadId":id}))
+        .await
+        .unwrap();
+    loop {
+        if let AppServerEvent::ServerNotification(n) = event(&mut client).await {
+            if matches!(
+                *n,
+                codex_app_server_protocol::ServerNotification::TurnCompleted(_)
+            ) {
+                break;
+            }
+        }
+    }
+    assert!(
+        call(
+            &client,
+            request["method"].as_str().unwrap(),
+            request["params"].clone()
+        )
+        .await
+        .unwrap_err()
+        .message
+        .contains("paused")
+    );
+    call(
+        &client,
+        "fastrock/goose/resumeQueue",
+        json!({"threadId":id}),
+    )
+    .await
+    .unwrap();
+    let result = call(
+        &client,
+        request["method"].as_str().unwrap(),
+        request["params"].clone(),
+    )
+    .await
+    .unwrap();
+    let result: ReviewStartResponse = serde_json::from_value(result).unwrap();
+    assert_eq!(result.review_thread_id, id);
+    client.shutdown().await.unwrap();
+}
+#[tokio::test]
 async fn v69_native_typed_rename_reaches_public_goose_api() {
     use codex_app_server_protocol::{
         ClientRequest, RequestId, ThreadSetNameParams, ThreadSetNameResponse,
