@@ -158,14 +158,20 @@ impl AppController {
             "save" => state.invoke_save_setup(),
             "reload" => state.invoke_load_setup(),
             "choose" => state.invoke_choose(arg(1).into(), arg(2).into()),
+            "save-effort" => state.invoke_save_effort_default(false),
+            "custom-model" => state.set_custom_model(arg(1).into()),
+            "clear-effort" => state.invoke_save_effort_default(true),
             "dump" => {
                 let value = serde_json::json!({"loaded":state.get_setup_loaded(), "busy":state.get_setup_loading(),
                     "provider":state.get_setup_provider(), "model":state.get_setup_model().as_str(),
                     "fields":state.get_setup_fields().iter().map(|field| (field.key.to_string(), field.value.to_string())).collect::<std::collections::BTreeMap<_,_>>(),
                     "status":state.get_setup_status().as_str(),
                     "sessionError":state.get_error().as_str(),
+                    "effortStatus":state.get_effort_status().as_str(),
+                    "sessionChanging":state.get_changing(),
                     "threadError":self.active_thread_index().and_then(|i|self.thread_tab(i)).and_then(|t|t.last_error.as_deref()),
                     "sessionOptions":state.get_options().iter().map(|option| serde_json::json!({"id":option.id.as_str(),
+                        "current":option.values.row_data(option.selected as usize).map(|v|v.to_string()),
                         "values":option.values.iter().map(|v|v.to_string()).collect::<Vec<_>>()})).collect::<Vec<_>>()});
                 let path = std::path::PathBuf::from(arg(1));
                 self.backend.spawn(async move {

@@ -13,6 +13,8 @@ pub(crate) mod profiles;
 mod queue;
 mod schedule;
 pub(crate) use queue::Recovery;
+mod effort_controls;
+mod effort_defaults;
 mod rpc;
 mod sessions;
 mod summary_service;
@@ -578,6 +580,7 @@ impl Adapter {
                 };
                 Ok(json!({"configOptions":options,"busy":s.active.is_some()}))
             }
+            "fastrock/goose/saveEffortDefault" => self.save_effort_default(params).await,
             "fastrock/goose/setConfig" => {
                 let id = session_id(text(params, "threadId"))?;
                 let gate = self.gate(id).await;

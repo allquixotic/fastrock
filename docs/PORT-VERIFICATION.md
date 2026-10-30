@@ -1315,6 +1315,34 @@ Remaining T3 auxiliary UI parity, saved profile effort defaults, upstream AWS
 profile isolation limits and live required-route acceptance remain recorded as
 open. No release tag or binary publication.
 
+## 0.4.0 saved effort defaults and explicit model IDs — 2026-10-30
+
+Native Goose options can save/clear the selected effort for the resolved provider
+and model through Goose's public non-secret configuration API. This includes
+named profiles. Defaults apply to new conversations and explicit provider/model
+switches only when the session advertises the stored choice. Restoration and
+fork loading keep their persisted settings. A native model-ID field uses
+unchanged Goose's supported model-switch API, accepting exact IDs independently
+of incomplete provider catalogs; provider scope and effort validation remain.
+
+The native local-Bedrock fixture verified Save/Clear controls, separate model
+defaults, new-chat inheritance, explicit conversation override, custom Opus
+switch-back, refusal of unsupported effort, restart preservation, and scoped
+clear. Actual US cross-region Opus fixture requests carried low/high effort in
+`additionalModelRequestFields.output_config`, preserving the exact encoded model
+ID. Original credentials and unrelated Goose settings remained unchanged.
+Receipt: `docs/benchmarks/effort-games-2026-10-30.json`; evidence:
+`C:\Users\SeanMcNamara\fastrock-040-policy\effort-native-3`.
+Executable SHA-256:
+`158a6e992eed3d54704cf2faf7cf9ea4dd039ade1225cfc97db697368d952269`.
+
+Windows passed 729 application tests, native renderer and standalone embedded
+Goose fixture. Native named-profile concurrent endpoints, credentials, rotation,
+moved-app recovery, and provider default/scope/history-preservation regressions
+passed. Mac compilation, formatting/build-policy and diff checks passed; no Mac
+execution. Live user-profile validation remains separate; no real provider or
+Rally calls, release tag or binary publication.
+
 ## 0.4.0 native command palette and database handoff — 2026-10-30
 
 The native Slint palette opens from the sidebar, View menu or configurable

@@ -22,6 +22,11 @@ export global GooseState {
     in property <string> summary: "Goose";
     in property <string> error;
     callback choose(id: string, value: string);
+    in property <bool> effort-available;
+    in property <string> effort-context;
+    in property <string> effort-status;
+    callback save-effort-default(clear: bool);
+    in-out property <string> custom-model;
     in-out property <string> cheap-name: "Bedrock Luna";
     in-out property <string> cheap-model: "openai.gpt-6-luna";
     in-out property <int> cheap-provider;
@@ -71,7 +76,7 @@ export component GooseControls inherits Rectangle {
             clicked => { root.expanded = !root.expanded; }
         }
         if root.expanded: ScrollView {
-            height: min(180px, GooseState.options.length * 38px + 36px);
+            height: min(320px, GooseState.options.length * 38px + 148px);
             VerticalLayout {
                 spacing: Theme.pad-s;
                 for option in GooseState.options: HorizontalLayout {
@@ -84,6 +89,15 @@ export component GooseControls inherits Rectangle {
                         selected(value) => { GooseState.choose(option.id, option.values[self.current-index]); }
                     }
                 }
+                HorizontalLayout {
+                    LineEdit { text <=> GooseState.custom-model; placeholder-text: "Exact model or inference profile ID"; enabled: !GooseState.busy && !GooseState.changing; }
+                    FlatButton { text: "Use model ID"; enabled: !GooseState.busy && !GooseState.changing && GooseState.custom-model != ""; clicked => { GooseState.choose("model", GooseState.custom-model); } }
+                }
+                HorizontalLayout {
+                    FlatButton { text: "Save effort default"; enabled: GooseState.effort-available && !GooseState.busy && !GooseState.changing; clicked => { GooseState.save-effort-default(false); } }
+                    FlatButton { text: "Clear effort default"; enabled: !GooseState.busy && !GooseState.changing; clicked => { GooseState.save-effort-default(true); } }
+                }
+                if GooseState.effort-status != "": Text { text: GooseState.effort-status; color: Theme.text-muted; wrap: word-wrap; }
                 Text { text: "Goose controls tool permissions; ACP does not provide an OS sandbox."; color: Theme.text-faint; wrap: word-wrap; font-size: Theme.font-size-small; }
             }
         }
@@ -102,6 +116,7 @@ export component GooseSettingsPage inherits Rectangle {
             Text { text: "Goose"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; }
             Text { text: "Goose runs inside Fastrock. Your existing Goose provider settings, credentials, extensions and conversations remain in place."; color: Theme.text; wrap: word-wrap; }
             Text { text: "Open a conversation and expand Goose options above its Send button to select the provider, model, mode, and thinking effort offered by Goose for that session."; color: Theme.text; wrap: word-wrap; }
+            Text { text: "Save effort default in those options remembers the current choice for that provider and model, including named profiles. New conversations and explicit provider/model switches use it when Goose offers that value. Restored conversations and forks retain their own settings. Clear effort default restores Goose's default for future selections."; color: Theme.text-muted; wrap: word-wrap; }
             FlatButton { text: "Provider defaults"; clicked => { root.defaults-open = !root.defaults-open; } }
             if root.defaults-open: VerticalLayout {
                 spacing: Theme.pad-m;

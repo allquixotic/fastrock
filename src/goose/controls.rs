@@ -6,6 +6,7 @@ use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 impl AppController {
     pub(crate) fn goose_controls_install(&mut self) {
         self.goose_setup_install();
+        self.effort_controls_install();
         self.profiles_install();
         self.schedules_install();
         self.window
@@ -94,6 +95,25 @@ impl AppController {
         } else {
             format!("Goose · {model}").into()
         });
+        let provider = options
+            .into_iter()
+            .flatten()
+            .find(|o| o["id"] == "provider")
+            .map(|o| super::text(o, "currentValue"))
+            .unwrap_or("");
+        let context = format!(
+            "{}\n{provider}\n{model}",
+            thread.and_then(|t| t.thread_id.as_deref()).unwrap_or("")
+        );
+        if state.get_effort_context() != context {
+            state.set_effort_context(context.into());
+            state.set_effort_status("".into());
+            state.set_custom_model(model.into());
+        }
+        state.set_effort_available(
+            rows.iter()
+                .any(|r| r.id == "thinking_effort" && r.selected >= 0),
+        );
         state.set_options(ModelRc::new(VecModel::from(rows)));
     }
     fn goose_choose(&mut self, config_id: String, value: String) {

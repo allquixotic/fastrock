@@ -108,7 +108,7 @@ V37: Conversation selection ! accept drags beginning in adjacent horizontal padd
 
 0.4.0 overrides conflicting historical transport/storage/build/summary/distribution clauses in V7/V8/V15/V16/V22/V26–V30/V33–V35. Other correctness and attribution requirements remain.
 V38: Core ! one process, unmodified pinned Goose/public APIs plus vwork; no external Goose/Codex/vwork dependency or loopback core-service hop. Configured tool/extension/hook/credential subprocesses allowed. Verify: embedded backend/provider/extension fixtures and process-tree smoke.
-V39: Required Bedrock Runtime Sol/Luna and US cross-region Bedrock Opus routes ! preserve configured IDs/endpoints/auth; effort values ! Goose-supported/custom-public-API only; profiles ! isolated concurrently; no secret logging. Verify: route/request-body/stream/tool/cancel/resume fixtures, controlled working-profile smoke.
+V39: Required Bedrock Runtime Sol/Luna and US cross-region Bedrock Opus routes ! preserve configured IDs/endpoints/auth; explicit model IDs ! accepted through public Goose model-switch API independent of catalog coverage; effort values ! Goose-supported/custom-public-API only; profiles ! isolated concurrently; no secret logging. Verify: route/request-body/stream/tool/cancel/resume fixtures, explicit-model/default-effort fixture, controlled working-profile smoke.
 V40: Vwork ! single embedded Engine, completed database close before next owner opens, preserved source compression/revision/lease/compaction behavior. Summary ! same redb, atomic replace by monotonically newer completed turn; no summary history or secret material. Verify: embedded store reopen/conflict/summary-replacement/stale-generation tests and v40_reopen_waits_until_previous_owner_has_closed.
 V41: Orchestration ! durable queues/lineage/messages/schedules, isolated child workspaces, explicit merge; restart ! awaiting Resume, uncertain tools ! never automatically replay. No quota feature. Verify: orchestration lifecycle/crash recovery/delegation/schedule fixtures.
 V42: T3 visual/interaction parity ! native Slint; project ! repository with workspace-bound chats; Rally project ! permanent, independent closable docs/boards, no conversation context. Last closed Rally document ! release retained row/card/editor/assistant models. Rally assistant ! temporary/on-demand/human Apply. Web previews ! system browser. Verify: native games UI fixtures plus Rally inventory.
@@ -192,7 +192,7 @@ T33|x|Shared localhost vwork MCP, database-level compaction, actual Goose/games 
 T34|x|Widen text selection hit areas, selectable tool/command details, Windows interaction/scroll checks, Mac compile and signed Fastrock 0.3.4; no vwork changes|V9,V15,V23,V32,V37,I.distribution
 T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only release policy; policy audit passed, games ReleasePolicy 3 passed/1 Apple-only skipped|V46,I.distribution
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
-T37|~|Embedded Goose; remove Codex UI/connection; native provider defaults and creation/restore/switch scope guards; preserve configuration; native named direct-provider profiles via public command-auth/vault integration verified; AWS isolation R7, saved profile effort defaults and acceptance remain open|V38,V39,V52,V57,V59,I.goose
+T37|~|Embedded Goose; remove Codex UI/connection; native defaults and creation/restore/switch scope guards; preserve configuration; named profiles via public command-auth/vault, saved effort defaults and explicit model IDs verified; AWS isolation R7 and remaining acceptance open|V38,V39,V52,V57,V59,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
 T39|~|Port T3 V2 orchestration; isolated forks/delegation and native timed schedules verified; signed native webhook scheduling implemented; remaining coordination acceptance open; no quotas|V41,V50,V55,V56,V58,I.orchestration
 T40|~|Native T3 main UI/sidebar/panels, repository projects, independent Rally project, schedule/webhook and provider editors; native command palette verified; auxiliary UI parity remains open|V42,V51,V60,I.questions,I.links
@@ -204,7 +204,7 @@ T45|x|In-process Rally windows and scoped UI/backend routing|V38,V42,V47,V48
 T46|x|Native command palette with bounded matching, keyboard/pointer navigation and retained drafts|V42,V60
 T47|.|Native interactive terminal panels with isolated user-requested processes, bounded scrollback and lifecycle checks|V38,V42,V43,V47
 T48|.|Conversation checkpoint/review/restore workflows over guarded vwork revisions|V40,V41,V42,V49
-T49|.|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
+T49|x|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
 T50|.|Complete native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42
 T51|.|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44
 
@@ -463,3 +463,7 @@ B145|2026-10-30|Palette used only sidebar snapshots, omitting current title of u
 B146|2026-10-30|Native palette fixture read selection before injected arrow event reached UI loop|Yield after key dispatch before snapshot; fixture correction; V60
 
 B147|2026-10-30|Weak store owner expired before Engine destructor released redb file lock; overlapping reopen failed|Per-home ownership slot waits for explicit completed close; deterministic failure reproduced before fix, passes after; V40
+
+B148|2026-10-30|Fastrock treated Goose model catalog as allowlist; custom Opus ID vanished after switching models|Use public Goose model-switch API for bounded explicit IDs; native model field and switch-back regression; effort/provider constraints retained; V39
+
+B149|2026-10-30|Effort fixture compared raw model URL with unescaped ID; AWS correctly encoded colon|Decode fixture path before exact ID comparison; verify low/high effort in actual request bodies; V39

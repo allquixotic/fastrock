@@ -3,6 +3,12 @@
 The 0.4.0 development build embeds Goose and vwork; no separate installation is
 needed. Existing Goose settings and OS-vault credentials remain in place. Expand
 **Goose options** above Send for the model, mode and effort choices Goose exposes.
+Use **Use model ID** for an exact model or Bedrock inference-profile ID absent
+from the catalog. **Save effort default** remembers the current effort for that
+provider and model, including named profiles. New chats and explicit model or
+provider switches use it when Goose offers that value. Restored chats and forks
+retain their own settings. **Clear effort default** affects future selections;
+it leaves the current chat's effort unchanged.
 See [runtime status and current limitations](goose-acp.md). Settings → Goose
 provides provider defaults, named direct-provider profiles with OS-vault keys,
 and the cheap-model selection for search summaries.

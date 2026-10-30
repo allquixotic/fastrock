@@ -161,6 +161,7 @@ impl Adapter {
                 self.set_config(id, "model", &json!(model)).await?;
             }
         }
+        self.apply_effort_default(id).await?;
         let result = self
             .sessions
             .lock()
@@ -405,6 +406,16 @@ impl Adapter {
     }
 
     pub(super) async fn set_config(&self, id: &str, config_id: &str, value: &Value) -> Reply {
+        let result = self.set_config_raw(id, config_id, value).await?;
+        if matches!(config_id, "provider" | "model") {
+            if let Some(updated) = self.apply_effort_default(id).await? {
+                return Ok(updated);
+            }
+        }
+        Ok(result)
+    }
+
+    pub(super) async fn set_config_raw(&self, id: &str, config_id: &str, value: &Value) -> Reply {
         if self.embedded_runtime && config_id == "provider" {
             let requested = value.as_str().ok_or_else(|| error("Choose a provider"))?;
             super::provider_policy::selected(Some(requested.to_owned()))
@@ -421,7 +432,13 @@ impl Adapter {
                 .iter()
                 .find(|o| o["id"] == config_id)
                 .ok_or_else(|| unsupported(config_id))?;
-            if !option_values(option).iter().any(|o| o["value"] == *value) {
+            if self.embedded_runtime && config_id == "model" {
+                if !valid_model_id(value) {
+                    return Err(error(
+                        "Enter a model ID of at most 1024 bytes without control characters",
+                    ));
+                }
+            } else if !option_values(option).iter().any(|o| o["value"] == *value) {
                 return Err(error(format!(
                     "Goose has not offered this {config_id} value for this session"
                 )));
@@ -733,6 +750,12 @@ impl Adapter {
         self.pause_closed_queue(id).await?;
         Ok(json!({"status":"unsubscribed"}))
     }
+}
+
+pub(super) fn valid_model_id(value: &Value) -> bool {
+    value.as_str().is_some_and(|id| {
+        !id.is_empty() && id.len() <= 1024 && id.trim() == id && !id.chars().any(char::is_control)
+    })
 }
 
 pub(super) fn config_options(response: &Value) -> Vec<Value> {
