@@ -25,8 +25,6 @@ use codex_app_server_protocol::ClientRequest;
 use codex_app_server_protocol::JSONRPCErrorError;
 use codex_app_server_protocol::RequestId;
 use codex_app_server_protocol::ServerNotification;
-use codex_app_server_protocol::ThreadUnsubscribeParams;
-use codex_app_server_protocol::ThreadUnsubscribeResponse;
 use serde::de::DeserializeOwned;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -42,8 +40,6 @@ use crate::ui_thread;
 const FRAME: Duration = Duration::from_millis(16);
 /// Flush early when a batch grows this large so one invoke stays cheap.
 const MAX_BATCH_EVENTS: usize = 1024;
-/// Total budget for unsubscribing threads during shutdown.
-const UNSUBSCRIBE_BUDGET: Duration = Duration::from_secs(2);
 
 /// Error returned by [`Backend::request`].
 #[derive(Debug, thiserror::Error)]
@@ -681,32 +677,10 @@ impl Pump<'_> {
         }
     }
 
-    /// Unsubscribes `thread_ids` and stops the client. Process services
-    /// (telemetry and the log writer) are left to the caller.
-    async fn stop(&mut self, thread_ids: Vec<String>) {
+    /// Goose shutdown owns cancellation and preserves open temporary chats.
+    /// Explicit tab-close remains the only discard request.
+    async fn stop(&mut self, _thread_ids: Vec<String>) {
         if let Some(client) = self.client.take() {
-            let handle = client.request_handle();
-            let unsubscribe_all = async {
-                for (index, thread_id) in thread_ids.into_iter().enumerate() {
-                    let result = handle
-                        .request_typed::<ThreadUnsubscribeResponse>(
-                            ClientRequest::ThreadUnsubscribe {
-                                request_id: RequestId::String(format!("gui-shutdown-{index}")),
-                                params: ThreadUnsubscribeParams { thread_id },
-                            },
-                        )
-                        .await;
-                    if let Err(err) = result {
-                        tracing::warn!(%err, "thread/unsubscribe failed during shutdown");
-                    }
-                }
-            };
-            if tokio::time::timeout(UNSUBSCRIBE_BUDGET, unsubscribe_all)
-                .await
-                .is_err()
-            {
-                tracing::warn!("timed out unsubscribing threads during shutdown");
-            }
             if let Err(err) = client.shutdown().await {
                 tracing::warn!(%err, "failed to shut down embedded Goose runtime");
             }

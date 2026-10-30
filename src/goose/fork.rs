@@ -16,6 +16,7 @@ impl Adapter {
         if !self.embedded_runtime {
             return Err(unsupported("Fork requires embedded Goose"));
         }
+        let side = params["ephemeral"] == true && delegation.is_none();
         let source_id = session_id(text(params, "threadId"))?;
         self.load_session(&json!({"threadId":ui_id(source_id)}), false)
             .await?;
@@ -46,12 +47,12 @@ impl Adapter {
                 return Ok(json!({"thread":{"id":ui_id(child)},"reused":true}));
             }
         }
-        let (binding, before) = {
+        let (binding, before, parent_active) = {
             let mut sessions = self.sessions.lock().await;
             let source = sessions
                 .get_mut(source_id)
                 .ok_or_else(|| error("Source conversation unavailable"))?;
-            if source.ephemeral || (delegation.is_none() && source.active.is_some()) {
+            if source.ephemeral || (!side && delegation.is_none() && source.active.is_some()) {
                 return Err(error(
                     "Finish the current turn before forking a persistent conversation",
                 ));
@@ -82,15 +83,23 @@ impl Adapter {
             } else {
                 None
             };
-            (source.binding.clone(), before)
+            (source.binding.clone(), before, source.active.is_some())
         };
-        let workspace = binding.workspace.ok_or_else(||error("Open a conversation from a virtual workspace before forking; this conversation has no workspace binding"))?;
+        let workspace = binding.workspace;
+        if workspace.is_none() && !side {
+            return Err(error(
+                "Open a conversation from a virtual workspace before forking; this conversation has no workspace binding",
+            ));
+        }
         // Validate all persisted inputs before creating a workspace or conversation.
         let bindings_path = self.queue_path(source_id).with_extension("vwork.json");
         let mut bindings: Vec<McpBinding> = read_saved(&bindings_path, 1024 * 1024)
             .await?
-            .ok_or_else(|| error("Source conversation has no saved workspace tools"))?;
-        let tools: Option<Vec<Value>> = read_saved(
+            .unwrap_or_default();
+        if workspace.is_some() && bindings.is_empty() {
+            return Err(error("Source conversation has no saved workspace tools"));
+        }
+        let mut tools: Option<Vec<Value>> = read_saved(
             &self.queue_path(source_id).with_extension("tools.json"),
             8 * 1024 * 1024,
         )
@@ -105,6 +114,20 @@ impl Adapter {
         if delegation.is_some() {
             // Never copy a pending tool invocation into another conversation.
             source.conversation = None;
+        }
+        if side {
+            let unbound: Vec<_> = bindings
+                .iter()
+                .filter(|b| b.workspace.is_none())
+                .map(|b| b.name.clone())
+                .collect();
+            bindings.retain(|b| b.workspace.is_some());
+            super::side::reference_configuration(&mut source, &unbound)
+                .map_err(|e| error(e.to_string()))?;
+            super::side::reference_history(&mut source, parent_active);
+            if let Some(tools) = &mut tools {
+                super::side::filter_tools(tools);
+            }
         }
         if let Some(message) = &before {
             if !source
@@ -152,7 +175,9 @@ impl Adapter {
                 forks.insert(key, child_name.clone());
                 child_name.clone()
             };
-            if home == workspace.selection.home && parent == workspace.selection.workspace {
+            if workspace.as_ref().is_some_and(|workspace| {
+                home == workspace.selection.home && parent == workspace.selection.workspace
+            }) {
                 primary = Some(
                     Selection {
                         home,
@@ -165,35 +190,62 @@ impl Adapter {
             }
             binding.workspace = Some(child);
         }
-        let child_workspace = primary
-            .ok_or_else(|| error("Source workspace binding does not match its saved tools"))?;
-        let child = super::fork_storage::copy_hidden(
-            &manager,
-            source,
-            child_workspace.cwd.clone(),
-            before.as_deref(),
-        )
-        .await
-        .map_err(|e| {
-            error(format!(
-                "Fork conversation: {e:#}. The isolated workspace was retained for recovery"
-            ))
-        })?;
-        manager
-            .set_system_prompt_extra(
-                &child,
-                "fastrock-workspace",
-                Some(super::workspace::instructions(&child_workspace)),
-            )
+        if workspace.is_some() && primary.is_none() {
+            return Err(error(
+                "Source workspace binding does not match its saved tools",
+            ));
+        }
+        let cwd = match &primary {
+            Some(workspace) => workspace.cwd.clone(),
+            None => {
+                let cwd = self
+                    .queue_root
+                    .join("side-workdirs")
+                    .join(uuid::Uuid::new_v4().to_string());
+                tokio::fs::create_dir_all(&cwd)
+                    .await
+                    .map_err(|e| error(format!("Create side directory: {e}")))?;
+                tokio::fs::canonicalize(cwd)
+                    .await
+                    .map_err(|e| error(e.to_string()))?
+            }
+        };
+        let reference_cwd = source.working_dir.clone();
+        let child = super::fork_storage::copy_hidden(&manager, source, cwd, before.as_deref())
             .await
-            .map_err(|_| error("Could not save child workspace instructions"))?;
+            .map_err(|e| {
+                error(format!(
+                    "Fork conversation: {e:#}. The isolated workspace was retained for recovery"
+                ))
+            })?;
+        if let Some(workspace) = &primary {
+            manager
+                .set_system_prompt_extra(
+                    &child,
+                    "fastrock-workspace",
+                    Some(super::workspace::instructions(workspace)),
+                )
+                .await
+                .map_err(|_| error("Could not save child workspace instructions"))?;
+        }
+        if side {
+            if primary.is_none() {
+                manager.set_system_prompt_extra(&child, "fastrock-side-reference", Some(format!(
+                    "The parent conversation worked in {}. Treat that directory as reference only; your own current directory is isolated. Do not change parent files without an explicit request in this side chat.", reference_cwd.display()
+                ))).await.map_err(|e|error(e.to_string()))?;
+            }
+            super::side::prepare(&manager, &child)
+                .await
+                .map_err(|e| error(format!("Prepare side boundary: {e:#}")))?;
+        }
         self.save_vwork_bindings(&child, &bindings)?;
         self.save_binding_record(
             &child,
             &super::workspace::BindingRecord {
-                workspace: Some(child_workspace),
+                workspace: primary,
                 forked_from: delegation.is_none().then(|| source_id.into()),
                 delegation: delegation.clone(),
+                side,
             },
         )?;
         if let Some(tools) = tools {
@@ -217,13 +269,15 @@ impl Adapter {
             self.save_delegation_index(source_id, &task.task_id, &child)
                 .await?;
         }
-        // Only a completely bound fork can become visible after a crash.
-        manager
-            .update(&child)
-            .session_type(SessionType::User)
-            .apply()
-            .await
-            .map_err(|_| error("Fork saved but could not be made visible"))?;
+        // Open side chats remain hidden but durable for restart recovery.
+        if !side {
+            manager
+                .update(&child)
+                .session_type(SessionType::User)
+                .apply()
+                .await
+                .map_err(|_| error("Fork saved but could not be made visible"))?;
+        }
         let result = self
             .load_session(&json!({"threadId":ui_id(&child)}), true)
             .await?;

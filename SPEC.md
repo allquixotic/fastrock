@@ -174,6 +174,10 @@ V72: Native Review ! in-process repository catalog and bounded exact-target patc
 V73: Explicit ! commands ! owned bounded-output process, unchanged Goose public storage, durable intent before spawn, no provider call for execution. Busy/recovery ! reject; Stop/Quit ! stop descendants and retain uncertain evidence; restart ! never replay. Compressed source ! renewable temporary lease and preserved recovery edits, no implicit import. Verify: v73 output/process tests and dev/windows-shell-smoke.py.
 
 
+V74: Deletion ! reserve a higher hidden Goose ID before removing history; later sessions never inherit retained bindings through ID reuse. Verify: v74_deleted_highest_id_cannot_reuse_retained_bindings.
+
+V75: Side chats ! hidden recoverable Goose sessions, isolated workspace/directory, inherited history reference only with a persisted agent-only boundary before load; exclude unfinished inherited turn and app delegation tools. Quit/restart ! preserve open chat/draft and require Resume; explicit close ! discard history. Boundary injection ! idempotent exact control message only. Verify: v75 storage/boundary/recovery tests and dev/windows-side-smoke.py.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -240,7 +244,7 @@ T51|~|Resolve summary timeout evidence and complete T3 interaction/visual accept
 T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch controls and persisted ordering|V42,V67,V68
 T53|.|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48
 T54|.|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63
-T55|.|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63
+T55|x|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63,V74,V75
 T56|~|Native queue start/reorder, compressed-source mentions, in-process Review and explicit owned shell commands verified; remaining visible typed-route audit open|V38,V40,V41,V42,V70,V71,V72,V73
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
@@ -287,6 +291,8 @@ Review verification, 2026-10-30: games 760 application tests, three repository-r
 
 Shell verification, 2026-10-30: games 762 application tests, isolated renderer, native !command fixture and interactive-terminal regression passed. Quoted shell syntax/exit codes, timeout/Stop, bounded output, retained rejected drafts, public Goose history/next-turn context, vwork recovery edits and Stop/Quit/forced-crash descendant cleanup verified. Restart never replayed commands; execution made no model request. Mac compile only passed; formatting/build/release policy checks passed. SHA-256 `ba7fda5fa5757a02d7bbb5b2f247bdae37356a72d6d43a27ec62f23f0ed86844`; peak 143,089,664 bytes. Receipt `docs/benchmarks/shell-games-2026-10-30.json`. No release tag.
 
+
+Side-chat verification, 2026-10-30: games 765 application tests, isolated renderer, native side fixture, delegation and shell regressions passed. Parent streaming, reference boundary, isolated vwork edit, hidden storage, excluded delegation, ordinary isolated directory, draft/Quit/crash recovery, explicit discard and safe ID reservation verified. Mac compile only and static checks passed. SHA-256 `9002f7fe367e2e170caa4f63a84f0b1abbf734174e95f86306da6624e17fe8d7`; peak 153,800,704 bytes; receipt `docs/benchmarks/side-games-2026-10-30.json`. T55 complete; original-window recovery and full acceptance remain open. No release tag.
 
 ## §B BUGS
 id|date|cause|fix
@@ -617,3 +623,12 @@ B202|2026-10-30|Legacy Review response unconditionally set Running after asynchr
 
 B203|2026-10-30|Native !command submitted unsupported thread/shellCommand and named Codex in confirmation|Connect explicit owned shell, public Goose history, durable recovery and bounded output; V38,V41,V61,V73
 B204|2026-10-30|Portable PTY CRT argument escaping corrupted cmd.exe inner quotes; child command failed before Stop fixture could find Resume|Direct raw shell launch, Windows suspended start then job assignment before resume; retain PTY only for interactive terminal; V61,V73
+
+B205|2026-10-30|Public Goose ID allocator uses daily maximum; deleting its highest session permits ID reuse against retained Fastrock state|Reserve higher empty hidden ID before public deletion; V74
+B206|2026-10-30|Side forks ignored ephemeral flag and boundary route; restart discarded side state and pending first questions|Hidden isolated side storage, persisted boundary, safe recovery and retained failed input; V75
+
+B207|2026-10-30|Side fork inherited parent goal/TODO and unbound vwork/app MCP routes; failed retry could create an ordinary conversation|Clear active goal/TODO via public state API, retain only isolated vwork bindings, retry canonical side fork; V75
+
+B208|2026-10-30|Side native fixture requested hold prompts with nonstreaming provider config|Enable fixture streaming for cancellation/crash checks; V75
+
+B209|2026-10-30|Bedrock merges adjacent hidden boundary and user question; fixture interpreted their combined text as its command|Ignore exact control-message block only in fixture command parser; assert full provider body preserves boundary; V75

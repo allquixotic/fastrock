@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "binary_sha256": "9002f7fe367e2e170caa4f63a84f0b1abbf734174e95f86306da6624e17fe8d7",
+  "peak_process_bytes": 153800704,
+  "native_side_while_parent_running": true,
+  "hidden_reference_boundary": true,
+  "isolated_virtual_workspace": true,
+  "app_delegation_excluded": true,
+  "original_source_unchanged": true,
+  "quit_and_crash_recovery": true,
+  "draft_preserved": true,
+  "explicit_close_discards": true,
+  "no_id_reuse": true,
+  "ordinary_side_directory_isolated": true,
+  "no_restart_replay": true
+}

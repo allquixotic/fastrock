@@ -107,7 +107,10 @@ impl Adapter {
                 .get(&id)
                 .filter(|s| s.loaded)
                 .ok_or_else(|| error("Open the conversation before sending queued messages"))?;
-            if session.active.is_some() || session.ephemeral || session.recovery_only {
+            if session.active.is_some()
+                || (session.ephemeral && !session.binding.side)
+                || session.recovery_only
+            {
                 return Err(error(
                     "Wait for this conversation to become idle and resolve any uncertain tools in Checkpoints before resuming",
                 ));

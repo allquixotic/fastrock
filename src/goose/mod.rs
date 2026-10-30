@@ -12,6 +12,7 @@ mod delegation_tools;
 mod embedded;
 mod history;
 mod hooks;
+mod id_reservation;
 mod mcp;
 mod model;
 mod profile_controls;
@@ -29,6 +30,7 @@ mod effort_defaults;
 mod rpc;
 mod sessions;
 mod shell;
+mod side;
 mod summary_service;
 
 pub(crate) fn summary_diagnostic() -> String {
@@ -522,8 +524,10 @@ impl Adapter {
                 let schedule_error = self.pause_schedules().await.err();
                 let ids: Vec<_> = self.sessions.lock().await.keys().cloned().collect();
                 for id in ids {
-                    self.close_session(&json!({"threadId":format!("goose:{id}")}))
-                        .await?;
+                    self.close_session(
+                        &json!({"threadId":format!("goose:{id}"),"preserveTemporary":true}),
+                    )
+                    .await?;
                 }
                 if let Some(e) = schedule_error {
                     return Err(e);
@@ -597,6 +601,7 @@ impl Adapter {
             | "thread/archive"
             | "thread/unarchive"
             | "thread/compact/start" => self.manage(params, method).await,
+            "thread/inject_items" => self.inject_side_boundary(params).await,
             "thread/unsubscribe" => self.close_session(params).await,
             "fastrock/thread/regenerateTitle" => self.regenerate_title(params).await,
             "fastrock/checkpoint/list"

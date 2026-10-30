@@ -143,7 +143,10 @@ class ProviderFixture:
         assert handler.path.startswith('/model/') and handler.path.endswith(('/converse', '/converse-stream')), handler.path
         assert len(self.requests) < 512, 'Provider request loop'
         messages = body['messages']
-        prompt = next((' '.join(c.get('text', '') for c in message['content'])
+        # Bedrock combines adjacent user messages. The app's agent-only side
+        # boundary remains in the recorded body but is not a fixture command.
+        prompt = next((' '.join(c.get('text', '') for c in message['content']
+                               if not c.get('text', '').startswith('Side conversation boundary.'))
                        for message in reversed(messages) if message['role'] == 'user'
                        and any('text' in c for c in message['content'])), '')
         prompt = prompt.split('<turn-context>', 1)[0].strip()

@@ -111,7 +111,7 @@ impl Adapter {
         let setup = async {
             if params["ephemeral"] != true { self.save_vwork_bindings(id, &bindings)?; }
             if workspace.is_some() {
-                self.save_binding_record(id, &super::workspace::BindingRecord { workspace: workspace.clone(), forked_from: None, delegation: None })?;
+                self.save_binding_record(id, &super::workspace::BindingRecord { workspace: workspace.clone(), forked_from: None, delegation: None, side: false })?;
             }
             if !tools.is_empty() && params["ephemeral"] != true {
                 std::fs::create_dir_all(&self.queue_root).map_err(|e|error(format!("Save session tool definitions: {e}")))?;
@@ -136,10 +136,22 @@ impl Adapter {
             Ok::<_,JSONRPCErrorError>(())
         }.await;
         if let Err(e) = setup {
-            let _ = self
-                .rpc
-                .call("session/delete", json!({"sessionId":id}))
-                .await;
+            // Bindings may already exist. Never make their identity reusable.
+            let safe_to_delete = !self.embedded_runtime
+                || super::id_reservation::before_delete(
+                    &goose_runtime::session::SessionManager::new(
+                        goose_runtime::config::paths::Paths::data_dir(),
+                    ),
+                    id,
+                )
+                .await
+                .is_ok();
+            if safe_to_delete {
+                let _ = self
+                    .rpc
+                    .call("session/delete", json!({"sessionId":id}))
+                    .await;
+            }
             self.mcp.remove_session(id).await;
             return Err(e);
         }
@@ -231,7 +243,7 @@ impl Adapter {
             let mut session = Session::new(id, &self.cwd);
             session.info = info.clone();
             session.binding = self.binding_record(id).await?;
-            if session.binding.delegation.is_none() {
+            if !session.binding.side && session.binding.delegation.is_none() {
                 data.push(session.thread());
             }
         }
@@ -269,6 +281,7 @@ impl Adapter {
             let binding = self.binding_record(id).await?;
             let mut sessions = self.sessions.lock().await;
             let session = sessions.entry(id.to_string()).or_default();
+            session.ephemeral |= binding.side;
             session.binding = binding;
             session.info = info.clone();
             let archived = !info["_meta"]["archivedAt"].is_null();
@@ -292,6 +305,7 @@ impl Adapter {
             let mut s = Session::new(id, &self.cwd);
             s.info = info["session"].clone();
             s.binding = self.binding_record(id).await?;
+            s.ephemeral = s.binding.side;
             self.sessions.lock().await.insert(id.to_string(), s);
         }
         let needs_load = self
@@ -309,7 +323,7 @@ impl Adapter {
             if self.capabilities.lock().await["loadSession"] != true {
                 return Err(unsupported("session/load"));
             }
-            let (cwd, workspace) = {
+            let (cwd, workspace, side) = {
                 let mut sessions = self.sessions.lock().await;
                 let s = sessions
                     .get_mut(id)
@@ -317,6 +331,7 @@ impl Adapter {
                 (
                     text(&s.info, "cwd").to_string(),
                     s.binding.workspace.clone(),
+                    s.binding.side,
                 )
             };
             if let Some(workspace) = &workspace {
@@ -344,7 +359,9 @@ impl Adapter {
                             .map_err(|e| error(format!("Read session tools: {e}")))?;
                         let mut tools = serde_json::from_slice(&bytes)
                             .map_err(|e| error(format!("Invalid saved session tools: {e}")))?;
-                        if workspace.is_some() {
+                        if side {
+                            super::side::filter_tools(&mut tools);
+                        } else if workspace.is_some() {
                             super::delegation_tools::add(&mut tools);
                         }
                         let registration = self.mcp.register(Arc::downgrade(self), tools).await;
@@ -352,7 +369,7 @@ impl Adapter {
                         servers.push(registration.server());
                     }
                     Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                        if workspace.is_some() {
+                        if workspace.is_some() && !side {
                             let mut tools = Vec::new();
                             super::delegation_tools::add(&mut tools);
                             let registration = self.mcp.register(Arc::downgrade(self), tools).await;
@@ -587,7 +604,7 @@ impl Adapter {
             .lock()
             .await
             .get(&id)
-            .is_some_and(|s| s.ephemeral)
+            .is_some_and(|s| s.ephemeral && !s.binding.side)
         {
             self.claim_dispatch(&id, &tid, params).await?;
         }
@@ -861,13 +878,20 @@ impl Adapter {
         if let Some(shell) = shell {
             shell.stop().await?;
         }
-        let ephemeral = self
-            .sessions
-            .lock()
-            .await
-            .get(id)
-            .is_some_and(|s| s.ephemeral);
+        let ephemeral = self.sessions.lock().await.get(id).is_some_and(|s| {
+            s.ephemeral && !(s.binding.side && params["preserveTemporary"] == true)
+        });
         let method = if ephemeral {
+            if self.embedded_runtime {
+                let manager = goose_runtime::session::SessionManager::new(
+                    goose_runtime::config::paths::Paths::data_dir(),
+                );
+                super::id_reservation::before_delete(&manager, id)
+                    .await
+                    .map_err(|_| {
+                        error("Could not reserve a safe conversation identity before deletion")
+                    })?;
+            }
             "session/delete"
         } else {
             "session/close"

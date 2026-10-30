@@ -13,7 +13,7 @@ mod pending;
 mod picker;
 pub(crate) mod recap;
 mod review;
-mod side;
+pub(crate) mod side;
 mod worktree;
 
 use slint::ComponentHandle;
@@ -175,6 +175,13 @@ impl AppController {
     /// Starts a new thread in the folder of tab `index`. Input typed
     /// meanwhile waits in the tab and is sent once the thread exists.
     pub(crate) fn start_thread_in_tab(&mut self, index: usize) {
+        if self
+            .thread_tab(index)
+            .is_some_and(|t| t.extras.side_parent.is_some())
+        {
+            self.retry_side_chat(index);
+            return;
+        }
         let tab_id = self.tabs[index].id;
         let Some(thread) = self.thread_tab_mut(index) else {
             return;
@@ -396,7 +403,11 @@ impl AppController {
         thread.extras.project_id = response.thread.project_id.clone();
         thread.thread_id = Some(thread_id.clone());
         thread.cwd = response.cwd.into_path_buf();
-        thread.name.clone_from(&response.thread.name);
+        if let Some(parent) = &thread.extras.side_parent {
+            thread.name = Some(side::side_title(&parent.title));
+        } else {
+            thread.name.clone_from(&response.thread.name);
+        }
         thread.preview.clone_from(&response.thread.preview);
         thread.model = Some(response.model);
         thread.model_provider = Some(response.model_provider);
@@ -507,7 +518,6 @@ impl AppController {
             /// thread when they never got a message.
             Resume(String, bool),
             Start,
-            SideChatLost,
         }
         let targets: Vec<(usize, Reattach)> = self
             .tabs
@@ -516,8 +526,10 @@ impl AppController {
             .filter_map(|(index, tab)| {
                 let thread = tab.thread()?;
                 let action = match (&thread.thread_id, thread.extras.side_parent.is_some()) {
-                    (Some(_), true) => Reattach::SideChatLost,
-                    (Some(id), false) => Reattach::Resume(id.clone(), thread.extras.started_here),
+                    (Some(id), _) => Reattach::Resume(
+                        id.clone(),
+                        thread.extras.started_here && thread.extras.side_parent.is_none(),
+                    ),
                     (None, false)
                         if thread.extras.started_here
                             && matches!(
@@ -534,7 +546,6 @@ impl AppController {
             .collect();
         for (index, action) in targets {
             match action {
-                Reattach::SideChatLost => self.side_chat_lost(index),
                 Reattach::Resume(thread_id, started_here) => {
                     self.resume_thread_in_tab(index, thread_id, started_here);
                 }
@@ -1196,18 +1207,9 @@ impl AppController {
                     return;
                 };
                 app.toast("Exporting…");
-                // Side chats cannot be paged; everything they have is loaded.
-                if app
-                    .thread_tab(index)
-                    .is_some_and(|thread| thread.extras.side_parent.is_some())
-                {
-                    let markdown = app.transcript_export_markdown(index);
-                    app.write_export(path, Ok(markdown));
-                } else {
-                    app.transcript_export_markdown_complete(index, move |app, markdown| {
-                        app.write_export(path, markdown);
-                    });
-                }
+                app.transcript_export_markdown_complete(index, move |app, markdown| {
+                    app.write_export(path, markdown);
+                });
             });
         });
         if let Err(err) = spawned {

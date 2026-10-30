@@ -8,6 +8,8 @@ pub(super) struct BindingRecord {
     pub forked_from: Option<String>,
     #[serde(default)]
     pub delegation: Option<super::delegation::Delegation>,
+    #[serde(default)]
+    pub side: bool,
 }
 
 pub(super) fn instructions(workspace: &WorkspaceSession) -> String {

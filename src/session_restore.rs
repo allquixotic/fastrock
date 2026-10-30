@@ -31,6 +31,10 @@ struct Draft {
 #[derive(Clone, Serialize, Deserialize)]
 struct Chat {
     #[serde(default)]
+    side_parent: Option<crate::threads::SideParent>,
+    #[serde(default)]
+    last_error: Option<String>,
+    #[serde(default)]
     project_id: Option<String>,
     #[serde(default)]
     workspace: Option<fastrock_workspaces::session::Selection>,
@@ -60,6 +64,8 @@ impl Chat {
             recovered.push(json!({"id":"local-preparing","input":input,"mode":preparing.mode,"recoveryReason":"Image preparation was interrupted. Review and send manually."}));
         }
         Self {
+            side_parent: thread.extras.side_parent.clone(),
+            last_error: thread.last_error.clone(),
             project_id: thread.extras.project_id.clone(),
             workspace: thread.extras.workspace.clone(),
             thread_id: thread.thread_id.clone(),
@@ -88,6 +94,8 @@ impl Chat {
     }
     fn restore(self) -> ThreadTab {
         let mut thread = ThreadTab::new(self.cwd);
+        thread.extras.side_parent = self.side_parent;
+        thread.last_error = self.last_error;
         thread.extras.workspace = self.workspace;
         thread.extras.project_id = self.project_id;
         thread.thread_id = self.thread_id;
@@ -249,10 +257,6 @@ impl AppController {
             let Some(thread) = tab.thread() else {
                 continue;
             };
-            // Temporary side sessions have no durable Goose history.
-            if thread.extras.side_parent.is_some() {
-                continue;
-            }
             if self.active == Some(index) {
                 window.active = Some(window.chats.len());
             }
@@ -409,6 +413,25 @@ mod tests {
                 .len(),
             2
         );
+    }
+    #[test]
+    fn v75_side_snapshot_retains_identity_draft_and_error_without_replay() {
+        let mut thread = ThreadTab::new(PathBuf::from("isolated"));
+        thread.thread_id = Some("goose:side".into());
+        thread.extras.side_parent = Some(crate::threads::SideParent {
+            thread_id: "goose:parent".into(),
+            title: "Parent".into(),
+        });
+        thread.last_error = Some("Interrupted setup".into());
+        thread.composer.text = "Unsent side question".into();
+        thread.xtab_enabled = false;
+        let bytes = serde_json::to_vec(&Chat::capture(&thread, None)).unwrap();
+        let restored = serde_json::from_slice::<Chat>(&bytes).unwrap().restore();
+        assert_eq!(restored.extras.side_parent, thread.extras.side_parent);
+        assert_eq!(restored.last_error, thread.last_error);
+        assert_eq!(restored.composer.text, thread.composer.text);
+        assert!(restored.recovery_paused && restored.pending_inputs.is_empty());
+        assert!(!restored.xtab_enabled);
     }
     #[tokio::test]
     async fn v47_writer_flushes_all_windows_and_closed_tabs() {
