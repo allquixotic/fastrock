@@ -27,6 +27,13 @@ unchanged. The source workspace and original filesystem checkout are preserved.
 Draft edits invalidate review. Incomplete previews disable Apply; the current
 view bounds patches to 128 KiB and fewer than 200 changed paths per side.
 
+Use **Projects → +** or open a repository folder from the new-chat page to
+register it in the configured embedded store. Fastrock imports committed HEAD
+through libgit2/vwork in process and leaves dirty files and the original index
+alone. New chats reuse the registration and receive separate virtual workspaces
+from its stored HEAD. The sidebar groups their actual scratch directories under
+the repository and retains registered projects even with no listed chats.
+
 Select a workspace and choose **Open conversation in workspace** to bind a
 Goose chat to it. Its vwork tools use that workspace by default, and ordinary
 shell tools start in a separate scratch directory under the store. Repository

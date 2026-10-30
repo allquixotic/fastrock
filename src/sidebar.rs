@@ -8,6 +8,7 @@
 //! in place without refetching.
 
 mod activity;
+mod projects;
 mod purpose;
 mod search;
 
@@ -67,16 +68,24 @@ pub(crate) struct ThreadSummary {
     pub(crate) id: String,
     pub(crate) title: String,
     pub(crate) cwd: PathBuf,
+    pub(crate) project_id: Option<String>,
+    pub(crate) project_root: Option<PathBuf>,
     /// Unix seconds.
     pub(crate) updated_at: i64,
 }
 
 impl ThreadSummary {
+    pub(crate) fn group_root(&self) -> &Path {
+        dunce::simplified(self.project_root.as_deref().unwrap_or(&self.cwd))
+    }
+
     fn from_thread(thread: &Thread) -> Self {
         Self {
             id: thread.id.clone(),
             title: thread_title(thread.name.as_deref(), &thread.preview),
             cwd: thread.cwd.as_path().to_path_buf(),
+            project_id: thread.project_id.clone(),
+            project_root: None,
             updated_at: thread.recency_at.unwrap_or(thread.created_at),
         }
     }
@@ -111,12 +120,12 @@ pub(crate) fn group_by_folder(threads: &[ThreadSummary]) -> Vec<FolderGroup<'_>>
     let mut groups: Vec<FolderGroup<'_>> = Vec::new();
     let mut group_index: HashMap<&Path, usize> = HashMap::new();
     for thread in sorted {
-        match group_index.get(thread.cwd.as_path()) {
+        match group_index.get(thread.group_root()) {
             Some(&index) => groups[index].threads.push(thread),
             None => {
-                group_index.insert(thread.cwd.as_path(), groups.len());
+                group_index.insert(thread.group_root(), groups.len());
                 groups.push(FolderGroup {
-                    cwd: thread.cwd.as_path(),
+                    cwd: thread.group_root(),
                     threads: vec![thread],
                 });
             }
@@ -318,6 +327,8 @@ fn status_for_phase(phase: ThreadPhase) -> SidebarThreadStatus {
 /// Sidebar state shared by all tabs.
 #[derive(Default)]
 pub(crate) struct SidebarController {
+    projects: Vec<fastrock_workspaces::projects::Project>,
+    projects_loading: bool,
     purpose: purpose::PurposeController,
     activity: activity::ActivityController,
     /// Loaded threads in server order (all pages).
@@ -381,6 +392,9 @@ impl AppController {
         }));
         state.on_new_thread(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::open_new_tab_page)
+        }));
+        state.on_add_project(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::newtab_pick_folder)
         }));
         state.on_open_settings(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| app.open_settings(None))
@@ -571,6 +585,7 @@ impl AppController {
 
     /// Reloads the first page with the current search and archived filter.
     fn sidebar_reload(&mut self) {
+        self.sidebar_refresh_projects();
         self.sidebar.refresh_timer.stop();
         self.sidebar.generation += 1;
         self.sidebar.loading = true;
@@ -667,7 +682,11 @@ impl AppController {
                                 .contains(&query)
                             || thread.preview.to_lowercase().contains(&query)
                     })
-                    .map(ThreadSummary::from_thread)
+                    .map(|thread| {
+                        let mut summary = ThreadSummary::from_thread(thread);
+                        projects::bind(&mut summary, &self.sidebar.projects);
+                        summary
+                    })
                     .collect();
                 if first_page {
                     let old = std::mem::take(&mut self.sidebar.threads);
@@ -749,7 +768,16 @@ impl AppController {
                 thread.updated_at = at;
             }
         }
-        let specs = build_rows(&threads, &self.sidebar.collapsed, has_more);
+        for thread in &mut threads {
+            projects::bind(thread, &self.sidebar.projects);
+        }
+        let specs = projects::rows(
+            &threads,
+            &self.sidebar.projects,
+            &self.sidebar.collapsed,
+            has_more,
+            self.sidebar.is_unfiltered(),
+        );
         let marks = self.sidebar_marks();
         let mut row_index = HashMap::new();
         let rows: Vec<SidebarRow> = specs
@@ -863,7 +891,14 @@ impl AppController {
         };
         match action {
             "open" => self.open_thread(thread.id, Some(thread.cwd)),
-            "new-thread" => self.start_thread_checked(thread.cwd),
+            "new-thread" => {
+                if thread.project_id.is_some() && thread.project_root.is_none() {
+                    self.sidebar_refresh_projects();
+                    self.toast("The repository project is still loading or unavailable. Retry after it appears in the sidebar.");
+                } else {
+                    self.start_thread_checked(thread.group_root().to_path_buf());
+                }
+            }
             "rename" => self.sidebar_rename(thread),
             "archive" => self.sidebar_set_archived(thread, /*archive*/ true),
             "unarchive" => self.sidebar_set_archived(thread, /*archive*/ false),
@@ -1106,6 +1141,8 @@ mod tests {
             id: id.to_string(),
             title: format!("title {id}"),
             cwd: PathBuf::from(cwd),
+            project_id: None,
+            project_root: None,
             updated_at,
         }
     }

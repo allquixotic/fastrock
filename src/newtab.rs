@@ -728,6 +728,32 @@ impl AppController {
         if !self.newtab.trust_checks.insert(folder.clone()) {
             return;
         }
+        if self.backend.is_goose() {
+            let backend = self.backend.clone();
+            self.backend.spawn(async move {
+                let result = backend
+                    .goose_request("fastrock/project/open", serde_json::json!({"path":folder}))
+                    .await
+                    .and_then(|value| {
+                        serde_json::from_value::<
+                            Option<fastrock_workspaces::session::WorkspaceSession>,
+                        >(value)
+                        .map_err(|e| e.to_string())
+                    });
+                crate::ui_thread::post(move |app| {
+                    app.newtab.trust_checks.remove(&folder);
+                    match result {
+                        Ok(Some(workspace)) => {
+                            app.start_thread_in_workspace(workspace);
+                            app.sidebar_refresh();
+                        }
+                        Ok(None) => app.start_thread_in_folder(folder),
+                        Err(message) => app.toast(message),
+                    }
+                });
+            });
+            return;
+        }
         let local = self.server_files_are_local();
         let backend = self.backend.clone();
         self.backend.spawn(async move {
@@ -826,7 +852,7 @@ impl AppController {
         });
     }
 
-    fn newtab_pick_folder(&mut self) {
+    pub(crate) fn newtab_pick_folder(&mut self) {
         if !self.server_files_are_local() {
             self.newtab_browse_server_folders(/*initial*/ None);
             return;
@@ -1165,6 +1191,8 @@ mod tests {
             id: id.to_string(),
             title: id.to_string(),
             cwd: PathBuf::from(cwd),
+            project_id: None,
+            project_root: None,
             updated_at,
         }
     }

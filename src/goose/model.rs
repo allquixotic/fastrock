@@ -75,6 +75,7 @@ impl Session {
         };
         json!({"id":id,"sessionId":id,"name":self.info["title"],"preview":meta["lastMessageSnippet"].as_str().unwrap_or(""),
             "forkedFromId":self.binding.forked_from.as_deref().map(ui_id),
+            "projectId":self.binding.workspace.as_ref().map(|w|fastrock_workspaces::projects::id(&w.selection.home,&w.repo)),
             "ephemeral":self.ephemeral,"modelProvider":if provider.is_empty(){"goose"}else{provider},"model":model,
             "createdAt":timestamp(&meta["createdAt"]),"updatedAt":timestamp(&self.info["updatedAt"]),
             "recencyAt":timestamp(&meta["lastMessageAt"]),"cwd":self.info["cwd"],"cliVersion":"Goose ACP",

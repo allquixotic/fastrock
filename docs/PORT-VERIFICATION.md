@@ -1003,3 +1003,28 @@ Evidence: `C:\Users\SeanMcNamara\fastrock-040-policy\binding-native-1` and
 `binding-*.log`. This development executable is not a release asset. Published
 alpha.1 remains the CI-built, signed milestone recorded above; final 0.4.0 still
 requires the remaining SPEC tasks and the user's live-profile validation.
+
+
+## 0.4.0 registered repository projects — 2026-10-29
+
+Native **Projects → +** and repository-folder opening register/reuse vwork
+repositories in process and create a new workspace from stored committed HEAD.
+Sidebar grouping uses repository identity/root, while conversation and tool cwd
+remain the separate workspace scratch directory. Empty registered projects stay
+visible. New-chat actions wait for missing project metadata instead of silently
+creating an unbound scratch-directory chat.
+
+Windows compilation, Mac compatibility checking, formatting/build policy,
+705 application tests, one isolated native rendering test, 16 workspace tests
+and the standalone embedded Goose fixture passed. The native project/vwork
+fixture passed registration, committed-file import, parent/child grouping,
+isolated edits, history copy and restart bindings. Unit coverage also preserves
+dirty/untracked source files and prevents duplicate registration. The native
+sidebar capture shows all three fixture chats under one repository, with Rally
+retained separately. Peak native process memory was 167,280,640 bytes under the
+2 GB test guard. Fixture-only; no live model or Rally traffic.
+
+Tested development executable SHA-256:
+`19e309001d0e492e9bc0c04240253128cf0b24398b1a922182035cc838f916b5`.
+Evidence on games: `fastrock-040-policy\project-native-1`,
+`project-sidebar-capture\sidebar.png`, and `project-*.log`.

@@ -36,6 +36,7 @@ export global SidebarState {
     in property <int> rally-count;
     callback open-rally();
     callback new-thread();
+    callback add-project();
     callback open-settings();
     in property <[SidebarRow]> rows;
     // First page of a (re)load in flight.
@@ -436,6 +437,17 @@ export component Sidebar inherits Rectangle {
                 accessible-role: button;
                 accessible-label: "Rally project";
                 accessible-action-default => { SidebarState.open-rally(); }
+            }
+        }
+
+        HorizontalLayout {
+            height: 30px;
+            padding-left: 12px;
+            padding-right: 10px;
+            Text { text: "Projects"; color: Theme.text-muted; font-size: Theme.font-size-small; vertical-alignment: center; }
+            LinkButton {
+                text: "+"; width: 26px; accessible-label: "Add repository project";
+                clicked => { SidebarState.add-project(); }
             }
         }
 

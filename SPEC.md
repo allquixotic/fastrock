@@ -123,6 +123,8 @@ V49: Explicit workspace integration ! review source/target changes, preserve sou
 
 V50: Bound conversation ! persisted workspace default and separate scratch cwd; native open ! clean draft/current response. Fork ! unchanged Goose public storage, isolated vwork revision, exact message boundary, preserved parent/history/tools, no inherited schedule or automatic run. Partial fork ! hidden until bindings saved; restart ! original bindings. Verify: v50 workspace/browser/fork-storage tests and native fork/restart fixture.
 
+V51: Project ! registered repository; workspace chats group by repository while retaining actual scratch cwd. Native repository open ! in-process import of committed HEAD, reuse registration, preserve dirty/untracked source. Empty registered projects ! remain visible outside search. Verify: v51 repository/sidebar tests and native registration/grouping fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -174,7 +176,7 @@ T36|~|Embedded session/prompt/close and three Runtime routes verified on games f
 T37|~|Replace external backend/core bridges with embedded Goose; remove Codex UI/connection, preserve Goose configuration|V38,V39,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
 T39|~|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; isolated conversation forks; no quotas|V41,V50,I.orchestration
-T40|~|Native T3 main UI/sidebar/panels, repository projects and permanent independent Rally project|V42,I.questions,I.links
+T40|~|Native T3 main UI/sidebar/panels, registered repository projects and permanent independent Rally project|V42,V51,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and efficient arbitrary scrolling|V1,V9,V32,V37,V43,I.scroll
 T43|~|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
@@ -399,3 +401,5 @@ B117|2026-10-29|Process-recovery fixture used a fixed delay for asynchronous sum
 
 B118|2026-10-29|Release GUI fixtures still selected removed external ACP backends|Exercise embedded Goose against isolated local Bedrock/MCP fixtures; preserve native Rally/selection/scroll coverage and memory caps; V38,V39,V42,V46
 B119|2026-10-29|Local provider fixture compared prompts including Fastrock turn-context metadata|Strip the appended turn-context before choosing deterministic fixture responses; native embedded streaming/cancellation fixture; V39
+
+B120|2026-10-29|Workspace project module inherited sha2 from nonexistent workspace dependency entry|Declare matching direct dependency; manifest/compile oracle; no new invariant

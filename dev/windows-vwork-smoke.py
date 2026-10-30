@@ -136,24 +136,33 @@ try:
     peak = max(peak, run([{'wait_ready': 30000}, {'resume': 'goose:' + parent_id}, {'wait': 800},
         {'wait_idle': 30000}, {'click_text': 'Resume'}, {'wait': 500}, *turn('vwork-parent-restored'),
         {'resume': 'goose:' + child_id}, {'wait': 800}, {'wait_idle': 30000},
-        {'click_text': 'Resume'}, {'wait': 500}, *turn('vwork-child-restored'), {'quit': True}], 'restored', env))
+        {'click_text': 'Resume'}, {'wait': 500}, *turn('vwork-child-restored'), {'wait': 1000},
+        {'sidebar': ['dump', str(out / 'project-groups.json')]}, {'quit': True}], 'restored', env))
     for prompt, expected in [('vwork-bound-parent', b'child change \xce\xbb\r\n'),
                              ('vwork-parent-restored', b'child change \xce\xbb\r\n'),
                              ('vwork-child-restored', b'fork isolated \xce\xbb\r\n')]:
         result, = [r['result'] for r in provider.workspace_results if r['prompt'] == prompt]
         assert base64.b64decode(result['base64']) == expected, (prompt, result)
     assert (repo / 'src/main.rs').read_bytes() == original, 'Fork touched source checkout'
+    groups = load('project-groups')['projectFolders']
+    assert any(row['count'] >= 2 and Path(row['path']).name == 'project' for row in groups), groups
+    assert not any('fastrock-agent-workdirs' in row['path'] for row in groups), groups
     # Vwork is always available in 0.4.0, including without legacy configuration.
     default_env = provider.environment(out / 'default')
     peak = max(peak, run([{'wait_ready': 30000}, {'wait': 1000}, virtual('open'),
+                         {'open_folder': str(repo)}, {'wait': 1000}, {'wait_idle': 30000},
+                         *turn('vwork-project-import'),
                          *dump('default'), {'quit': True}], 'default', default_env))
     assert load('default')['visible'] and load('default')['canCompact'], load('default')
+    imported, = [r['result'] for r in provider.workspace_results if r['prompt'] == 'vwork-project-import']
+    assert base64.b64decode(imported['base64']) == original, imported
     (out / 'acceptance.json').write_text(json.dumps(dict(result='PASS', backend='embedded-goose-vwork',
         binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(), peak_process_bytes=peak,
         native_window=True, compaction_preserves_draft=True, conflict_preserves_draft=True,
         revision_checked_save=True, source_checkout_preserved=True, no_backend_installed=True,
         default_embedded_database=True, reviewed_child_merge=True, bound_conversation=True,
-        isolated_conversation_fork=True, copied_history=True, binding_survives_restart=True), indent=2), encoding='utf-8')
+        isolated_conversation_fork=True, copied_history=True, binding_survives_restart=True,
+        repository_project_groups=True, native_repository_registration=True), indent=2), encoding='utf-8')
     print('PASS: embedded vwork, native edits/compaction/conflicts, source preservation, no installed backends')
 finally:
     provider.close()

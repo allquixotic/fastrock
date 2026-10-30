@@ -260,3 +260,41 @@ async fn v50_workspace_workdirs_are_stable_separate_and_preserve_checkout() {
     );
     assert!(selected("missing").resolve().await.is_err());
 }
+
+#[tokio::test]
+async fn v51_register_reuses_repository_and_imports_head_without_dirty_files() {
+    use fastrock_workspaces::projects;
+    let f = Fixture::new().await;
+    std::fs::write(f.root.join("file.txt"), "uncommitted source").unwrap();
+    std::fs::write(f.root.join("untracked.txt"), "not committed").unwrap();
+    let root = projects::root(f.root.clone()).await.unwrap().unwrap();
+    let selected = projects::open(&f.connection, root.clone(), "new-chat".into())
+        .await
+        .unwrap();
+    assert_eq!(selected.repo, "repo");
+    assert_eq!(f.read("new-chat").await, "original\n");
+    assert_eq!(
+        std::fs::read_to_string(f.root.join("file.txt")).unwrap(),
+        "uncommitted source"
+    );
+    assert_eq!(projects::list(&f.connection).await.unwrap().len(), 1);
+    let fresh = Connection::new(f._temp.path().join("fresh"));
+    let first = projects::open(&fresh, root.clone(), "first".into())
+        .await
+        .unwrap();
+    let second = projects::open(&fresh, root, "second".into()).await.unwrap();
+    assert_eq!(first.repo, second.repo);
+    assert_ne!(first.cwd, second.cwd);
+    let registered = projects::list(&fresh).await.unwrap();
+    assert_eq!(registered.len(), 1);
+    assert_eq!(
+        registered[0].id,
+        projects::id(&first.selection.home, &first.repo)
+    );
+    assert!(
+        projects::root(f._temp.path().join("fresh"))
+            .await
+            .unwrap()
+            .is_none()
+    );
+}

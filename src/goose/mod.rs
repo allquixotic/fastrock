@@ -18,6 +18,7 @@ pub(crate) fn summaries_idle() -> bool {
 
 mod fork;
 mod fork_storage;
+mod projects;
 mod summary_worker;
 #[cfg(test)]
 mod tests;
@@ -493,6 +494,8 @@ impl Adapter {
                 )
             }
             "thread/start" => self.new_session(params).await,
+            "fastrock/project/list" => self.project_catalog().await,
+            "fastrock/project/open" => self.open_project(params).await,
             "thread/fork" => self.fork_session(params).await,
             "thread/list" => self.list_sessions(params).await,
             "thread/loaded/list" => Ok(

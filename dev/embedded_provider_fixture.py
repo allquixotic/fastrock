@@ -186,7 +186,7 @@ class ProviderFixture:
                     operation = ('files_read', dict(workspace='task', path='src/main.rs', binary=True))
                 elif step == 1:
                     operation = ('files_stat', dict(workspace='task', paths=['src/main.rs']))
-            elif prompt in ('vwork-bound-parent', 'vwork-parent-restored', 'vwork-child-restored'):
+            elif prompt in ('vwork-bound-parent', 'vwork-parent-restored', 'vwork-child-restored', 'vwork-project-import'):
                 if step == 0:
                     operation = ('files_read', dict(path='src/main.rs', binary=True))
             elif prompt == 'vwork-child-edit':

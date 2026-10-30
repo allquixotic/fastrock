@@ -7,6 +7,7 @@ use thiserror::Error;
 
 pub mod embedded;
 pub mod integration;
+pub mod projects;
 pub mod scrollback;
 pub mod search;
 pub mod session;
