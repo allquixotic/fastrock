@@ -109,7 +109,7 @@ V37: Conversation selection ! accept drags beginning in adjacent horizontal padd
 0.4.0 overrides conflicting historical transport/storage/build/summary/distribution clauses in V7/V8/V15/V16/V22/V26–V30/V33–V35. Other correctness and attribution requirements remain.
 V38: Core ! one process, unmodified pinned Goose/public APIs plus vwork; no external Goose/Codex/vwork dependency or loopback core-service hop. Configured tool/extension/hook/credential subprocesses allowed. Verify: embedded backend/provider/extension fixtures and process-tree smoke.
 V39: Required Bedrock Runtime Sol/Luna and US cross-region Bedrock Opus routes ! preserve configured IDs/endpoints/auth; effort values ! Goose-supported/custom-public-API only; profiles ! isolated concurrently; no secret logging. Verify: route/request-body/stream/tool/cancel/resume fixtures, controlled working-profile smoke.
-V40: Vwork ! single embedded Engine, preserved source compression/revision/lease/compaction behavior. Summary ! same redb, atomic replace by monotonically newer completed turn; no summary history or secret material. Verify: embedded store reopen/conflict/summary-replacement/stale-generation tests.
+V40: Vwork ! single embedded Engine, completed database close before next owner opens, preserved source compression/revision/lease/compaction behavior. Summary ! same redb, atomic replace by monotonically newer completed turn; no summary history or secret material. Verify: embedded store reopen/conflict/summary-replacement/stale-generation tests and v40_reopen_waits_until_previous_owner_has_closed.
 V41: Orchestration ! durable queues/lineage/messages/schedules, isolated child workspaces, explicit merge; restart ! awaiting Resume, uncertain tools ! never automatically replay. No quota feature. Verify: orchestration lifecycle/crash recovery/delegation/schedule fixtures.
 V42: T3 visual/interaction parity ! native Slint; project ! repository with workspace-bound chats; Rally project ! permanent, independent closable docs/boards, no conversation context. Last closed Rally document ! release retained row/card/editor/assistant models. Rally assistant ! temporary/on-demand/human Apply. Web previews ! system browser. Verify: native games UI fixtures plus Rally inventory.
 V43: Huge history ! lossless compressed cold pages, bounded resident/render caches, asynchronous prefetch/restore, stable anchors/selection/copy/export; no whole-history layout or UI-thread IO. Verify: compressed-history roundtrip/random-jump/selection/stream-boundary fixtures.
@@ -141,6 +141,8 @@ V57: Embedded session creation/restoration/provider switching ! validate Bedrock
 V58: Webhook schedules ! in-process loopback listener, bounded requests, HMAC-SHA256 before acceptance, vault-only signing keys, no auth headers in model context. Accepted delivery/replay identity ! durable before dispatch; coalescing ! retain receipts; restart ! paused pending work and review-only uncertain runs. Expired deliveries ! skipped; stale edits/rotation ! guarded. Verify: v58 signature/template/filter/delivery tests and native webhook/vault/restart fixture.
 
 V59: Named direct-provider profiles ! unchanged Goose public declarative APIs and isolated vault-only credentials via bundled command-auth helper. Endpoint/key replacement ! new credential identity before config commit; stale edits ! reject. Helper path ! repaired after app move without changing foreign helpers/legacy credentials. Supported custom engines ! native defaults/session/cheap-model choices; credential values ! absent from args/config/logs and cleared from editor after submit. Verify: v59 profile validation and native two-endpoint/key-isolation/profile-restart fixture.
+
+V60: Native command palette ! cached commands/projects/chats, bounded deterministic matching and virtual rows; keyboard/pointer actions ! existing guarded handlers; Escape ! close overlay without interrupting background work; draft/focus ! retained. Verify: v60 palette bounds/ranking test and native keyboard/draft/running-turn fixture.
 
 ## §T TASKS
 id|status|task|cites
@@ -193,12 +195,18 @@ T36|~|Embedded session/prompt/close and three Runtime routes verified on games f
 T37|~|Embedded Goose; remove Codex UI/connection; native provider defaults and creation/restore/switch scope guards; preserve configuration; native named direct-provider profiles via public command-auth/vault integration verified; AWS isolation R7, saved profile effort defaults and acceptance remain open|V38,V39,V52,V57,V59,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
 T39|~|Port T3 V2 orchestration; isolated forks/delegation and native timed schedules verified; signed native webhook scheduling implemented; remaining coordination acceptance open; no quotas|V41,V50,V55,V56,V58,I.orchestration
-T40|~|Native T3 main UI/sidebar/panels, repository projects, independent Rally project, schedule/webhook and provider editors; auxiliary UI parity remains open|V42,V51,I.questions,I.links
+T40|~|Native T3 main UI/sidebar/panels, repository projects, independent Rally project, schedule/webhook and provider editors; native command palette verified; auxiliary UI parity remains open|V42,V51,V60,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and bounded arbitrary history viewports|V1,V9,V32,V37,V43,V53,I.scroll
 T43|~|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
 T44|~|Watchdog-protected games benchmarks, full Windows verification, Mac compile and feature-complete signed CI RC/final|V23,V38–V47,V54,I.distribution
 T45|x|In-process Rally windows and scoped UI/backend routing|V38,V42,V47,V48
+T46|x|Native command palette with bounded matching, keyboard/pointer navigation and retained drafts|V42,V60
+T47|.|Native interactive terminal panels with isolated user-requested processes, bounded scrollback and lifecycle checks|V38,V42,V43,V47
+T48|.|Conversation checkpoint/review/restore workflows over guarded vwork revisions|V40,V41,V42,V49
+T49|.|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
+T50|.|Complete native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42
+T51|.|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44
 
 V53 verification, 2026-10-29: games 708 application + one renderer + 17 workspace tests and standalone embedded Goose fixture passed; native history navigation/selection/stream/export passed. Full 1,000/eight/10,000 workload passed, 217,894,912 peak process bytes; arbitrary 100-entry pages restored in 4–6 ms. Recent-frame p95 10.380 ms exceeds earlier 0.3.4 baseline 8.487 ms; no general scrolling-speedup claim. Mac compile only passed. Evidence: docs/PORT-VERIFICATION.md and docs/benchmarks/scale-history-games-2026-10-29.json. T42/T44 remain open for remaining acceptance.
 
@@ -448,3 +456,10 @@ B141|2026-10-30|Goose model metadata HashMap order could spuriously invalidate a
 B142|2026-10-30|One moved-app native fixture timed out waiting for summaries; four subsequent diagnostic runs passed; cause remains unresolved|Retain phase/count-only diagnostics and fixture provider observations; do not treat as RC acceptance; V44,V59
 
 B143|2026-10-30|Vwork native fixture selected catalog row 1 after a fork, which could be the child instead of the parent|Select the task workspace through the native catalog filter; preserve explicit integration checks; V49,V50
+
+B144|2026-10-30|Palette navigation removed focused composer; Rally had no focus target for subsequent global keys|Focus shared chrome before new view focus; native Rally→palette roundtrip; V60
+B145|2026-10-30|Palette used only sidebar snapshots, omitting current title of unfinished first turns|Merge live chats before cached rows, deduplicate by identity; native running-chat navigation; V60
+
+B146|2026-10-30|Native palette fixture read selection before injected arrow event reached UI loop|Yield after key dispatch before snapshot; fixture correction; V60
+
+B147|2026-10-30|Weak store owner expired before Engine destructor released redb file lock; overlapping reopen failed|Per-home ownership slot waits for explicit completed close; deterministic failure reproduced before fix, passes after; V40

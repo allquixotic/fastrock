@@ -1,0 +1,79 @@
+// Native adaptation of T3 Code's command palette. Attribution: NOTICE.
+import { LineEdit, ListView } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+export struct CommandPaletteRow { kind: string, target: string, title: string, detail: string, shortcut: string, enabled: bool }
+export global CommandPaletteState {
+    in property <bool> open;
+    in property <[CommandPaletteRow]> rows;
+    in-out property <string> query;
+    in-out property <int> selected;
+    callback search();
+    callback execute(index: int);
+    callback close();
+    callback toggle-key(text: string, primary: bool, shift: bool, alt: bool, secondary: bool) -> bool;
+}
+export component CommandPalette inherits Rectangle {
+    background: #00000060;
+    TouchArea { clicked => { CommandPaletteState.close(); } }
+    FocusScope {
+        capture-key-pressed(event) => {
+            if CommandPaletteState.toggle-key(event.text, event.modifiers.control, event.modifiers.shift, event.modifiers.alt, event.modifiers.meta) { return EventResult.accept; }
+            if event.text == Key.Escape { CommandPaletteState.close(); return EventResult.accept; }
+            if event.text == Key.DownArrow {
+                CommandPaletteState.selected = min(CommandPaletteState.rows.length - 1, CommandPaletteState.selected + 1);
+                return EventResult.accept;
+            }
+            if event.text == Key.UpArrow {
+                CommandPaletteState.selected = max(0, CommandPaletteState.selected - 1);
+                return EventResult.accept;
+            }
+            if event.text == Key.Return { CommandPaletteState.execute(CommandPaletteState.selected); return EventResult.accept; }
+            return EventResult.reject;
+        }
+        key-pressed(event) => { return EventResult.accept; }
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: min(100px, parent.height / 8);
+            width: min(640px, max(0px, parent.width - 32px));
+            height: min(560px, max(144px, CommandPaletteState.rows.length * 56px + 88px), max(0px, parent.height - 100px));
+            background: Theme.surface;
+            border-radius: Theme.radius;
+            border-width: 1px; border-color: Theme.border-strong;
+            TouchArea { }
+            VerticalLayout {
+                padding: Theme.pad-m; spacing: Theme.pad-s;
+                LineEdit {
+                    text <=> CommandPaletteState.query;
+                    placeholder-text: "Search commands, projects, conversations…";
+                    edited => { CommandPaletteState.search(); }
+                    init => { self.focus(); }
+                }
+                ListView {
+                    vertical-stretch: 1;
+                    horizontal-scrollbar-policy: always-off;
+                    property <int> selected: CommandPaletteState.selected;
+                    changed selected => {
+                        if self.selected * 56px + self.content-y < 0px { self.content-y = -self.selected * 56px; }
+                        else if (self.selected + 1) * 56px + self.content-y > self.visible-height { self.content-y = self.visible-height - (self.selected + 1) * 56px; }
+                    }
+                    for row[index] in CommandPaletteState.rows: Rectangle {
+                        height: 56px;
+                        background: index == CommandPaletteState.selected ? Theme.selected : transparent;
+                        border-radius: Theme.radius-small;
+                        HorizontalLayout {
+                            padding: Theme.pad-s; spacing: Theme.pad-m;
+                            VerticalLayout {
+                                Text { text: row.title; color: row.enabled ? Theme.text : Theme.text-faint; overflow: elide; }
+                                Text { text: row.kind + " · " + row.detail; color: Theme.text-faint; font-size: Theme.font-size-small; overflow: elide; }
+                            }
+                            Text { text: row.shortcut; color: Theme.text-faint; vertical-alignment: center; }
+                        }
+                        TouchArea { mouse-cursor: row.enabled ? pointer : default; clicked => { CommandPaletteState.execute(index); } }
+                    }
+                }
+                if CommandPaletteState.rows.length == 0: Text { text: "No matching commands, projects, or conversations"; color: Theme.text-muted; horizontal-alignment: center; }
+                Text { text: "↑ ↓ Navigate     Enter Open     Esc Close     > Commands only"; color: Theme.text-faint; font-size: Theme.font-size-small; }
+            }
+        }
+    }
+}

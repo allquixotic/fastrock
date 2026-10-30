@@ -24,6 +24,7 @@ const PREV_TAB: &str = "Mod+Shift+Tab";
 
 /// Actions that can be bound, with their default bindings.
 const DEFAULT_BINDINGS: &[(&str, &str)] = &[
+    ("command-palette", "Mod+Shift+P"),
     ("new-tab", "Mod+T"),
     ("close-tab", "Mod+W"),
     ("next-tab", NEXT_TAB),
@@ -47,6 +48,7 @@ const DEFAULT_BINDINGS: &[(&str, &str)] = &[
 /// Human-readable action names for the settings page.
 pub(crate) fn action_label(action: &str) -> &'static str {
     match action {
+        "command-palette" => "Command palette",
         "new-tab" => "New tab",
         "close-tab" => "Close tab",
         "next-tab" => "Next tab",

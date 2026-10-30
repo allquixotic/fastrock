@@ -19,6 +19,7 @@ mod info;
 mod lifecycle;
 mod newtab;
 mod notify;
+mod palette;
 mod perf;
 mod platform;
 mod prefs;

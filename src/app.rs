@@ -432,6 +432,7 @@ impl AppController {
     /// in the UI-thread slot so callbacks can reach it.
     pub(crate) fn bind(&mut self) {
         self.bind_chrome();
+        self.palette_bind();
         self.load_window_icon();
         self.apply_theme();
         self.reload_keymap();
@@ -1114,6 +1115,14 @@ impl AppController {
                     .unwrap_or(-1),
             );
         }
+        if kind != TabKindCode::Thread
+            && !self
+                .window
+                .global::<crate::ui::CommandPaletteState>()
+                .get_open()
+        {
+            self.window.invoke_focus_chrome();
+        }
         self.transcript_show();
         self.composer_show();
         self.approvals_show();
@@ -1529,6 +1538,7 @@ impl AppController {
 
     fn run_shortcut(&mut self, name: &str) {
         match name {
+            "command-palette" => self.palette_toggle(),
             "new-tab" => self.open_new_tab_page(),
             "close-tab" => {
                 if let Some(index) = self.active {
@@ -1577,7 +1587,7 @@ impl AppController {
         }
     }
 
-    fn menu_action(&mut self, action: &str) {
+    pub(crate) fn menu_action(&mut self, action: &str) {
         match action {
             "rally-search" => self.rally_action("focus-search"),
             "rally-board" => self.rally_set_view("mode", "board"),
@@ -1682,9 +1692,11 @@ impl AppController {
 
     /// Gives keyboard focus back to the active thread's composer after a
     /// modal overlay (which held the focus) closed.
-    fn restore_focus(&mut self) {
+    pub(crate) fn restore_focus(&mut self) {
         if self.active_thread_index().is_some() {
             self.composer_focus();
+        } else {
+            self.window.invoke_focus_chrome();
         }
     }
 

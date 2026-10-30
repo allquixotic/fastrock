@@ -9,6 +9,33 @@ const CURRENT: TableDefinition<&str, &[u8]> = TableDefinition::new("fastrock_sea
 const REQUESTED: TableDefinition<&str, u64> = TableDefinition::new("fastrock_search_requested_v1");
 const MAX_SUMMARY_BYTES: usize = 8 * 1024 * 1024;
 
+/// Safe diagnostic categories: never expose database paths or conversation data.
+pub fn failure_kind(error: &anyhow::Error) -> &'static str {
+    for cause in error.chain() {
+        match cause.to_string().as_str() {
+            "database is owned by another process" => return "database closing or externally owned",
+            "database startup/recovery already in progress" => return "database startup busy",
+            _ => {}
+        }
+        if let Some(error) = cause.downcast_ref::<redb::DatabaseError>() {
+            return match error {
+                redb::DatabaseError::DatabaseAlreadyOpen => "database already open",
+                _ => "database open",
+            };
+        }
+        if cause.to_string() == "Workspace maintenance is in progress" {
+            return "workspace busy";
+        }
+        if cause.is::<serde_json::Error>() {
+            return "stored summary format";
+        }
+        if cause.is::<std::io::Error>() {
+            return "storage IO";
+        }
+    }
+    "storage operation"
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Summary {
     pub revision: u64,

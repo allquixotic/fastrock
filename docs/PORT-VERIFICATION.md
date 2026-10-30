@@ -1314,3 +1314,37 @@ error text, conversation content or credential is exposed by those diagnostics.
 Remaining T3 auxiliary UI parity, saved profile effort defaults, upstream AWS
 profile isolation limits and live required-route acceptance remain recorded as
 open. No release tag or binary publication.
+
+## 0.4.0 native command palette and database handoff — 2026-10-30
+
+The native Slint palette opens from the sidebar, View menu or configurable
+Ctrl+Shift+P / Cmd+Shift+P shortcut. It searches cached commands, repository
+projects and conversations, including the current title of a streaming chat.
+Substring matches precede bounded fuzzy matches; `>` limits results to commands.
+Native virtual rows, keyboard navigation, pointer activation and guarded existing
+actions preserve unsent drafts and ongoing work when Escape closes the overlay.
+
+The Windows fixture verified native typing, arrows, Enter, Escape and shortcut
+toggle, command filtering, profile settings, Rally roundtrip, navigation back to
+a running conversation, project workspace creation and draft preservation.
+Receipt: `docs/benchmarks/palette-games-2026-10-30.json`; evidence:
+`C:\Users\SeanMcNamara\fastrock-040-policy\palette-native-4`.
+
+A crash-recovery regression reproduced the earlier summary timeout at the
+previous-summary read stage, before any provider call. Investigation found a
+database ownership race: the registry's weak owner could expire while its Engine
+destructor still held redb's file lock. A deterministic Windows test failed on
+the previous code and passes with the per-home close handoff. Reopening now
+waits for the previous Engine to finish closing. Safe diagnostic categories
+remain available without database paths, conversation content or credentials.
+The historical timeout did not capture an exact storage error, so the ownership
+race is a demonstrated defect and plausible cause, not a proven attribution.
+
+Windows passed 726 application tests, 18 workspace tests, native renderer and
+standalone embedded Goose fixture. Three-turn summary/search, two-window Rally
+transfers, tray lifecycle and two process-crash recovery runs also passed on
+executable SHA-256 `218511c894ebd2df43de527b6375c3494dc6ba7f9bf0122719863bfcbfe7fd57`.
+Mac library compilation, formatting, build-policy and
+diff checks passed; no Mac execution. Remaining terminal/checkpoint panels,
+provider effort defaults, Goose capability controls and full acceptance remain
+open. No release tag or binary publication.

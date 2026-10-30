@@ -1,20 +1,32 @@
 # Fastrock product contract
 
-This Rust codebase imports codex-gui at the revision pinned in codex-gui-base.json.
-Its native Slint conversations, approvals/questions, file/diff viewers, settings,
-provider forms and sidebar remain the foundation. The original imported contract
-is retained in docs/upstream/GUI.md for reference.
+Fastrock 0.4.0 embeds unmodified stable Goose and vwork in one process, with a
+native Slint interface adapted from the pinned stable T3 Code release. The
+imported codex-gui implementation and attribution remain the presentation
+foundation; its historical contract is retained in docs/upstream/GUI.md.
+SPEC.md defines the current implementation and acceptance requirements.
 
-Fastrock changes the backend boundary: the installed external `codex app-server`
-owns inference, configuration and agent execution. The GUI speaks JSON RPC over
-stdio (or an explicitly selected daemon/remote connection). It never embeds a
-second Codex runtime. All new Rally UI uses native Slint controls and layouts.
+Goose owns inference, tools and provider behavior through supported public Rust
+APIs. No installed Goose, Codex connection, or external core daemon is required.
+Configured extensions, hooks, credential helpers and requested tools may spawn
+processes. Goose configuration and credentials remain separate from Fastrock UI
+preferences. New tokens are stored only in the OS credential vault.
 
-Rally documents remain horizontal tabs; sidebar rows remain LLM chats. Detailed
-layout, behavior, safety boundaries, migration requirements and acceptance
-coverage are in docs/RALLY-INVENTORY.md. SPEC.md records implementation tasks and
-invariants. Preserve draft isolation and never silently apply assistant writes.
+Projects represent registered repositories; conversations bind to isolated vwork
+workspaces. Keep compressed source, explicit integration, durable coordination,
+and restart recovery requiring Resume. The permanent Rally sidebar project holds
+independent, closable horizontal documents and boards. Its optional temporary AI
+assistant proposes changes for human Apply. The Rally migration requirements and
+acceptance evidence are in docs/RALLY-INVENTORY.md.
 
-Compile speed has precedence over binary size and runtime optimization in every
-profile. No optimized build without Sean's explicit authorization. GUI acceptance
-runs on Windows; Sean's Mac is restricted to headless compilation and tests.
+Use native Slint controls and layouts, bounded transcript memory, efficient
+incremental updates and background filesystem/network/keyring operations. Search
+runs locally over titles and current compressed summaries, with a designated
+cheap model refreshing summaries after completed turns.
+
+Application and dependencies use optimization level 2, no LTO, no debug info,
+256 codegen units and incremental builds; build scripts remain unoptimized.
+Run tests and GUI acceptance on Windows games; Sean's Mac is compile-only.
+Publish signed Windows x64 ZIPs through CI only after feature-complete release
+candidate readiness; final release requires all acceptance, including required
+Bedrock model routes. Source commits and pushes to main continue during development.

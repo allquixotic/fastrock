@@ -35,6 +35,7 @@ export global SidebarState {
     in property <bool> rally-selected;
     in property <int> rally-count;
     callback open-rally();
+    callback open-palette();
     callback new-thread();
     callback add-project();
     callback open-settings();
@@ -392,6 +393,7 @@ export component Sidebar inherits Rectangle {
             spacing: 4px;
             height: 40px;
 
+            LinkButton { text: "⌘"; width: 28px; accessible-label: "Command palette"; clicked => { SidebarState.open-palette(); } }
             search := LineEdit {
                 text <=> SidebarState.search-text;
                 placeholder-text: "Search";

@@ -68,9 +68,10 @@ Unchanged Goose currently has these integration limits:
   custom reasoning strings are rejected by upstream and must not be advertised.
 - Public Goose secret setters can fall back to plaintext storage when the OS
   credential vault is unavailable. They expose no vault-only option. The new
-  defaults form therefore leaves credentials untouched and does not accept API
-  keys or bearer tokens; secure graphical credential editing remains blocked on
-  a supported integration. No Goose source is patched.
+  defaults form leaves existing credentials untouched. Named direct-provider
+  profiles use Goose’s public command-auth API with Fastrock’s bundled vault
+  helper, enabling independent endpoints and keys without plaintext fallback.
+  No Goose source is patched.
 - Goose hooks are command actions; its agent hook manager is private. Fastrock's
   `--vwork-hook` helper evaluates the original vwork policy without opening a UI
   or database. Setup installs a Goose plugin and migrates recognized vwork hook

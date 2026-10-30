@@ -85,6 +85,8 @@ pub(crate) enum Step {
     TabAction(String),
     /// Run a global shortcut by name.
     Shortcut(String),
+    /// Native command-palette search and diagnostic snapshots.
+    Palette(Vec<String>),
     /// Open the settings tab on a page.
     OpenSettings(String),
     /// Drive a settings control, e.g. `["select", "common", "web_search", "4"]`
@@ -452,6 +454,7 @@ impl AppController {
                         .global::<crate::ui::AppState>()
                         .invoke_shortcut(name.into());
                 }
+                Step::Palette(args) => self.palette_automation(&args),
                 Step::OpenSettings(page) => self.open_settings(Some(&page)),
                 Step::Settings(args) => self.settings_automation(&args),
                 Step::OpenFile(path) => self.open_file_tab(path, None),

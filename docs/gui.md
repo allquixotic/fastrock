@@ -3,8 +3,15 @@
 The 0.4.0 development build embeds Goose and vwork; no separate installation is
 needed. Existing Goose settings and OS-vault credentials remain in place. Expand
 **Goose options** above Send for the model, mode and effort choices Goose exposes.
-See [runtime status and current limitations](goose-acp.md). Graphical provider
-setup and complete repository/workspace integration are still in progress.
+See [runtime status and current limitations](goose-acp.md). Settings → Goose
+provides provider defaults, named direct-provider profiles with OS-vault keys,
+and the cheap-model selection for search summaries.
+
+Open **Command Palette** from the sidebar or View menu, or press
+**Ctrl+Shift+P** (**Cmd+Shift+P** on Mac). Search commands, registered projects,
+and loaded conversations; prefix `>` to show commands only. Use arrows and Enter,
+or click a result. Escape closes the palette without interrupting active work.
+The keyboard binding can be changed in Settings → Keyboard.
 
 Conversations appear in the sidebar. Click the active title in the header for
 rename, fork, compact, export and other conversation actions. **Open tabs** also

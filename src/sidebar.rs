@@ -371,6 +371,11 @@ pub(crate) struct SidebarController {
 }
 
 impl SidebarController {
+    /// Cached repository projects; safe to inspect on the UI thread.
+    pub(crate) fn projects(&self) -> &[fastrock_workspaces::projects::Project] {
+        &self.projects
+    }
+
     /// Recently updated active threads, ignoring the current search and
     /// archived view (feeds the new-tab page).
     pub(crate) fn recent_threads(&self) -> &[ThreadSummary] {
@@ -387,6 +392,9 @@ impl AppController {
         self.sidebar.purpose = purpose::PurposeController::load(self.codex_home.as_deref());
         self.sidebar.activity = activity::ActivityController::load(self.codex_home.as_deref());
         let state = self.window.global::<SidebarState>();
+        state.on_open_palette(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::palette_toggle)
+        }));
         state.on_open_rally(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::rally_open_project)
         }));

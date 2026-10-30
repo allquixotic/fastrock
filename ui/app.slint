@@ -4,6 +4,7 @@
 // Feature views talk to Rust through their own globals; this file only places
 // them. Every global used from Rust must be re-exported here.
 
+import { CommandPalette, CommandPaletteState, CommandPaletteRow } from "command-palette.slint";
 import { LineEdit, ListView, Palette, AboutSlint } from "std-widgets.slint";
 import { Theme, FlatButton, LinkButton, Badge, Divider } from "theme.slint";
 import { TranscriptView, TranscriptState, BlockData } from "transcript.slint";
@@ -25,6 +26,7 @@ import { RallyView, RallyState, RallyChoice, RallyRow, RallyCell, RallyLane, Ral
 import { PendingMessageState, PendingMessageEditor } from "pending-message.slint";
 
 export {
+    CommandPaletteState, CommandPaletteRow,
     ProfileState, ProfileRow,
     ScheduleState, ScheduleRow, ScheduleDay,
     GooseState, GooseOption, GooseSetupField,
@@ -1119,6 +1121,7 @@ export component MainWindow inherits Window {
         }
         Menu {
             title: "View";
+            MenuItem { title: "Command Palette…"; activated => { AppState.menu-action("command-palette"); } }
             MenuItem {
                 title: "Toggle Sidebar";
                 activated => { AppState.menu-action("toggle-sidebar"); }
@@ -1184,11 +1187,13 @@ export component MainWindow inherits Window {
         }
     }
 
+    public function focus-chrome() { shortcuts.focus(); }
+
     // Global shortcuts run before the focused widget sees the key; Rust
     // matches them against the keymap (src/shortcuts.rs).
     shortcuts := FocusScope {
         capture-key-pressed(event) => {
-            if AppState.dialog-open || AppState.about-open {
+            if AppState.dialog-open || AppState.about-open || CommandPaletteState.open {
                 return EventResult.reject;
             }
             // While the composer's suggestion popup is open, Esc closes it.
@@ -1316,6 +1321,8 @@ export component MainWindow inherits Window {
     }
 
     if PendingMessageState.open: PendingMessageEditor { width: parent.width; height: parent.height; }
+
+    if CommandPaletteState.open: CommandPalette { width: parent.width; height: parent.height; }
 
     if AppState.dialog-open: Dialog {
         width: parent.width;

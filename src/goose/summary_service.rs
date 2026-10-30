@@ -62,6 +62,7 @@ struct Queue {
     commit: AsyncMutex<()>,
     ready: AtomicBool,
     stage: AtomicU8,
+    storage_failure: Mutex<Option<&'static str>>,
 }
 
 pub(super) struct Service {
@@ -155,14 +156,20 @@ pub(super) fn diagnostic() -> String {
         "commit",
     ];
     format!(
-        "ready={}, active={}, pending={}, retry={}, stage={}",
+        "ready={}, active={}, pending={}, retry={}, stage={}, storage={}",
         service.queue.ready.load(Ordering::Relaxed),
         pending.active.is_some(),
         pending.ids.len(),
         FAILED.load(Ordering::Relaxed),
         stages
             .get(service.queue.stage.load(Ordering::Relaxed) as usize)
-            .unwrap_or(&"unknown")
+            .unwrap_or(&"unknown"),
+        service
+            .queue
+            .storage_failure
+            .lock()
+            .unwrap()
+            .unwrap_or("ok")
     )
 }
 
@@ -233,7 +240,12 @@ async fn process(
     };
     let key = super::model::ui_id(id);
     queue.stage.store(2, Ordering::Relaxed);
-    let previous = summaries.get(key.clone()).await?;
+    let previous = summaries.get(key.clone()).await.map_err(|error| {
+        *queue.storage_failure.lock().unwrap() =
+            Some(fastrock_workspaces::summaries::failure_kind(&error));
+        error
+    })?;
+    *queue.storage_failure.lock().unwrap() = None;
     if previous.as_ref().is_some_and(|old| source.current(old)) {
         return Ok(());
     }

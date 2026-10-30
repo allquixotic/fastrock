@@ -1,0 +1,11 @@
+{
+  "result": "PASS",
+  "binary_sha256": "218511c894ebd2df43de527b6375c3494dc6ba7f9bf0122719863bfcbfe7fd57",
+  "peak_process_bytes": 146092032,
+  "native_keyboard_and_pointer": true,
+  "escape_preserves_active_stream": true,
+  "draft_retained": true,
+  "command_filter_and_fuzzy": true,
+  "conversation_navigation": true,
+  "project_navigation": true
+}

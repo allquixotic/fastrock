@@ -5,44 +5,82 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::{
-        Arc, Mutex, OnceLock, RwLock, Weak,
+        Arc, Condvar, Mutex, OnceLock, RwLock, Weak,
         atomic::{AtomicBool, Ordering},
     },
 };
 use tokio::sync::{OnceCell, Semaphore};
 use vwork_engine::engine::Engine;
 
-type Registry = Mutex<HashMap<PathBuf, Weak<Store>>>;
+type Registry = Mutex<HashMap<PathBuf, Weak<OwnerSlot>>>;
 static STORES: OnceLock<Registry> = OnceLock::new();
 
+#[derive(Default)]
+struct OwnerSlot {
+    // Some(expired Weak) means the old owner is still closing. Do not reopen
+    // until Drop has explicitly cleared this slot after releasing the database.
+    owner: Mutex<Option<Weak<Store>>>,
+    closed: Condvar,
+}
+
 pub struct Store {
-    engine: RwLock<Engine>,
+    engine: Option<RwLock<Engine>>,
+    slot: Arc<OwnerSlot>,
     failed: AtomicBool,
     workers: Arc<Semaphore>,
     next_compact: Mutex<std::time::Instant>,
+}
+
+impl Drop for Store {
+    fn drop(&mut self) {
+        drop(self.engine.take());
+        *self.slot.owner.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        self.slot.closed.notify_all();
+    }
 }
 
 impl Store {
     fn open(home: &Path) -> Result<Arc<Self>> {
         std::fs::create_dir_all(home)?;
         let home = home.canonicalize()?;
-        let mut stores = STORES
-            .get_or_init(Default::default)
+        let slot = {
+            let mut stores = STORES
+                .get_or_init(Default::default)
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Workspace owner registry unavailable"))?;
+            stores.retain(|_, slot| slot.strong_count() > 0);
+            if let Some(slot) = stores.get(&home).and_then(Weak::upgrade) {
+                slot
+            } else {
+                let slot = Arc::new(OwnerSlot::default());
+                stores.insert(home.clone(), Arc::downgrade(&slot));
+                slot
+            }
+        };
+        let mut owner = slot
+            .owner
             .lock()
-            .map_err(|_| anyhow::anyhow!("Workspace owner registry unavailable"))?;
-        stores.retain(|_, store| store.strong_count() > 0);
-        if let Some(store) = stores.get(&home).and_then(Weak::upgrade) {
-            return Ok(store);
+            .map_err(|_| anyhow::anyhow!("Workspace ownership unavailable"))?;
+        while let Some(previous) = owner.as_ref() {
+            if let Some(store) = previous.upgrade() {
+                return Ok(store);
+            }
+            owner = slot
+                .closed
+                .wait(owner)
+                .map_err(|_| anyhow::anyhow!("Workspace ownership unavailable"))?;
         }
         let config = vwork_engine::transport::load_config(&home)?;
         let interval = std::time::Duration::from_secs(config.compact_interval_seconds);
         let store = Arc::new(Self {
-            engine: RwLock::new(Engine::open(&home, config)?),
+            engine: Some(RwLock::new(Engine::open(&home, config)?)),
+            slot: slot.clone(),
             failed: AtomicBool::new(false),
             workers: Arc::new(Semaphore::new(8)),
             next_compact: Mutex::new(std::time::Instant::now() + interval),
         });
-        stores.insert(home, Arc::downgrade(&store));
+        *owner = Some(Arc::downgrade(&store));
+        drop(owner);
         Self::start_maintenance(Arc::downgrade(&store));
         Ok(store)
     }
@@ -94,6 +132,8 @@ impl Store {
         );
         let engine = self
             .engine
+            .as_ref()
+            .expect("live workspace engine")
             .try_read()
             .map_err(|_| anyhow::anyhow!("Workspace maintenance is in progress"))?;
         ensure!(
@@ -114,9 +154,14 @@ impl Store {
             !self.failed.load(Ordering::Acquire),
             "Workspace maintenance failed; restart Fastrock for recovery"
         );
-        let engine = self.engine.try_write().map_err(|_| {
-            anyhow::anyhow!("A workspace operation is active; review again after it finishes")
-        })?;
+        let engine = self
+            .engine
+            .as_ref()
+            .expect("live workspace engine")
+            .try_write()
+            .map_err(|_| {
+                anyhow::anyhow!("A workspace operation is active; review again after it finishes")
+            })?;
         ensure!(
             !self.failed.load(Ordering::Acquire),
             "Workspace maintenance failed; restart Fastrock for recovery"
@@ -130,7 +175,12 @@ impl Store {
                 !self.failed.load(Ordering::Acquire),
                 "Workspace maintenance failed; restart Fastrock for recovery"
             );
-            let Ok(mut engine) = self.engine.try_write() else {
+            let Ok(mut engine) = self
+                .engine
+                .as_ref()
+                .expect("live workspace engine")
+                .try_write()
+            else {
                 return Ok(json!({"compacted":false,"reason":"busy"}));
             };
             ensure!(
@@ -226,4 +276,32 @@ pub fn run_hook(input: impl std::io::Read, mut output: impl std::io::Write) -> R
     serde_json::to_writer(&mut output, &hook(&payload))?;
     output.write_all(b"\n")?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn v40_reopen_waits_until_previous_owner_has_closed() {
+        let temp = tempfile::tempdir().unwrap();
+        let owner = Store::open(temp.path()).unwrap();
+        // Deterministically model the last Arc reaching zero before its Engine
+        // destructor has released redb's OS file lock.
+        let closing = Arc::try_unwrap(owner).unwrap_or_else(|_| panic!("unexpected owner"));
+        let connection = Connection::new(temp.path().to_owned());
+        let mut reopen = tokio::spawn(async move { connection.store().await });
+        let early = tokio::time::timeout(std::time::Duration::from_millis(200), &mut reopen).await;
+        drop(closing);
+        assert!(
+            early.is_err(),
+            "reopening must wait for the old owner to finish closing"
+        );
+        let reopened = tokio::time::timeout(std::time::Duration::from_secs(5), reopen)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        assert!(!reopened.failed.load(Ordering::Acquire));
+    }
 }
