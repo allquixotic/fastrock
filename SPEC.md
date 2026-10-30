@@ -132,6 +132,8 @@ V53: Historical viewport ! at most 100 indexed entries and their turn metadata, 
 
 V54: Further 0.4.0 publication ! feature-complete verified spec and RC/final version only; incomplete/missing implementation tasks ! reject before CI build/publication. RC may await live-profile acceptance; final ! all 0.4.0 tasks complete. Verify: ReleasePolicy.test_v54_publication_requires_feature_complete_spec.
 
+V55: App delegation ! fresh task context, inherited Goose permission/provider config, isolated copies of every explicit vwork binding and durable parent/task identity before dispatch. Repeated task identity ! same child, no automatic resend; failed setup ! retained idle/hidden child. Delegate tools ! own children only; parent interruption ! stop descendants and pause queues. Built-in shared-workspace delegation ! unavailable in Fastrock sessions; Goose source/config files unchanged. Verify: v55 delegation identity/fresh-context/filter tests and native local-provider delegation/restart fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -182,7 +184,7 @@ T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only releas
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
 T37|~|Embedded Goose; remove Codex UI/connection; graphical non-secret provider defaults, preserve configuration; vault-only credential setup blocked by R8|V38,V39,V52,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
-T39|~|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; isolated conversation forks; no quotas|V41,V50,I.orchestration
+T39|~|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; isolated conversation forks; no quotas|V41,V50,V55,I.orchestration
 T40|~|Native T3 main UI/sidebar/panels, registered repository projects and permanent independent Rally project|V42,V51,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and bounded arbitrary history viewports|V1,V9,V32,V37,V43,V53,I.scroll
@@ -412,3 +414,9 @@ B118|2026-10-29|Release GUI fixtures still selected removed external ACP backend
 B119|2026-10-29|Local provider fixture compared prompts including Fastrock turn-context metadata|Strip the appended turn-context before choosing deterministic fixture responses; native embedded streaming/cancellation fixture; V39
 
 B120|2026-10-29|Workspace project module inherited sha2 from nonexistent workspace dependency entry|Declare matching direct dependency; manifest/compile oracle; no new invariant
+B121|2026-10-30|Recovery fault test expected Stop success despite new durable pause write failure|Assert explicit save error, actual cancellation and retained uncertain dispatch; V41,V55
+B122|2026-10-30|Fixture assumed Bedrock toolResult status preserves MCP isError; unchanged Goose returns refusal text with success status|Assert actual ownership refusal and absent effects; fixture-only correction; V55
+B123|2026-10-30|Delegation fixture used terminal /stop command instead of conversation Stop|Click native Stop; assert child stream ended before Quit; V55
+B124|2026-10-30|Recovery fixture parsed Goose synthetic interrupted-tool text as a current JSON tool reply|Treat combined new user prompt as turn start; preserve interrupted history; fixture-only correction; V55
+B125|2026-10-30|Crash fixture inspected lazy child queue before opening that child|Open restored child without Resume; assert paused native state, uncertain dispatch and no repeated provider call; V41,V55
+B126|2026-10-30|Native dump reported only local draft pause, hiding authoritative Goose queue pause|Dump the same combined recovery predicate used by composer; crashed-child native fixture; V41,V55

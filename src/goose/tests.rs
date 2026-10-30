@@ -580,9 +580,11 @@ async fn v41_failed_completion_save_remains_reviewable_and_resumable() {
     let original = std::fs::read(&path).unwrap();
     std::fs::remove_file(&path).unwrap();
     std::fs::create_dir(&path).unwrap(); // Force atomic replacement to fail on every platform.
-    call(&client, "turn/interrupt", json!({"threadId":id}))
+    let failure = call(&client, "turn/interrupt", json!({"threadId":id}))
         .await
-        .unwrap();
+        .unwrap_err();
+    assert!(failure.message.contains("Save queued drafts"));
+    // Stop still cancels the running prompt despite the durable pause failure.
     loop {
         if let AppServerEvent::ServerNotification(notification) = event(&mut client).await {
             if matches!(

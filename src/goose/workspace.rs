@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 pub(super) struct BindingRecord {
     pub workspace: Option<WorkspaceSession>,
     pub forked_from: Option<String>,
+    #[serde(default)]
+    pub delegation: Option<super::delegation::Delegation>,
 }
 
 pub(super) fn instructions(workspace: &WorkspaceSession) -> String {

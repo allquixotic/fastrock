@@ -57,6 +57,17 @@ impl QueueState {
 }
 
 impl Adapter {
+    pub(super) async fn pause_agent_queue(&self, id: &str) -> Result<(), JSONRPCErrorError> {
+        self.load_queue(id).await?;
+        let mut queues = self.queue.lock().await;
+        let state = queues
+            .get_mut(id)
+            .ok_or_else(|| error("Queue unavailable"))?;
+        state.paused = true;
+        let result = self.write_queue(id, state).await;
+        self.queue_event(id, state.recovery());
+        result
+    }
     // Callers hold the session gate. The queue mutex serializes disk snapshots
     // with completion callbacks, which must not reacquire that gate.
     pub(super) async fn load_queue(&self, id: &str) -> Result<Recovery, JSONRPCErrorError> {
@@ -144,6 +155,7 @@ impl Adapter {
         if matches!(method, "thread/queue/add" | "fastrock/goose/resumeQueue") {
             self.schedule_queue(id).await;
         }
+        self.changed.notify_waiters();
         Ok(result)
     }
 

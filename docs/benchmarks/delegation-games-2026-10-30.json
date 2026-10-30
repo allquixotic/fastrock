@@ -1,0 +1,23 @@
+{
+  "result": "PASS",
+  "binary_sha256": "b31b1b757338f3f86decf10a32763ebadadaeffdc94fadf6da5bc959328bbfd8",
+  "peak_process_bytes": 145702912,
+  "fresh_child_context": true,
+  "isolated_workspace": true,
+  "source_preserved": true,
+  "idempotent_delegation": true,
+  "wait_and_followup": true,
+  "child_ownership_guard": true,
+  "parent_stop_cancels_child": true,
+  "restart_requires_resume": true,
+  "paused_followup_retained": true,
+  "forced_crash_no_tool_replay": true,
+  "native_child_pane_restored": true,
+  "no_goose_shared_cwd_delegate": true,
+  "no_backend_installed": true,
+  "date": "2026-10-30",
+  "host": "games",
+  "test": "dev/windows-delegation-smoke.py",
+  "evidence": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\delegation-native-6",
+  "distribution": "local development fixture only; no release publication"
+}

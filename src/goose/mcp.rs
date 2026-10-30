@@ -226,6 +226,22 @@ async fn dispatch(route: &Route, request: &Value) -> Reply {
                 .get(session)
                 .and_then(|s| s.active.clone())
                 .ok_or_else(|| error("No active prompt for this tool call"))?;
+            if tool["namespace"] == "fastrock_agents" {
+                let result = adapter
+                    .delegation_tool(
+                        session,
+                        &turn_id,
+                        text(tool, "originalName"),
+                        &params["arguments"],
+                    )
+                    .await;
+                return Ok(match result {
+                    Ok(value) => {
+                        json!({"content":[{"type":"text","text":value.to_string()}],"isError":false})
+                    }
+                    Err(e) => json!({"content":[{"type":"text","text":e.message}],"isError":true}),
+                });
+            }
             let call_id = format!("goose-tool-{}", uuid::Uuid::new_v4());
             let (tx, rx) = oneshot::channel();
             adapter.answers.lock().await.insert(

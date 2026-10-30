@@ -75,6 +75,9 @@ impl Session {
         };
         json!({"id":id,"sessionId":id,"name":self.info["title"],"preview":meta["lastMessageSnippet"].as_str().unwrap_or(""),
             "forkedFromId":self.binding.forked_from.as_deref().map(ui_id),
+            "parentThreadId":self.binding.delegation.as_ref().map(|d|ui_id(&d.parent)),
+            "agentNickname":self.binding.delegation.as_ref().map(|d|d.task_id.as_str()),
+            "agentRole":self.binding.delegation.as_ref().map(|_|"Delegate"),
             "projectId":self.binding.workspace.as_ref().map(|w|fastrock_workspaces::projects::id(&w.selection.home,&w.repo)),
             "ephemeral":self.ephemeral,"modelProvider":if provider.is_empty(){"goose"}else{provider},"model":model,
             "createdAt":timestamp(&meta["createdAt"]),"updatedAt":timestamp(&self.info["updatedAt"]),

@@ -1,6 +1,8 @@
 //! Embedded Goose adapter. Goose owns agents/config/storage; these are UI projections.
 mod cheap_profile;
 mod controls;
+mod delegation;
+mod delegation_tools;
 mod embedded;
 mod history;
 mod hooks;
@@ -87,6 +89,7 @@ struct Adapter {
     vwork_paths: fastrock_workspaces::vwork::DiscoveryPaths,
     embedded_runtime: bool,
     summaries: Option<Arc<summary_service::Service>>,
+    changed: tokio::sync::Notify,
 }
 
 pub(crate) async fn connect(
@@ -221,6 +224,7 @@ where
         summaries,
         vwork_paths,
         embedded_runtime: child.is_none(),
+        changed: tokio::sync::Notify::new(),
     });
     let read_adapter = adapter.clone();
     let pending: Pending = Arc::new(StdMutex::new(HashMap::new()));
@@ -511,11 +515,7 @@ impl Adapter {
             "turn/start" => self.start_turn(params).await,
             "turn/interrupt" => {
                 let id = session_id(text(params, "threadId"))?;
-                if let Some(session) = self.sessions.lock().await.get_mut(id) {
-                    session.cancel_requested = session.active.is_some();
-                }
-                self.rpc.send(json!({"jsonrpc":"2.0","method":"session/cancel","params":{"sessionId":id}})).await?;
-                self.cancel_answers(id).await;
+                self.interrupt_tree(id).await?;
                 Ok(json!({}))
             }
             "turn/steer" => self.steer(params).await,

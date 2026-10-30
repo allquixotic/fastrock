@@ -10,10 +10,13 @@ impl Adapter {
         let cwd = workspace_cwd
             .as_deref()
             .unwrap_or_else(|| params["cwd"].as_str().unwrap_or(&self.cwd));
-        let tools = params["dynamicTools"]
+        let mut tools = params["dynamicTools"]
             .as_array()
             .cloned()
             .unwrap_or_default();
+        if workspace.is_some() {
+            super::delegation_tools::add(&mut tools);
+        }
         if !tools.is_empty() && self.capabilities.lock().await["mcpCapabilities"]["http"] != true {
             return Err(error(
                 "This Goose does not advertise HTTP MCP support required for Fastrock tools. Update Goose or disable these tools.",
@@ -84,7 +87,7 @@ impl Adapter {
         let setup = async {
             if params["ephemeral"] != true { self.save_vwork_bindings(id, &bindings)?; }
             if workspace.is_some() {
-                self.save_binding_record(id, &super::workspace::BindingRecord { workspace: workspace.clone(), forked_from: None })?;
+                self.save_binding_record(id, &super::workspace::BindingRecord { workspace: workspace.clone(), forked_from: None, delegation: None })?;
             }
             if !tools.is_empty() && params["ephemeral"] != true {
                 std::fs::create_dir_all(&self.queue_root).map_err(|e|error(format!("Save session tool definitions: {e}")))?;
@@ -105,6 +108,7 @@ impl Adapter {
             if let Some(workspace) = &workspace {
                 self.rpc.call("_goose/unstable/session/system-prompt/set", json!({"sessionId":id,"mode":"append","key":"fastrock-workspace","text":super::workspace::instructions(workspace)})).await?;
             }
+            self.restrict_native_delegation(id).await?;
             Ok::<_,JSONRPCErrorError>(())
         }.await;
         if let Err(e) = setup {
@@ -155,8 +159,13 @@ impl Adapter {
     }
 
     pub(super) async fn list_sessions(&self, params: &Value) -> Reply {
-        if !params["parentThreadId"].is_null() || !params["ancestorThreadId"].is_null() {
-            return Err(unsupported("Goose sub-agent thread enumeration"));
+        if !params["parentThreadId"].is_null() {
+            return self.child_threads(params).await;
+        }
+        if !params["ancestorThreadId"].is_null() {
+            return Err(unsupported(
+                "Descendant enumeration; list direct children recursively",
+            ));
         }
         if self.capabilities.lock().await["sessionCapabilities"]["list"].is_null() {
             return Err(unsupported("session/list"));
@@ -248,13 +257,24 @@ impl Adapter {
                         }
                         let bytes = std::fs::read(path)
                             .map_err(|e| error(format!("Read session tools: {e}")))?;
-                        let tools = serde_json::from_slice(&bytes)
+                        let mut tools = serde_json::from_slice(&bytes)
                             .map_err(|e| error(format!("Invalid saved session tools: {e}")))?;
+                        if workspace.is_some() {
+                            super::delegation_tools::add(&mut tools);
+                        }
                         let registration = self.mcp.register(Arc::downgrade(self), tools).await;
                         self.mcp.bind(&registration.key, id).await;
                         servers.push(registration.server());
                     }
-                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                        if workspace.is_some() {
+                            let mut tools = Vec::new();
+                            super::delegation_tools::add(&mut tools);
+                            let registration = self.mcp.register(Arc::downgrade(self), tools).await;
+                            self.mcp.bind(&registration.key, id).await;
+                            servers.push(registration.server());
+                        }
+                    }
                     Err(e) => return Err(error(format!("Read session tools: {e}"))),
                 }
             }
@@ -288,6 +308,12 @@ impl Adapter {
                 }
             };
             s.config = config_options(&response);
+            drop(sessions);
+            self.restrict_native_delegation(id).await?;
+            let mut sessions = self.sessions.lock().await;
+            let s = sessions
+                .get_mut(id)
+                .ok_or_else(|| error("Session unavailable"))?;
             s.loaded = true;
             self.config_event(id, s.config.clone())?;
         }
@@ -469,6 +495,8 @@ impl Adapter {
         self.emit(
             json!({"method":"turn/started","params":{"threadId":ui_id(&id),"turn":started}}),
         )?;
+        self.emit(json!({"method":"thread/status/changed","params":{"threadId":ui_id(&id),"status":{"type":"active","activeFlags":[]}}}))?;
+        self.changed.notify_waiters();
         self.emit(json!({"method":"item/completed","params":{"threadId":ui_id(&id),"turnId":tid,"item":user}}))?;
         // Enqueue the prompt before acknowledging it; a subsequent Stop cannot overtake it.
         let call = match self
@@ -511,6 +539,7 @@ impl Adapter {
         s.info["updatedAt"] = json!(chrono::Utc::now().to_rfc3339());
         s.info["_meta"]["lastMessageAt"] = s.info["updatedAt"].clone();
         let summarize = completed && !s.ephemeral;
+        let delegated = s.binding.delegation.is_some();
         let t = s.turn_mut();
         match reply {
             Ok(reply) => {
@@ -540,8 +569,18 @@ impl Adapter {
         }
         let completion =
             json!({"method":"turn/completed","params":{"threadId":ui_id(id),"turn":t}});
+        let outcome = delegated.then(|| super::delegation::outcome(t));
         drop(sessions);
-        self.settle_dispatch(id, tid, completed).await;
+        let mut saved = true;
+        if let Some(outcome) = outcome {
+            if let Err(e) = self.save_delegate_outcome(id, outcome).await {
+                saved = false;
+                let _=self.emit(json!({"method":"error","params":{"threadId":ui_id(id),"turnId":tid,"willRetry":false,"error":{"message":e.message}}}));
+            }
+        }
+        self.settle_dispatch(id, tid, completed && saved).await;
+        let _=self.emit(json!({"method":"thread/status/changed","params":{"threadId":ui_id(id),"status":{"type":"idle"}}}));
+        self.changed.notify_waiters();
         if let Err(error) = self.emit(completion) {
             tracing::error!(error = %error.message, "could not deliver turn completion");
         }

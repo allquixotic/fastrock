@@ -120,6 +120,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-vwork-smoke.py build/release-inputs/fastrock.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/windows-delegation-smoke.py build/release-inputs/fastrock.exe --output build/delegation-smoke
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-provider-setup-smoke.py build/release-inputs/fastrock.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-history-smoke.py build/release-inputs/fastrock.exe
@@ -142,6 +144,7 @@ jobs:
             build/rally-smoke/
             build/goose-chat-smoke/
             build/vwork-smoke/
+            build/delegation-smoke/
             build/provider-setup-smoke/
             build/history-smoke/
             build/windows-tests.log

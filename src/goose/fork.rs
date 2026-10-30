@@ -5,6 +5,14 @@ use goose_runtime::session::{SessionManager, SessionType};
 
 impl Adapter {
     pub(super) async fn fork_session(self: &Arc<Self>, params: &Value) -> Reply {
+        self.fork_bound(params, None).await
+    }
+
+    pub(super) async fn fork_bound(
+        self: &Arc<Self>,
+        params: &Value,
+        delegation: Option<super::delegation::Delegation>,
+    ) -> Reply {
         if !self.embedded_runtime {
             return Err(unsupported("Fork requires embedded Goose"));
         }
@@ -13,15 +21,47 @@ impl Adapter {
             .await?;
         let gate = self.gate(source_id).await;
         let _lock = gate.lock().await;
+        if let Some(task) = &delegation {
+            if let Some(child) = self.delegation_index(source_id).await?.get(&task.task_id) {
+                let manager = SessionManager::new(goose_runtime::config::paths::Paths::data_dir());
+                let stored = manager
+                    .get_session(child, false)
+                    .await
+                    .map_err(|_| error("Saved delegate is unavailable; do not repeat the task"))?;
+                if stored.session_type == SessionType::Hidden {
+                    return Err(error(
+                        "Delegate setup was interrupted; inspect the retained child before retrying",
+                    ));
+                }
+                let record = self.binding_record(child).await?;
+                if record
+                    .delegation
+                    .as_ref()
+                    .is_none_or(|old| !old.same_task(task))
+                {
+                    return Err(error(
+                        "Task identity already exists with different instructions or settings",
+                    ));
+                }
+                return Ok(json!({"thread":{"id":ui_id(child)},"reused":true}));
+            }
+        }
         let (binding, before) = {
             let mut sessions = self.sessions.lock().await;
             let source = sessions
                 .get_mut(source_id)
                 .ok_or_else(|| error("Source conversation unavailable"))?;
-            if source.active.is_some() || source.ephemeral {
+            if source.ephemeral || (delegation.is_none() && source.active.is_some()) {
                 return Err(error(
                     "Finish the current turn before forking a persistent conversation",
                 ));
+            }
+            if let Some(task) = &delegation {
+                if source.active.as_deref() != Some(task.source_turn.as_str())
+                    || source.cancel_requested
+                {
+                    return Err(error("The delegating turn has stopped or changed"));
+                }
             }
             let before = if let Some(turn_id) = params["beforeTurnId"].as_str() {
                 let boundary = (0..source.turns.len()).step_by(200).find_map(|offset| {
@@ -52,10 +92,16 @@ impl Adapter {
         )
         .await?;
         let manager = SessionManager::new(goose_runtime::config::paths::Paths::data_dir());
-        let source = manager
-            .get_session(source_id, true)
+        let mut source = manager
+            // Delegates need configuration, never the parent's history. Avoid
+            // decoding a huge conversation just to discard it below.
+            .get_session(source_id, delegation.is_none())
             .await
             .map_err(|_| error("Cannot read the stored source conversation"))?;
+        if delegation.is_some() {
+            // Never copy a pending tool invocation into another conversation.
+            source.conversation = None;
+        }
         if let Some(message) = &before {
             if !source
                 .conversation
@@ -142,7 +188,8 @@ impl Adapter {
             &child,
             &super::workspace::BindingRecord {
                 workspace: Some(child_workspace),
-                forked_from: Some(source_id.into()),
+                forked_from: delegation.is_none().then(|| source_id.into()),
+                delegation: delegation.clone(),
             },
         )?;
         if let Some(tools) = tools {
@@ -151,6 +198,17 @@ impl Adapter {
                 &serde_json::to_vec(&tools).map_err(|e| error(e.to_string()))?,
             )
             .map_err(|e| error(format!("Save fork tools: {e}")))?;
+        }
+        if let Some(task) = &delegation {
+            manager
+                .update(&child)
+                .parent_session_id(Some(source_id.into()))
+                .system_generated_name(format!("Task: {}", task.task_id))
+                .apply()
+                .await
+                .map_err(|_| error("Save delegate identity failed"))?;
+            self.save_delegation_index(source_id, &task.task_id, &child)
+                .await?;
         }
         // Only a completely bound fork can become visible after a crash.
         manager
@@ -167,7 +225,7 @@ impl Adapter {
     }
 }
 
-async fn read_saved<T: serde::de::DeserializeOwned>(
+pub(super) async fn read_saved<T: serde::de::DeserializeOwned>(
     path: &std::path::Path,
     limit: u64,
 ) -> Result<Option<T>, JSONRPCErrorError> {

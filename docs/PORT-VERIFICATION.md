@@ -1140,3 +1140,33 @@ embedded Goose verification. macOS compiled without tests or publication. The
 temporary Mac runner was removed. Receipt:
 `docs/benchmarks/alpha3-release-verification.json`. Final 0.4.0 and live-profile
 acceptance remain open.
+
+## 0.4.0 isolated agent delegation — 2026-10-30
+
+Bound Goose conversations now expose Fastrock-owned delegate/list/wait/message/
+interrupt tools. Delegates inherit Goose configuration and permissions, receive
+fresh task context, and fork every explicit vwork binding into isolated storage
+with a separate scratch cwd. Parent history is not decoded for delegation.
+Stable task identities return the existing child without redispatch. Durable
+lineage and bounded final answers survive restart. Native Info lists named
+children; child workspace changes still require reviewed explicit integration.
+Goose's session extension API retains Summon `load` while removing its
+shared-cwd `delegate`; upstream source and global configuration remain unchanged.
+
+The real embedded Goose/vwork native fixture passed on games: parent source
+preservation, retry identity, child follow-up/wait, unrelated-child refusal,
+parent Stop cancelling its streaming child before Quit, restored child listing,
+paused follow-up retention, and forced-process-crash quarantine without replay.
+Peak process memory was 145,702,912 bytes under a 2 GB fixture cap. Evidence:
+`docs/benchmarks/delegation-games-2026-10-30.json` and
+`C:\Users\SeanMcNamara\fastrock-040-policy\delegation-native-6`.
+
+Windows verification passed 711 application tests, the isolated native renderer
+test, 17 workspace tests, and the standalone embedded Goose fixture. Native
+concurrent-chat cancellation, vwork/manual-fork/restart, and process draft-recovery
+regressions passed on the same executable. Mac compilation and build-policy/
+formatting checks passed; no Mac GUI or tests ran. Executable SHA-256:
+`b31b1b757338f3f86decf10a32763ebadadaeffdc94fadf6da5bc959328bbfd8`.
+This is a local development build. Scheduling, remaining UI/orchestration work,
+and the recorded provider integration limits remain open. No release was built
+or published to GitHub; the feature-completion publication gate remains active.

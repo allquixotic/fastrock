@@ -42,7 +42,7 @@ pub(super) async fn copy_hidden(
     if let Some(model) = source.model_config {
         builder = builder.model_config(model);
     }
-    // A manual fork never inherits an automatic schedule or a pending run.
+    // Forks and delegates never inherit an automatic schedule or a pending run.
     builder.apply().await?;
     if let Some(conversation) = conversation {
         manager
@@ -61,6 +61,52 @@ pub(super) async fn copy_hidden(
 mod tests {
     use super::*;
     use goose_provider_types::conversation::message::Message;
+
+    #[tokio::test]
+    async fn v55_delegate_has_fresh_context_and_preserves_source_configuration() {
+        let temp = tempfile::tempdir().unwrap();
+        let manager = SessionManager::new(temp.path().join("data"));
+        let source = manager
+            .create_session(
+                temp.path().join("parent"),
+                "parent".into(),
+                SessionType::User,
+                Default::default(),
+            )
+            .await
+            .unwrap();
+        manager
+            .add_message(
+                &source.id,
+                &Message::user().with_text("parent-only context"),
+            )
+            .await
+            .unwrap();
+        manager
+            .update(&source.id)
+            .provider_name("aws_bedrock")
+            .schedule_id(Some("parent-schedule".into()))
+            .apply()
+            .await
+            .unwrap();
+        let mut input = manager.get_session(&source.id, false).await.unwrap();
+        assert!(input.conversation.is_none());
+        let mode = input.goose_mode;
+        input.conversation = None;
+        let child = copy_hidden(&manager, input, temp.path().join("child"), None)
+            .await
+            .unwrap();
+        let child = manager.get_session(&child, true).await.unwrap();
+        assert!(child.conversation.is_none_or(|c| c.messages().is_empty()));
+        assert_eq!(child.session_type, SessionType::Hidden);
+        assert_eq!(child.provider_name.as_deref(), Some("aws_bedrock"));
+        assert_eq!(child.goose_mode, mode);
+        assert!(child.schedule_id.is_none());
+        assert_eq!(child.working_dir, temp.path().join("child"));
+        let parent = manager.get_session(&source.id, true).await.unwrap();
+        assert_eq!(parent.conversation.unwrap().messages().len(), 1);
+        assert_eq!(parent.schedule_id.as_deref(), Some("parent-schedule"));
+    }
 
     #[tokio::test]
     async fn v50_fork_is_hidden_preserves_source_and_rewinds_exact_message() {
