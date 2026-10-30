@@ -18,6 +18,7 @@ export struct SidebarRow {
     section: string,
     pinned: bool,
     auto-settle-enabled: bool,
+    regenerating-title: bool,
     checked: bool,
     kind: SidebarRowKind,
     // Thread id (thread rows) or folder path (folder rows).
@@ -37,6 +38,8 @@ export struct SidebarRow {
 }
 
 export global SidebarState {
+    in property <int> regenerating-titles;
+    in property <string> title-generation-status;
     in-out property <bool> group-projects;
     in-out property <bool> working-section;
     in-out property <int> auto-settle-days;
@@ -336,6 +339,12 @@ component ThreadRowView inherits Rectangle {
                 activated => { SidebarState.thread-action(item.id, "rename"); }
             }
             MenuItem {
+                title: item.regenerating-title ? "Regenerating title…" : "Regenerate title";
+                enabled: !item.regenerating-title && SidebarState.regenerating-titles == 0
+                    && item.status != SidebarThreadStatus.running && item.status != SidebarThreadStatus.starting;
+                activated => { SidebarState.thread-action(item.id, "regenerate-title"); }
+            }
+            MenuItem {
                 title: SidebarState.archived ? "Unarchive" : "Archive";
                 activated => { SidebarState.thread-action(item.id, SidebarState.archived ? "unarchive" : "archive"); }
             }
@@ -604,6 +613,15 @@ export component Sidebar inherits Rectangle {
                 LinkButton { text: "Wake"; enabled: SidebarState.selection-count > 0 && SidebarState.organization-ready; clicked => { SidebarState.organization-action("wake"); } }
                 LinkButton { text: "Unpin"; enabled: SidebarState.selection-count > 0 && SidebarState.organization-ready; clicked => { SidebarState.organization-action("unpin"); } }
                 LinkButton { text: "Unread"; enabled: SidebarState.selection-count > 0; clicked => { SidebarState.organization-action("mark-unread"); } }
+                LinkButton { text: "Retitle"; enabled: SidebarState.selection-count > 0 && SidebarState.regenerating-titles == 0; clicked => { SidebarState.organization-action("regenerate-title"); } }
+            }
+        }
+        if SidebarState.title-generation-status != "": VerticalLayout {
+            padding: 8px; spacing: 4px;
+            Text { text: SidebarState.title-generation-status; color: Theme.text-muted; font-size: Theme.font-size-small; wrap: word-wrap; }
+            LinkButton {
+                text: SidebarState.regenerating-titles > 0 ? "Cancel remaining" : "Dismiss";
+                clicked => { SidebarState.organization-action(SidebarState.regenerating-titles > 0 ? "cancel-titles" : "clear-title-status"); }
             }
         }
         if SidebarState.organization-error != "": VerticalLayout {

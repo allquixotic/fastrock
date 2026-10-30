@@ -53,6 +53,35 @@ async fn new(client: &AppServerClient, cwd: &std::path::Path) -> String {
         .unwrap()
         .to_owned()
 }
+#[tokio::test]
+async fn v69_native_typed_rename_reaches_public_goose_api() {
+    use codex_app_server_protocol::{
+        ClientRequest, RequestId, ThreadSetNameParams, ThreadSetNameResponse,
+    };
+    let (client, temp) = fixture().await;
+    let id = new(&client, temp.path()).await;
+    let request = serde_json::to_value(ClientRequest::ThreadSetName {
+        request_id: RequestId::String("rename".into()),
+        params: ThreadSetNameParams {
+            thread_id: id.clone(),
+            name: "Human title wins".into(),
+        },
+    })
+    .unwrap();
+    let result = call(
+        &client,
+        request["method"].as_str().unwrap(),
+        request["params"].clone(),
+    )
+    .await
+    .unwrap();
+    let _: ThreadSetNameResponse = serde_json::from_value(result).unwrap();
+    let read = call(&client, "thread/read", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(read["thread"]["name"], "Human title wins");
+    client.shutdown().await.unwrap();
+}
 async fn send(client: &AppServerClient, id: &str, message: &str) -> Value {
     call(client,"turn/start",json!({"threadId":id,"clientUserMessageId":uuid::Uuid::new_v4().to_string(),"input":[{"type":"text","text":message,"textElements":[]}]})).await.unwrap()
 }

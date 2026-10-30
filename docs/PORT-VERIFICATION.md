@@ -1597,3 +1597,22 @@ the native fixture does not wait three days. Peak 136,871,936 bytes.
 Mac compile and build/release policy checks passed; screenshot inspected.
 SHA-256 `641ae5bdf4916bc16abe497e202c5df019e64ccac4925cf299cdd054c7edd84c`. Receipt:
 `docs/benchmarks/sidebar-policy-games-2026-10-30.json`. T52 remains open; no tag.
+
+### Conversation title verification — 2026-10-30
+
+Native individual and batch title generation uses the designated cheap profile
+and a bounded current search summary, with no agent activation or tools. Requests
+are capped at two process-wide; batches are sequential and can cancel remaining
+work. Pending summaries, invalid output and concurrent name/history changes
+preserve the existing title. The audit also fixed native Rename's canonical
+request route and retained sidebar metadata outside the first catalog page.
+
+On games, 756 application tests, isolated renderer and the native title fixture
+passed. The fixture covers current-summary gating, native batch controls, a
+manual rename during generation, malformed output, cancellation and restart.
+The three-turn summary/navigation/three-window/tray regression passed on the
+same bytes. Peak title-fixture memory: 141,082,624 bytes. Mac library compile,
+formatting and build/release policy checks passed; no Mac application execution.
+SHA-256 `6bbda0224855008b99843fcfa7f831c7c682c77489bff1786acc65ad5d524f93`.
+Receipt: `docs/benchmarks/titles-games-2026-10-30.json`.
+T52's remaining organization audit and T53–T56 remain open. No release tag.

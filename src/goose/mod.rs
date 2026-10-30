@@ -46,6 +46,7 @@ mod setup_controls;
 mod summary_worker;
 #[cfg(test)]
 mod tests;
+mod titles;
 mod vwork;
 mod workspace;
 
@@ -584,10 +585,13 @@ impl Adapter {
             | "thread/queue/list"
             | "thread/queue/update"
             | "thread/queue/delete" => self.queue_request(params, method).await,
-            "thread/setName" | "thread/archive" | "thread/unarchive" | "thread/compact/start" => {
-                self.manage(params, method).await
-            }
+            "thread/name/set"
+            | "thread/setName"
+            | "thread/archive"
+            | "thread/unarchive"
+            | "thread/compact/start" => self.manage(params, method).await,
             "thread/unsubscribe" => self.close_session(params).await,
+            "fastrock/thread/regenerateTitle" => self.regenerate_title(params).await,
             "fastrock/checkpoint/list"
             | "fastrock/checkpoint/capture"
             | "fastrock/checkpoint/review"

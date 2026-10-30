@@ -1,0 +1,13 @@
+{
+  "result": "PASS",
+  "binary_sha256": "6bbda0224855008b99843fcfa7f831c7c682c77489bff1786acc65ad5d524f93",
+  "peak_process_bytes": 141082624,
+  "cheap_model_only": true,
+  "no_agent_or_tools": true,
+  "single_and_native_batch": true,
+  "stale_manual_name_preserved": true,
+  "invalid_output_preserved": true,
+  "pending_summary_rejected": true,
+  "cancel_remaining": true,
+  "restart": true
+}

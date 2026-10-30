@@ -161,6 +161,9 @@ V67: Native repository identity ! stable across display labels; generated IDs ! 
 
 V68: Sidebar pin/settle/snooze/order ! durable GUI metadata, separate from Goose history; shared-window edits ! serialized, acknowledged after atomic save, invalid existing file ! preserved. Snooze deadline ! one wake timer, no agent dispatch; explicit new input, new request/failure ! wake/unsettle. Pinned metadata beyond catalog page one ! visible without loading agent/history. Project filters and batch selection ! stable IDs; selection ! visible rows only. Status changes ! incremental row/group updates, no provider reload per stream chunk. Auto-settle ! configurable inactivity deadline, pinned/working/attention exemptions, per-chat opt-out, new activity/wake resets; no agent dispatch. Grouping/Working section ! native persisted preferences. Native pointer drop ! atomic group/order update; Escape/outside release ! no metadata mutation or agent interruption. Verify: v68 state/store/order/reopen/malformed/metadata/drop tests, dev/windows-organization-smoke.py, dev/windows-organization-catalog-smoke.py and dev/windows-sidebar-drag-smoke.py and dev/windows-sidebar-policy-smoke.py.
 
+V69: Explicit title regeneration ! designated cheap Goose profile, tool-free bounded current-summary input, at most two provider requests process-wide, no agent load. Pending/retrying summary ! reject before generation; completion queues replacement before Idle. Invalid/unavailable/timeout ! preserve existing title; commit ! unchanged session identity/name/history/summary under session gate. Native batch ! sequential, visible progress, cancel remaining, no restart dispatch. Verify: v69 title validation/snapshot tests and dev/windows-titles-smoke.py.
+
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -227,10 +230,14 @@ T51|~|Resolve summary timeout evidence and complete T3 interaction/visual accept
 T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch controls and persisted ordering|V42,V67,V68
 T53|.|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48
 T54|.|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63
+T55|.|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63
+T56|.|Audit visible typed-request routes; connect native queue start/reorder, review, shell and compressed-source file mention flows|V38,V40,V41,V42
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
 Sidebar policy verification, 2026-10-30: 753 application tests, isolated renderer, native switch/SpinBox/working-group/opt-out/restart fixture and drag regression passed on games. Auto-settle boundary/exemption/wake tests passed. Mac compile/static checks passed. SHA-256 `641ae5bdf4916bc16abe497e202c5df019e64ccac4925cf299cdd054c7edd84c`, peak 136,871,936 bytes; receipt `docs/benchmarks/sidebar-policy-games-2026-10-30.json`. T52/title audit and recovery/deletion/full acceptance remain open. No tag.
+
+Title verification, 2026-10-30: 756 application tests, renderer, native cheap-title/single/batch/stale-name/invalid-output/pending-summary/cancel/restart fixture and three-turn summary/navigation/three-window/tray regression passed on games. Mac compile/static checks passed. SHA-256 `6bbda0224855008b99843fcfa7f831c7c682c77489bff1786acc65ad5d524f93`, peak 141,082,624 bytes; receipt `docs/benchmarks/titles-games-2026-10-30.json`. Canonical typed Rename route fixed. Remaining T52–T56/full acceptance open; no tag.
 
 V53 verification, 2026-10-29: games 708 application + one renderer + 17 workspace tests and standalone embedded Goose fixture passed; native history navigation/selection/stream/export passed. Full 1,000/eight/10,000 workload passed, 217,894,912 peak process bytes; arbitrary 100-entry pages restored in 4–6 ms. Recent-frame p95 10.380 ms exceeds earlier 0.3.4 baseline 8.487 ms; no general scrolling-speedup claim. Mac compile only passed. Evidence: docs/PORT-VERIFICATION.md and docs/benchmarks/scale-history-games-2026-10-29.json. T42/T44 remain open for remaining acceptance.
 
@@ -558,3 +565,15 @@ B183|2026-10-30|Goose failed turns return runtime to Idle, bypassing SystemError
 B184|2026-10-30|Delayed HTTP-500 fixture assumed one request but unmodified AWS SDK retried three times|Allow bounded upstream HTTP retries; assert resulting native failure/wake and no timer/restart dispatch instead; V68
 
 B185|2026-10-30|Native drag fixture helper lacked Slint Model trait import and initially matched Pending dump instead of Sidebar|Scope automation edits to explicit Step::Sidebar, import Model, compile before native acceptance; V68
+
+B186|2026-10-30|Pinned chats fetched outside catalog page one lacked rename/archive/delete lookup and retained-title refresh|Include retained metadata in actions; update retained titles from name events; V68,V69
+
+B187|2026-10-30|Title unit passed ambiguous into() to Goose generic name setter|Pass string directly; Windows workspace compile; V69
+
+B188|2026-10-30|Turn completion could publish Idle before summary replacement was queued|Queue summary before Idle; reject title generation while its summary is pending/retrying; V44,V69
+
+B189|2026-10-30|Last title completion could empty pending rows before final batch acknowledgment, allowing old completion to clear a new batch|Keep explicit running state through final UI acknowledgment; V69
+
+B190|2026-10-30|Native Rename serialized thread/name/set while adapter only matched thread/setName, exposed by stale-title race fixture|Handle canonical typed method, retain legacy alias; typed rename unit and native stale-name fixture; V69
+
+B191|2026-10-30|Audit found side-chat forks ignored ephemeral/developerInstructions and their boundary injection route was absent|T55 before temporary-session recovery acceptance; V41,V42,V63

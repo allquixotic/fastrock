@@ -324,6 +324,13 @@ impl AppController {
         self.sidebar.organization.requested.remove(id);
         self.organization_fetch_retained();
     }
+    pub(super) fn organization_set_title(&mut self, id: &str, name: &str) {
+        for thread in &mut self.sidebar.organization.retained {
+            if thread.id == id {
+                thread.title = name.into();
+            }
+        }
+    }
     pub(super) fn organization_observe_activity(
         &mut self,
         threads: &[ThreadSummary],
@@ -369,6 +376,7 @@ impl AppController {
             .get(row.id.as_str())
             .is_some_and(|e| e.pinned);
         row.checked = org.selected.contains(row.id.as_str());
+        row.regenerating_title = self.sidebar.titles.pending.contains(row.id.as_str());
         if row.section == "snoozed" {
             if let Some(until) = org
                 .state
@@ -415,6 +423,14 @@ impl AppController {
         ui.set_organization_error(org.error.as_str().into());
         ui.set_selecting(org.selecting);
         ui.set_selection_count(org.selected.len() as i32);
+        ui.set_regenerating_titles(
+            self.sidebar
+                .titles
+                .pending
+                .len()
+                .max(usize::from(self.sidebar.titles.running)) as i32,
+        );
+        ui.set_title_generation_status(self.sidebar.titles.status.as_str().into());
         ui.set_group_projects(org.state.policy.group_projects);
         ui.set_working_section(org.state.policy.working_section);
         ui.set_auto_settle_days(org.state.policy.auto_settle_days.unwrap_or(0) as i32);
@@ -487,6 +503,7 @@ impl AppController {
     }
     pub(super) fn organization_thread_action(&mut self, id: &str, action: &str) -> bool {
         match action {
+            "regenerate-title" => self.sidebar_regenerate_titles(vec![id.into()]),
             "select" => {
                 self.sidebar.organization.selecting = true;
                 if !self.sidebar.organization.selected.remove(id) {
@@ -534,6 +551,14 @@ impl AppController {
     }
     fn organization_action(&mut self, action: &str) {
         match action {
+            "regenerate-title" => self.sidebar_regenerate_titles(
+                self.sidebar.organization.selected.iter().cloned().collect(),
+            ),
+            "cancel-titles" => self.sidebar_cancel_titles(),
+            "clear-title-status" => {
+                self.sidebar.titles.status.clear();
+                self.organization_render();
+            }
             "select" => {
                 self.sidebar.organization.selecting = !self.sidebar.organization.selecting;
                 self.sidebar.organization.selected.clear();

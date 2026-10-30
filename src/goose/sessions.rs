@@ -705,6 +705,13 @@ impl Adapter {
             }
         }
         self.settle_dispatch(id, tid, completed && saved).await;
+        // Queue summary replacement before publishing Idle. Metadata operations
+        // such as title generation must not observe an obsolete summary as ready.
+        if summarize {
+            if let Some(service) = &self.summaries {
+                service.completed(id.to_owned()).await;
+            }
+        }
         {
             // Keep restore/start blocked through durable completion. Publish its
             // events while holding the same state lock that admits idle work.
@@ -725,11 +732,6 @@ impl Adapter {
             }
         }
         self.changed.notify_waiters();
-        if summarize {
-            if let Some(service) = &self.summaries {
-                service.completed(id.to_owned()).await;
-            }
-        }
         if completed {
             self.schedule_queue(id.to_string()).await;
         }
@@ -779,14 +781,14 @@ impl Adapter {
     pub(super) async fn manage(self: &Arc<Self>, params: &Value, method: &str) -> Reply {
         let id = session_id(text(params, "threadId"))?;
         let suffix = match method {
-            "thread/setName" => "rename",
+            "thread/name/set" | "thread/setName" => "rename",
             "thread/archive" => "archive",
             "thread/unarchive" => "unarchive",
             _ => "compact",
         };
         // Compaction mutates the same public conversation storage as rewind.
         // Serialize it with turns/restores and leave uncertain history intact.
-        let compact_gate = if suffix == "compact" {
+        let compact_gate = if matches!(suffix, "compact" | "rename") {
             Some(self.gate(id).await)
         } else {
             None

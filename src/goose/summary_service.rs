@@ -29,6 +29,9 @@ struct Pending {
     active: Option<(String, Arc<AtomicBool>)>,
 }
 impl Pending {
+    fn contains(&self, id: &str) -> bool {
+        self.queued.contains(id) || self.active.as_ref().is_some_and(|(active, _)| active == id)
+    }
     fn push(&mut self, id: String, completed_turn: bool) {
         if let Some((active, cancel)) = &self.active {
             if *active == id {
@@ -102,6 +105,11 @@ impl Service {
         let _guard = self.queue.commit.lock().await;
         self.queue.pending.lock().unwrap().push(id, true);
         self.queue.notify.notify_one();
+    }
+    pub fn current(&self, id: &str) -> bool {
+        self.queue.ready.load(Ordering::Relaxed)
+            && !FAILED.load(Ordering::Relaxed)
+            && !self.queue.pending.lock().unwrap().contains(id)
     }
 
     #[cfg(test)]
@@ -211,12 +219,17 @@ async fn run(queue: Arc<Queue>, summaries: &Summaries, manager: &SessionManager)
         let job = queue.pending.lock().unwrap().pop();
         if let Some((id, cancelled)) = job {
             let result = process(manager, summaries, &queue, &id, &cancelled).await;
-            queue.pending.lock().unwrap().active = None;
+            {
+                let mut pending = queue.pending.lock().unwrap();
+                pending.active = None;
+                if result.is_err() {
+                    pending.push(id, false);
+                }
+            }
             if result.is_err() {
                 FAILED.store(true, Ordering::Relaxed);
                 // Missing credentials must not hammer the provider for every
                 // imported conversation. Retry once per minute, latest data only.
-                queue.pending.lock().unwrap().push(id, false);
                 tokio::time::sleep(Duration::from_secs(60)).await;
             } else {
                 FAILED.store(false, Ordering::Relaxed);
@@ -298,9 +311,12 @@ mod tests {
     fn v44_completed_turns_cancel_old_work_and_coalesce_backfill() {
         let mut queue = Pending::default();
         queue.push("old".into(), false);
+        assert!(queue.contains("old"));
+        assert!(!queue.contains("unrelated"));
         queue.push("live".into(), true);
         let (id, cancelled) = queue.pop().unwrap();
         assert_eq!(id, "live");
+        assert!(queue.contains("live"));
         queue.push(id.clone(), false);
         assert!(!cancelled.load(Ordering::Relaxed));
         queue.push(id.clone(), true);
@@ -309,5 +325,8 @@ mod tests {
         assert_eq!(queue.pop().unwrap().0, "live");
         assert_eq!(queue.pop().unwrap().0, "old");
         assert!(queue.pop().is_none());
+        queue.active = None;
+        assert!(!queue.contains("live"));
+        assert!(!queue.contains("old"));
     }
 }

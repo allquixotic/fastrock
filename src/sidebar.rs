@@ -13,6 +13,7 @@ pub(crate) mod organization_store;
 mod projects;
 mod purpose;
 mod search;
+mod titles;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -336,6 +337,7 @@ fn status_for_phase(phase: ThreadPhase) -> SidebarThreadStatus {
 #[derive(Default)]
 pub(crate) struct SidebarController {
     organization: organization::Controller,
+    titles: titles::Controller,
     projects: Vec<fastrock_workspaces::projects::Project>,
     projects_loading: bool,
     purpose: purpose::PurposeController,
@@ -991,6 +993,7 @@ impl AppController {
 
     fn sidebar_set_title(&mut self, thread_id: &str, name: &str) {
         let title = thread_title(Some(name), "");
+        self.organization_set_title(thread_id, &title);
         for thread in self
             .sidebar
             .threads
@@ -1011,12 +1014,14 @@ impl AppController {
         if self.organization_thread_action(thread_id, action) {
             return;
         }
+        let retained = self.organization_retained();
         let Some(thread) = self
             .sidebar
             .threads
             .iter()
             .chain(self.sidebar.history_hits.iter())
             .chain(self.sidebar.live.values())
+            .chain(retained.iter())
             .find(|thread| thread.id == thread_id)
             .cloned()
         else {
