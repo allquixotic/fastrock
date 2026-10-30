@@ -15,7 +15,7 @@ compatibility without publishing Mac assets. Final 0.4.0 also requires the user'
 live Bedrock profile validation; fixture acceptance does not establish live access.
 
 The published alpha.1–alpha.3 builds are historical development milestones, not
-release candidates. Their [prerelease notes](prerelease-notes.md) describe that
+release candidates. Their [published notes](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-alpha.3) describe that
 older scope. Current completion status and acceptance evidence are tracked in
 `SPEC.md` and [verification](PORT-VERIFICATION.md).
 

@@ -309,7 +309,7 @@ impl AppController {
             (None, true) => "Running".to_string(),
             (None, false) => "Starting".to_string(),
         };
-        facts.push(kv("Codex server", server));
+        facts.push(kv("Goose runtime", server));
         if !self.connection_label.is_empty() {
             facts.push(kv("Connection", self.connection_label.as_str()));
         }
@@ -317,7 +317,10 @@ impl AppController {
             facts.push(kv_mono("Model provider", config.model_provider_id.as_str()));
         }
         if let Some(home) = self.codex_home.as_ref() {
-            facts.push(kv_mono("Codex home", home.display().to_string()));
+            facts.push(kv_mono(
+                "Fastrock settings folder",
+                home.display().to_string(),
+            ));
         }
         if let Some(file) = self
             .settings

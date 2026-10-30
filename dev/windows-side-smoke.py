@@ -64,10 +64,18 @@ try:
   {'new_thread':str(repo)},{'wait_idle':30000},{'tab_action':'side'},{'wait':600},{'wait_idle':30000},{'send':'ordinary-side-question'},*complete(),{'quit':True}]))
  assert not [r for r in provider.requests[before:] if not r['summary'] and r['prompt']!='ordinary-side-question'],'Crash replayed side work'
  assert not any(row[0]==side_id for row in dbrows()),dbrows()
+ for suffix in ['json','binding.json','tools.json','vwork.json','delegates.json','outcome.json','delegate-result.json','last-dispatch.json']:
+  assert not path.with_name(encoded+'.'+suffix).exists(),f'Temporary sidecar retained: {suffix}'
  assert sum(r['prompt']=='hold-side-crash' for r in provider.requests)==1
  ordinary=[r for r in provider.requests if r['prompt']=='ordinary-side-question'];assert len(ordinary)==1
  current=[c for w in chat_snapshot()['windows'].values() for c in w['chats'] if c['side_parent']]
  assert len(current)==1 and Path(current[0]['cwd'])!=repo and current[0]['thread_id']!='goose:'+side_id,current
+ live_id=current[0]['thread_id'].removeprefix('goose:')
+ live_encoded=base64.urlsafe_b64encode(live_id.encode()).decode().rstrip('=')
+ peak=max(peak,run('close-running',[{'wait_ready':30000},{'wait':1500},{'click_text':'Resume'},{'wait':300},
+  {'send':'hold-side-explicit-close'},{'wait':700},{'shortcut':'close-tab'},{'wait':300},{'dialog':True},{'wait':2500},{'quit':True}]))
+ assert not any(row[0]==live_id for row in dbrows()),dbrows()
+ assert not list(path.parent.glob(live_encoded+'.*')),'Late turn completion recreated temporary metadata'
  assert not provider.errors,provider.errors
  receipt=dict(result='PASS',binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_process_bytes=peak,native_side_while_parent_running=True,hidden_reference_boundary=True,isolated_virtual_workspace=True,app_delegation_excluded=True,original_source_unchanged=True,quit_and_crash_recovery=True,draft_preserved=True,explicit_close_discards=True,no_id_reuse=True,ordinary_side_directory_isolated=True,no_restart_replay=True)
  (out/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n');print('PASS: native side isolation, reference boundary, recovery, draft and discard',flush=True)

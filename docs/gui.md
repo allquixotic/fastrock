@@ -60,6 +60,28 @@ rename, fork, compact, export and other conversation actions. **Open tabs** also
 reaches open child conversations and files. The sidebar footer opens settings;
 search uses current compressed summaries and never sends your query to a model.
 
+Right-click a repository or conversation for **Project settings / New chat on
+branch…**, or use **Project settings** in the command palette. Save a default
+branch, tag, `HEAD`, or full commit ID for future chats. **New chat** uses the
+reference currently entered without changing the saved default. References come
+from the registered repository snapshot; each chat gets its own compressed
+workspace. Existing conversations and your source checkout stay intact. Conflicting
+saves from another window require Reload.
+
+The sidebar also offers **Show only this project**, **Copy repository path**,
+**Copy starting Git reference**, and **Copy conversation**. The latter retrieves
+complete history in the background, with a 100,000-item / 64 MiB export limit.
+Older workspaces without a recorded starting reference use their base commit ID.
+**Changes** in the header, or `/diff`, opens a local native diff without asking a
+model to review it. Binary-only comparisons open as text with their limitations.
+
+`/model` and `/permissions` expand Goose options. `/mcp`, `/plugins`, and `/hooks`
+open Tools & hooks. `/new [name]` creates an isolated chat in the same repository.
+`/ps` shows existing conversation terminals without starting a shell; `/stop`
+confirms closing those terminals and retains unimported edits for recovery.
+Commands requiring unavailable Codex capabilities are excluded from suggestions;
+manually entering one keeps the draft and explains the limitation.
+
 The permanent **Rally** sidebar project opens the last Rally document or a new
 Team Board. Its horizontal strip contains only Rally documents, each independently
 closable. The project stays available with no open documents and when the Goose

@@ -11,6 +11,7 @@ mod activity;
 mod deletion;
 mod organization;
 pub(crate) mod organization_store;
+mod project_actions;
 mod projects;
 mod purpose;
 mod search;
@@ -337,11 +338,13 @@ fn status_for_phase(phase: ThreadPhase) -> SidebarThreadStatus {
 /// Sidebar state shared by all tabs.
 #[derive(Default)]
 pub(crate) struct SidebarController {
+    project_editor: project_actions::Editor,
     organization: organization::Controller,
     titles: titles::Controller,
     projects: Vec<fastrock_workspaces::projects::Project>,
     projects_loading: bool,
     purpose: purpose::PurposeController,
+    cache_loaded: bool,
     activity: activity::ActivityController,
     /// Loaded threads in server order (all pages).
     threads: Vec<ThreadSummary>,
@@ -372,6 +375,8 @@ pub(crate) struct SidebarController {
     /// so their turns do not change the list.
     unlisted: HashSet<String>,
     deleted: HashSet<String>,
+    deletion_batch: bool,
+    copying: HashSet<String>,
     error: Option<String>,
     collapsed: HashSet<PathBuf>,
     rows: Rc<VecModel<SidebarRow>>,
@@ -385,6 +390,12 @@ pub(crate) struct SidebarController {
 }
 
 impl SidebarController {
+    pub(crate) fn begin_copy(&mut self, id: &str) -> bool {
+        !self.deleted.contains(id) && self.copying.insert(id.into())
+    }
+    pub(crate) fn finish_copy(&mut self, id: &str) -> bool {
+        self.copying.remove(id) && !self.deleted.contains(id)
+    }
     /// Cached repository projects; safe to inspect on the UI thread.
     pub(crate) fn projects(&self) -> &[fastrock_workspaces::projects::Project] {
         &self.projects
@@ -404,8 +415,29 @@ impl SidebarController {
 impl AppController {
     pub(crate) fn sidebar_bind(&mut self) {
         self.organization_bind();
-        self.sidebar.purpose = purpose::PurposeController::load(self.codex_home.as_deref());
-        self.sidebar.activity = activity::ActivityController::load(self.codex_home.as_deref());
+        self.project_actions_bind();
+        let home = self.codex_home.clone();
+        self.backend.spawn(async move {
+            let loaded = tokio::task::spawn_blocking(move || {
+                (
+                    purpose::read_cache(home.as_deref()),
+                    activity::read_cache(home.as_deref()),
+                )
+            })
+            .await;
+            crate::ui_thread::post(move |app| {
+                if let Ok((purpose, activity)) = loaded {
+                    app.sidebar.purpose.hydrate(purpose);
+                    app.sidebar.activity.hydrate(activity, &app.sidebar.deleted);
+                    app.sidebar.cache_loaded = true;
+                    app.purpose_save();
+                    app.activity_save();
+                    app.sidebar_render();
+                } else {
+                    app.toast("Sidebar cache could not load; saved metadata is preserved.");
+                }
+            });
+        });
         let state = self.window.global::<SidebarState>();
         state.on_open_palette(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::palette_toggle)
@@ -985,9 +1017,10 @@ impl AppController {
         self.sidebar
             .history_hits
             .retain(|thread| thread.id != thread_id);
-        if removed_live
-            || removed_retained
-            || self.sidebar.threads.len() + self.sidebar.history_hits.len() != before
+        if !self.sidebar.deletion_batch
+            && (removed_live
+                || removed_retained
+                || self.sidebar.threads.len() + self.sidebar.history_hits.len() != before)
         {
             self.sidebar_render();
             self.newtab_on_threads_changed();
@@ -1045,6 +1078,11 @@ impl AppController {
             "unarchive" => self.sidebar_set_archived(thread, /*archive*/ false),
             "delete" => self.sidebar_delete(thread),
             "copy-id" => self.copy_to_clipboard(&thread.id),
+            "copy-path" => self.copy_to_clipboard(&thread.group_root().to_string_lossy()),
+            "copy-conversation" => self.transcript_copy_thread(thread.id, thread.cwd),
+            "copy-reference" => self.project_copy_reference(thread.id),
+            "project-settings" => self.project_open_editor(thread.group_root().to_path_buf()),
+            "filter-project" => self.organization_filter_project(thread.project_id),
             other => tracing::debug!(action = other, "unknown sidebar thread action"),
         }
     }
@@ -1062,6 +1100,16 @@ impl AppController {
                 self.sidebar_render();
             }
             "new-thread" => self.start_thread_checked(path),
+            "project-settings" => self.project_open_editor(path),
+            "filter-project" => {
+                let id = self
+                    .sidebar
+                    .projects
+                    .iter()
+                    .find(|p| dunce::simplified(&p.root) == path)
+                    .map(|p| p.id.clone());
+                self.organization_filter_project(id);
+            }
             "open-folder" => self.open_in_file_manager(&path),
             "copy-path" => self.copy_to_clipboard(&path.to_string_lossy()),
             other => tracing::debug!(action = other, "unknown sidebar folder action"),

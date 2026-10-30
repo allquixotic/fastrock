@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sqlite3
 import sys
 from embedded_provider_fixture import ProviderFixture, ProcessGuard
 
@@ -47,7 +48,12 @@ try:
     peak = bounded([str(seed.resolve()), '--seed-benchmark', str(parameters)], 'seed')
     sid = json.loads((out / 'seed.json').read_text())['sessions'][0]
     steps = [{'wait_ready': 30000}, {'resize': [1440, 1000]}, {'resume': 'goose:' + sid},
-             {'wait_idle': 30000}, {'wait': 500}, {'click_text': 'History'}, {'wait': 500},
+             {'wait_idle': 30000}, {'wait': 500},
+             {'transcript': 'history-dump:' + str(out / 'before-open.json')},
+             {'snapshot': str(out / 'before-open.png')},
+             {'click_text': 'History'}, {'wait': 500},
+             {'transcript': 'history-dump:' + str(out / 'after-open.json')},
+             {'snapshot': str(out / 'after-open.png')}, {'wait': 250},
              {'click_text': 'Oldest'}, {'wait': 500}, *capture('first'),
              {'selection': ['drag', 'Fixture prompt 0/0:', '0', '14']}, {'key': 'Ctrl+C'}, {'wait': 150},
              {'selection': ['capture', str(out / 'history-selection.txt')]},
@@ -81,9 +87,17 @@ try:
     full = (out / 'complete.md').read_text(encoding='utf-8')
     assert full.count('## User\n') == 201 and full.count('## Assistant\n') == 201, 'Full export lost original or streamed messages'
     assert 'HISTORY-END-SENTINEL' in full and 'Fixture prompt 0/0:' in full
+    # Legacy sessions had no stored tool selection. Restoration must preserve
+    # inherited tools while restricting Goose's shared-directory delegation.
+    database = next((out / 'goose').rglob('sessions.db'))
+    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
+        selection = json.loads(connection.execute('SELECT extension_data FROM sessions WHERE id=?', (sid,)).fetchone()[0])['enabled_extensions.v0']['extensions']
+    by_name = {extension['name']: extension for extension in selection}
+    assert 'developer' in by_name, 'Legacy restore discarded inherited tools'
+    assert by_name['summon']['available_tools'] == ['load'], 'Legacy restore bypassed delegation isolation'
     assert not provider.errors, provider.errors
     (out / 'acceptance.json').write_text(json.dumps(dict(result='PASS', binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
-        peak_process_bytes=peak, historical_pages=True, bounded_rows=True, stream_preserves_page=True,
+        peak_process_bytes=peak, legacy_tools_preserved=True, historical_pages=True, bounded_rows=True, stream_preserves_page=True,
         send_returns_to_live=True, latest_catches_up=True, complete_export_messages=402,
         fetch_ms={name:load(name)['fetch_ms'] for name in ('first','middle','earlier','later')}), indent=2), encoding='utf-8')
     print('PASS: bounded history pages, live streaming preserves reading, Latest catches up, full export intact')

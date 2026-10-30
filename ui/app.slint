@@ -28,8 +28,10 @@ import { XtabOverlay, XtabState } from "xtab.slint";
 import { RallyView, RallyState, RallyChoice, RallyRow, RallyCell, RallyLane, RallyBoardGroup, RallyField, RallyRichBlock, RallyMetric, RallyProposal } from "rally.slint";
 
 import { PendingMessageState, PendingMessageEditor } from "pending-message.slint";
+import { ProjectState, ProjectDialog } from "project-settings.slint";
 
 export {
+    ProjectState,
     TerminalState, TerminalCell, TerminalTab,
     CommandPaletteState, CommandPaletteRow, CheckpointState, CheckpointRow,
     ProfileState, ProfileRow, CapabilityState, CapabilityRow, RecipeState, RecipeRow, RecipeParameter,
@@ -645,6 +647,10 @@ component WorkspaceHeader inherits Rectangle {
                 activated => { AppState.tab-action(AppState.active-tab, "rename"); }
             }
             if AppState.active-info.kind == TabKindCode.thread: MenuItem {
+                title: "Project settings…";
+                activated => { AppState.tab-action(AppState.active-tab, "project-settings"); }
+            }
+            if AppState.active-info.kind == TabKindCode.thread: MenuItem {
                 title: "Fork";
                 activated => { AppState.tab-action(AppState.active-tab, "fork"); }
             }
@@ -724,6 +730,10 @@ component WorkspaceHeader inherits Rectangle {
             text: "Terminal";
             text-color: TerminalState.visible ? Theme.accent : Theme.text-muted;
             clicked => { AppState.menu-action("toggle-terminal"); }
+        }
+        if AppState.active-kind == TabKindCode.thread: LinkButton {
+            text: "Changes"; text-color: Theme.text-muted;
+            clicked => { AppState.tab-action(AppState.active-tab, "diff"); }
         }
         if AppState.active-kind == TabKindCode.thread: LinkButton {
             text: "Checkpoints"; text-color: Theme.text-muted;
@@ -1208,7 +1218,7 @@ export component MainWindow inherits Window {
     // matches them against the keymap (src/shortcuts.rs).
     shortcuts := FocusScope {
         capture-key-pressed(event) => {
-            if AppState.dialog-open || AppState.about-open || CommandPaletteState.open || CheckpointState.open {
+            if AppState.dialog-open || AppState.about-open || CommandPaletteState.open || CheckpointState.open || ProjectState.open {
                 return EventResult.reject;
             }
             // While the composer's suggestion popup is open, Esc closes it.
@@ -1337,6 +1347,8 @@ export component MainWindow inherits Window {
     }
 
     if PendingMessageState.open: PendingMessageEditor { width: parent.width; height: parent.height; }
+
+    if ProjectState.open: ProjectDialog { width: parent.width; height: parent.height; }
 
     if CheckpointState.open: CheckpointPanel { width: parent.width; height: parent.height; }
 

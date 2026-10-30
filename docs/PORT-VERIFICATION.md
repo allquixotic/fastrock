@@ -1738,3 +1738,43 @@ Receipt: [delete-games-2026-10-30.json](benchmarks/delete-games-2026-10-30.json)
 Mac compatibility compile passed in 24.85 seconds with nine existing warnings;
 formatting and build/release policy checks passed. No Mac execution or release
 tag. T54 is complete; remaining T3 UI audit and final RC acceptance stay open.
+
+## 0.4.0 final UI and integration audit — 2026-10-30
+
+The reference remains T3 Code v0.1.5 (`6d450a4284852af137b2f3407fddd89eb76e7644`).
+GitHub's latest-stable endpoints were rechecked on October 30: T3 remains v0.1.5
+and Goose remains v1.57.0. The native implementation retains the upstream MIT
+attribution. Its dark surfaces, sidebar width, conversation header, groups and
+736-pixel transcript column follow the pinned source; controls and layouts are
+Slint rather than embedded web content.
+
+The interaction audit maps the requested T3 scope to the following native paths.
+These are verification targets; the candidate receipt below determines which
+executable has passed them.
+
+| Area | Native implementation | Fixture |
+|---|---|---|
+| Repository projects | Stable repository identity, saved default Git reference, explicit one-off reference, isolated new workspace | `windows-sidebar-smoke.py`, `windows-projects-smoke.py` |
+| Sidebar organization | Pin, settle, snooze, auto-settle opt-out, project filter, batch actions, drag ordering and configurable groups | `windows-organization-smoke.py`, `windows-organization-catalog-smoke.py`, `windows-sidebar-drag-smoke.py`, `windows-sidebar-policy-smoke.py` |
+| Conversation actions | Rename, cheap-model title generation, copy, archive and guarded permanent deletion | `windows-titles-smoke.py`, `windows-delete-smoke.py` |
+| Composer and navigation | Native palette, supported Goose slash controls, file mentions, editable/reorderable queues and selected Resume | `windows-palette-smoke.py`, `windows-commands-smoke.py`, `windows-mentions-smoke.py`, `windows-queue-smoke.py` |
+| Source and review | Embedded vwork browser/editor, explicit workspace integration, local Changes and model-assisted Review | `windows-vwork-smoke.py`, `windows-review-smoke.py`, `windows-commands-smoke.py` |
+| Terminal and checkpoints | Owned PTYs, bounded scrollback, guarded import/recovery, file/conversation restore with retained backups | `windows-terminal-smoke.py`, `windows-shell-smoke.py`, `windows-checkpoints-smoke.py` |
+| Coordination and schedules | Isolated delegates, messaging/waits/interruption, durable timed/webhook occurrence claims | `windows-delegation-smoke.py`, `windows-schedules-smoke.py`, `windows-webhook-smoke.py` |
+| Providers and tools | Existing Goose defaults, named direct profiles with vault credentials, supported effort, hooks/extensions, recipes and code mode | `windows-provider-setup-smoke.py`, `windows-profiles-smoke.py`, `windows-effort-smoke.py`, `windows-capabilities-smoke.py`, `windows-recipes-smoke.py` |
+| Temporary chats and windows | Side-context boundary, isolated edits, explicit discard, original window/draft recovery | `windows-side-smoke.py`, `windows-window-recovery-smoke.py` |
+| Search, history and lifecycle | Single compressed summary replacement, deterministic search, indexed history pages, tray, explicit Quit and paused recovery | `windows-summary-smoke.py`, `windows-history-smoke.py`, `windows-scale-benchmark.py` |
+| Rally | Independent permanent project and document strip, retained inventory workflows, temporary assistance and human Apply | `windows-rally-smoke.py`, `docs/RALLY-INVENTORY.md` |
+
+T3's scratch-folder promotion maps to registering a repository in Fastrock;
+projects remain repositories, as requested. Guest sharing/remote agent servers,
+provider executable installation and quota controls are outside the accepted
+scope. Web previews use the system browser. Goose's upstream AWS profile,
+reasoning-value and hook-root constraints remain explicit in `docs/goose-acp.md`.
+
+The broad implementation pass also moved sidebar cache hydration and settings
+folder creation off the UI thread. Hydration preserves newer read/name/deletion
+state. Startup deletion reconciliation batches cache and organization writes.
+Explicit temporary-chat close records durable discard intent and synchronizes
+queue completion before removing owned metadata, preventing late completion from
+recreating sidecars. Source workspaces remain intact.

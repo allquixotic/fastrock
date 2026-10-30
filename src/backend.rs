@@ -46,7 +46,7 @@ const MAX_BATCH_EVENTS: usize = 1024;
 pub(crate) enum BackendError {
     #[error("{0}")]
     Request(#[from] TypedRequestError),
-    #[error("the external agent is not running")]
+    #[error("the embedded Goose runtime is not running")]
     Unavailable,
 }
 
@@ -89,7 +89,7 @@ enum Control {
 }
 
 /// Shown when the event stream ends without a `Disconnected` reason.
-const CONNECTION_LOST: &str = "The app-server stopped or the connection was lost.";
+const CONNECTION_LOST: &str = "The embedded Goose runtime stopped.";
 
 #[derive(Clone)]
 enum ServerState {

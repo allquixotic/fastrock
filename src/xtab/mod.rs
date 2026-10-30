@@ -426,6 +426,9 @@ impl AppController {
         let Some(thread) = self.thread_tab_mut(index) else {
             return;
         };
+        if thread.extras.side_parent.is_some() {
+            return;
+        }
         thread.xtab_enabled = enabled;
         let (Some(thread_id), false) = (thread.thread_id.clone(), enabled) else {
             return;

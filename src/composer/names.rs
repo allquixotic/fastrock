@@ -71,7 +71,7 @@ pub(crate) fn name_step(tab: NamedTab, claimed: bool) -> NameStep {
 impl AppController {
     /// Remembers `name` for the thread that tab `tab_id` will hold.
     /// `claimed` when the tab already is that thread (a fork).
-    pub(super) fn composer_name_pending_thread(
+    pub(crate) fn composer_name_pending_thread(
         &mut self,
         tab_id: TabId,
         name: String,

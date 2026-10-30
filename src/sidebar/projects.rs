@@ -69,6 +69,7 @@ impl AppController {
                     }
                     app.sidebar_render();
                     app.refresh_tabs();
+                    app.info_render();
                     app.newtab_on_threads_changed();
                 }
             });

@@ -23,6 +23,7 @@ pub(crate) mod recipe_controls;
 mod recipe_storage;
 mod recipes;
 mod recovery_history;
+mod restore_extensions;
 mod review;
 mod schedule;
 pub(crate) use queue::Recovery;
@@ -587,6 +588,9 @@ impl Adapter {
             }
             "fastrock/project/list" => self.project_catalog().await,
             "fastrock/project/open" => self.open_project(params).await,
+            "fastrock/project/details" => self.project_settings(params, false).await,
+            "fastrock/project/settings" => self.project_settings(params, true).await,
+            "fastrock/thread/location" => self.thread_location(params).await,
             "thread/fork" => self.fork_session(params).await,
             "thread/list" => self.list_sessions(params).await,
             "fastrock/thread/metadata" => self.sidebar_metadata(params).await,
@@ -600,8 +604,9 @@ impl Adapter {
             "fastrock/history/window" => self.history_window(params).await,
             "turn/start" => self.start_turn(params).await,
             "thread/shellCommand" => self.shell_command(params).await,
-            "review/start" => self.review_request(params, true).await,
-            "fastrock/review/catalog" => self.review_request(params, false).await,
+            "review/start" => self.review_request(params, "start").await,
+            "fastrock/review/catalog" => self.review_request(params, "catalog").await,
+            "fastrock/review/preview" => self.review_request(params, "preview").await,
             "turn/interrupt" => {
                 let id = session_id(text(params, "threadId"))?;
                 self.interrupt_tree(id).await?;

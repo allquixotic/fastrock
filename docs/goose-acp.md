@@ -47,7 +47,32 @@ occurrence per schedule, and skips missed times. Restart pauses all schedules;
 an interrupted occurrence is retained for review and never automatically replayed.
 Daily schedules use the machine's local time: repeated times run once, missing
 times are skipped. Schedules require Fastrock to remain running, including in the
-tray. Explicit Quit stops scheduling and work. Webhook triggers remain unimplemented.
+tray. Explicit Quit stops scheduling and work.
+
+Webhook schedules use an in-process loopback listener. The native schedule editor
+configures HMAC-SHA256 signatures, payload filters, prompt templates, expiry and
+coalescing. Signing keys stay in the OS credential vault; authentication headers
+never enter the model context. Accepted delivery identities and occurrence claims
+are persisted before dispatch. Duplicate deliveries cannot start another run.
+Restart pauses pending deliveries, and uncertain runs remain review-only. A
+sender outside the machine needs an explicitly configured forwarding route to
+the loopback listener; Fastrock does not start a public tunnel or remote service.
+
+Settings → Goose → Named provider profiles creates independent direct OpenAI or
+Anthropic endpoints, models and credentials. Credentials are written only to the
+OS vault, then read by Goose through its supported command-auth API and Fastrock's
+bundled credential helper. There is no separate program to install. Profiles also
+appear in conversation options, provider defaults and cheap-model selection.
+Editing an endpoint/key creates a new credential identity before updating the
+profile; conflicting edits require Reload. Existing Goose credential entries are
+preserved. AWS profile/region defaults remain shared, as described below.
+
+Settings → Tools & hooks and Settings → Recipes provide native editors using
+Goose's public extension/plugin/recipe APIs. Project plugin discovery uses the
+bound repository source root, even though the agent works in a virtual workspace.
+Fastrock protects its embedded tool bindings and vwork policy. Code mode uses
+Goose's in-process platform extension. Recipes prepare an isolated conversation
+and leave the rendered prompt for explicit Send; they do not run automatically.
 
 ## Verification and remaining acceptance
 
@@ -75,7 +100,10 @@ Unchanged Goose currently has these integration limits:
 - Goose hooks are command actions; its agent hook manager is private. Fastrock's
   `--vwork-hook` helper evaluates the original vwork policy without opening a UI
   or database. Setup installs a Goose plugin and migrates recognized vwork hook
-  commands, preserving custom actions and a first-migration backup.
+  commands, preserving custom actions and a first-migration backup. Goose chooses
+  its hook discovery directory at construction from process-level state; its
+  public API does not support an independent hook root for each live conversation.
+  The catalog can inspect project plugins, but does not remove that upstream limit.
 
 Search uses immediate local substring matching, then bounded parallel fuzzy
 matching. One background worker calls the pinned public `goose-context-management`
@@ -106,7 +134,13 @@ a page is replaced; full conversation export still includes the original history
 The native sidebar/search/footer and active-title header follow T3 Code 0.1.5.
 Rally has a permanent sidebar entry and a separate document strip; returning to
 Rally selects the last document. Open tabs still exposes child conversations and
-files. This is the navigation foundation, not complete T3 feature parity.
+files. Pinned, Active, Working, Snoozed and Settled groups, project filters,
+drag ordering, batch operations and optional auto-settle use persistent GUI
+metadata without changing Goose history. Project settings save a guarded default
+Git reference; each new chat gets an isolated virtual workspace. Native panels
+cover files, Changes, Review, terminals, checkpoints and the command palette.
+Web previews open in the system browser. Quotas and external agent servers are
+excluded. See [using Fastrock](gui.md) for the controls and their limits.
 
 All native windows share one backend and store owner. Closing the last window
 hides it to the native tray while agents continue. Open Fastrock restores it;
@@ -122,17 +156,24 @@ dispatch evidence is retained on disk. Invalid records are not overwritten.
 
 Persistent open chats and drafts are saved separately from Goose history in
 `fastrock-open-chats.json` under the existing UI settings home. On restart they
-reopen in the main window with sending paused until Resume. Local submissions
+reopen in their original native windows with sending paused until Resume. Local submissions
 whose delivery cannot be established appear in the recovery review, never in an
 automatic replay queue. Explicit Quit flushes the coalesced snapshot writer;
 malformed or newer-format snapshots remain untouched. Image paths are retained
 with drafts; their files are no longer deleted on a fixed age limit. Temporary
-side sessions and the original multiwindow arrangement are not yet restored.
+side chats also restore after Quit or a crash, with their drafts and isolated
+workspaces. Explicit close discards their history and owned metadata; it does not
+remove source workspaces. Rally documents restore separately and retain their
+independent window ownership, drafts and selected document.
 
-Graphical credential setup, project-local plugin discovery, full T3 orchestration/UI,
-and original window/temporary-session recovery
-remain tracked in `SPEC.md`. This development foundation is not a completed 0.4.0
-release. Historical 0.3.x transport details follow for old releases only.
+Delegated agents receive fresh task context and isolated copies of the parent's
+explicit workspace bindings. Parent/child identity, messaging, waits, interruption
+and queue state are durable. Integration is an explicit, reviewed operation
+guarded by both workspace revisions. Recovery does not replay uncertain tools.
+
+Final acceptance remains tracked in `SPEC.md` and [verification](PORT-VERIFICATION.md).
+Fixture checks establish local behavior, not access to the user's live AWS models.
+Historical 0.3.x transport details follow for old releases only.
 
 ---
 

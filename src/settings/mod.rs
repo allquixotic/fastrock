@@ -921,8 +921,14 @@ impl AppController {
             return;
         };
         // Local folders: a file manager, never a browser.
-        let _ = std::fs::create_dir_all(&path);
-        self.open_local_folder(&path);
+        self.backend.spawn(async move {
+            match tokio::fs::create_dir_all(&path).await {
+                Ok(()) => crate::ui_thread::post(move |app| app.open_local_folder(&path)),
+                Err(error) => crate::ui_thread::post(move |app| {
+                    app.toast(format!("Could not create the settings folder: {error}"));
+                }),
+            }
+        });
     }
 
     pub(crate) fn settings_log_dir(&self) -> Option<PathBuf> {

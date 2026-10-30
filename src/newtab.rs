@@ -725,6 +725,10 @@ impl AppController {
     /// Starts a thread in `folder` after the folder-trust check, asking the
     /// user first when the folder is an untrusted project.
     pub(crate) fn start_thread_checked(&mut self, folder: PathBuf) {
+        self.start_thread_checked_named(folder, None);
+    }
+
+    pub(crate) fn start_thread_checked_named(&mut self, folder: PathBuf, name: Option<String>) {
         if !self.newtab.trust_checks.insert(folder.clone()) {
             return;
         }
@@ -748,7 +752,15 @@ impl AppController {
                             app.sidebar_refresh();
                         }
                         Ok(None) => app.start_thread_in_folder(folder),
-                        Err(message) => app.toast(message),
+                        Err(message) => {
+                            app.toast(message);
+                            return;
+                        }
+                    }
+                    if let Some(name) = name {
+                        if let Some(index) = app.active_thread_index() {
+                            app.composer_name_pending_thread(app.tabs[index].id, name, true);
+                        }
                     }
                 });
             });

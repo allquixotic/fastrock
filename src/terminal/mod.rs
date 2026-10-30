@@ -40,6 +40,36 @@ struct Entry {
     paths: String,
 }
 impl AppController {
+    pub(crate) fn terminal_show_existing(&mut self) {
+        if self.terminal_entry().is_none() {
+            self.toast("This conversation has no open terminals.");
+        } else {
+            self.terminal.visible = true;
+            self.terminal_show();
+        }
+    }
+    pub(crate) fn terminal_stop_owned(&mut self) {
+        let Some(thread) = self.terminal_thread() else {
+            return;
+        };
+        if !self
+            .terminal
+            .entries
+            .iter()
+            .any(|e| e.thread == thread && e.handle.is_some())
+        {
+            self.toast("This conversation has no open terminals.");
+            return;
+        }
+        self.show_dialog(crate::app::DialogRequest::confirm("Close conversation terminals?", "Stop this conversation's terminal processes? Unimported workspace changes are retained for recovery.").accept_label("Close terminals"), Box::new(move |app, accepted| {
+            if accepted.is_some() {
+                for entry in app.terminal.entries.iter().filter(|e|e.thread == thread) {
+                    if let Some(handle) = &entry.handle { handle.close(Vec::new()); }
+                }
+                app.terminal_show();
+            }
+        }));
+    }
     fn terminal_thread(&self) -> Option<String> {
         self.active_thread_index()
             .and_then(|i| self.thread_tab(i))

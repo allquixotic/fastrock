@@ -61,7 +61,7 @@ pub(crate) const COMMANDS: &[SlashSpec] = &[
         command: SlashCommand::Permissions,
         name: "permissions",
         aliases: &["approvals"],
-        description: "Choose what Codex may do without asking",
+        description: "Choose what the agent may do without asking",
     },
     SlashSpec {
         command: SlashCommand::Approve,
@@ -127,7 +127,7 @@ pub(crate) const COMMANDS: &[SlashSpec] = &[
         command: SlashCommand::Init,
         name: "init",
         aliases: &[],
-        description: "Create an AGENTS.md file with instructions for Codex",
+        description: "Create an AGENTS.md file with instructions for the agent",
     },
     SlashSpec {
         command: SlashCommand::Diff,
@@ -247,11 +247,24 @@ pub(crate) const COMMANDS: &[SlashSpec] = &[
         command: SlashCommand::Quit,
         name: "quit",
         aliases: &["exit"],
-        description: "Quit Codex",
+        description: "Quit Fastrock",
     },
 ];
 
 impl SlashCommand {
+    /// Codex-only policies have no equivalent public Goose control. Do not
+    /// advertise a command which silently opens an unrelated settings page.
+    pub(crate) fn available_in_goose(self) -> bool {
+        !matches!(
+            self,
+            Self::Approve
+                | Self::Plan
+                | Self::Skills
+                | Self::Experimental
+                | Self::Memories
+                | Self::Logout
+        )
+    }
     pub(crate) fn spec(self) -> &'static SlashSpec {
         COMMANDS
             .iter()
@@ -372,6 +385,33 @@ pub(crate) fn matching(query: &str) -> Vec<SlashMatch> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn v80_goose_palette_excludes_unsupported_policies_and_keeps_workflows() {
+        for name in [
+            "approve",
+            "plan",
+            "skills",
+            "experimental",
+            "memories",
+            "logout",
+        ] {
+            assert!(!parse(&format!("/{name}")).unwrap().0.available_in_goose());
+        }
+        for name in [
+            "model",
+            "permissions",
+            "mcp",
+            "plugins",
+            "hooks",
+            "new",
+            "review",
+            "diff",
+            "ps",
+            "stop",
+        ] {
+            assert!(parse(&format!("/{name}")).unwrap().0.available_in_goose());
+        }
+    }
     use pretty_assertions::assert_eq;
 
     fn names(query: &str) -> Vec<&'static str> {

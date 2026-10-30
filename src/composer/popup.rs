@@ -201,6 +201,7 @@ impl AppController {
             PopupKind::Commands => {
                 let entries: Vec<PopupEntry> = slash::matching(&target.query)
                     .into_iter()
+                    .filter(|found| !self.backend.is_goose() || found.command.available_in_goose())
                     .map(PopupEntry::Command)
                     .collect();
                 if entries.is_empty() {
@@ -406,8 +407,7 @@ impl AppController {
                         .thread_tab(index)
                         .is_none_or(|thread| thread.extras.workspace.is_none())
                     && !hit.is_dir
-                    && is_image_path(&full)
-                    && image::image_dimensions(&full).is_ok();
+                    && is_image_path(&full); // Validation/decoding belongs to the attachment worker.
                 let model = self
                     .thread_tab(index)
                     .and_then(super::toolbar::effective_model);
@@ -652,7 +652,7 @@ mod tests {
             "#000000",
         );
         assert_eq!(command.kind, "command");
-        assert_eq!(command.detail, "Quit Codex (/exit)");
+        assert_eq!(command.detail, "Quit Fastrock (/exit)");
         assert_eq!(
             color_hex(slint::Color::from_rgb_u8(47, 111, 224)),
             "#2f6fe0"

@@ -145,6 +145,12 @@ impl AppController {
             ),
             ("add-project", "Add project", "Register a repository", true),
             (
+                "project-settings",
+                "Project settings",
+                "Default branch and new chat on branch",
+                active.is_some(),
+            ),
+            (
                 "workspaces",
                 "Browse workspace files",
                 "Files, changes and explicit integration",
@@ -350,6 +356,7 @@ impl AppController {
                 "rally" => self.rally_open_project(),
                 "search" => self.sidebar_focus_search(),
                 "add-project" => self.newtab_pick_folder(),
+                "project-settings" => self.project_open_active(),
                 "workspaces" => self
                     .window
                     .global::<AppState>()

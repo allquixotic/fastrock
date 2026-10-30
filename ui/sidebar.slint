@@ -188,7 +188,7 @@ component FolderRowView inherits Rectangle {
     folder-menu := ContextMenuArea {
         Menu {
             MenuItem {
-                title: "New thread in this folder";
+                title: "New chat in this project";
                 activated => { SidebarState.folder-action(item.folder, "new-thread"); }
             }
             MenuItem {
@@ -202,6 +202,14 @@ component FolderRowView inherits Rectangle {
             MenuItem {
                 title: "Project display name…";
                 activated => { SidebarState.folder-action(item.folder, "rename-project"); }
+            }
+            MenuItem {
+                title: "Project settings / New chat on branch…";
+                activated => { SidebarState.folder-action(item.folder, "project-settings"); }
+            }
+            MenuItem {
+                title: "Show only this project";
+                activated => { SidebarState.folder-action(item.folder, "filter-project"); }
             }
             MenuSeparator { }
             MenuItem {
@@ -303,8 +311,16 @@ component ThreadRowView inherits Rectangle {
                 activated => { SidebarState.thread-action(item.id, "open"); }
             }
             MenuItem {
-                title: "New thread in this folder";
+                title: "New chat in this project";
                 activated => { SidebarState.thread-action(item.id, "new-thread"); }
+            }
+            MenuItem {
+                title: "Project settings / New chat on branch…";
+                activated => { SidebarState.thread-action(item.id, "project-settings"); }
+            }
+            MenuItem {
+                title: "Show only this project";
+                activated => { SidebarState.thread-action(item.id, "filter-project"); }
             }
             MenuSeparator { }
             MenuItem {
@@ -357,6 +373,9 @@ component ThreadRowView inherits Rectangle {
                 title: "Copy thread id";
                 activated => { SidebarState.thread-action(item.id, "copy-id"); }
             }
+            MenuItem { title: "Copy repository path"; activated => { SidebarState.thread-action(item.id, "copy-path"); } }
+            MenuItem { title: "Copy starting Git reference"; activated => { SidebarState.thread-action(item.id, "copy-reference"); } }
+            MenuItem { title: "Copy conversation"; activated => { SidebarState.thread-action(item.id, "copy-conversation"); } }
         }
 
         touch := TouchArea {

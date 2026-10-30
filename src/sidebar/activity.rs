@@ -47,6 +47,15 @@ impl Entry {
     }
 }
 
+pub(super) struct SavedCache(BTreeMap<String, Entry>);
+pub(super) fn read_cache(home: Option<&Path>) -> SavedCache {
+    SavedCache(
+        home.and_then(|home| std::fs::read(home.join(FILE)).ok())
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default(),
+    )
+}
+
 #[derive(Default)]
 pub(super) struct ActivityController {
     entries: BTreeMap<String, Entry>,
@@ -58,14 +67,31 @@ pub(super) struct ActivityController {
     save_lock: Arc<Mutex<()>>,
 }
 impl ActivityController {
-    pub(super) fn load(home: Option<&Path>) -> Self {
-        Self {
-            entries: home
-                .and_then(|home| std::fs::read(home.join(FILE)).ok())
-                .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-                .unwrap_or_default(),
-            ..Self::default()
+    pub(super) fn hydrate(&mut self, saved: SavedCache, deleted: &HashSet<String>) {
+        for (id, previous) in saved.0 {
+            if deleted.contains(&id) {
+                continue;
+            }
+            self.entries
+                .entry(id)
+                .and_modify(|entry| {
+                    let at = entry.at.max(previous.at);
+                    if entry.read_at.is_some() {
+                        // An explicit read before hydration wins over old disk
+                        // activity, but a newer unread event keeps its boundary.
+                        if !entry.unread {
+                            entry.read_at = Some(at);
+                        }
+                    } else {
+                        entry.read_at = previous.read_at;
+                        entry.unread |=
+                            previous.unread || previous.read_at.is_some_and(|read| entry.at > read);
+                    }
+                    entry.at = at;
+                })
+                .or_insert(previous);
         }
+        self.entries.retain(|id, _| !deleted.contains(id));
     }
     pub(super) fn at(&self, id: &str) -> Option<i64> {
         self.entries
@@ -293,7 +319,10 @@ impl AppController {
         }
     }
 
-    fn activity_save(&self) {
+    pub(super) fn activity_save(&self) {
+        if !self.sidebar.cache_loaded || self.sidebar.deletion_batch {
+            return;
+        }
         let Some(home) = self.codex_home.clone() else {
             return;
         };
@@ -324,6 +353,54 @@ impl AppController {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn v78_delayed_activity_load_preserves_read_unread_events_and_deletion() {
+        let mut live = ActivityController::default();
+        live.entries.insert(
+            "read".into(),
+            Entry {
+                at: 0,
+                read_at: Some(0),
+                ..Default::default()
+            },
+        );
+        live.entries.insert(
+            "new-event".into(),
+            Entry {
+                at: 200,
+                ..Default::default()
+            },
+        );
+        live.entries.insert(
+            "unread".into(),
+            Entry {
+                at: 30,
+                unread: true,
+                ..Default::default()
+            },
+        );
+        let previous = Entry {
+            at: 100,
+            read_at: Some(100),
+            ..Default::default()
+        };
+        let saved = SavedCache(
+            ["read", "new-event", "unread", "deleted", "untouched"]
+                .into_iter()
+                .map(|id| (id.to_string(), previous.clone()))
+                .collect(),
+        );
+        live.hydrate(saved, &HashSet::from(["deleted".into()]));
+        assert_eq!(live.entries["read"].read_at, Some(100));
+        assert!(!live.entries["read"].unread);
+        assert!(live.entries["new-event"].unread);
+        assert_eq!(live.entries["new-event"].at, 200);
+        assert_eq!(live.entries["new-event"].read_at, Some(100));
+        assert!(live.entries["unread"].unread);
+        assert!(!live.entries.contains_key("deleted"));
+        assert_eq!(live.entries["untouched"].at, 100);
+    }
+
     use super::*;
     use codex_app_server_protocol::{
         ThreadGoal, ThreadGoalClearedNotification, ThreadGoalStatus, ThreadGoalUpdatedNotification,

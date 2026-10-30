@@ -182,6 +182,14 @@ V76: Window recovery ! original chat groups, child Rally registry, logical size,
 
 V77: Permanent deletion ! unchanged Goose public API, durable intent, reserved identity and no source/workspace deletion. Busy agents, local drafts, pending/uncertain queue records, schedules, children, leases and pending restores ! guarded. Remove history/current summary/checkpoint backups and cached UI content; stale summary completion ! cannot resurrect deleted data. Interrupted deletion ! block new work; resume cleanup only when Goose history is already absent, otherwise explicit Delete retry. Batch ! retain failed targets and newly typed drafts. Verify: v77 deletion/storage/guard tests and dev/windows-delete-smoke.py.
 
+V78: Sidebar cache loading ! background IO; delayed hydration ! preserve newer names/read decisions/deletions and defer saves until loaded. File mentions/log-folder creation ! no UI-thread file IO. Verify: v78 hydration race tests and native sidebar/summary/mention fixtures.
+
+V79: Project defaults ! same embedded store, validated registered Git references, revision-guarded saves, isolated new workspaces and explicit one-off branch override; source checkout ! unchanged. Native editor ! background IO/stale-response guards; sidebar copy/filter ! repository identity, complete bounded history. Verify: v79_project_defaults_are_guarded_persistent_and_select_isolated_bases and dev/windows-projects-smoke.py.
+
+V80: Visible commands ! supported embedded routes; Goose model/permission controls ! Goose options, MCP/hooks ! capability editor, New ! isolated project workspace, Changes ! bounded in-process diff without model dispatch. Unsupported commands ! absent from suggestions and preserve manually entered drafts. Temporary close ! durable discard intent, metadata cleanup after queue synchronization, no late completion resurrection. Verify: v80_goose_palette_excludes_unsupported_policies_and_keeps_workflows, dev/windows-commands-smoke.py and expanded dev/windows-side-smoke.py.
+
+V81: Restore legacy Goose session with absent tool selection ! materialize inherited defaults through public storage before activation/mutation; explicit empty/restricted selection ! unchanged; malformed state ! fail without widening tools; unrelated extension state ! preserved. Verify: v81 persistence regression and seeded native history restore.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -244,12 +252,12 @@ T47|x|Native interactive terminal panels with isolated user-requested processes,
 T48|x|Conversation checkpoint/review/restore workflows over guarded vwork revisions|V40,V41,V42,V49,V62,V63,I.checkpoints
 T49|x|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
 T50|x|Native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42,V64,V65,V66
-T51|~|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44,V67
-T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch controls and persisted ordering|V42,V67,V68
+T51|~|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44,V67,V78
+T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch controls and persisted ordering|V42,V67,V68,V79
 T53|x|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48,V75,V76
 T54|x|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63,V74,V77
 T55|x|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63,V74,V75
-T56|~|Native queue start/reorder, compressed-source mentions, in-process Review and explicit owned shell commands verified; remaining visible typed-route audit open|V38,V40,V41,V42,V70,V71,V72,V73
+T56|~|Native queue start/reorder, compressed-source mentions, in-process Review and explicit owned shell commands verified; remaining visible typed-route audit open|V38,V40,V41,V42,V70,V71,V72,V73,V80
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -660,3 +668,25 @@ B218|2026-10-30|Deletion batch handler was attached to per-thread organization d
 B219|2026-10-30|GUI cache save merged removed manual titles back from disk; interrupted deletion could leave cached content after restart|Persist title tombstones and reconcile completed deletion IDs on startup; V77
 
 B220|2026-10-30|Deletion fixture decoded the UTF-8 recovery snapshot with Windows locale encoding|Read JSON as UTF-8; native late-draft round trip; V77
+
+B221|2026-10-30|Sidebar cache startup, image mention validation and Open logs performed filesystem IO on the Slint thread|Background hydration with race guards; attachment-worker validation and async log creation; V67,V78
+
+B222|2026-10-30|Startup deletion reconciliation persisted caches and organization per ID; early organization load could reject cleanup|Batch each bounded page and permit owner-serialized Forget before hydration; V77,V78
+
+B223|2026-10-30|Temporary explicit close deleted Goose history but retained queue/binding metadata; late completion could rewrite it|Durable temporary discard and queue synchronization before owned-sidecar removal; V80
+
+B224|2026-10-30|Visible slash commands used Codex-only pickers/routes, New reused compressed workspace scratch directory, Changes depended on unavailable Goose diff notifications|Goose-aware command availability/routing, isolated project creation and explicit native diff preview; V79,V80
+
+B225|2026-10-30|Combined native matrix omitted supported output arguments; reused old fixture directories before app launch|Unique per-case evidence paths, explicit seed executable and optional Rally output; V45,V54
+
+B226|2026-10-30|Project modal focused disabled loading input and lacked capture-phase Escape; branch chooser defaulted to HEAD regardless of saved value|Focus modal while loading, focus ready input, capture Escape, restore editor focus and synchronize branch index; native close assertion; V79
+
+B227|2026-10-30|Visible Diagnostics retained Codex-only configuration controls/names and synchronously created folders|Goose-aware diagnostics, runtime wording and background folder creation; native commands fixture; V38,V78,V80
+
+B228|2026-10-30|New project fixture compared Windows verbatim-path spelling; command fixture invoked text-only Copy All on diff tab and read stale clipboard|Compare filesystem identity, use native Copy diff control, simplify displayed repository path; V79,V80
+
+B229|2026-10-30|Project branch binding used Slint std-widget-internal index-of unavailable to application models|Pure Rust callback over bounded branch model; retain native saved/invalid-ref coverage; V79
+
+B230|2026-10-30|Commands fixture captured clipboard before deferred native Copy diff events ran|Yield after pointer dispatch before reading clipboard; V80
+
+B231|2026-10-30|Legacy Goose sessions inherited tools for listing, but public removal started from absent/empty stored selection; Summon restriction erased defaults then failed restore|Materialize inherited tools before activation with public SessionManager API; preserve explicit restrictions/corruption; V81

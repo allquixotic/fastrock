@@ -728,6 +728,7 @@ pub(crate) async fn load_all(
     let mut items = Vec::new();
     let mut cursor: Option<String> = None;
     let mut seen = HashSet::new();
+    let mut export_bytes = 0usize;
     loop {
         let page: Result<ThreadItemsListResponse, BackendError> = backend
             .request(session::items_page(
@@ -749,6 +750,17 @@ pub(crate) async fn load_all(
         };
         if page.data.is_empty() {
             break;
+        }
+        // Explicit exports may visit all history, but must not expand an
+        // arbitrarily large compressed store into the process heap.
+        export_bytes = export_bytes.saturating_add(
+            serde_json::to_vec(&page.data)
+                .map_err(|e| e.to_string())?
+                .len(),
+        );
+        if items.len().saturating_add(page.data.len()) > 100_000 || export_bytes > 64 * 1024 * 1024
+        {
+            return Err("This conversation exceeds the clipboard/export limit (100,000 items or 64 MiB); copy a smaller selection.".into());
         }
         items.extend(
             page.data

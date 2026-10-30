@@ -18,20 +18,23 @@ export global Theme {
         || (Palette.color-scheme == ColorScheme.unknown && system-dark)));
 
     // Surfaces
-    out property <color> window-bg: dark ? #1b1c1f : #f6f6f7;
-    out property <color> surface: dark ? #232428 : #ffffff;
-    out property <color> surface-alt: dark ? #2b2d32 : #f0f1f3;
-    out property <color> surface-sunken: dark ? #18191c : #ebecef;
-    out property <color> sidebar-bg: dark ? #18191b : #f9f9fa;
-    out property <color> hover: dark ? #33363c : #e6e8ec;
-    out property <color> selected: dark ? #3a3f4b : #dde4f3;
-    out property <color> border: dark ? #3a3c42 : #d9dbe0;
-    out property <color> border-strong: dark ? #50535a : #b9bcc4;
+    // Opaque equivalents of the pinned T3 v0.1.5 surface tokens. Keeping
+    // them opaque avoids text compositing differences between renderers.
+    out property <color> window-bg: dark ? #000000 : #fdfdfd;
+    out property <color> surface: dark ? #111111 : #ffffff;
+    out property <color> surface-alt: dark ? #171717 : #f4f4f5;
+    out property <color> surface-sunken: dark ? #0a0a0a : #f4f4f5;
+    out property <color> sidebar-bg: dark ? #000000 : #fafafa;
+    out property <color> hover: dark ? #191a1d : #f4f4f5;
+    out property <color> selected: dark ? #202020 : #ffffff;
+    out property <color> message-surface: dark ? #1e1e1e : #ebebed;
+    out property <color> border: dark ? #242424 : #e4e4e7;
+    out property <color> border-strong: dark ? #393939 : #d4d4d8;
 
     // Text
-    out property <color> text: dark ? #e6e7ea : #1d1f24;
-    out property <color> text-muted: dark ? #a0a3ab : #5f636d;
-    out property <color> text-faint: dark ? #767a83 : #8a8e97;
+    out property <color> text: dark ? #f1f3f7 : #18181b;
+    out property <color> text-muted: dark ? #a3a3a3 : #71717a;
+    out property <color> text-faint: dark ? #878787 : #71717a;
     out property <color> text-on-accent: #ffffff;
 
     // Accents and status
@@ -65,7 +68,7 @@ export global Theme {
     out property <length> pad-m: 8px;
     out property <length> pad-l: 12px;
     out property <length> pad-xl: 20px;
-    out property <length> radius: 6px;
+    out property <length> radius: 8px;
     out property <length> radius-small: 4px;
     out property <length> row-height: 28px;
     out property <length> tab-height: 34px;

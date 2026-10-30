@@ -57,11 +57,29 @@ impl AppController {
                     .filter_map(|id| id.as_str().map(str::to_owned))
                     .collect();
                 crate::ui_thread::post(move |app| {
-                    for thread_id in ids {
+                    let ids: Vec<_> = ids
+                        .into_iter()
+                        .filter(|id| !app.sidebar.deleted.contains(id))
+                        .collect();
+                    if ids.is_empty() {
+                        return;
+                    }
+                    app.sidebar.deletion_batch = true;
+                    for thread_id in &ids {
                         app.sidebar_on_notification(&ServerNotification::ThreadDeleted(
-                            codex_app_server_protocol::ThreadDeletedNotification { thread_id },
+                            codex_app_server_protocol::ThreadDeletedNotification {
+                                thread_id: thread_id.clone(),
+                            },
                         ));
                     }
+                    app.sidebar.deletion_batch = false;
+                    app.purpose_save();
+                    app.activity_save();
+                    app.organization_request(Some(organization_store::Mutation::Forget(ids)));
+                    app.save_open_chats();
+                    app.sidebar_render();
+                    app.newtab_on_threads_changed();
+                    app.sidebar_refresh();
                 });
                 let next = page["nextCursor"].as_str().map(str::to_owned);
                 if next.is_none() || next == after {
@@ -236,9 +254,11 @@ impl AppController {
                 self.close_tab(index);
             }
         }
-        self.organization_request(Some(organization_store::Mutation::Forget(vec![id.into()])));
-        self.save_open_chats();
-        self.sidebar_refresh();
+        if !self.sidebar.deletion_batch {
+            self.organization_request(Some(organization_store::Mutation::Forget(vec![id.into()])));
+            self.save_open_chats();
+            self.sidebar_refresh();
+        }
     }
 }
 

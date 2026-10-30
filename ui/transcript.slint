@@ -125,7 +125,7 @@ export global TranscriptState {
 }
 
 global Look {
-    out property <length> max-content-width: 860px;
+    out property <length> max-content-width: 736px;
     out property <length> code-font-size: Theme.font-size - 1px;
     out property <length> line-height: Theme.font-size + 7px;
 
@@ -799,7 +799,7 @@ component UserRow inherits Rectangle {
         y: 0;
         width: min(root.natural, root.max-bubble);
         height: bubble-layout.preferred-height;
-        background: Theme.accent-soft;
+        background: Theme.message-surface;
         border-radius: 12px;
         border-width: root.unsent ? 1px : 0px;
         border-color: Theme.danger;

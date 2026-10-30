@@ -855,6 +855,37 @@ impl AppController {
         });
     }
 
+    /// Copy from history without opening a tab or loading an agent.
+    pub(crate) fn transcript_copy_thread(&mut self, thread_id: String, cwd: std::path::PathBuf) {
+        if !self.sidebar.begin_copy(&thread_id) {
+            return;
+        }
+        self.toast("Preparing conversation…");
+        let backend = self.backend.clone();
+        self.backend.spawn(async move {
+            let result = history::load_all(backend, thread_id.clone(), None).await;
+            let markdown = result.and_then(|items| {
+                let sources: Vec<_> = items
+                    .iter()
+                    .map(|(_, item)| export::ExportSource::Item {
+                        item,
+                        live_text: None,
+                    })
+                    .collect();
+                export::render_transcript(&sources, &cwd)
+            });
+            crate::ui_thread::post(move |app| {
+                if !app.sidebar.finish_copy(&thread_id) {
+                    return;
+                }
+                match markdown {
+                    Ok(markdown) => app.copy_to_clipboard(&markdown),
+                    Err(error) => app.toast(error),
+                }
+            });
+        });
+    }
+
     /// Drops background tabs to a tail window (see the module docs).
     pub(crate) fn transcript_trim_background(&mut self) {
         let active = self.active;

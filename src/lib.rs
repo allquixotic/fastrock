@@ -1,10 +1,10 @@
 // Large native UI and typed protocol futures need a deeper macro recursion limit.
 #![recursion_limit = "256"]
 
-//! Fastrock: a native Slint workspace for Codex and Rally.
+//! Fastrock: a native Slint workspace for Goose and Rally.
 //!
-//! The GUI starts the installed external Codex app-server over stdio and
-//! renders its responses with Slint. See `README.md` for the architecture
+//! The GUI embeds Goose and vwork and renders their state with Slint.
+//! See `README.md` for the architecture
 //! and `docs/gui.md` for the user guide.
 
 mod app;

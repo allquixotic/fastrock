@@ -2,7 +2,7 @@
 """Native Windows Slint acceptance using ONLY loopback model/tool and Rally HTTP fixtures.
 Retains scripts, snapshots, request log and state dumps in build/rally-smoke.
 """
-import base64, hashlib, json, os, re, shutil, subprocess, sys, threading, time
+import argparse, base64, hashlib, json, os, re, shutil, subprocess, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
@@ -10,7 +10,6 @@ from embedded_provider_fixture import ProviderFixture, ProcessGuard
 
 ROOT=Path(__file__).resolve().parent.parent
 OUT=ROOT/'build'/'rally-smoke'
-OUT.mkdir(parents=True,exist_ok=True)
 TOKEN='fixture-token-not-a-secret'
 
 class RallyFixture:
@@ -110,12 +109,23 @@ class RallyFixture:
         data=json.dumps(value).encode(); h.send_response(status);h.send_header('Content-Type','application/json');h.send_header('Content-Length',str(len(data)));h.end_headers();h.wfile.write(data)
 
 def main():
+    global OUT
     assert os.name=='nt', 'GUI acceptance runs only on Windows'
-    binary=Path(sys.argv[1]).resolve()
-    ci_mode='--ci' in sys.argv[2:]
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('binary',type=Path)
+    parser.add_argument('--ci',action='store_true')
+    parser.add_argument('--output',type=Path)
+    args=parser.parse_args()
+    binary=args.binary.resolve()
+    ci_mode=args.ci
+    if args.output:
+        OUT=args.output.resolve()
+        OUT.mkdir(parents=True,exist_ok=False)
+    else:
+        if OUT.exists():shutil.rmtree(OUT)
+        OUT.mkdir(parents=True)
     binary_sha=hashlib.sha256(binary.read_bytes()).hexdigest()
     print("Native executable SHA-256: "+binary_sha,flush=True)
-    shutil.rmtree(OUT);OUT.mkdir(parents=True)
     fixture=RallyFixture()
     provider=ProviderFixture(artifact=fixture.story['_ref'])
     peak=0

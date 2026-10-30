@@ -94,7 +94,11 @@ impl Adapter {
                     "Wait for this conversation to finish before changing its tools",
                 ));
             }
-            text(&s.info, "cwd").to_owned()
+            s.binding
+                .workspace
+                .as_ref()
+                .map(|workspace| workspace.source_root.to_string_lossy().into_owned())
+                .unwrap_or_else(|| text(&s.info, "cwd").to_owned())
         } else {
             self.cwd.clone()
         };

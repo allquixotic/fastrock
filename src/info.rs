@@ -447,7 +447,15 @@ impl AppController {
                 if let Some(cwd) = app
                     .active_thread_index()
                     .and_then(|index| app.thread_tab(index))
-                    .map(|thread| thread.cwd.clone())
+                    .map(|thread| {
+                        thread
+                            .extras
+                            .project_id
+                            .as_ref()
+                            .and_then(|id| app.sidebar.projects().iter().find(|p| &p.id == id))
+                            .map(|p| p.root.clone())
+                            .unwrap_or_else(|| thread.cwd.clone())
+                    })
                 {
                     app.open_in_file_manager(&cwd);
                 }
@@ -734,6 +742,30 @@ impl AppController {
         let Some(thread) = self.thread_tab(index) else {
             return;
         };
+        if self.backend.is_goose() {
+            let Some(thread_id) = thread.thread_id.clone() else {
+                return;
+            };
+            let title = format!("Changes · {}", thread.title());
+            let tab_id = self.tabs[index].id;
+            let backend = self.backend.clone();
+            self.backend.spawn(async move {
+                let result = backend.goose_request("fastrock/review/preview", serde_json::json!({"threadId":thread_id,"target":{"type":"uncommittedChanges"}})).await;
+                crate::ui_thread::post(move |app| {
+                    if app.tab_index_by_id(tab_id).is_none() { return; }
+                    match result {
+                        Ok(value) => {
+                            let patch = value["patch"].as_str().unwrap_or_default().to_owned();
+                            if patch.lines().any(|line|line.starts_with("diff --git ")) {
+                                app.open_diff_tab(title, patch);
+                            } else { app.open_text_tab(title, patch); }
+                        }
+                        Err(error) => app.toast(error),
+                    }
+                });
+            });
+            return;
+        }
         match thread.info.diff.as_ref() {
             Some(diff) => {
                 let title = format!("Changes · {}", thread.title());
@@ -1278,8 +1310,15 @@ impl AppController {
 
         // Summary.
         state.set_title(thread.title().into());
-        state.set_folder_name(crate::app::folder_label(&thread.cwd).into());
-        state.set_folder_path(crate::newtab::display_path(&thread.cwd).into());
+        let project_root = thread
+            .extras
+            .project_id
+            .as_ref()
+            .and_then(|id| self.sidebar.projects().iter().find(|p| &p.id == id))
+            .map(|project| project.root.as_path())
+            .unwrap_or(&thread.cwd);
+        state.set_folder_name(crate::app::folder_label(project_root).into());
+        state.set_folder_path(crate::newtab::display_path(project_root).into());
         sync_model(
             &models.fields,
             summary_fields(thread)
@@ -1469,6 +1508,7 @@ impl AppController {
 
         // Cross-tab.
         state.set_xtab_enabled(thread.xtab_enabled);
+        state.set_xtab_available(thread.extras.side_parent.is_none());
         sync_model(&models.mailbox, mailbox);
 
         self.info_render_terminals(index);
@@ -1500,7 +1540,7 @@ fn summary_fields(thread: &ThreadTab) -> Vec<(&'static str, String)> {
                     .unwrap_or_else(|| "Goose default".into()),
             ),
             ("Permissions", "See Goose options".into()),
-            ("Sandbox", "Not provided by ACP".into()),
+            ("Sandbox", "Tools use your account permissions".into()),
         ];
     }
     let approval = crate::composer::effective_approval(thread);

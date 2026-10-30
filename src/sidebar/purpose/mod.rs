@@ -18,6 +18,11 @@ use std::sync::{
 use std::time::Duration;
 use tokio::sync::mpsc;
 
+pub(super) struct SavedCache(Cache);
+pub(super) fn read_cache(home: Option<&Path>) -> SavedCache {
+    SavedCache(Cache::load(home))
+}
+
 #[derive(Default)]
 pub(super) struct PurposeController {
     cache: Cache,
@@ -142,11 +147,34 @@ impl PurposeController {
         true
     }
 
-    pub(super) fn load(home: Option<&Path>) -> Self {
-        Self {
-            cache: Cache::load(home),
-            ..Self::default()
+    pub(super) fn hydrate(&mut self, saved: SavedCache) {
+        self.cache.deleted.extend(saved.0.deleted);
+        for (id, previous) in saved.0.threads {
+            if self.cache.deleted.contains(&id) {
+                continue;
+            }
+            if self.revisions.contains_key(&id) {
+                continue;
+            }
+            self.cache
+                .threads
+                .entry(id)
+                .and_modify(|entry| {
+                    if entry.tooltip.is_empty() {
+                        entry.tooltip = previous.tooltip.clone();
+                        entry.short = previous.short.clone();
+                        entry.fingerprint = previous.fingerprint.clone();
+                        entry.max_chars = previous.max_chars;
+                    }
+                    if entry.manual_title.is_none() {
+                        entry.manual_title = previous.manual_title.clone();
+                    }
+                })
+                .or_insert(previous);
         }
+        self.cache
+            .threads
+            .retain(|id, _| !self.cache.deleted.contains(id));
     }
     pub(super) fn display(
         &self,
@@ -446,7 +474,10 @@ impl AppController {
             }
         }
     }
-    fn purpose_save(&self) {
+    pub(super) fn purpose_save(&self) {
+        if !self.sidebar.cache_loaded || self.sidebar.deletion_batch {
+            return;
+        }
         let Some(home) = self.codex_home.clone() else {
             return;
         };
@@ -475,6 +506,47 @@ impl AppController {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn v78_delayed_title_load_preserves_newer_names_results_and_tombstones() {
+        let mut live = PurposeController::default();
+        let mut saved = Cache::default();
+        for id in ["new-name", "new-result", "deleted", "old"] {
+            saved.threads.insert(
+                id.into(),
+                cache::Entry {
+                    manual_title: Some("old name".into()),
+                    tooltip: "old summary".into(),
+                    ..Default::default()
+                },
+            );
+        }
+        live.cache.threads.insert(
+            "new-name".into(),
+            cache::Entry {
+                manual_title: Some("new name".into()),
+                ..Default::default()
+            },
+        );
+        live.cache.threads.insert(
+            "new-result".into(),
+            cache::Entry {
+                tooltip: "new summary".into(),
+                ..Default::default()
+            },
+        );
+        live.revisions.insert("new-result".into(), 1);
+        live.cache.forget("deleted");
+        live.hydrate(SavedCache(saved));
+        assert_eq!(
+            live.cache.threads["new-name"].manual_title.as_deref(),
+            Some("new name")
+        );
+        assert_eq!(live.cache.threads["new-name"].tooltip, "old summary");
+        assert_eq!(live.cache.threads["new-result"].tooltip, "new summary");
+        assert!(!live.cache.threads.contains_key("deleted"));
+        assert_eq!(live.cache.threads["old"].tooltip, "old summary");
+    }
+
     use super::*;
     #[test]
     fn v7_completed_request_also_marks_initial_summary_attempted() {

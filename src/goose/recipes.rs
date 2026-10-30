@@ -88,7 +88,9 @@ impl Adapter {
             .flatten()
             .find(|r| r["id"] == params["project"])
             .ok_or_else(|| error("Choose a registered repository first"))?;
-        let workspace = self.open_project(&json!({"path":project["root"]})).await?;
+        let workspace = self
+            .open_project(&json!({"path":project["root"],"projectId":project["id"]}))
+            .await?;
         let response=self.new_session(&json!({"cwd":workspace["cwd"],"config":{"fastrock.workspace":workspace["selection"],"fastrock.recipe":doc},"dynamicTools":params["dynamicTools"]})).await?;
         Ok(
             json!({"response":response,"prompt":recipe.prompt.unwrap_or_default(),"workspace":workspace["selection"]}),

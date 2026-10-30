@@ -77,6 +77,8 @@ pub(crate) enum Step {
     Folderless(bool),
     /// Drive sidebar search, thread actions, or log its result rows.
     Sidebar(Vec<String>),
+    /// Native repository settings and branch selection.
+    Project(Vec<String>),
     /// Resume an existing thread id.
     Resume(String),
     /// Send text to the active thread.
@@ -567,6 +569,7 @@ impl AppController {
                         .invoke_shortcut(name.into());
                 }
                 Step::Palette(args) => self.palette_automation(&args),
+                Step::Project(args) => self.project_automation(&args),
                 Step::OpenSettings(page) => self.open_settings(Some(&page)),
                 Step::Settings(args) => self.settings_automation(&args),
                 Step::OpenFile(path) => self.open_file_tab(path, None),

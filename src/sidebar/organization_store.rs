@@ -125,6 +125,7 @@ impl State {
     fn apply(&mut self, mutation: Mutation, now: i64) -> Result<(), String> {
         match mutation {
             Mutation::Forget(ids) => {
+                let ids: std::collections::HashSet<_> = ids.into_iter().collect();
                 for id in &ids {
                     self.entries.remove(id);
                 }

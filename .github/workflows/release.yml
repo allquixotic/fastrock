@@ -37,7 +37,7 @@ jobs:
   windows:
     needs: build
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     environment: azure-artifact-signing
     permissions:
       contents: write
@@ -114,35 +114,20 @@ jobs:
         run: ./scripts/verify-windows-signature.ps1 build/release-inputs/fastrock.exe build/windows-signing.json
       - name: Fixture tests on the exact signed executable
         run: |
-          python dev/windows-rally-smoke.py build/release-inputs/fastrock.exe --ci
+          python dev/windows-rc-acceptance.py build/release-inputs/fastrock.exe --output build/rc-acceptance
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-goose-smoke.py build/release-inputs/fastrock.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-vwork-smoke.py build/release-inputs/fastrock.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-delegation-smoke.py build/release-inputs/fastrock.exe --output build/delegation-smoke
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-schedules-smoke.py build/release-inputs/fastrock.exe --output build/schedules-smoke
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-provider-setup-smoke.py build/release-inputs/fastrock.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-history-smoke.py build/release-inputs/fastrock.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-selection-smoke.py build/release-inputs/fastrock.exe
+          $targets = Get-Content build/release-inputs/TEST-TARGETS.json | ConvertFrom-Json
+          python dev/windows-organization-catalog-smoke.py build/release-inputs/fastrock.exe --seed-executable "build/release-inputs/$($targets.embedded_goose)" --output build/organization-catalog-smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-scroll-benchmark.py build/release-inputs/fastrock.exe --output build/scroll-smoke --frames 120
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-summary-smoke.py build/release-inputs/fastrock.exe --output build/summary-smoke --turns 3 --navigation --windows
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-summary-smoke.py build/release-inputs/fastrock.exe --output build/queue-recovery-smoke --recovery
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-summary-smoke.py build/release-inputs/fastrock.exe --output build/process-recovery-smoke --process-recovery
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         if: always()
         with:
           name: windows-signing-and-rally-evidence
           path: |
+            build/rc-acceptance/
+            build/organization-catalog-smoke/
             build/rally-smoke/
             build/goose-chat-smoke/
             build/vwork-smoke/

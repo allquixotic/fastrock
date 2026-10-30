@@ -53,6 +53,15 @@ fn snooze_time(text: &str) -> Result<i64, String> {
         .ok_or_else(|| "That local time is missing or ambiguous; choose another time".into())
 }
 impl AppController {
+    pub(super) fn organization_filter_project(&mut self, project: Option<String>) {
+        if let Some(project) = project {
+            self.sidebar.organization.project = project;
+            self.sidebar.organization.selected.clear();
+            self.sidebar_render();
+        } else {
+            self.toast("Register this repository using Project settings first.");
+        }
+    }
     pub(super) fn organization_bind(&mut self) {
         let ui = self.window.global::<SidebarState>();
         ui.set_project_choices(ModelRc::from(self.sidebar.organization.labels.clone()));
@@ -98,7 +107,10 @@ impl AppController {
         let Some(home) = self.codex_home.clone() else {
             return;
         };
-        if mutation.is_some() && !self.sidebar.organization.loaded {
+        if mutation.is_some()
+            && !matches!(&mutation, Some(Mutation::Forget(_)))
+            && !self.sidebar.organization.loaded
+        {
             self.toast("Sidebar organization is still loading or unavailable");
             return;
         }

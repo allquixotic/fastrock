@@ -1,0 +1,80 @@
+import { LineEdit, ComboBox } from "std-widgets.slint";
+import { Theme, FlatButton, LinkButton } from "theme.slint";
+
+export global ProjectState {
+    in-out property <bool> open;
+    in property <bool> busy;
+    in property <bool> ready;
+    in property <string> name;
+    in property <string> path;
+    in property <string> error;
+    in property <string> status;
+    in property <[string]> branches;
+    in-out property <string> reference;
+    callback action(string);
+    callback select-branch(int);
+    pure callback reference-index([string], string) -> int;
+}
+
+export component ProjectDialog inherits Rectangle {
+    background: #0008;
+    TouchArea { }
+    FocusScope {
+        property <bool> loaded: ProjectState.ready && !ProjectState.busy;
+        init => { self.focus(); }
+        changed loaded => { if self.loaded { reference-field.focus(); } }
+        capture-key-pressed(event) => {
+            if event.text == Key.Escape { ProjectState.action("close"); return EventResult.accept; }
+            return EventResult.reject;
+        }
+        key-pressed(event) => { return EventResult.accept; }
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            width: min(620px, parent.width - 32px);
+            height: min(430px, parent.height - 32px);
+            background: Theme.surface;
+            border-width: 1px;
+            border-color: Theme.border;
+            border-radius: Theme.radius;
+            VerticalLayout {
+                padding: Theme.pad-xl;
+                spacing: Theme.pad-m;
+                Text { text: "Project settings"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; }
+                Text { text: ProjectState.name; color: Theme.text; font-size: Theme.font-size; overflow: elide; }
+                Text { text: ProjectState.path; color: Theme.text-muted; wrap: word-wrap; }
+                HorizontalLayout {
+                    spacing: Theme.pad-m;
+                    LinkButton { text: "Open repository"; enabled: ProjectState.ready; clicked => { ProjectState.action("open-folder"); } }
+                    LinkButton { text: "Copy path"; enabled: ProjectState.ready; clicked => { ProjectState.action("copy-path"); } }
+                    LinkButton { text: "Rename…"; enabled: ProjectState.ready && !ProjectState.busy; clicked => { ProjectState.action("rename"); } }
+                    Rectangle { horizontal-stretch: 1; }
+                }
+                Text { text: "Default branch or Git reference"; color: Theme.text; }
+                reference-field := LineEdit {
+                    text <=> ProjectState.reference;
+                    placeholder-text: "HEAD, branch, tag or full commit ID";
+                    enabled: ProjectState.ready && !ProjectState.busy;
+                }
+                ComboBox {
+                    model: ProjectState.branches;
+                    current-index: ProjectState.reference-index(ProjectState.branches, ProjectState.reference);
+                    enabled: ProjectState.ready && !ProjectState.busy;
+                    selected => { ProjectState.select-branch(self.current-index); }
+                }
+                Text { text: "New chats start in their own compressed workspace. Saving changes the default for future chats."; color: Theme.text-muted; wrap: word-wrap; }
+                Text { text: ProjectState.error; visible: self.text != ""; color: Theme.danger; wrap: word-wrap; }
+                Text { text: ProjectState.busy ? "Working…" : ProjectState.status; visible: self.text != ""; color: Theme.text-muted; wrap: word-wrap; }
+                Rectangle { vertical-stretch: 1; }
+                HorizontalLayout {
+                    spacing: Theme.pad-s;
+                    FlatButton { text: "Reload"; enabled: !ProjectState.busy; clicked => { ProjectState.action("reload"); } }
+                    Rectangle { horizontal-stretch: 1; }
+                    FlatButton { text: "Close"; clicked => { ProjectState.action("close"); } }
+                    FlatButton { text: "Save default"; enabled: ProjectState.ready && !ProjectState.busy && ProjectState.reference != ""; clicked => { ProjectState.action("save"); } }
+                    FlatButton { text: "New chat"; primary: true; enabled: ProjectState.ready && !ProjectState.busy && ProjectState.reference != ""; clicked => { ProjectState.action("new-thread"); } }
+                }
+            }
+        }
+    }
+}

@@ -320,6 +320,9 @@ impl Adapter {
                 super::provider_policy::restored(id)
                     .await
                     .map_err(|e| error(e.to_string()))?;
+                super::restore_extensions::prepare(id)
+                    .await
+                    .map_err(|e| error(format!("Restore Goose tools: {e:#}")))?;
             }
             if self.capabilities.lock().await["loadSession"] != true {
                 return Err(unsupported("session/load"));
@@ -663,6 +666,9 @@ impl Adapter {
     }
 
     pub(super) async fn finish_turn(self: &Arc<Self>, id: &str, tid: &str, reply: Reply) {
+        if self.deletion_ready(id).await.is_err() {
+            return;
+        }
         let completed = reply.as_ref().is_ok_and(|r| r["stopReason"] == "end_turn");
         let user_command = reply.as_ref().is_ok_and(|r| r["userCommand"] == true);
         self.cancel_answers(id).await;
@@ -884,6 +890,15 @@ impl Adapter {
         let ephemeral = self.sessions.lock().await.get(id).is_some_and(|s| {
             s.ephemeral && !(s.binding.side && params["preserveTemporary"] == true)
         });
+        if ephemeral && self.embedded_runtime {
+            self.begin_temporary_deletion(id).await?;
+            self.rpc
+                .call("session/close", json!({"sessionId":id}))
+                .await?;
+            self.cancel_answers(id).await;
+            self.finish_temporary_deletion(id).await?;
+            return Ok(json!({"status":"unsubscribed"}));
+        }
         let method = if ephemeral {
             if self.embedded_runtime {
                 let manager = goose_runtime::session::SessionManager::new(

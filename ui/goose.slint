@@ -15,6 +15,7 @@ export struct GooseSetupField {
     value: string,
 }
 export global GooseState {
+    in-out property <bool> expanded;
     in property <bool> active;
     in property <bool> busy;
     in property <bool> changing;
@@ -52,7 +53,6 @@ export global GooseState {
     callback dismiss-recovery();
 }
 export component GooseControls inherits Rectangle {
-    property <bool> expanded;
     property <bool> review-open;
     VerticalLayout {
         spacing: Theme.pad-s;
@@ -72,10 +72,10 @@ export component GooseControls inherits Rectangle {
             }
         }
         FlatButton {
-            text: GooseState.summary + (root.expanded ? "  ▴" : "  ▾");
-            clicked => { root.expanded = !root.expanded; }
+            text: GooseState.summary + (GooseState.expanded ? "  ▴" : "  ▾");
+            clicked => { GooseState.expanded = !GooseState.expanded; }
         }
-        if root.expanded: ScrollView {
+        if GooseState.expanded: ScrollView {
             height: min(320px, GooseState.options.length * 38px + 148px);
             VerticalLayout {
                 spacing: Theme.pad-s;
@@ -98,7 +98,7 @@ export component GooseControls inherits Rectangle {
                     FlatButton { text: "Clear effort default"; enabled: !GooseState.busy && !GooseState.changing; clicked => { GooseState.save-effort-default(true); } }
                 }
                 if GooseState.effort-status != "": Text { text: GooseState.effort-status; color: Theme.text-muted; wrap: word-wrap; }
-                Text { text: "Goose controls tool permissions; ACP does not provide an OS sandbox."; color: Theme.text-faint; wrap: word-wrap; font-size: Theme.font-size-small; }
+                Text { text: "Goose controls tool permissions. Fastrock does not sandbox tool processes."; color: Theme.text-faint; wrap: word-wrap; font-size: Theme.font-size-small; }
             }
         }
         if GooseState.error != "": Text { text: GooseState.error; color: Theme.danger; wrap: word-wrap; }

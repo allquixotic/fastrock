@@ -129,6 +129,7 @@ export global InfoState {
     in property <string> mcp-summary;
 
     in property <bool> xtab-enabled;
+    in property <bool> xtab-available: true;
     in property <[InfoMail]> mailbox;
 
 
@@ -263,6 +264,7 @@ component StepIcon inherits Rectangle {
 // Renderer-safe on/off switch.
 component Toggle inherits Rectangle {
     in property <bool> checked;
+    in property <bool> enabled: true;
     callback toggled();
 
     width: 30px;
@@ -280,7 +282,8 @@ component Toggle inherits Rectangle {
     }
 
     TouchArea {
-        mouse-cursor: pointer;
+        enabled: root.enabled;
+        mouse-cursor: root.enabled ? pointer : default;
         clicked => { root.toggled(); }
     }
 }
@@ -805,7 +808,7 @@ export component InfoPane inherits Rectangle {
                     spacing: Theme.pad-m;
 
                     Text {
-                        text: "Let agents in other tabs message this thread";
+                        text: InfoState.xtab-available ? "Let agents in other tabs message this thread" : "Side chats are isolated from other agents";
                         color: Theme.text-muted;
                         font-size: Theme.font-size-small;
                         wrap: word-wrap;
@@ -816,6 +819,7 @@ export component InfoPane inherits Rectangle {
                         alignment: center;
                         Toggle {
                             checked: InfoState.xtab-enabled;
+                            enabled: InfoState.xtab-available;
                             toggled => { InfoState.set-xtab(!InfoState.xtab-enabled); }
                         }
                     }

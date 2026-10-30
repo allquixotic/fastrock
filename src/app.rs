@@ -1654,8 +1654,13 @@ impl AppController {
             "open-logs" => match self.settings_log_dir() {
                 // Logs are written by this process, even with a remote server.
                 Some(dir) => {
-                    let _ = std::fs::create_dir_all(&dir);
-                    self.open_local_folder(&dir);
+                    self.backend.spawn(async move {
+                        let result = tokio::fs::create_dir_all(&dir).await;
+                        crate::ui_thread::post(move |app| match result {
+                            Ok(()) => app.open_local_folder(&dir),
+                            Err(error) => app.toast(format!("Could not open log folder: {error}")),
+                        });
+                    });
                 }
                 None => self.toast("The log folder is not known (CODEX_HOME could not be found)."),
             },

@@ -14,6 +14,8 @@ pub(super) struct Record {
     summary_home: PathBuf,
     parent: Option<String>,
     complete: bool,
+    #[serde(default)]
+    temporary: bool,
 }
 #[derive(Default)]
 pub(super) struct State {
@@ -144,6 +146,14 @@ impl Adapter {
             .collect();
         let manager = manager();
         for record in pending {
+            if record.temporary && exists(&manager, &record.id).await? {
+                // Explicitly closing a temporary chat already authorized its
+                // disposal. Recovery never starts its agent or replays tools.
+                manager
+                    .delete_session(&record.id)
+                    .await
+                    .map_err(|_| error("Could not finish closing a temporary conversation"))?;
+            }
             // A crash before Goose deleted history requires another explicit
             // Delete. Once history is gone, only app metadata cleanup remains.
             if !exists(&manager, &record.id).await? {
@@ -153,22 +163,27 @@ impl Adapter {
         Ok(())
     }
     async fn finish_deletion(&self, mut record: Record) -> Result<(), JSONRPCErrorError> {
-        if let Some(service) = &self.summaries {
-            service
-                .forget(&record.id)
+        // Wait out a completion that already owns the queue lock, then prevent
+        // a late completion from recreating sidecars after cleanup.
+        self.sessions.lock().await.remove(&record.id);
+        self.queue.lock().await.remove(&record.id);
+        if !record.temporary {
+            if let Some(service) = &self.summaries {
+                service.forget(&record.id).await.map_err(|_| {
+                    error("History deleted; summary cleanup needs a retry or restart")
+                })?;
+            }
+            Summaries(Connection::new(record.summary_home.clone()))
+                .forget(ui_id(&record.id))
                 .await
                 .map_err(|_| error("History deleted; summary cleanup needs a retry or restart"))?;
-        }
-        Summaries(Connection::new(record.summary_home.clone()))
-            .forget(ui_id(&record.id))
+            checkpoints::forget(
+                &Connection::new(record.checkpoint_home.clone()),
+                record.id.clone(),
+            )
             .await
-            .map_err(|_| error("History deleted; summary cleanup needs a retry or restart"))?;
-        checkpoints::forget(
-            &Connection::new(record.checkpoint_home.clone()),
-            record.id.clone(),
-        )
-        .await
-        .map_err(|_| error("History deleted; checkpoint cleanup needs a retry or restart"))?;
+            .map_err(|_| error("History deleted; checkpoint cleanup needs a retry or restart"))?;
+        }
         let base = self.queue_path(&record.id);
         // Only files owned by this conversation. Workspaces, source, leases,
         // Goose configuration and credential entries are never deleted.
@@ -198,6 +213,40 @@ impl Adapter {
         self.queue.lock().await.remove(&record.id);
         record.complete = true;
         self.save_deletion(record).await
+    }
+    pub(super) async fn begin_temporary_deletion(&self, id: &str) -> Result<(), JSONRPCErrorError> {
+        if self.deletions.lock().await.records.contains_key(id) {
+            return Ok(());
+        }
+        super::id_reservation::before_delete(&manager(), id)
+            .await
+            .map_err(|_| error("Could not reserve a safe temporary conversation identity"))?;
+        self.save_deletion(Record {
+            id: id.into(),
+            checkpoint_home: self.vwork_paths.default_vwork_home.clone(),
+            summary_home: self.vwork_paths.default_vwork_home.clone(),
+            parent: None,
+            complete: false,
+            temporary: true,
+        })
+        .await
+    }
+    pub(super) async fn finish_temporary_deletion(
+        &self,
+        id: &str,
+    ) -> Result<(), JSONRPCErrorError> {
+        manager().delete_session(id).await.map_err(|_| {
+            error("Could not delete temporary history; cleanup will retry at restart")
+        })?;
+        let record = self
+            .deletions
+            .lock()
+            .await
+            .records
+            .get(id)
+            .cloned()
+            .ok_or_else(|| error("Temporary deletion record missing"))?;
+        self.finish_deletion(record).await
     }
     pub(super) async fn delete_session(self: &Arc<Self>, params: &Value) -> Reply {
         if !self.embedded_runtime {
@@ -333,6 +382,7 @@ impl Adapter {
                         .unwrap_or_else(|| self.vwork_paths.default_vwork_home.clone()),
                     parent,
                     complete: false,
+                    temporary: false,
                 };
                 self.save_deletion(record).await?;
             }
@@ -369,6 +419,7 @@ mod tests {
             summary_home: root.path().into(),
             parent: None,
             complete: false,
+            temporary: false,
         };
         let bytes = serde_json::to_vec(&record).unwrap();
         let name = format!(

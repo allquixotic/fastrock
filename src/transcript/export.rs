@@ -25,7 +25,7 @@ use super::store::Body;
 use super::store::Entry;
 use super::store::Live;
 
-pub(crate) const EXPORT_TITLE: &str = "# Codex conversation\n";
+pub(crate) const EXPORT_TITLE: &str = "# Fastrock conversation\n";
 /// [`render_transcript`]'s error when nothing is exportable.
 pub(crate) const NOTHING_TO_EXPORT: &str = "No conversation content to export.";
 
@@ -582,7 +582,7 @@ mod tests {
         ];
         assert_eq!(
             render_transcript(&sources, Path::new("/repo")),
-            Ok("# Codex conversation\n\n## User\n\nRun the tests\n\n## Activity\n\n    $ cargo test\n    ok\n    ✓ • 1.20s\n\n## Assistant\n\nAll **green**. Ship it\n".to_string())
+            Ok("# Fastrock conversation\n\n## User\n\nRun the tests\n\n## Activity\n\n    $ cargo test\n    ok\n    ✓ • 1.20s\n\n## Assistant\n\nAll **green**. Ship it\n".to_string())
         );
         assert_eq!(
             render_transcript(&[], Path::new("/")),
@@ -627,7 +627,7 @@ mod tests {
         ];
         assert_eq!(
             render_transcript(&sources, Path::new("/repo")),
-            Ok("# Codex conversation\n\n## User\n\nMessage from tab \"repo-a\" (thread thread-a):\n\nTests pass on **main**.\n\n## User\n\nForwarded from tab \"repo-b\":\n\nFYI\n\nLine one\nLine two\n".to_string())
+            Ok("# Fastrock conversation\n\n## User\n\nMessage from tab \"repo-a\" (thread thread-a):\n\nTests pass on **main**.\n\n## User\n\nForwarded from tab \"repo-b\":\n\nFYI\n\nLine one\nLine two\n".to_string())
         );
     }
 

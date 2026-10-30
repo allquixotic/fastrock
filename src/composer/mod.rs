@@ -385,6 +385,10 @@ impl AppController {
         let state = self.window.global::<ComposerState>();
         let message = state.get_text().to_string();
         if let Some((command, args)) = slash::parse(&message) {
+            if self.backend.is_goose() && !command.available_in_goose() {
+                self.toast("This command is unavailable with Goose. Use Goose options or Tools & hooks for its supported controls.");
+                return;
+            }
             self.composer_close_popup();
             self.composer_set_text(String::new(), 0);
             self.composer_run_slash(index, command, args);
@@ -587,6 +591,49 @@ impl AppController {
     /// Runs a palette command for tab `index`. `args` is non-empty only for
     /// commands that take arguments ([`SlashCommand::takes_args`]).
     fn composer_run_slash(&mut self, index: usize, command: SlashCommand, args: String) {
+        if self.backend.is_goose() {
+            match command {
+                SlashCommand::Model | SlashCommand::Permissions => {
+                    self.window
+                        .global::<crate::ui::GooseState>()
+                        .set_expanded(true);
+                    return;
+                }
+                SlashCommand::Mcp | SlashCommand::Plugins | SlashCommand::Hooks => {
+                    self.open_settings(Some("capabilities"));
+                    return;
+                }
+                SlashCommand::Ps => {
+                    self.terminal_show_existing();
+                    return;
+                }
+                SlashCommand::Stop => {
+                    self.terminal_stop_owned();
+                    return;
+                }
+                SlashCommand::New => {
+                    if let Some(thread) = self.thread_tab(index) {
+                        let root = thread
+                            .extras
+                            .project_id
+                            .as_ref()
+                            .and_then(|id| self.sidebar.projects().iter().find(|p| &p.id == id))
+                            .map(|p| p.root.clone());
+                        if thread.extras.project_id.is_some() && root.is_none() {
+                            self.toast(
+                                "The repository is still loading; try New chat after it appears.",
+                            );
+                            self.composer_restore_text(format!("/new {args}"));
+                            return;
+                        }
+                        let root = root.unwrap_or_else(|| thread.cwd.clone());
+                        self.start_thread_checked_named(root, (!args.is_empty()).then_some(args));
+                    }
+                    return;
+                }
+                _ => {}
+            }
+        }
         match command {
             SlashCommand::Model => self.composer_open_picker("model"),
             SlashCommand::Permissions => self.composer_open_picker("permissions"),

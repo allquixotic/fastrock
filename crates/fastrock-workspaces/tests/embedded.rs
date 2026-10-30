@@ -7,6 +7,104 @@ use fastrock_workspaces::{
 use serde_json::json;
 use std::sync::Arc;
 
+#[tokio::test]
+async fn v79_project_defaults_are_guarded_persistent_and_select_isolated_bases() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("repo");
+    let repo = git2::Repository::init(&root).unwrap();
+    let commit = |text: &str, parents: &[&git2::Commit<'_>]| {
+        std::fs::write(root.join("file.txt"), text).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(std::path::Path::new("file.txt")).unwrap();
+        let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
+        let signature = git2::Signature::now("Fixture", "fixture@example.invalid").unwrap();
+        repo.commit(None, &signature, &signature, "Fixture", &tree, parents)
+            .unwrap()
+    };
+    let main = commit("main\n", &[]);
+    let feature = commit("feature λ\n", &[&repo.find_commit(main).unwrap()]);
+    repo.reference("refs/heads/main", main, true, "fixture")
+        .unwrap();
+    repo.reference("refs/heads/feature", feature, true, "fixture")
+        .unwrap();
+    repo.set_head("refs/heads/main").unwrap();
+    let source = std::fs::read(root.join("file.txt")).unwrap();
+    let connection = Connection::new(temp.path().join("state"));
+    let project = projects::register_project(&connection, root.canonicalize().unwrap())
+        .await
+        .unwrap();
+    let details = projects::details(&connection, project.clone())
+        .await
+        .unwrap();
+    assert_eq!(details.settings.default_reference, "HEAD");
+    assert_eq!(details.branches, vec!["feature", "main"]);
+    let saved = projects::save_settings(&connection, project.clone(), 0, "feature".into())
+        .await
+        .unwrap();
+    assert_eq!(saved.settings.revision, 1);
+    assert!(
+        projects::save_settings(&connection, project.clone(), 0, "main".into())
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("another window")
+    );
+    assert!(
+        projects::save_settings(&connection, project.clone(), 1, "missing".into())
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        projects::details(&connection, project.clone())
+            .await
+            .unwrap()
+            .settings,
+        saved.settings
+    );
+    let first = projects::open(&connection, details.project.root.clone(), "first".into())
+        .await
+        .unwrap();
+    let second = projects::open_at(
+        &connection,
+        details.project.root.clone(),
+        "second".into(),
+        Some("main".into()),
+    )
+    .await
+    .unwrap();
+    assert_ne!(first.cwd, second.cwd);
+    for (workspace, expected, reference) in
+        [("first", feature, "feature"), ("second", main, "main")]
+    {
+        let workspace_id = workspace.to_string();
+        let base = connection
+            .run(move |store| {
+                store.with_engine(|engine| {
+                    let workspace = engine.workspace(&workspace_id)?;
+                    Ok(engine.revision(&workspace.head)?.base)
+                })
+            })
+            .await
+            .unwrap();
+        assert_eq!(base, expected.to_string());
+        assert_eq!(
+            projects::reference(&connection, workspace.into())
+                .await
+                .unwrap(),
+            reference
+        );
+    }
+    let reopened = Connection::new(temp.path().join("state"));
+    assert_eq!(
+        projects::details(&reopened, project)
+            .await
+            .unwrap()
+            .settings,
+        saved.settings
+    );
+    assert_eq!(std::fs::read(root.join("file.txt")).unwrap(), source);
+}
+
 #[test]
 fn v40_hook_uses_original_vwork_policy_without_a_daemon() {
     for (command, decision) in [

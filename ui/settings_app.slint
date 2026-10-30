@@ -7,6 +7,7 @@ import { ScrollView, ComboBox, Switch, SpinBox, LineEdit, AboutSlint } from "std
 import { Theme, FlatButton } from "theme.slint";
 import { SettingsState } from "settings_state.slint";
 import { SidebarState } from "sidebar.slint";
+import { GooseState } from "goose.slint";
 import { SettingsMetrics, PageHeader, Banner, Card, SectionTitle, KeyValueList, ItemRowView } from "settings_widgets.slint";
 
 // Preference card: title and description on the left, control on the right.
@@ -240,8 +241,8 @@ export component DiagnosticsPage inherits Rectangle {
 
                 if SettingsState.server-error != "": Banner {
                     tone: 3;
-                    text: "Codex is not running: " + SettingsState.server-error;
-                    action: "Restart Codex";
+                    text: "Goose is not running: " + SettingsState.server-error;
+                    action: "Restart Goose";
                     activated => {
                         SettingsState.restart-server();
                     }
@@ -267,7 +268,7 @@ export component DiagnosticsPage inherits Rectangle {
                                 }
                             }
                             FlatButton {
-                                text: "Open Codex home";
+                                text: "Open settings folder";
                                 clicked => {
                                     SettingsState.open-path("home");
                                 }
@@ -276,87 +277,99 @@ export component DiagnosticsPage inherits Rectangle {
                     }
                 }
 
-                SectionTitle {
-                    title: "Configuration layers";
-                    subtitle: "Highest precedence first. Project layers are resolved for the selected folder.";
-                }
-                HorizontalLayout {
-                    spacing: Theme.pad-l;
-                    Text {
-                        text: "Folder";
-                        color: Theme.text-muted;
-                        vertical-alignment: center;
-                    }
-                    ComboBox {
-                        horizontal-stretch: 1;
-                        model: SettingsState.context-options;
-                        current-index <=> SettingsState.context-index;
-                        selected => {
-                            SettingsState.context-selected(self.current-index);
-                        }
-                    }
-                }
-                if SettingsState.diag-layers.length == 0: Text {
-                    text: SettingsState.server-ready ? "No configuration files are loaded; built-in defaults apply." : "Layers are available once Codex is running.";
-                    color: Theme.text-faint;
-                    wrap: word-wrap;
-                }
-                VerticalLayout {
-                    for layer in SettingsState.diag-layers: ItemRowView {
-                        item: layer;
-                        side-padding: 0px;
-                    }
-                }
-
-                SectionTitle {
-                    title: "Where does a setting come from?";
-                    subtitle: "Enter a key path such as model, sandbox_workspace_write, or features.memories.";
-                }
-                Card {
+                if GooseState.active: Card {
                     VerticalLayout {
                         padding: Theme.pad-l;
                         spacing: Theme.pad-m;
-                        HorizontalLayout {
-                            spacing: Theme.pad-m;
-                            key-edit := LineEdit {
-                                horizontal-stretch: 1;
-                                placeholder-text: "Key path";
-                                text <=> SettingsState.diag-key;
-                                accepted(text) => {
-                                    SettingsState.diag-lookup(text);
-                                }
-                            }
-                            FlatButton {
-                                text: "Look up";
-                                enabled: SettingsState.diag-key != "";
-                                clicked => {
-                                    SettingsState.diag-lookup(SettingsState.diag-key);
-                                }
-                            }
-                        }
-                        KeyValueList {
-                            items: SettingsState.diag-origins;
-                            key-width: 200px;
-                            empty-text: "Look up a key to see its effective value and the layers that set it.";
-                        }
+                        Text { text: "Goose keeps its own provider, credential, extension and recipe configuration. Fastrock appearance, keyboard and window settings are saved separately."; color: Theme.text-muted; wrap: word-wrap; }
+                        FlatButton { text: "Open provider settings"; clicked => { SettingsState.open-page("goose"); } }
+                        FlatButton { text: "Open tools and hooks"; clicked => { SettingsState.open-page("capabilities"); } }
                     }
                 }
-
-                SectionTitle {
-                    title: "Managed requirements";
-                    subtitle: "Policy from requirements.toml, MDM, or your organization. These values cannot be changed here.";
-                }
-                Card {
+                if !GooseState.active: VerticalLayout {
+                    spacing: Theme.pad-m;
+                    SectionTitle {
+                        title: "Configuration layers";
+                        subtitle: "Highest precedence first. Project layers are resolved for the selected folder.";
+                    }
+                    HorizontalLayout {
+                        spacing: Theme.pad-l;
+                        Text {
+                            text: "Folder";
+                            color: Theme.text-muted;
+                            vertical-alignment: center;
+                        }
+                        ComboBox {
+                            horizontal-stretch: 1;
+                            model: SettingsState.context-options;
+                            current-index <=> SettingsState.context-index;
+                            selected => {
+                                SettingsState.context-selected(self.current-index);
+                            }
+                        }
+                    }
+                    if SettingsState.diag-layers.length == 0: Text {
+                        text: SettingsState.server-ready ? "No configuration files are loaded; built-in defaults apply." : "Layers are available once Codex is running.";
+                        color: Theme.text-faint;
+                        wrap: word-wrap;
+                    }
                     VerticalLayout {
-                        padding: Theme.pad-l;
-                        KeyValueList {
-                            items: SettingsState.diag-requirements;
-                            key-width: 220px;
-                            empty-text: SettingsState.server-ready ? "No managed requirements apply." : "Requirements are available once Codex is running.";
+                        for layer in SettingsState.diag-layers: ItemRowView {
+                            item: layer;
+                            side-padding: 0px;
                         }
                     }
-                }
 
+                    SectionTitle {
+                        title: "Where does a setting come from?";
+                        subtitle: "Enter a key path such as model, sandbox_workspace_write, or features.memories.";
+                    }
+                    Card {
+                        VerticalLayout {
+                            padding: Theme.pad-l;
+                            spacing: Theme.pad-m;
+                            HorizontalLayout {
+                                spacing: Theme.pad-m;
+                                key-edit := LineEdit {
+                                    horizontal-stretch: 1;
+                                    placeholder-text: "Key path";
+                                    text <=> SettingsState.diag-key;
+                                    accepted(text) => {
+                                        SettingsState.diag-lookup(text);
+                                    }
+                                }
+                                FlatButton {
+                                    text: "Look up";
+                                    enabled: SettingsState.diag-key != "";
+                                    clicked => {
+                                        SettingsState.diag-lookup(SettingsState.diag-key);
+                                    }
+                                }
+                            }
+                            KeyValueList {
+                                items: SettingsState.diag-origins;
+                                key-width: 200px;
+                                empty-text: "Look up a key to see its effective value and the layers that set it.";
+                            }
+                        }
+                    }
+
+                    SectionTitle {
+                        title: "Managed requirements";
+                        subtitle: "Policy from requirements.toml, MDM, or your organization. These values cannot be changed here.";
+                    }
+                    Card {
+                        VerticalLayout {
+                            padding: Theme.pad-l;
+                            KeyValueList {
+                                items: SettingsState.diag-requirements;
+                                key-width: 220px;
+                                empty-text: SettingsState.server-ready ? "No managed requirements apply." : "Requirements are available once Codex is running.";
+                            }
+                        }
+                    }
+
+                }
                 SectionTitle {
                     title: "Warnings";
                     subtitle: "Problems found at startup, in config changes, and in gui.json.";

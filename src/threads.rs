@@ -1082,6 +1082,8 @@ impl AppController {
             return;
         }
         match action {
+            "project-settings" => self.project_open_active(),
+            "diff" => self.info_open_diff(index),
             "rename" => {
                 let current = thread.title();
                 self.show_dialog(

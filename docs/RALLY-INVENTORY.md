@@ -298,7 +298,7 @@ its detailed behaviors, not merely a same-named button.
 | R18 | personal views create/rename/copy/delete/open and restore | atomic private-view snapshots + native searchable manager; independent-copy test and Windows save/restore |
 | R19 | safe full-query CSV export and loaded-only analytics/timeline | full applied-query paging + CSV neutralization tests; native loaded-only metrics/planning/timeline projections |
 | R20 | freshness/auto-refresh/backoff/memory bounds | bounded cache/working sets/schema cache and cancellable workers; in-flight cache-invalidation test and board paging |
-| R21 | assistant tools, native dock, proposals and human Apply | five external-Codex dynamic tools + native dock/review; Windows proposal/human Apply, typed/scope/partial tests |
+| R21 | assistant tools, native dock, proposals and human Apply | embedded Goose tools + native dock/review; Windows proposal/human Apply, typed/scope/partial tests |
 | R22 | keyboard/DPI, independent tabs, draft/session restore and windows | native keyboard/focus/DPI/layout; persisted document UI/drafts and durable window handoff; restart/popout/transfer checks |
 
 ## Verification scope and native-control differences
