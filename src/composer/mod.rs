@@ -914,6 +914,20 @@ impl AppController {
                 }
             }
             "accept" => self.composer_accept_suggestion(arg(1).parse().unwrap_or_default()),
+            "dump" => {
+                let state = self.window.global::<ComposerState>();
+                let popup = self.composer_shared.popup.as_ref();
+                let data = serde_json::json!({"text":state.get_text().as_str(),
+                    "open":state.get_popup_open(),"searching":popup.is_some_and(|p| p.searching),
+                    "files":popup.map(|p| p.entries.iter().filter_map(|e| match e {
+                        popup::PopupEntry::File(hit) => Some(serde_json::json!({"path":hit.path,"directory":hit.is_dir,"indices":hit.indices})),
+                        _ => None,
+                    }).collect::<Vec<_>>()).unwrap_or_default()}).to_string();
+                let path = arg(1).to_owned();
+                self.backend.spawn(async move {
+                    let _ = tokio::fs::write(path, data).await;
+                });
+            }
             "denial" => {
                 // Stands in for an auto-review denial notification:
                 // `["denial", review_id, command, rationale]`.

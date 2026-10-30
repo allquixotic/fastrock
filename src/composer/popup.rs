@@ -225,14 +225,15 @@ impl AppController {
                 searching: true,
             },
             PopupKind::Files => {
-                // A remote server's folder exists only there: it searches.
-                let remote = self
-                    .backend
-                    .uses_remote_workspace()
-                    .then_some(&self.backend);
-                self.composer_shared
-                    .file_search
-                    .update(&cwd, &target.query, remote);
+                let workspace = self
+                    .thread_tab(index)
+                    .and_then(|thread| thread.extras.workspace.clone());
+                self.composer_shared.file_search.update(
+                    &cwd,
+                    &target.query,
+                    &self.backend,
+                    workspace,
+                );
                 // Keep the previous results until new ones arrive (no flicker).
                 let entries = match previous {
                     Some(previous)
@@ -401,6 +402,9 @@ impl AppController {
                 // A remote server's files cannot be attached from here; they
                 // are mentioned by path instead.
                 let as_image = !self.backend.uses_remote_workspace()
+                    && self
+                        .thread_tab(index)
+                        .is_none_or(|thread| thread.extras.workspace.is_none())
                     && !hit.is_dir
                     && is_image_path(&full)
                     && image::image_dimensions(&full).is_ok();

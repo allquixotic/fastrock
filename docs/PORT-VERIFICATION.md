@@ -1636,3 +1636,26 @@ records without replay. Screenshot inspected. Peak: 147,021,824 bytes; SHA-256
 Receipt: `docs/benchmarks/queue-games-2026-10-30.json`. Mac compile, formatting
 and build/release policy checks passed. T56 remains open for review, shell and
 compressed-source file mentions; no release tag or binaries published.
+
+### Compressed-source file mention verification — 2026-10-30
+
+The native @ popup searches the conversation's bound vwork workspace directly.
+It reads path metadata through the shared embedded owner, caches it by revision,
+and never exports a checkout or reads file blobs. A coalescing worker keeps only
+the newest query; completed results are bounded and stale/canceled results are
+ignored. Prefix/substring matches precede linear fuzzy matches. Files, folders
+and original-character Unicode highlights feed the existing native completion.
+Compressed image paths remain source references, avoiding scratch-directory
+attachment lookups. Ordinary local-folder search remains supported.
+
+761 application tests and isolated renderer passed on games. Storage tests
+verified cache reuse and invalidation after virtual-only file creation/deletion,
+with source checkout and scratch directory unchanged. The native fixture passed
+exact/fuzzy/Unicode/folder completion, actual keyboard acceptance, project scope,
+rapid-query and popup-close cancellation, local-folder search, retained drafts
+and restart without any provider requests. Screenshot inspected. Peak memory
+111,112,192 bytes; SHA-256
+`b4bc216b072df13dbef7bccc4fec16dc885fab7bf49f186455c2e38a5b912de8`.
+Receipt: `docs/benchmarks/mentions-games-2026-10-30.json`. Mac library compile,
+formatting and build/release policy checks passed. T56 review and shell flows,
+T51 visual cleanup and remaining recovery/deletion acceptance stay open. No tag.

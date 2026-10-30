@@ -33,11 +33,15 @@ use codex_file_search::SessionReporter;
 use crate::app::AppController;
 use crate::backend::Backend;
 use crate::backend::BackendError;
+use fastrock_workspaces::session::Selection;
+
+mod virtual_files;
 
 /// Owns the live search session for the active composer.
 #[derive(Default)]
 pub(crate) struct FileSearch {
     root: Option<PathBuf>,
+    workspace: Option<Selection>,
     session: Option<SearchSession>,
     progress: Progress,
 }
@@ -94,6 +98,7 @@ impl Progress {
 enum SearchSession {
     Local(FileSearchSession),
     Remote(RemoteSession),
+    Virtual(virtual_files::Session),
 }
 
 /// Orders a remote session's requests. Each `Backend::call` travels on its
@@ -232,13 +237,22 @@ impl FileSearch {
     ///
     /// An empty query drops the session (the walk restarts with the next
     /// query, as in the TUI).
-    pub(crate) fn update(&mut self, root: &Path, query: &str, remote: Option<&Backend>) {
+    pub(crate) fn update(
+        &mut self,
+        root: &Path,
+        query: &str,
+        backend: &Backend,
+        workspace: Option<Selection>,
+    ) {
+        let remote = backend.uses_remote_workspace().then_some(backend);
         let remote_session = matches!(self.session, Some(SearchSession::Remote(_)));
         if self.root.as_deref() != Some(root)
+            || self.workspace != workspace
             || (self.session.is_some() && remote_session != remote.is_some())
         {
             self.stop();
             self.root = Some(root.to_path_buf());
+            self.workspace = workspace.clone();
         }
         if query == self.progress.query && self.session.is_some() {
             return;
@@ -251,25 +265,31 @@ impl FileSearch {
         if self.session.is_none() {
             self.progress.restart();
             let generation = self.progress.generation;
-            self.session = match remote {
-                Some(backend) => Some(SearchSession::Remote(RemoteSession::start(
-                    backend, root, generation,
-                ))),
-                None => {
-                    let reporter = Arc::new(GuiReporter { generation });
-                    match codex_file_search::create_session(
-                        vec![root.to_path_buf()],
-                        FileSearchOptions {
-                            compute_indices: true,
-                            ..FileSearchOptions::default()
-                        },
-                        reporter,
-                        /*cancel_flag*/ None,
-                    ) {
-                        Ok(session) => Some(SearchSession::Local(session)),
-                        Err(err) => {
-                            tracing::warn!(%err, root = %root.display(), "file search failed to start");
-                            return;
+            self.session = if let Some(workspace) = workspace {
+                Some(SearchSession::Virtual(virtual_files::Session::start(
+                    backend, workspace, generation,
+                )))
+            } else {
+                match remote {
+                    Some(backend) => Some(SearchSession::Remote(RemoteSession::start(
+                        backend, root, generation,
+                    ))),
+                    None => {
+                        let reporter = Arc::new(GuiReporter { generation });
+                        match codex_file_search::create_session(
+                            vec![root.to_path_buf()],
+                            FileSearchOptions {
+                                compute_indices: true,
+                                ..FileSearchOptions::default()
+                            },
+                            reporter,
+                            /*cancel_flag*/ None,
+                        ) {
+                            Ok(session) => Some(SearchSession::Local(session)),
+                            Err(err) => {
+                                tracing::warn!(%err, root = %root.display(), "file search failed to start");
+                                return;
+                            }
                         }
                     }
                 }
@@ -283,6 +303,7 @@ impl FileSearch {
                     session.send_query(query, generation);
                 }
             }
+            Some(SearchSession::Virtual(session)) => session.update(query),
             None => {}
         }
     }

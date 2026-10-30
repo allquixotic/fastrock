@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "binary_sha256": "b4bc216b072df13dbef7bccc4fec16dc885fab7bf49f186455c2e38a5b912de8",
+  "peak_process_bytes": 111112192,
+  "compressed_source_mentions": true,
+  "case_insensitive_and_fuzzy": true,
+  "unicode_highlights": true,
+  "native_keyboard_completion": true,
+  "directories": true,
+  "compressed_image_reference": true,
+  "project_isolation": true,
+  "ordinary_local_search": true,
+  "stale_query_and_close": true,
+  "restart": true,
+  "no_provider_calls": true
+}

@@ -165,6 +165,8 @@ V69: Explicit title regeneration ! designated cheap Goose profile, tool-free bou
 
 V70: Queue reorder ! exact current pending ID permutation, attachments preserved, stale/duplicate lists reject atomically. Explicit native Resume & send ! selected pending item first, durable claim before provider, busy/uncertain-tool guards; uncertain records never eligible. Automatic cross-chat delivery ! preserve recovery pause; failed dispatch ! pause before any later enqueue. Verify: v70 queue state/typed-route tests and dev/windows-queue-smoke.py.
 
+V71: Virtual @ file mentions ! bound workspace metadata through shared in-process owner, no checkout/blob reads/provider calls; path cache ! refresh on revision change, scope by workspace. Queries ! latest-only worker, bounded path/query/result memory, canceled/stale results ignored, deterministic exact-before-fuzzy ranking and original Unicode character highlights. Files/directories ! native popup and ordinary mention completion; compressed image paths ! source references, never scratch-directory attachments. Verify: v71 matcher/revision tests and dev/windows-mentions-smoke.py.
+
 
 ## §T TASKS
 id|status|task|cites
@@ -242,6 +244,8 @@ Sidebar policy verification, 2026-10-30: 753 application tests, isolated rendere
 Title verification, 2026-10-30: 756 application tests, renderer, native cheap-title/single/batch/stale-name/invalid-output/pending-summary/cancel/restart fixture and three-turn summary/navigation/three-window/tray regression passed on games. Mac compile/static checks passed. SHA-256 `6bbda0224855008b99843fcfa7f831c7c682c77489bff1786acc65ad5d524f93`, peak 141,082,624 bytes; receipt `docs/benchmarks/titles-games-2026-10-30.json`. Canonical typed Rename route fixed. Remaining T52–T56/full acceptance open; no tag.
 
 Queue verification, 2026-10-30: 759 application tests, renderer, native reorder/busy/restart/selected-Resume/provider-order/uncertain-preservation fixture and interrupted-send summary recovery regression passed on games. Mac compile/static checks passed. SHA-256 `c8c75f5fefa559c44e71762f24e7ebec718c8b1d142e83610ff4faf7a9db9756`, peak 147,021,824 bytes; receipt `docs/benchmarks/queue-games-2026-10-30.json`. T56 review/shell/file mentions and full acceptance remain open; no tag.
+
+File-mention verification, 2026-10-30: 761 application tests, renderer and native compressed-source exact/fuzzy/Unicode/folder/keyboard/scope/cancel/local/restart fixture passed on games with no provider requests. Cache revision changes preserve original source and scratch directory. Mac compile/static checks passed. SHA-256 `b4bc216b072df13dbef7bccc4fec16dc885fab7bf49f186455c2e38a5b912de8`, peak 111,112,192 bytes; receipt `docs/benchmarks/mentions-games-2026-10-30.json`. T56 review/shell and full acceptance remain open; no tag.
 
 V53 verification, 2026-10-29: games 708 application + one renderer + 17 workspace tests and standalone embedded Goose fixture passed; native history navigation/selection/stream/export passed. Full 1,000/eight/10,000 workload passed, 217,894,912 peak process bytes; arbitrary 100-entry pages restored in 4–6 ms. Recent-frame p95 10.380 ms exceeds earlier 0.3.4 baseline 8.487 ms; no general scrolling-speedup claim. Mac compile only passed. Evidence: docs/PORT-VERIFICATION.md and docs/benchmarks/scale-history-games-2026-10-29.json. T42/T44 remain open for remaining acceptance.
 
@@ -590,3 +594,5 @@ B194|2026-10-30|Legacy cross-chat delivery explicitly started interrupted queues
 B195|2026-10-30|Removing legacy queue auto-start left a missing match-arm comma|Fix syntax; formatter then locked workspace compile before fixtures; V70
 
 B196|2026-10-30|Queue fixture assumed repeated-label click selected first row; native helper deliberately selects last|Keep chosen message last; verify exact provider order after real native Resume & send click; V70
+
+B197|2026-10-30|Native @ search walked virtual conversation scratch directory, omitting compressed source and risking wrong local image lookup|Use revision-aware bounded vwork metadata search; virtual paths remain source mentions; V40,V71
