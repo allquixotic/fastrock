@@ -29,6 +29,7 @@ mod history;
 mod links;
 mod markdown;
 mod model;
+mod navigation;
 mod output;
 pub(crate) mod render;
 pub(crate) mod selection;
@@ -126,6 +127,7 @@ fn phase_code(phase: ThreadPhase) -> i32 {
 
 impl AppController {
     pub(crate) fn transcript_bind(&mut self) {
+        self.history_navigation_bind();
         let state = self.window.global::<TranscriptState>();
         state.on_selection_pointer(crate::ui_thread::scoped_callback!(|x, y, start, extend| {
             crate::ui_thread::with_app(move |app| app.selection_pointer(x, y, start, extend))
@@ -291,7 +293,11 @@ impl AppController {
         // different transcript resets the scroll position.
         if state.get_blocks() != model {
             state.set_blocks(model);
-            state.set_follow_tail(true);
+            let browsing = self
+                .active_thread_index()
+                .and_then(|i| self.thread_tab(i))
+                .is_some_and(|thread| thread.transcript.history.browsing.is_some());
+            state.set_follow_tail(!browsing);
             state.set_scroll_request(state.get_scroll_request().wrapping_add(1));
         }
         self.transcript_refresh_state();
@@ -299,6 +305,7 @@ impl AppController {
 
     /// Pushes the active tab's paging / status flags to the view.
     fn transcript_refresh_state(&self) {
+        self.history_navigation_refresh();
         let state = self.window.global::<TranscriptState>();
         let Some(thread) = self
             .active_thread_index()
@@ -329,6 +336,17 @@ impl AppController {
         index: usize,
         notification: &ServerNotification,
     ) {
+        if let Some(thread) = self.thread_tab_mut(index) {
+            if thread.transcript.history.browsing.is_some() {
+                // Goose retains the live stream; the historical viewport stays
+                // fixed until the user returns to live history.
+                thread.transcript.history.browse_activity = true;
+                if self.active == Some(index) {
+                    self.transcript_refresh_state();
+                }
+                return;
+            }
+        }
         let changed = self.with_transcript(index, |transcript, ctx, reported| {
             transcript.apply(notification, reported, ctx)
         });
@@ -351,6 +369,9 @@ impl AppController {
             return;
         };
         let transcript = &mut thread.transcript;
+        if transcript.history.browsing.is_some() || transcript.history.browse_loading {
+            return;
+        }
         let (rows, bytes) = (transcript.rows(), transcript.bytes());
         let (target_rows, target_bytes) = if active {
             if rows <= MAX_HOT_ROWS && bytes <= MAX_HOT_BYTES {
@@ -559,7 +580,21 @@ impl AppController {
             return;
         }
         if transcript.rows() >= HARD_ROWS || transcript.bytes() >= HARD_BYTES {
-            self.toast("Scroll back to the latest messages before loading more history");
+            let start = match &transcript.history.older {
+                Older::Paged {
+                    cursor: Some(cursor),
+                    include_from: None,
+                } => cursor
+                    .strip_prefix("goose-items-before:")
+                    .and_then(|value| value.parse::<usize>().ok())
+                    .map(|before| before.saturating_sub(100)),
+                _ => None,
+            };
+            if self.backend.is_goose() {
+                self.history_navigate(index, start);
+            } else {
+                self.toast("Scroll back to the latest messages before loading more history");
+            }
             return;
         }
         let live_turns = transcript.live_turns();
@@ -579,6 +614,7 @@ impl AppController {
         client_id: &str,
         input: &[UserInput],
     ) {
+        self.history_return_to_latest(index);
         self.with_transcript(index, |transcript, ctx, _| {
             transcript.push_local_user_message(client_id, input, ctx);
         });
@@ -690,6 +726,10 @@ impl AppController {
             return;
         };
         let transcript = &mut thread.transcript;
+        if transcript.history.browsing.is_some() {
+            transcript.history.browse_activity = true;
+            return;
+        }
         if !transcript.history.attach(&thread_id) {
             return;
         }
@@ -706,6 +746,12 @@ impl AppController {
         let Some(index) = self.tab_index_by_id(tab_id) else {
             return;
         };
+        if self
+            .thread_tab(index)
+            .is_some_and(|thread| thread.transcript.history.browsing.is_some())
+        {
+            return;
+        }
         if let Some(error) = &result.error {
             tracing::warn!(%error, "transcript resync failed");
         }
@@ -819,6 +865,9 @@ impl AppController {
                 continue;
             };
             let transcript = &mut thread.transcript;
+            if transcript.history.browsing.is_some() || transcript.history.browse_loading {
+                continue;
+            }
             if let Some(newest_dropped) =
                 transcript.trim_front(BACKGROUND_TAIL_ROWS, BACKGROUND_TAIL_BYTES)
             {
@@ -910,12 +959,18 @@ impl AppController {
                 }
             }
             "load-older" => self.transcript_load_older(index),
+            "history-position" => self
+                .window
+                .global::<TranscriptState>()
+                .set_history_position(argument.into()),
+            "history-dump" => self.history_navigation_dump(index, argument),
             "scroll-top" => {
                 let state = self.window.global::<TranscriptState>();
                 state.set_follow_tail(false);
                 state.set_scroll_top_request(state.get_scroll_top_request().wrapping_add(1));
             }
             "scroll-bottom" => {
+                self.history_return_to_latest(index);
                 let state = self.window.global::<TranscriptState>();
                 state.set_follow_tail(true);
                 state.set_scroll_request(state.get_scroll_request().wrapping_add(1));

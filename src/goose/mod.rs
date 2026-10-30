@@ -507,6 +507,7 @@ impl Adapter {
                 self.load_session(params, method == "thread/resume").await
             }
             "thread/turns/list" | "thread/items/list" => self.history(params, method).await,
+            "fastrock/history/window" => self.history_window(params).await,
             "turn/start" => self.start_turn(params).await,
             "turn/interrupt" => {
                 let id = session_id(text(params, "threadId"))?;

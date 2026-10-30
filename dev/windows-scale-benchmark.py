@@ -27,6 +27,7 @@ parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--host-guard', type=Path, required=True)
 parser.add_argument('--frames', type=int, default=360)
 parser.add_argument('--divisor', type=int, choices=[1, 10, 100, 1000], default=1)
+parser.add_argument('--history-navigation', action='store_true')
 args = parser.parse_args()
 assert 120 <= args.frames <= 600
 out = args.output.resolve()
@@ -115,6 +116,17 @@ while divisor <= 1000:
         for index in range(5):
             steps += [{'select_tab': 1}, {'wait': 200}, {'mark': f'switch-{index}-begin'},
                       {'select_tab': 0}, {'mark': f'switch-{index}-end'}, {'wait': 200}]
+        if args.history_navigation:
+            steps += [{'click_text': 'History'}, {'wait': 700}]
+            for name, start in [('first', 0), ('middle', (messages // 4) * 2), ('last', max(0, messages - 100))]:
+                steps += [{'transcript': f'history-position:{start + 1}'}, {'click_text': 'Go'}, {'wait': 700},
+                          {'transcript': 'history-dump:' + str(folder / f'navigate-{name}.json')},
+                          {'transcript': 'export:' + str(folder / f'navigate-{name}.md')}, {'wait': 300}]
+                if name == 'middle':
+                    steps += [{'scroll_benchmark': dict(frames=args.frames, delta=-12, output=str(folder / 'scroll-history.json'))},
+                              {'snapshot': str(folder / 'middle-history.png')}]
+            steps += [{'click_text': 'Latest'}, {'wait': 1000},
+                      {'transcript': 'history-dump:' + str(folder / 'navigate-live.json')}, {'wait': 300}]
         steps += [{'sidebar': ['dump', str(folder / 'sidebar.json')]}, {'wait': 500}, {'quit': True}]
         script = folder / 'steps.json'
         script.write_text(json.dumps(steps), encoding='utf-8')
@@ -136,6 +148,19 @@ while divisor <= 1000:
             frame=distribution([frame['total_us'] for frame in frames]),
             render=distribution([frame['render_us'] for frame in frames]), event_loop=distribution(data['tick_us'][10:]),
             history_export_messages=messages, current_summaries_preserved=True)
+        if args.history_navigation:
+            navigation = {}
+            for name, start in [('first', 0), ('middle', (messages // 4) * 2), ('last', max(0, messages - 100))]:
+                record = json.loads((folder / f'navigate-{name}.json').read_text(encoding='utf-8'))
+                assert record['browsing'] and record['start'] == start and record['total'] == messages, (name, record)
+                assert record['end'] - record['start'] <= 100 and record['rows'] < 2000 and record['bytes'] < 8 * 1024 * 1024, record
+                page = (folder / f'navigate-{name}.md').read_text(encoding='utf-8')
+                assert f'Fixture prompt 0/{start}:' in page, (name, start)
+                navigation[name] = record
+            assert not json.loads((folder / 'navigate-live.json').read_text(encoding='utf-8'))['browsing']
+            historical = json.loads((folder / 'scroll-history.json').read_text(encoding='utf-8'))
+            navigation['middle_frame'] = distribution([frame['total_us'] for frame in historical['frames'][10:]])
+            attempt['history_navigation'] = navigation
         save()
         print(json.dumps(attempt, indent=2), flush=True)
         break

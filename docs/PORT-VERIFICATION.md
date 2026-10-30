@@ -1087,3 +1087,35 @@ Unit coverage rejects stale saves and preserves other provider entries, extensio
 and credential bytes. The fixture is included in future signed Windows CI gates.
 Credential editing remains unavailable: Goose's public secret writer permits
 plaintext fallback and exposes no vault-only option. No Goose source changes.
+
+## Bounded historical navigation and full-scale repeat
+
+The History control now restores at most 100 indexed entries and their turn
+metadata, using the existing bounded decoded-page cache. Native games fixture
+`history-native-1` passed oldest/middle/adjacent navigation, glyph selection and
+copy, sending from history, fixed reading position during streaming, Latest
+catch-up and complete 402-message export. Peak process memory was 157,298,688
+bytes. Windows verification passed 708 application tests, one isolated rendering
+test, 17 workspace tests and the standalone embedded Goose fixture. Mac compile,
+formatting and build policy passed; Windows release policy passed three tests
+with the Mac-only symbol test skipped. No Mac tests or GUI were executed.
+
+Tested executable SHA-256:
+`b548632441832bf37695a0f7495870f5407b797c7259a192d8c7e46a4ecc2dd7`.
+The full 1,000-conversation/eight-concurrent-stream/10,000-message workload also
+passed without scaling down. History opening took 402.7 ms, and synchronous
+switch dispatch took 0.2–0.5 ms. First/middle/last page restoration took
+6.17/4.18/5.88 ms, including projection work but excluding input-to-photon latency.
+Each restored page contained 100 rows. Middle-page scroll frame p50/p95/p99 was
+4.948/6.140/7.183 ms. Recent-history frame p95 was 10.380 ms, versus 8.487 ms in
+the earlier signed 0.3.4 baseline; these single runs do not establish a general
+scrolling speedup. All 10,000 original messages exported intact and current
+summaries were preserved. The eight simultaneous streams were cancelled by
+benchmark Quit; they were not required to finish naturally.
+
+Peak process memory was 217,894,912 bytes and process-tree committed memory was
+165,130,240 bytes. The headroom-derived kernel cap was 1,816,922,112 bytes, below
+the 32 GB ceiling. Hypervisor available memory stayed above 5.79 GB with a healthy
+heartbeat. The monitor stopped afterward; no VM or host settings changed. Raw
+receipt: `docs/benchmarks/scale-history-games-2026-10-29.json`; full evidence on
+games: `fastrock-040-policy\history-native-1` and `scale-history-1`.

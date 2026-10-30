@@ -76,6 +76,12 @@ The Slint transcript retains its existing bounded render window and asynchronous
 history loader. This adapts Ghostty's cold-page idea to portable GUI data rather
 than relying on terminal page mappings. Original Goose sessions remain intact.
 
+**History** opens a snapshot of at most 100 indexed entries. Oldest, Earlier,
+Later and the position field navigate without decoding the preceding history.
+Incoming activity leaves that page fixed and shows a New activity indicator.
+Latest, or sending another message, restores the live tail. Selection clears when
+a page is replaced; full conversation export still includes the original history.
+
 The native sidebar/search/footer and active-title header follow T3 Code 0.1.5.
 Rally has a permanent sidebar entry and a separate document strip; returning to
 Rally selects the last document. Open tabs still exposes child conversations and
@@ -103,7 +109,7 @@ with drafts; their files are no longer deleted on a fixed age limit. Temporary
 side sessions and the original multiwindow arrangement are not yet restored.
 
 Graphical credential setup, project-local plugin discovery, full T3 orchestration/UI,
-arbitrary old-history navigation and original window/temporary-session recovery
+and original window/temporary-session recovery
 remain tracked in `SPEC.md`. This development foundation is not a completed 0.4.0
 release. Historical 0.3.x transport details follow for old releases only.
 

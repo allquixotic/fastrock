@@ -4,7 +4,7 @@
 // produced by `src/transcript/blocks.rs`; the numeric codes below mirror the
 // Rust enums there (BlockKind, Status, Tone, Gap, line kinds).
 
-import { ListView, Spinner } from "std-widgets.slint";
+import { LineEdit, ListView, Spinner } from "std-widgets.slint";
 import { Theme, LinkButton, FlatButton } from "theme.slint";
 
 // A sub-line of a block: diff line, plan step, agent, chip, or tool result.
@@ -93,6 +93,14 @@ export global TranscriptState {
     // `requested`: the user asked (the pill), rather than scrolling near
     // the top.
     callback load-older(/* requested */ bool);
+    in property <bool> history-available;
+    in property <bool> history-browsing;
+    in property <bool> history-loading;
+    in property <bool> history-previous;
+    in property <bool> history-next;
+    in property <string> history-label;
+    in-out property <string> history-position: "1";
+    callback history-action(string);
     in property <bool> selection-active;
     callback selection-pointer(float, float, bool, bool);
     callback selection-key(string, bool, bool) -> bool;
@@ -1812,18 +1820,20 @@ export component TranscriptView inherits Rectangle {
     property <int> scroll-request: TranscriptState.scroll-request;
     property <int> scroll-top-request: TranscriptState.scroll-top-request;
     property <length> status-height: TranscriptState.status-text != "" ? 30px : 0px;
+    property <length> history-height: TranscriptState.history-browsing || TranscriptState.history-loading ? 40px : 0px;
     property <Point> position: self.absolute-position;
 
     function publish-viewport() {
         TranscriptState.viewport = { x: self.absolute-position.x / 1px,
-            y: self.absolute-position.y / 1px, width: self.width / 1px,
-            height: (self.height - root.status-height) / 1px };
+            y: (self.absolute-position.y + root.history-height) / 1px, width: self.width / 1px,
+            height: (self.height - root.status-height - root.history-height) / 1px };
     }
     init => { self.publish-viewport(); }
     changed position => { self.publish-viewport(); }
     changed width => { self.publish-viewport(); }
     changed height => { self.publish-viewport(); }
     changed status-height => { self.publish-viewport(); }
+    changed history-height => { self.publish-viewport(); }
 
     function scroll-to-bottom() {
         list.content-y = min(0px, list.visible-height - list.content-height);
@@ -1836,11 +1846,27 @@ export component TranscriptView inherits Rectangle {
         list.content-y = 0;
     }
 
+    if root.history-height > 0px: HorizontalLayout {
+        x: 0px; y: 0px; width: parent.width; height: root.history-height;
+        padding-left: Theme.pad-s; padding-right: Theme.pad-s; spacing: Theme.pad-s;
+        FlatButton { text: "Oldest"; enabled: !TranscriptState.history-loading; clicked => { TranscriptState.history-action("first"); } }
+        FlatButton { text: "Earlier"; enabled: TranscriptState.history-previous && !TranscriptState.history-loading; clicked => { TranscriptState.history-action("previous"); } }
+        FlatButton { text: "Later"; enabled: TranscriptState.history-next && !TranscriptState.history-loading; clicked => { TranscriptState.history-action("next"); } }
+        Text { text: TranscriptState.history-label; color: Theme.text-muted; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+        if root.width >= 700px: LineEdit {
+            text <=> TranscriptState.history-position; width: 84px;
+            enabled: !TranscriptState.history-loading;
+            accepted => { TranscriptState.history-action("jump"); }
+        }
+        if root.width >= 700px: FlatButton { text: "Go"; enabled: !TranscriptState.history-loading; clicked => { TranscriptState.history-action("jump"); } }
+        FlatButton { text: "Latest"; clicked => { TranscriptState.history-action("latest"); } }
+    }
+
     list := ListView {
         x: 0;
-        y: 0;
+        y: root.history-height;
         width: parent.width;
-        height: parent.height - root.status-height;
+        height: parent.height - root.status-height - root.history-height;
         visible: !root.empty;
         horizontal-scrollbar-policy: always-off;
         content-width: self.visible-width;
@@ -1868,7 +1894,7 @@ export component TranscriptView inherits Rectangle {
             TranscriptState.scroll-y = self.content-y / 1px;
         }
         scrolled => {
-            TranscriptState.follow-tail = self.content-y <= min(0px, self.visible-height - self.content-height) + 1px;
+            TranscriptState.follow-tail = !TranscriptState.history-browsing && self.content-y <= min(0px, self.visible-height - self.content-height) + 1px;
             if -self.content-y < 2 * self.visible-height && TranscriptState.has-older && !TranscriptState.loading-older && !TranscriptState.older-failed {
                 TranscriptState.load-older(false);
             }
@@ -1898,6 +1924,7 @@ export component TranscriptView inherits Rectangle {
         text: "Jump to latest";
         clicked => {
             TranscriptState.follow-tail = true;
+            TranscriptState.history-action("latest");
             root.scroll-to-bottom();
         }
     }

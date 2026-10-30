@@ -87,11 +87,22 @@ pub(crate) struct HistoryState {
     /// The last history request failed. Scrolling does not load again
     /// until the user retries (the "load earlier messages" pill).
     pub(crate) error: Option<String>,
+    pub(crate) browsing: Option<BrowseRange>,
+    pub(crate) browse_loading: bool,
+    pub(crate) browse_activity: bool,
+    pub(crate) browse_fetch_ms: f64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct BrowseRange {
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+    pub(crate) total: usize,
 }
 
 impl HistoryState {
     pub(crate) fn has_older(&self) -> bool {
-        self.older != Older::None
+        self.browsing.is_none() && !self.browse_loading && self.older != Older::None
     }
 
     /// Starts a new generation, cancelling requests in flight.
@@ -106,6 +117,9 @@ impl HistoryState {
         self.cursors = CursorState::default();
         self.boundary_turn = None;
         self.error = None;
+        self.browsing = None;
+        self.browse_loading = false;
+        self.browse_activity = false;
     }
 
     /// After trimming the oldest rows: older content has to be refetched,
@@ -118,6 +132,7 @@ impl HistoryState {
         self.generation += 1;
         self.loading_initial = false;
         self.loading_older = false;
+        self.browse_loading = false;
         self.error = None;
         self.empty_loads = 0;
         self.cursors.items_seen.clear();

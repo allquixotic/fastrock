@@ -16,6 +16,14 @@ const PAGE_BYTES: usize = 128 * 1024;
 const CACHE_BYTES: usize = 8 * 1024 * 1024;
 const CACHE_PAGES: usize = 16;
 
+#[derive(serde::Serialize)]
+pub struct Window {
+    pub start: usize,
+    pub total: usize,
+    pub items: Vec<Value>,
+    pub turns: Vec<Value>,
+}
+
 enum Encoded {
     Lz4 { bytes: Vec<u8>, original: usize },
     Raw(Vec<u8>),
@@ -258,6 +266,33 @@ impl History {
         result
     }
 
+    /// A bounded viewport at an absolute ordinal. Only intersecting cold pages
+    /// are decoded; turn metadata is found by binary search in the same index.
+    pub fn window(&mut self, start: Option<usize>, limit: usize) -> Result<Window> {
+        let limit = limit.clamp(1, 100);
+        let total = self.item_count();
+        let start = start
+            .unwrap_or_else(|| total.saturating_sub(limit))
+            .min(total.saturating_sub(1));
+        let items = self.items_page(start, limit, false)?;
+        let end = start + items.len();
+        let mut turns = Vec::new();
+        let mut previous = None;
+        for ordinal in start..end {
+            let index = self.turns.partition_point(|turn| turn.items.end <= ordinal);
+            if previous != Some(index) {
+                turns.extend(self.turns_page(index, 1, false));
+                previous = Some(index);
+            }
+        }
+        Ok(Window {
+            start,
+            total,
+            items,
+            turns,
+        })
+    }
+
     /// Explicit full export/legacy read. Ordinary scrolling uses bounded pages.
     pub fn all_turns(&mut self) -> Result<Vec<Value>> {
         let mut result = Vec::with_capacity(self.len());
@@ -301,6 +336,50 @@ fn value_bytes(value: &Value) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn v53_absolute_windows_are_bounded_and_keep_streaming_ordinals() {
+        let mut history = History::default();
+        for turn in 0..5000 {
+            history.push(json!({"id":format!("turn-{turn}"),"items":[
+                {"id":format!("user-{turn}"),"text":"fixture".repeat(200)},
+                {"id":format!("reply-{turn}"),"text":"answer".repeat(200)}]}));
+        }
+        let before = history.decompressions;
+        let middle = history.window(Some(5000), 100).unwrap();
+        assert_eq!(middle.total, 10000);
+        assert_eq!(middle.items.len(), 100);
+        assert_eq!(middle.items[0]["item"]["id"], "user-2500");
+        assert_eq!(middle.turns.len(), 50);
+        assert_eq!(middle.turns[0]["id"], "turn-2500");
+        assert!(
+            history.decompressions - before <= 50,
+            "never decode unrelated history"
+        );
+        history.last_mut().unwrap()["items"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"id":"streamed"}));
+        let same = history.window(Some(5000), 100).unwrap();
+        assert_eq!(middle.items, same.items);
+        assert_eq!(same.total, 10001);
+        let tail = history.window(None, usize::MAX).unwrap();
+        assert_eq!(tail.start, 9901);
+        assert_eq!(tail.items.len(), 100);
+        assert_eq!(tail.items.last().unwrap()["item"]["id"], "streamed");
+        assert_eq!(tail.turns.last().unwrap()["id"], "turn-4999");
+        let last = history.window(Some(usize::MAX), 0).unwrap();
+        assert_eq!(last.start, 10000);
+        assert_eq!(last.items.len(), 1);
+        assert!(history.cache_bytes <= CACHE_BYTES && history.cache.len() <= CACHE_PAGES);
+        assert!(
+            History::default()
+                .window(None, 100)
+                .unwrap()
+                .items
+                .is_empty()
+        );
+    }
     #[test]
     fn v43_roundtrip_stream_boundaries_and_random_pages() {
         let turns: Vec<_> = (0..150).map(|turn| json!({"id":format!("t{turn}"),"status":"completed","error":null,

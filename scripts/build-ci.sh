@@ -28,8 +28,12 @@ for name,source in [('fastrock.exe',target/'x86_64-pc-windows-msvc'/output/'fast
 test_artifacts=[json.loads(line) for line in pathlib.Path('build/windows-test-artifacts.jsonl').read_text().splitlines() if line.startswith('{')]
 test_exes=[item['executable'] for item in test_artifacts if item.get('reason')=='compiler-artifact' and item.get('profile',{}).get('test') and item.get('executable')]
 assert test_exes
+test_names={item['executable']:item['target']['name'] for item in test_artifacts if item.get('reason')=='compiler-artifact' and item.get('profile',{}).get('test') and item.get('executable')}
+test_targets={}
 for index,executable in enumerate(test_exes):
     shutil.copy2(executable,root/f'fastrock-tests-{index}.exe')
+    test_targets[test_names[executable]]=f'fastrock-tests-{index}.exe'
+(root/'TEST-TARGETS.json').write_text(json.dumps(test_targets,indent=2)+'\n')
 symbols={}
 if plan['profile'] == 'official':
     pdb=target/'x86_64-pc-windows-msvc'/output/'fastrock.pdb'

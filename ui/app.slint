@@ -714,6 +714,11 @@ component WorkspaceHeader inherits Rectangle {
             text-color: AppState.info-visible ? Theme.accent : Theme.text-muted;
             clicked => { AppState.toggle-info(); }
         }
+        if AppState.active-kind == TabKindCode.thread && TranscriptState.history-available: LinkButton {
+            text: "History"; text-color: TranscriptState.history-browsing ? Theme.accent : Theme.text-muted;
+            enabled: !TranscriptState.history-loading;
+            clicked => { TranscriptState.history-action("tail"); }
+        }
         if AppState.virtual-workspaces-available: LinkButton {
             text: "Virtual"; text-color: Theme.text-muted;
             clicked => { AppState.open-virtual-workspaces(); }

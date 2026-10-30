@@ -19,7 +19,9 @@ reasoning choices. External Codex and remote agent connections are removed;
 Codex files remain untouched. [Embedded runtime status and limitations](docs/goose-acp.md)
 describe the verified foundation and outstanding 0.4.0 work. The T3 sidebar/header,
 registered repository projects, workspace-bound chats and isolated forks are present.
-Auxiliary panels, full orchestration and arbitrary old-history navigation remain in progress.
+The **History** control opens bounded pages with Oldest, Earlier, Later and direct
+position navigation; Latest returns to the live conversation. Auxiliary panels
+and full orchestration remain in progress.
 The 1,000-conversation/eight-stream/10,000-message benchmark has passed on games;
 [verification evidence](docs/PORT-VERIFICATION.md) records the 0.3.4 comparison.
 

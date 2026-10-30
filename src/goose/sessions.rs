@@ -336,6 +336,29 @@ impl Adapter {
         Ok(json!({"data":data,"nextCursor":page.next,"backwardsCursor":null}))
     }
 
+    pub(super) async fn history_window(&self, params: &Value) -> Reply {
+        let id = session_id(text(params, "threadId"))?;
+        let start = match params.get("start").filter(|value| !value.is_null()) {
+            None => None,
+            Some(value) => Some(
+                value
+                    .as_u64()
+                    .and_then(|value| usize::try_from(value).ok())
+                    .ok_or_else(|| error("Invalid history position"))?,
+            ),
+        };
+        let mut sessions = self.sessions.lock().await;
+        let session = sessions
+            .get_mut(id)
+            .filter(|session| session.loaded)
+            .ok_or_else(|| error("Load the Goose session before browsing history"))?;
+        let window = session
+            .turns
+            .window(start, 100)
+            .map_err(|_| error("Restore Goose history window failed"))?;
+        serde_json::to_value(window).map_err(|_| error("Encode Goose history window failed"))
+    }
+
     pub(super) async fn set_config(&self, id: &str, config_id: &str, value: &Value) -> Reply {
         {
             let sessions = self.sessions.lock().await;
