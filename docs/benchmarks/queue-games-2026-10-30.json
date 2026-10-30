@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "binary_sha256": "c8c75f5fefa559c44e71762f24e7ebec718c8b1d142e83610ff4faf7a9db9756",
+  "peak_process_bytes": 147021824,
+  "native_reorder": true,
+  "busy_preserves_queue": true,
+  "restart_paused": true,
+  "explicit_selected_resume": true,
+  "exact_provider_order": [
+    "hold queue fixture",
+    "Queue second",
+    "Queue third",
+    "Queue first \u00e9"
+  ],
+  "uncertain_never_replayed": true
+}

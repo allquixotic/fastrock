@@ -296,6 +296,186 @@ async fn queued_edits_are_atomic_and_wait_for_turn_end() {
     client.shutdown().await.unwrap();
 }
 
+#[tokio::test]
+async fn v70_typed_queue_reorder_start_preserve_recovery_and_selected_order() {
+    use codex_app_server_protocol::{
+        ClientRequest, RequestId, ThreadQueueReorderParams, ThreadQueueReorderResponse,
+        ThreadQueueStartParams, ThreadQueueStartResponse,
+    };
+    async fn typed(client: &AppServerClient, request: ClientRequest) -> Reply {
+        let request = serde_json::to_value(request).unwrap();
+        call(
+            client,
+            request["method"].as_str().unwrap(),
+            request["params"].clone(),
+        )
+        .await
+    }
+    let (mut client, temp) = fixture().await;
+    let id = new(&client, temp.path()).await;
+    send(&client, &id, "hold uncertain queue start").await;
+    let mut ids = Vec::new();
+    for name in ["first", "second", "third"] {
+        let added = call(
+            &client,
+            "thread/queue/add",
+            json!({"threadId":id,
+            "clientUserMessageId":name,"input":[{"type":"text","text":name,"textElements":[]}]}),
+        )
+        .await
+        .unwrap();
+        ids.push(added["queuedSubmission"]["id"].as_str().unwrap().to_owned());
+    }
+    let start = |selected: &str| ClientRequest::ThreadQueueStart {
+        request_id: RequestId::String("start-queue".into()),
+        params: ThreadQueueStartParams {
+            thread_id: id.clone(),
+            queued_submission_id: Some(selected.into()),
+        },
+    };
+    assert!(
+        typed(&client, start(&ids[1])).await.is_err(),
+        "Busy start must preserve every pending item"
+    );
+    let reorder = |order| ClientRequest::ThreadQueueReorder {
+        request_id: RequestId::String("reorder-queue".into()),
+        params: ThreadQueueReorderParams {
+            thread_id: id.clone(),
+            queued_submission_ids: order,
+        },
+    };
+    let result = typed(
+        &client,
+        reorder(vec![ids[2].clone(), ids[1].clone(), ids[0].clone()]),
+    )
+    .await
+    .unwrap();
+    let _: ThreadQueueReorderResponse = serde_json::from_value(result).unwrap();
+    for order in [
+        vec![ids[0].clone(), ids[0].clone(), ids[2].clone()],
+        vec![ids[0].clone(), ids[1].clone()],
+    ] {
+        assert!(typed(&client, reorder(order)).await.is_err());
+    }
+    let pending = call(&client, "thread/queue/list", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(pending["data"][0]["clientUserMessageId"], "third");
+    call(&client, "turn/interrupt", json!({"threadId":id}))
+        .await
+        .unwrap();
+    loop {
+        if let AppServerEvent::ServerNotification(n) = event(&mut client).await {
+            if matches!(
+                *n,
+                codex_app_server_protocol::ServerNotification::TurnCompleted(_)
+            ) {
+                break;
+            }
+        }
+    }
+    let recovery = call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(recovery["paused"], true);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    assert!(
+        typed(
+            &client,
+            start(recovery["uncertain"][0]["id"].as_str().unwrap())
+        )
+        .await
+        .is_err()
+    );
+    let result = typed(&client, start(&ids[1])).await.unwrap();
+    let _: ThreadQueueStartResponse = serde_json::from_value(result).unwrap();
+    let mut started = vec![];
+    let mut completed = 0;
+    while completed < 3 {
+        if let AppServerEvent::ServerNotification(n) = event(&mut client).await {
+            match *n {
+                codex_app_server_protocol::ServerNotification::TurnStarted(n) => {
+                    started.push(
+                        serde_json::to_value(n.turn).unwrap()["items"][0]["clientId"].clone(),
+                    );
+                }
+                codex_app_server_protocol::ServerNotification::TurnCompleted(_) => completed += 1,
+                _ => {}
+            }
+        }
+    }
+    assert_eq!(
+        started,
+        vec![json!("second"), json!("third"), json!("first")]
+    );
+    let recovery = call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(recovery["pending"], 0);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    assert!(
+        typed(&client, start(&ids[1])).await.is_err(),
+        "Consumed input cannot replay"
+    );
+    client.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn v70_failed_selected_start_pauses_and_keeps_pending_input() {
+    let (mut client, temp) = fixture().await;
+    let id = new(&client, temp.path()).await;
+    send(&client, &id, "hold before failed queue start").await;
+    let added = call(&client, "thread/queue/add", json!({"threadId":id,
+        "clientUserMessageId":"missing-image","input":[{"type":"localImage","path":temp.path().join("missing.png")}]})).await.unwrap();
+    call(&client, "turn/interrupt", json!({"threadId":id}))
+        .await
+        .unwrap();
+    loop {
+        if let AppServerEvent::ServerNotification(n) = event(&mut client).await {
+            if matches!(
+                *n,
+                codex_app_server_protocol::ServerNotification::TurnCompleted(_)
+            ) {
+                break;
+            }
+        }
+    }
+    assert!(
+        call(
+            &client,
+            "thread/queue/start",
+            json!({"threadId":id,"queuedSubmissionId":added["queuedSubmission"]["id"]})
+        )
+        .await
+        .is_err()
+    );
+    call(
+        &client,
+        "thread/queue/add",
+        json!({"threadId":id,"clientUserMessageId":"later",
+        "input":[{"type":"text","text":"must remain pending"}]}),
+    )
+    .await
+    .unwrap();
+    let recovery = call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(recovery["paused"], true);
+    assert_eq!(recovery["pending"], 2);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    let pending = call(&client, "thread/queue/list", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(pending["data"][0], added["queuedSubmission"]);
+    assert_eq!(
+        call(&client, "thread/read", json!({"threadId":id}))
+            .await
+            .unwrap()["thread"]["status"]["type"],
+        "idle"
+    );
+    client.shutdown().await.unwrap();
+}
+
 #[test]
 fn backend_ids_cannot_cross_connections() {
     assert_eq!(session_id("goose:session-1").unwrap(), "session-1");

@@ -50,8 +50,6 @@ use codex_app_server_protocol::ThreadItemsListParams;
 use codex_app_server_protocol::ThreadItemsListResponse;
 use codex_app_server_protocol::ThreadQueueAddParams;
 use codex_app_server_protocol::ThreadQueueAddResponse;
-use codex_app_server_protocol::ThreadQueueStartParams;
-use codex_app_server_protocol::ThreadQueueStartResponse;
 use codex_app_server_protocol::TurnStatus;
 use serde::Serialize;
 use slint::ComponentHandle;
@@ -110,9 +108,6 @@ pub(crate) struct XtabController {
     /// for this session.
     allowed_pairs: HashSet<(String, String)>,
     limits: limits::Limits,
-    /// Threads whose last turn was interrupted. Their queue does not drain
-    /// on its own, so new messages are started explicitly.
-    interrupted: HashSet<String>,
     dialog: Option<ForwardDialog>,
     targets: Rc<VecModel<XtabTarget>>,
     /// Tab chosen in the last forward, preselected next time.
@@ -302,7 +297,6 @@ impl AppController {
         self.xtab.waits = wait::WaitTracker::default();
         self.xtab.wait_guards.clear();
         self.xtab.pending_reads.clear();
-        self.xtab.interrupted.clear();
         // Their tool calls died too; `approvals_reset` drops the cards.
         self.xtab.consents.clear();
         self.xtab.limits = limits::Limits::default();
@@ -317,11 +311,6 @@ impl AppController {
                 self.xtab_note_delivery(&completed.thread_id, &completed.turn_id, &completed.item);
             }
             ServerNotification::TurnCompleted(completed) => {
-                if completed.turn.status == TurnStatus::Interrupted {
-                    self.xtab.interrupted.insert(completed.thread_id.clone());
-                } else {
-                    self.xtab.interrupted.remove(&completed.thread_id);
-                }
                 let (thread_id, turn_id) = (&completed.thread_id, &completed.turn.id);
                 self.xtab.limits.turn_completed(thread_id, turn_id);
                 // The server gave up on the sender's tool call.
@@ -362,7 +351,6 @@ impl AppController {
     /// refreshes the dialog.
     pub(crate) fn xtab_on_tab_closed(&mut self, thread: &ThreadTab) {
         if let Some(thread_id) = thread.thread_id.as_deref() {
-            self.xtab.interrupted.remove(thread_id);
             self.xtab.limits.forget_thread(thread_id);
             self.xtab_fail_consents(
                 |delivery| delivery.caller_thread_id == thread_id,
@@ -916,10 +904,9 @@ impl AppController {
             },
             move |app, result: Result<ThreadQueueAddResponse, BackendError>| {
                 let result = match result {
-                    Ok(response) => {
-                        app.xtab_after_enqueued(&target_thread_id, response.queued_submission.id);
-                        Ok(())
-                    }
+                    // Goose drains unpaused queues itself. Cross-chat delivery
+                    // must never invoke the explicit Resume/Send route.
+                    Ok(_) => Ok(()),
                     Err(err) => {
                         let message = err.user_message();
                         app.xtab.deliveries.remove(&client_id);
@@ -931,36 +918,6 @@ impl AppController {
                     }
                 };
                 on_done(app, result);
-            },
-        );
-    }
-
-    /// The queue drains by itself when a turn completes or an idle thread
-    /// gets a new item, but not after an interrupt; start it then.
-    fn xtab_after_enqueued(&mut self, target_thread_id: &str, submission_id: String) {
-        let idle = self
-            .tab_index_for_thread(target_thread_id)
-            .and_then(|index| self.thread_tab(index))
-            .is_some_and(|thread| {
-                thread.phase == ThreadPhase::Idle && thread.active_turn_id.is_none()
-            });
-        if !idle || !self.xtab.interrupted.contains(target_thread_id) {
-            return;
-        }
-        let thread_id = target_thread_id.to_string();
-        self.backend.call(
-            |request_id| ClientRequest::ThreadQueueStart {
-                request_id,
-                params: ThreadQueueStartParams {
-                    thread_id,
-                    queued_submission_id: Some(submission_id),
-                },
-            },
-            |_app, result: Result<ThreadQueueStartResponse, BackendError>| {
-                // Losing a race with another dispatch is harmless.
-                if let Err(err) = result {
-                    tracing::debug!(%err, "could not start the queued cross-tab message");
-                }
             },
         );
     }

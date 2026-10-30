@@ -122,6 +122,8 @@ pub(crate) enum Step {
     Composer(Vec<String>),
     /// Pending editor controls and real pencil pointer click, Windows smoke tests.
     Pending(Vec<String>),
+    /// Native queue controls by visible row index, and state snapshots.
+    Queue(Vec<String>),
     /// Drive the Providers page: `["method", "2"]`, `["set", "api-key", "x"]`,
     /// `["apply"]`, ... (see `bedrock_automation`).
     Bedrock(Vec<String>),
@@ -327,6 +329,32 @@ impl AppController {
                             if let Some(path) = args.get(1) {
                                 let _ = std::fs::write(path, serde_json::json!({"open":state.get_open(),"text":state.get_text().as_str(),"error":state.get_error().as_str()}).to_string());
                             }
+                        }
+                        _ => {}
+                    }
+                }
+                Step::Queue(args) => {
+                    use slint::Model;
+                    let state = self.window.global::<crate::ui::InfoState>();
+                    match args.first().map(String::as_str) {
+                        Some("action") if args.len() == 3 => {
+                            if let Some(row) = args[1]
+                                .parse::<usize>()
+                                .ok()
+                                .and_then(|i| state.get_queue().row_data(i))
+                            {
+                                state.invoke_queue_action(row.id, args[2].as_str().into());
+                            }
+                        }
+                        Some("dump") if args.len() == 2 => {
+                            let data = serde_json::json!({
+                                "paused":state.get_queue_paused(),"canSend":state.get_queue_can_send(),
+                                "rows":state.get_queue().iter().map(|r| serde_json::json!({"id":r.id.as_str(),"text":r.text.as_str()})).collect::<Vec<_>>()
+                            }).to_string();
+                            let path = args[1].clone();
+                            self.backend.spawn(async move {
+                                let _ = tokio::fs::write(path, data).await;
+                            });
                         }
                         _ => {}
                     }

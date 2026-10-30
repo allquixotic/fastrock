@@ -584,7 +584,9 @@ impl Adapter {
             | "fastrock/goose/dismissRecovery"
             | "thread/queue/list"
             | "thread/queue/update"
-            | "thread/queue/delete" => self.queue_request(params, method).await,
+            | "thread/queue/delete"
+            | "thread/queue/reorder" => self.queue_request(params, method).await,
+            "thread/queue/start" => self.start_queued(params).await,
             "thread/name/set"
             | "thread/setName"
             | "thread/archive"

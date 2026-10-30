@@ -163,6 +163,8 @@ V68: Sidebar pin/settle/snooze/order ! durable GUI metadata, separate from Goose
 
 V69: Explicit title regeneration ! designated cheap Goose profile, tool-free bounded current-summary input, at most two provider requests process-wide, no agent load. Pending/retrying summary ! reject before generation; completion queues replacement before Idle. Invalid/unavailable/timeout ! preserve existing title; commit ! unchanged session identity/name/history/summary under session gate. Native batch ! sequential, visible progress, cancel remaining, no restart dispatch. Verify: v69 title validation/snapshot tests and dev/windows-titles-smoke.py.
 
+V70: Queue reorder ! exact current pending ID permutation, attachments preserved, stale/duplicate lists reject atomically. Explicit native Resume & send ! selected pending item first, durable claim before provider, busy/uncertain-tool guards; uncertain records never eligible. Automatic cross-chat delivery ! preserve recovery pause; failed dispatch ! pause before any later enqueue. Verify: v70 queue state/typed-route tests and dev/windows-queue-smoke.py.
+
 
 ## §T TASKS
 id|status|task|cites
@@ -231,13 +233,15 @@ T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch 
 T53|.|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48
 T54|.|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63
 T55|.|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63
-T56|.|Audit visible typed-request routes; connect native queue start/reorder, review, shell and compressed-source file mention flows|V38,V40,V41,V42
+T56|~|Audit visible typed-request routes; connect native queue start/reorder, review, shell and compressed-source file mention flows|V38,V40,V41,V42
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
 Sidebar policy verification, 2026-10-30: 753 application tests, isolated renderer, native switch/SpinBox/working-group/opt-out/restart fixture and drag regression passed on games. Auto-settle boundary/exemption/wake tests passed. Mac compile/static checks passed. SHA-256 `641ae5bdf4916bc16abe497e202c5df019e64ccac4925cf299cdd054c7edd84c`, peak 136,871,936 bytes; receipt `docs/benchmarks/sidebar-policy-games-2026-10-30.json`. T52/title audit and recovery/deletion/full acceptance remain open. No tag.
 
 Title verification, 2026-10-30: 756 application tests, renderer, native cheap-title/single/batch/stale-name/invalid-output/pending-summary/cancel/restart fixture and three-turn summary/navigation/three-window/tray regression passed on games. Mac compile/static checks passed. SHA-256 `6bbda0224855008b99843fcfa7f831c7c682c77489bff1786acc65ad5d524f93`, peak 141,082,624 bytes; receipt `docs/benchmarks/titles-games-2026-10-30.json`. Canonical typed Rename route fixed. Remaining T52–T56/full acceptance open; no tag.
+
+Queue verification, 2026-10-30: 759 application tests, renderer, native reorder/busy/restart/selected-Resume/provider-order/uncertain-preservation fixture and interrupted-send summary recovery regression passed on games. Mac compile/static checks passed. SHA-256 `c8c75f5fefa559c44e71762f24e7ebec718c8b1d142e83610ff4faf7a9db9756`, peak 147,021,824 bytes; receipt `docs/benchmarks/queue-games-2026-10-30.json`. T56 review/shell/file mentions and full acceptance remain open; no tag.
 
 V53 verification, 2026-10-29: games 708 application + one renderer + 17 workspace tests and standalone embedded Goose fixture passed; native history navigation/selection/stream/export passed. Full 1,000/eight/10,000 workload passed, 217,894,912 peak process bytes; arbitrary 100-entry pages restored in 4–6 ms. Recent-frame p95 10.380 ms exceeds earlier 0.3.4 baseline 8.487 ms; no general scrolling-speedup claim. Mac compile only passed. Evidence: docs/PORT-VERIFICATION.md and docs/benchmarks/scale-history-games-2026-10-29.json. T42/T44 remain open for remaining acceptance.
 
@@ -577,3 +581,12 @@ B189|2026-10-30|Last title completion could empty pending rows before final batc
 B190|2026-10-30|Native Rename serialized thread/name/set while adapter only matched thread/setName, exposed by stale-title race fixture|Handle canonical typed method, retain legacy alias; typed rename unit and native stale-name fixture; V69
 
 B191|2026-10-30|Audit found side-chat forks ignored ephemeral/developerInstructions and their boundary injection route was absent|T55 before temporary-session recovery acceptance; V41,V42,V63
+
+B192|2026-10-30|Native queue reorder/send actions had no embedded canonical routes|V70: implement exact-list reorder and guarded explicit selected dispatch; typed/native fixtures
+B193|2026-10-30|Automatic queue start failure left queue unpaused, allowing later enqueue to retry without a new decision|Pause failed queue starts and preserve pending/dispatch evidence; V41,V70
+
+B194|2026-10-30|Legacy cross-chat delivery explicitly started interrupted queues; a UI pause check could race backend recovery events|Remove automatic explicit-start path; embedded queue/add alone decides automatic dispatch under backend gate; V41,V70
+
+B195|2026-10-30|Removing legacy queue auto-start left a missing match-arm comma|Fix syntax; formatter then locked workspace compile before fixtures; V70
+
+B196|2026-10-30|Queue fixture assumed repeated-label click selected first row; native helper deliberately selects last|Keep chosen message last; verify exact provider order after real native Resume & send click; V70

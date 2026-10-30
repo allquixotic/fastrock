@@ -816,6 +816,7 @@ impl AppController {
                             .goose_recovery
                             .insert(thread_id, recovery);
                         self.goose_controls_refresh();
+                        self.info_render();
                     }
                 }
                 AppServerEvent::GooseConfig { thread_id, options } => {

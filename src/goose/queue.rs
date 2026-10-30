@@ -30,6 +30,44 @@ pub(crate) struct Recovery {
     pub uncertain: Vec<Value>,
 }
 impl QueueState {
+    fn reorder(&mut self, ids: &[String]) -> Result<(), JSONRPCErrorError> {
+        let by_id = self
+            .pending
+            .iter()
+            .map(|item| (text(item, "id"), item))
+            .collect::<HashMap<_, _>>();
+        let unique = ids
+            .iter()
+            .map(String::as_str)
+            .collect::<std::collections::HashSet<_>>();
+        if ids.len() != self.pending.len()
+            || unique.len() != ids.len()
+            || by_id.len() != ids.len()
+            || unique.iter().any(|id| !by_id.contains_key(id))
+        {
+            return Err(error(
+                "The queue changed. Refresh it before reordering; every pending message was preserved.",
+            ));
+        }
+        self.pending = ids.iter().map(|id| by_id[id.as_str()].clone()).collect();
+        Ok(())
+    }
+    fn prepare_start(&mut self, selected: Option<&str>) -> Result<Value, JSONRPCErrorError> {
+        if self.dispatch.is_some() {
+            return Err(error("A previous send has not settled yet"));
+        }
+        let position = match selected {
+            Some(id) => self.pending.iter().position(|item| item["id"] == id),
+            None => (!self.pending.is_empty()).then_some(0),
+        }
+        .ok_or_else(|| {
+            error("The selected queued message was already consumed; no message was sent")
+        })?;
+        let item = self.pending.remove(position);
+        self.pending.insert(0, item.clone());
+        self.paused = false;
+        Ok(item)
+    }
     fn recovery(&self) -> Recovery {
         Recovery {
             paused: self.paused,
@@ -57,6 +95,55 @@ impl QueueState {
 }
 
 impl Adapter {
+    /// Explicit Resume/Send from the native queue. Automatic senders must not use
+    /// this to bypass recovery; uncertain records are never eligible here.
+    pub(super) async fn start_queued(self: &Arc<Self>, params: &Value) -> Reply {
+        let id = session_id(text(params, "threadId"))?.to_string();
+        let gate = self.gate(&id).await;
+        let _lock = gate.lock().await;
+        {
+            let sessions = self.sessions.lock().await;
+            let session = sessions
+                .get(&id)
+                .filter(|s| s.loaded)
+                .ok_or_else(|| error("Open the conversation before sending queued messages"))?;
+            if session.active.is_some() || session.ephemeral || session.recovery_only {
+                return Err(error(
+                    "Wait for this conversation to become idle and resolve any uncertain tools in Checkpoints before resuming",
+                ));
+            }
+        }
+        self.checkpoint_ready(&id)
+            .await
+            .map_err(|e| error(e.to_string()))?;
+        self.load_queue(&id).await?;
+        let selected = match &params["queuedSubmissionId"] {
+            Value::Null => None,
+            Value::String(id) if !id.is_empty() => Some(id.as_str()),
+            _ => return Err(error("Invalid queued message ID")),
+        };
+        let item = {
+            let mut queues = self.queue.lock().await;
+            let state = queues
+                .get_mut(&id)
+                .ok_or_else(|| error("Queue unavailable"))?;
+            let before = state.clone();
+            let item = state.prepare_start(selected)?;
+            if let Err(e) = self.write_queue(&id, state).await {
+                *state = before;
+                return Err(e);
+            }
+            item
+        };
+        let send = json!({"threadId":ui_id(&id),"input":item["input"],"clientUserMessageId":item["clientUserMessageId"],"_queuedSubmissionId":item["id"]});
+        let result = self.start_turn_locked(&send).await;
+        if result.is_err() {
+            // Preserve any dispatch evidence and require a fresh user decision.
+            // A later queue/add must not retry a failed start implicitly.
+            self.pause_agent_queue(&id).await?;
+        }
+        result
+    }
     pub(super) async fn pause_agent_queue(&self, id: &str) -> Result<(), JSONRPCErrorError> {
         self.load_queue(id).await?;
         let mut queues = self.queue.lock().await;
@@ -150,6 +237,13 @@ impl Adapter {
                     })?;
                 item["input"] = params["input"].clone();
                 json!({"queuedSubmission":item})
+            }
+            "thread/queue/reorder" => {
+                let ids: Vec<String> =
+                    serde_json::from_value(params["queuedSubmissionIds"].clone())
+                        .map_err(|_| error("Invalid queued message order"))?;
+                state.reorder(&ids)?;
+                json!({})
             }
             "thread/queue/delete" => {
                 let old = state.pending.len();
@@ -275,7 +369,10 @@ impl Adapter {
                     item.clone()
                 };
                 let params = json!({"threadId":ui_id(&id),"input":item["input"],"clientUserMessageId":item["clientUserMessageId"],"_queuedSubmissionId":item["id"]});
-                if let Err(e) = adapter.start_turn_locked(&params).await { adapter.queue_error(&id, e); }
+                if let Err(e) = adapter.start_turn_locked(&params).await {
+                    let _ = adapter.pause_agent_queue(&id).await;
+                    adapter.queue_error(&id, e);
+                }
             })).await;
         })
     }
@@ -368,6 +465,42 @@ mod tests {
     use super::*;
     fn item(id: &str) -> Value {
         json!({"id":id,"clientUserMessageId":id,"input":[{"type":"text","text":"Retain UTF-8 é"},{"type":"localImage","path":"fixture.png"}]})
+    }
+    #[test]
+    fn v70_reorder_requires_exact_pending_set_and_preserves_attachments() {
+        let mut state = QueueState {
+            pending: vec![item("a"), item("b"), item("c")],
+            paused: true,
+            uncertain: vec![item("uncertain")],
+            ..Default::default()
+        };
+        for invalid in [
+            vec!["a", "a", "c"],
+            vec!["b", "a"],
+            vec!["c", "a", "unknown"],
+        ] {
+            let before = serde_json::to_value(&state).unwrap();
+            assert!(
+                state
+                    .reorder(&invalid.into_iter().map(String::from).collect::<Vec<_>>())
+                    .is_err()
+            );
+            assert_eq!(serde_json::to_value(&state).unwrap(), before);
+        }
+        state
+            .reorder(&["c".into(), "a".into(), "b".into()])
+            .unwrap();
+        assert_eq!(state.pending, vec![item("c"), item("a"), item("b")]);
+        assert!(state.paused);
+        assert!(state.prepare_start(Some("uncertain")).is_err());
+        assert_eq!(state.prepare_start(Some("a")).unwrap(), item("a"));
+        assert_eq!(state.pending, vec![item("a"), item("c"), item("b")]);
+        assert_eq!(state.uncertain, vec![item("uncertain")]);
+        assert!(!state.paused);
+        state.dispatch = Some(item("busy"));
+        let before = serde_json::to_value(&state).unwrap();
+        assert!(state.prepare_start(None).is_err());
+        assert_eq!(serde_json::to_value(&state).unwrap(), before);
     }
     #[test]
     fn v41_atomic_dispatch_recovery_never_requeues_uncertain_input() {

@@ -1616,3 +1616,23 @@ formatting and build/release policy checks passed; no Mac application execution.
 SHA-256 `6bbda0224855008b99843fcfa7f831c7c682c77489bff1786acc65ad5d524f93`.
 Receipt: `docs/benchmarks/titles-games-2026-10-30.json`.
 T52's remaining organization audit and T53–T56 remain open. No release tag.
+
+### Native queue verification — 2026-10-30
+
+Native queue reorder and selected Send now reach the embedded durable queue.
+Reorder requires exactly the current pending IDs; stale or duplicate lists leave
+all messages intact. Paused rows show Resume & send. That explicit action sends
+the chosen pending message first and resumes the remaining queue; uncertain
+records cannot be selected. Busy conversations and unresolved tool/checkpoint
+recovery reject dispatch. A failed start pauses the queue. Cross-chat delivery
+uses queue/add only, preserving backend recovery decisions.
+
+759 application tests, isolated renderer, native queue fixture and the interrupted
+send/summary recovery regression passed on games. The native fixture verifies
+reorder during a stream, busy-send preservation, restart without dispatch, an
+actual Resume & send pointer click, exact provider order, and retained uncertain
+records without replay. Screenshot inspected. Peak: 147,021,824 bytes; SHA-256
+`c8c75f5fefa559c44e71762f24e7ebec718c8b1d142e83610ff4faf7a9db9756`.
+Receipt: `docs/benchmarks/queue-games-2026-10-30.json`. Mac compile, formatting
+and build/release policy checks passed. T56 remains open for review, shell and
+compressed-source file mentions; no release tag or binaries published.

@@ -121,6 +121,7 @@ export global InfoState {
 
     in property <[InfoQueued]> queue;
     in property <bool> queue-can-send;
+    in property <bool> queue-paused;
 
     in property <[InfoAgent]> agents;
     in property <[InfoHook]> hooks;
@@ -653,7 +654,7 @@ export component InfoPane inherits Rectangle {
                             clicked => { InfoState.queue-action(item.id, "down"); }
                         }
                         LinkButton {
-                            text: "Send";
+                            text: InfoState.queue-paused ? "Resume & send" : "Send";
                             enabled: InfoState.queue-can-send;
                             clicked => { InfoState.queue-action(item.id, "send"); }
                         }

@@ -1116,9 +1116,15 @@ impl AppController {
                             queued_submission_id: Some(submission_id),
                         },
                     },
-                    move |app, result: Result<ThreadQueueStartResponse, BackendError>| {
-                        if let Err(err) = result {
+                    move |app, result: Result<ThreadQueueStartResponse, BackendError>| match result
+                    {
+                        Ok(_) => {
+                            app.resume_local_inputs(tab_id);
+                            app.info_render();
+                        }
+                        Err(err) => {
                             app.toast(format!("Could not send: {}", err.user_message()));
+                            app.info_refetch_queue(tab_id);
                         }
                     },
                 );
@@ -1383,6 +1389,7 @@ impl AppController {
 
         // Queued messages.
         state.set_queue_can_send(!thread.is_busy() && thread.thread_id.is_some());
+        state.set_queue_paused(self.thread_recovery_paused(thread));
         sync_model(
             &models.queue,
             info.queue
