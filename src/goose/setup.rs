@@ -26,7 +26,7 @@ fn bounded(value: &str, limit: usize) -> bool {
     value.len() <= limit && !value.chars().any(char::is_control)
 }
 
-fn validate_field(key: &str, value: &str) -> Result<()> {
+pub(super) fn validate_field(key: &str, value: &str) -> Result<()> {
     ensure!(
         FIELDS.iter().any(|(name, _)| *name == key),
         "Unsupported provider setting"
@@ -73,7 +73,7 @@ fn validate_field(key: &str, value: &str) -> Result<()> {
 impl Setup {
     pub(crate) fn validate(&self) -> Result<()> {
         ensure!(
-            PROVIDERS.contains(&self.provider.as_str()),
+            super::provider_policy::allowed(&self.provider),
             "Select Bedrock, OpenAI or Anthropic"
         );
         ensure!(

@@ -1266,3 +1266,51 @@ stays open. No release tag or binary publication.
 The same executable also passed the native renderer, timed scheduling/crash,
 delegation, concurrent streaming/cancellation, vwork/manual-fork/restart, and
 draft-recovery regressions on games.
+
+## 0.4.0 native named profiles and vault credentials — 2026-10-30
+
+Settings → Goose now creates/edits named OpenAI and Anthropic profiles through
+unchanged Goose's public declarative-provider API. Each profile has an independent
+endpoint, model and Fastrock OS-vault credential. The profiles appear in native
+provider defaults, conversation options and cheap-summary settings. Goose's
+public command-auth API invokes the bundled Fastrock credential-helper mode;
+only a UUID is passed as an argument. No Goose installation is required and no
+Goose secret setter or plaintext fallback is used. Original credential entries
+and unrelated configuration remain unchanged.
+
+The password field clears on submission; an empty field on edit keeps the old
+key. A replacement key receives a fresh vault identity before the configuration
+is saved, so a failed edit cannot send it to the previous endpoint. Profile
+revisions canonicalize object order and reject stale edits. After the executable
+moves, startup repairs only Fastrock's reserved helper commands using public
+Goose APIs, retaining advanced model metadata and foreign helpers. Existing
+connections retain their settings until reopened/reselected. AWS credentials and
+regions remain shared by upstream Goose (R7); saved profile effort defaults and
+other remaining acceptance work are still open. Conversation effort selectors
+continue to expose upstream-supported choices.
+
+The native fixture passed three named profiles, simultaneous OpenAI requests to
+different endpoints with different keys, direct Anthropic, named cheap summaries,
+endpoint/key replacement, stale-form rejection, empty-key retention, and restart
+after moving the executable. It checked that configuration and logs contained
+no new keys and that legacy credential files were unchanged. Receipt:
+`docs/benchmarks/profiles-games-2026-10-30.json`; evidence:
+`C:\Users\SeanMcNamara\fastrock-040-policy\profiles-native-7`.
+Executable SHA-256:
+`9c4b90eaebd26e6428838fd59ac4e4b263d4c4c6b71da5872c9bf58efcfda58a`.
+
+Windows passed 725 application tests, one native renderer test, 17 workspace
+tests and standalone embedded Goose verification. Native provider-scope/default,
+webhook/crash, timed schedule, delegation, concurrent chat/cancellation,
+vwork/integration/fork/restart and draft-recovery fixtures passed. The vwork
+fixture now selects the parent by its native catalog filter instead of assuming
+its row number after a fork. Mac compilation and formatting/build-policy checks
+passed; no Mac execution.
+
+One earlier moved-app fixture timed out after 30 seconds waiting for summaries.
+Four subsequent runs with phase/count-only diagnostics passed, but the original
+cause remains unresolved (SPEC B142); this is not full RC acceptance. No provider
+error text, conversation content or credential is exposed by those diagnostics.
+Remaining T3 auxiliary UI parity, saved profile effort defaults, upstream AWS
+profile isolation limits and live required-route acceptance remain recorded as
+open. No release tag or binary publication.

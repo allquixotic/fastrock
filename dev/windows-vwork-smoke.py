@@ -50,6 +50,12 @@ def virtual(*arguments):
     return {'virtual_workspaces': list(arguments)}
 
 
+def select_workspace(name):
+    # Catalog row order may change after a fork; select the intended identity.
+    return [virtual('action', 'virtual-catalog-filter:/ ' + name), virtual('select', '0'),
+            virtual('action', 'virtual-catalog-filter:')]
+
+
 def turn(prompt):
     return [{'send': prompt}, {'wait': 300}, {'wait_idle': 30000}, {'wait': 300}]
 
@@ -71,7 +77,7 @@ try:
     peak = run([{'wait_ready': 30000}, {'new_thread': str(repo)}, {'wait_idle': 30000},
                 *turn('vwork-seed'), virtual('action', 'virtual-refresh'), {'wait': 1000}, virtual('open'),
                 virtual('action', 'virtual-compact'), {'wait': 1000}, *dump('database-only'),
-                virtual('select', '1'), {'wait': 500}, virtual('file', '0'), {'wait': 500}, *dump('original'),
+                *select_workspace('task'), {'wait': 500}, virtual('file', '0'), {'wait': 500}, *dump('original'),
                 virtual('action', 'virtual-edit:edited\r\n'), virtual('action', 'virtual-compact'),
                 {'wait': 1000}, *dump('compacted'), *turn('vwork-conflict'),
                 virtual('action', 'virtual-save'), {'wait': 500}, *dump('conflict'),
@@ -82,7 +88,7 @@ try:
                 virtual('action', 'virtual-fork:review-child'), {'wait': 500},
                 virtual('file', '0'), {'wait': 500},
                 virtual('action', 'virtual-edit:child change λ\r\n'), virtual('action', 'virtual-save'),
-                {'wait': 500}, virtual('select', '1'), {'wait': 500}, virtual('file', '0'), {'wait': 500},
+                {'wait': 500}, *select_workspace('task'), {'wait': 500}, virtual('file', '0'), {'wait': 500},
                 virtual('action', 'virtual-merge-source:review-child'),
                 virtual('action', 'virtual-merge-review'), {'wait': 500}, *dump('merge-review'),
                 virtual('snapshot', str(out / 'merge-review.png')), {'wait': 300},

@@ -13,7 +13,7 @@ use std::{
     path::PathBuf,
     sync::{
         Arc, Mutex, OnceLock, Weak,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU8, Ordering},
     },
     time::Duration,
 };
@@ -61,6 +61,7 @@ struct Queue {
     // A completion cannot race between the obsolete check and the DB commit.
     commit: AsyncMutex<()>,
     ready: AtomicBool,
+    stage: AtomicU8,
 }
 
 pub(super) struct Service {
@@ -136,6 +137,35 @@ pub(super) fn idle() -> bool {
         && pending.ids.is_empty()
 }
 
+/// Fixture diagnostics contain stages/counts only, never provider errors or IDs.
+pub(super) fn diagnostic() -> String {
+    let Some(service) = SERVICE.get().and_then(|s| s.lock().ok()?.upgrade()) else {
+        return "unavailable".into();
+    };
+    let pending = service.queue.pending.lock().unwrap();
+    let stages = [
+        "backfill",
+        "source",
+        "previous summary",
+        "cheap profile",
+        "provider",
+        "revision",
+        "generation",
+        "latest source",
+        "commit",
+    ];
+    format!(
+        "ready={}, active={}, pending={}, retry={}, stage={}",
+        service.queue.ready.load(Ordering::Relaxed),
+        pending.active.is_some(),
+        pending.ids.len(),
+        FAILED.load(Ordering::Relaxed),
+        stages
+            .get(service.queue.stage.load(Ordering::Relaxed) as usize)
+            .unwrap_or(&"unknown")
+    )
+}
+
 pub(super) fn home() -> Option<PathBuf> {
     SERVICE
         .get()?
@@ -165,6 +195,7 @@ async fn backfill(manager: &SessionManager, queue: &Queue) -> Result<()> {
 }
 
 async fn run(queue: Arc<Queue>, summaries: &Summaries, manager: &SessionManager) -> Result<()> {
+    queue.stage.store(0, Ordering::Relaxed);
     backfill(manager, &queue).await?;
     queue.ready.store(true, Ordering::Relaxed);
     loop {
@@ -196,10 +227,12 @@ async fn process(
     id: &str,
     cancelled: &AtomicBool,
 ) -> Result<()> {
+    queue.stage.store(1, Ordering::Relaxed);
     let Some(source) = summary_worker::snapshot(manager, id).await? else {
         return Ok(());
     };
     let key = super::model::ui_id(id);
+    queue.stage.store(2, Ordering::Relaxed);
     let previous = summaries.get(key.clone()).await?;
     if previous.as_ref().is_some_and(|old| source.current(old)) {
         return Ok(());
@@ -207,13 +240,17 @@ async fn process(
     if cancelled.load(Ordering::Relaxed) {
         return Ok(());
     }
+    queue.stage.store(3, Ordering::Relaxed);
     let profile = cheap_profile::load().await?;
+    queue.stage.store(4, Ordering::Relaxed);
     let provider = goose_runtime::providers::create(&profile.provider, Vec::new()).await?;
     let model = ProviderModel::new(
         provider,
         ModelConfig::new(&profile.model).with_max_tokens(Some(8192)),
     );
+    queue.stage.store(5, Ordering::Relaxed);
     let revision = summaries.advance(key.clone()).await?;
+    queue.stage.store(6, Ordering::Relaxed);
     let Some(result) = summary_worker::generate(
         &model,
         &source,
@@ -230,11 +267,13 @@ async fn process(
         return Ok(());
     };
     // Another window, compaction, or an external edit may have changed history.
+    queue.stage.store(7, Ordering::Relaxed);
     let Some(latest) = summary_worker::snapshot(manager, id).await? else {
         return Ok(());
     };
     let _guard = queue.commit.lock().await;
     if !cancelled.load(Ordering::Relaxed) && latest.current(&result) {
+        queue.stage.store(8, Ordering::Relaxed);
         summaries.replace(key, result).await?;
     }
     Ok(())

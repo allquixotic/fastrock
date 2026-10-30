@@ -882,7 +882,14 @@ impl AppController {
             }
             Step::WaitSummaries(timeout) => {
                 crate::goose::summaries_idle()
-                    || timed_out(elapsed, *timeout, "background summaries")
+                    || timed_out(
+                        elapsed,
+                        *timeout,
+                        &format!(
+                            "background summaries ({})",
+                            crate::goose::summary_diagnostic()
+                        ),
+                    )
             }
             Step::WaitIdle(timeout) => {
                 let idle = self

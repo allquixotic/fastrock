@@ -1,4 +1,5 @@
 import { ComboBox, LineEdit, ScrollView, TextEdit } from "std-widgets.slint";
+import { ProviderProfiles } from "provider-profiles.slint";
 import { Theme, FlatButton } from "theme.slint";
 
 export struct GooseOption {
@@ -24,6 +25,8 @@ export global GooseState {
     in-out property <string> cheap-name: "Bedrock Luna";
     in-out property <string> cheap-model: "openai.gpt-6-luna";
     in-out property <int> cheap-provider;
+    in property <[string]> provider-ids: ["aws_bedrock", "openai", "anthropic"];
+    in property <[string]> provider-names: ["Bedrock", "OpenAI", "Anthropic"];
     in property <bool> cheap-loading;
     in property <string> cheap-status;
     callback save-cheap();
@@ -105,7 +108,7 @@ export component GooseSettingsPage inherits Rectangle {
                 Text { text: "Saved in your Goose configuration. Provider credentials remain in their existing location. Quit and restart Fastrock after changing these defaults; current conversations keep their settings."; color: Theme.text-muted; wrap: word-wrap; }
                 HorizontalLayout {
                     Text { text: "Default provider"; color: Theme.text-muted; width: 160px; vertical-alignment: center; }
-                    ComboBox { model: ["Bedrock", "OpenAI", "Anthropic"]; current-index <=> GooseState.setup-provider; enabled: GooseState.setup-loaded && !GooseState.setup-loading; }
+                    ComboBox { model: GooseState.provider-names; current-index <=> GooseState.setup-provider; enabled: GooseState.setup-loaded && !GooseState.setup-loading; }
                 }
                 HorizontalLayout {
                     Text { text: "Default model ID"; color: Theme.text-muted; width: 160px; vertical-alignment: center; }
@@ -115,13 +118,14 @@ export component GooseSettingsPage inherits Rectangle {
                     Text { text: field.title; color: Theme.text-muted; width: 160px; vertical-alignment: center; }
                     LineEdit { text <=> field.value; enabled: GooseState.setup-loaded && !GooseState.setup-loading; placeholder-text: "Use Goose / environment default"; }
                 }
-                Text { text: "AWS settings are shared across Goose conversations. Environment variables may override saved defaults. API keys and bearer tokens cannot be edited here yet."; color: Theme.text-muted; wrap: word-wrap; }
+                Text { text: "AWS settings are shared across Goose conversations. Environment variables may override saved defaults. Named profiles below store new API keys in the OS credential vault."; color: Theme.text-muted; wrap: word-wrap; }
                 HorizontalLayout {
                     FlatButton { text: "Save provider defaults"; enabled: GooseState.setup-loaded && !GooseState.setup-loading; clicked => { GooseState.save-setup(); } }
                     FlatButton { text: "Reload provider defaults"; enabled: !GooseState.setup-loading; clicked => { GooseState.load-setup(); } }
                 }
                 if GooseState.setup-status != "": Text { text: GooseState.setup-status; color: Theme.text-muted; wrap: word-wrap; }
             }
+            ProviderProfiles {}
             Text { text: "Cheap model for search summaries"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; }
             Text { text: "Search runs locally. Background summaries use this profile and the selected provider's saved Goose credentials. If unavailable, search uses existing titles and summaries without a more expensive model fallback."; color: Theme.text-muted; wrap: word-wrap; }
             HorizontalLayout {
@@ -130,7 +134,7 @@ export component GooseSettingsPage inherits Rectangle {
             }
             HorizontalLayout {
                 Text { text: "Provider"; color: Theme.text-muted; width: 110px; vertical-alignment: center; }
-                ComboBox { model: ["Bedrock", "OpenAI", "Anthropic"]; current-index <=> GooseState.cheap-provider; enabled: !GooseState.cheap-loading; }
+                ComboBox { model: GooseState.provider-names; current-index <=> GooseState.cheap-provider; enabled: !GooseState.cheap-loading; }
             }
             HorizontalLayout {
                 Text { text: "Model ID"; color: Theme.text-muted; width: 110px; vertical-alignment: center; }

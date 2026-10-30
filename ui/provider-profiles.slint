@@ -1,0 +1,48 @@
+import { ComboBox, LineEdit } from "std-widgets.slint";
+import { Theme, FlatButton } from "theme.slint";
+export struct ProfileRow { id: string, name: string, detail: string }
+export global ProfileState {
+    in property <[ProfileRow]> rows;
+    in property <bool> busy;
+    in property <string> status;
+    in-out property <string> edit-id;
+    in-out property <string> revision;
+    in property <string> create-id;
+    in-out property <string> name;
+    in-out property <int> engine;
+    in-out property <string> url;
+    in-out property <string> model;
+    in-out property <string> secret;
+    callback load();
+    callback select(id: string);
+    callback save();
+}
+export component ProviderProfiles inherits VerticalLayout {
+    spacing: Theme.pad-m;
+    HorizontalLayout {
+        Text { text: "Named provider profiles"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; horizontal-stretch: 1; }
+        FlatButton { text: "New profile"; enabled: !ProfileState.busy; clicked => { ProfileState.select(""); } }
+        FlatButton { text: "Reload profiles"; enabled: !ProfileState.busy; clicked => { ProfileState.load(); } }
+    }
+    Text { text: "OpenAI and Anthropic profiles have their own endpoint, model and OS-vault credential. They appear in provider defaults, conversation options and cheap-model settings. AWS profiles and regions remain shared by Goose."; color: Theme.text-muted; wrap: word-wrap; }
+    for row in ProfileState.rows: Rectangle {
+        background: row.id == ProfileState.edit-id ? Theme.selected : Theme.surface-sunken;
+        border-radius: Theme.radius-small;
+        HorizontalLayout {
+            padding: Theme.pad-m;
+            VerticalLayout {
+                Text { text: row.name; color: Theme.text; font-weight: 600; }
+                Text { text: row.detail; color: Theme.text-muted; wrap: word-wrap; }
+            }
+            FlatButton { text: "Edit profile"; enabled: !ProfileState.busy; clicked => { ProfileState.select(row.id); } }
+        }
+    }
+    LineEdit { text <=> ProfileState.name; placeholder-text: "Profile name"; enabled: !ProfileState.busy; }
+    ComboBox { model: ["OpenAI", "Anthropic"]; current-index <=> ProfileState.engine; enabled: !ProfileState.busy; }
+    LineEdit { text <=> ProfileState.url; placeholder-text: "API base URL (e.g. https://api.openai.com/v1)"; enabled: !ProfileState.busy; }
+    LineEdit { text <=> ProfileState.model; placeholder-text: "Model ID"; enabled: !ProfileState.busy; }
+    LineEdit { text <=> ProfileState.secret; input-type: password; placeholder-text: ProfileState.edit-id == "" ? "API key" : "New API key (leave empty to keep existing)"; enabled: !ProfileState.busy; }
+    Text { text: "Keys are saved only in the OS credential vault. Goose uses Fastrock’s bundled credential helper. Reopen or reselect the provider to use changed connection settings; reasoning effort remains available in each conversation’s Goose options."; color: Theme.text-faint; wrap: word-wrap; }
+    FlatButton { text: ProfileState.edit-id == "" ? "Create profile" : "Save profile"; enabled: !ProfileState.busy; clicked => { ProfileState.save(); } }
+    if ProfileState.status != "": Text { text: ProfileState.status; color: Theme.text-muted; wrap: word-wrap; }
+}

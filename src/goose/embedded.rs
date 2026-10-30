@@ -25,7 +25,11 @@ pub(super) async fn connect() -> anyhow::Result<Connection> {
     let provider_factory: AcpProviderFactory = Arc::new(|name| {
         Box::pin(async move {
             anyhow::ensure!(
-                matches!(name.as_str(), "aws_bedrock" | "openai" | "anthropic"),
+                tokio::task::spawn_blocking({
+                    let name = name.clone();
+                    move || supported_provider(&name)
+                })
+                .await?,
                 "Fastrock supports Goose Bedrock, OpenAI and Anthropic providers; external agent providers are disabled"
             );
             goose_runtime::providers::create_with_default_model(&name, Vec::new()).await
@@ -69,5 +73,21 @@ pub(super) async fn connect() -> anyhow::Result<Connection> {
         reader,
         writer,
         task,
+    })
+}
+
+// Public declarative APIs describe the actual engine; never infer provider
+// capabilities from a user-selected display name or launch an agent backend.
+pub(super) fn supported_provider(name: &str) -> bool {
+    if matches!(name, "aws_bedrock" | "openai" | "anthropic") {
+        return true;
+    }
+    use goose_runtime::config::declarative_providers::{ProviderEngine, load_provider};
+    load_provider(name).is_ok_and(|p| {
+        p.is_editable
+            && matches!(
+                p.config.engine,
+                ProviderEngine::OpenAI | ProviderEngine::Anthropic
+            )
     })
 }

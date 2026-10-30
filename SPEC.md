@@ -48,7 +48,7 @@ R3: Ghostty v1.4.0, 83fb95624b0439ee660c2679b43b38c8b63769cd; idle incremental L
 R5: vwork 0.3.4, c53cea4879bc0e12735ae1c89bd7d5ca3e9b1910; public Engine/protocol, redb 4.4, zstd level/config retained; https://github.com/allquixotic/vwork.
 R6: Goose 1.57.0 hooks accept command actions only; Agent hook manager is private. Authorized hook exception permits Fastrock helper mode using vwork protocol::hook, no separate vwork install.
 R7: Goose Bedrock construction uses process-global config/environment; independent concurrent AWS credential/region profiles need a supported upstream API. ACP supports upstream effort values, not arbitrary custom strings. User authorizes fixture-only development and will validate live profiles on own machine.
-R8: Goose 1.57.0 public secret setters can fall back to plaintext files; no public vault-only writer. Fastrock graphical setup edits non-secret settings only until a supported vault-only integration exists.
+R8: Goose 1.57.0 public secret setters can fall back to plaintext files; no public vault-only writer. Named OpenAI/Anthropic profiles instead use its public declarative command-auth API and Fastrock’s bundled OS-vault helper; original credential entries remain unchanged.
 R4: AWS Runtime supports Converse/InvokeModel and OpenAI-compatible APIs; Runtime/Mantle routes differ; exact model/profile must preserve installed working configuration; https://docs.aws.amazon.com/bedrock/latest/userguide/endpoints.html.
 
 ## §V INVARIANTS
@@ -140,6 +140,8 @@ V57: Embedded session creation/restoration/provider switching ! validate Bedrock
 
 V58: Webhook schedules ! in-process loopback listener, bounded requests, HMAC-SHA256 before acceptance, vault-only signing keys, no auth headers in model context. Accepted delivery/replay identity ! durable before dispatch; coalescing ! retain receipts; restart ! paused pending work and review-only uncertain runs. Expired deliveries ! skipped; stale edits/rotation ! guarded. Verify: v58 signature/template/filter/delivery tests and native webhook/vault/restart fixture.
 
+V59: Named direct-provider profiles ! unchanged Goose public declarative APIs and isolated vault-only credentials via bundled command-auth helper. Endpoint/key replacement ! new credential identity before config commit; stale edits ! reject. Helper path ! repaired after app move without changing foreign helpers/legacy credentials. Supported custom engines ! native defaults/session/cheap-model choices; credential values ! absent from args/config/logs and cleared from editor after submit. Verify: v59 profile validation and native two-endpoint/key-isolation/profile-restart fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -188,10 +190,10 @@ T33|x|Shared localhost vwork MCP, database-level compaction, actual Goose/games 
 T34|x|Widen text selection hit areas, selectable tool/command details, Windows interaction/scroll checks, Mac compile and signed Fastrock 0.3.4; no vwork changes|V9,V15,V23,V32,V37,I.distribution
 T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only release policy; policy audit passed, games ReleasePolicy 3 passed/1 Apple-only skipped|V46,I.distribution
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
-T37|~|Embedded Goose; remove Codex UI/connection; native provider defaults and creation/restore/switch scope guards; preserve configuration; vault-only credential setup blocked by R8|V38,V39,V52,V57,I.goose
+T37|~|Embedded Goose; remove Codex UI/connection; native provider defaults and creation/restore/switch scope guards; preserve configuration; native named direct-provider profiles via public command-auth/vault integration verified; AWS isolation R7, saved profile effort defaults and acceptance remain open|V38,V39,V52,V57,V59,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
 T39|~|Port T3 V2 orchestration; isolated forks/delegation and native timed schedules verified; signed native webhook scheduling implemented; remaining coordination acceptance open; no quotas|V41,V50,V55,V56,V58,I.orchestration
-T40|~|Native T3 main UI/sidebar/panels, registered repository projects and permanent independent Rally project|V42,V51,I.questions,I.links
+T40|~|Native T3 main UI/sidebar/panels, repository projects, independent Rally project, schedule/webhook and provider editors; auxiliary UI parity remains open|V42,V51,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and bounded arbitrary history viewports|V1,V9,V32,V37,V43,V53,I.scroll
 T43|~|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
@@ -440,3 +442,9 @@ B136|2026-10-30|New provider tests edited legacy GOOSE_PROVIDER after Goose migr
 B137|2026-10-30|Webhook wiring used parent-only listener visibility and compared String to SharedString|Expose listener to Goose module and compare string slices; compiler verification; V58
 B138|2026-10-30|Receipt validation omitted paused/idle outcomes used by delegated runs|Map uncertain terminal outcomes to review-only receipts; receipt recovery test; V56,V58
 B139|2026-10-30|Webhook saturation could exceed snapshot size at write time and disable existing schedules|Reject oversized proposed snapshots before storage mutation; v58 capacity-preservation test; V56,V58
+
+B140|2026-10-30|Standalone embedded Goose fixture did not include the provider-policy dependencies added to cheap profiles|Compile the same policy/setup modules in the standalone fixture; V44,V57,V59
+B141|2026-10-30|Goose model metadata HashMap order could spuriously invalidate an unchanged profile revision|Canonicalize nested object order before hashing; v59 revision-order test; V59
+B142|2026-10-30|One moved-app native fixture timed out waiting for summaries; four subsequent diagnostic runs passed; cause remains unresolved|Retain phase/count-only diagnostics and fixture provider observations; do not treat as RC acceptance; V44,V59
+
+B143|2026-10-30|Vwork native fixture selected catalog row 1 after a fork, which could be the child instead of the parent|Select the task workspace through the native catalog filter; preserve explicit integration checks; V49,V50

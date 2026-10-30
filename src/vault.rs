@@ -45,3 +45,12 @@ mod tests {
         assert!(super::put("webhook", &uuid::Uuid::new_v4().to_string(), "").is_err());
     }
 }
+
+/// Called before GUI/runtime initialization by Goose's supported command-auth
+/// provider. stdout is its credential pipe; diagnostics never include the key.
+pub(crate) fn credential_helper(id: &str) -> Result<()> {
+    use std::io::Write;
+    let value = get("provider", id)?;
+    std::io::stdout().lock().write_all(value.as_bytes())?;
+    Ok(())
+}

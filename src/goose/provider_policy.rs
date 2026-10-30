@@ -4,9 +4,49 @@
 use anyhow::{Result, ensure};
 use goose_runtime::config::Config;
 use serde_json::Value;
+use std::{
+    collections::BTreeMap,
+    sync::{LazyLock, RwLock},
+};
+static CUSTOM: LazyLock<RwLock<BTreeMap<String, String>>> =
+    LazyLock::new(|| RwLock::new(BTreeMap::new()));
+pub(super) async fn refresh() -> Result<()> {
+    let choices = tokio::task::spawn_blocking(|| -> Result<BTreeMap<String, String>> {
+        use goose_runtime::config::declarative_providers as api;
+        Ok(api::load_custom_providers(&api::custom_providers_dir())?
+            .into_iter()
+            .filter(|p| {
+                matches!(
+                    p.engine,
+                    api::ProviderEngine::OpenAI | api::ProviderEngine::Anthropic
+                )
+            })
+            .map(|p| (p.name, p.display_name))
+            .collect())
+    })
+    .await??;
+    *CUSTOM
+        .write()
+        .map_err(|_| anyhow::anyhow!("Provider choices unavailable"))? = choices;
+    Ok(())
+}
+pub(super) fn choices() -> Vec<(String, String)> {
+    let mut choices = vec![
+        ("aws_bedrock".into(), "Bedrock".into()),
+        ("openai".into(), "OpenAI".into()),
+        ("anthropic".into(), "Anthropic".into()),
+    ];
+    if let Ok(custom) = CUSTOM.read() {
+        choices.extend(custom.iter().map(|(id, name)| (id.clone(), name.clone())));
+    }
+    choices
+}
 
 pub(super) fn allowed(name: &str) -> bool {
     super::setup::PROVIDERS.contains(&name)
+        || CUSTOM
+            .read()
+            .is_ok_and(|choices| choices.contains_key(name))
 }
 fn resolve(config: &Config, requested: Option<&str>) -> Result<String> {
     let name = match requested.filter(|s| !s.is_empty() && *s != "goose") {
@@ -16,7 +56,7 @@ fn resolve(config: &Config, requested: Option<&str>) -> Result<String> {
         })?,
     };
     ensure!(
-        allowed(&name),
+        super::embedded::supported_provider(&name),
         "Fastrock supports Bedrock, OpenAI and Anthropic model providers. External agent backends and other providers are disabled; choose a supported provider in Goose settings."
     );
     Ok(name)

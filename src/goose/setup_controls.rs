@@ -3,11 +3,40 @@ use crate::app::AppController;
 use crate::ui::{GooseSetupField, GooseState};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
-fn publish(state: &GooseState<'_>, setup: &Setup) {
-    state.set_setup_provider(
-        setup::PROVIDERS
+pub(super) fn publish_choices(state: &GooseState<'_>) {
+    let old = state.get_provider_ids();
+    let selected = old.row_data(state.get_setup_provider() as usize);
+    let cheap = old.row_data(state.get_cheap_provider() as usize);
+    let choices = super::provider_policy::choices();
+    state.set_provider_ids(ModelRc::new(VecModel::from(
+        choices
             .iter()
-            .position(|name| *name == setup.provider)
+            .map(|(id, _)| id.as_str().into())
+            .collect::<Vec<slint::SharedString>>(),
+    )));
+    state.set_provider_names(ModelRc::new(VecModel::from(
+        choices
+            .iter()
+            .map(|(_, name)| name.as_str().into())
+            .collect::<Vec<slint::SharedString>>(),
+    )));
+    state.set_setup_provider(
+        selected
+            .and_then(|id| choices.iter().position(|(p, _)| p == id.as_str()))
+            .map_or(-1, |i| i as i32),
+    );
+    state.set_cheap_provider(
+        cheap
+            .and_then(|id| choices.iter().position(|(p, _)| p == id.as_str()))
+            .map_or(-1, |i| i as i32),
+    );
+}
+fn publish(state: &GooseState<'_>, setup: &Setup) {
+    publish_choices(state);
+    state.set_setup_provider(
+        super::provider_policy::choices()
+            .iter()
+            .position(|(name, _)| *name == setup.provider)
             .map_or(-1, |i| i as i32),
     );
     state.set_setup_model(setup.model.clone().into());
@@ -69,9 +98,10 @@ impl AppController {
             return;
         };
         let desired = Setup {
-            provider: setup::PROVIDERS
-                .get(state.get_setup_provider() as usize)
-                .unwrap_or(&"")
+            provider: state
+                .get_provider_ids()
+                .row_data(state.get_setup_provider() as usize)
+                .unwrap_or_default()
                 .to_string(),
             model: state.get_setup_model().trim().to_owned(),
             fields: state
@@ -107,9 +137,9 @@ impl AppController {
         let state = self.window.global::<GooseState>();
         match arg(0) {
             "provider" => state.set_setup_provider(
-                setup::PROVIDERS
+                super::provider_policy::choices()
                     .iter()
-                    .position(|name| *name == arg(1))
+                    .position(|(id, name)| id == arg(1) || name == arg(1))
                     .map_or(-1, |i| i as i32),
             ),
             "model" => state.set_setup_model(arg(1).into()),

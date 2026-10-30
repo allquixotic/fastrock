@@ -390,6 +390,7 @@ pub(crate) struct SettingsController {
     pub(crate) diagnostics: diagnostics::DiagnosticsState,
     pub(crate) keyboard: keyboard::KeyboardState,
     pub(crate) connection: connection::ConnectionState,
+    pub(crate) profiles: Vec<crate::goose::profiles::Profile>,
     pub(crate) goose_setup: Option<crate::goose::setup::Setup>,
     pub(crate) schedules: Value,
     pub(crate) schedules_stale: bool,
@@ -718,6 +719,7 @@ impl AppController {
         match page {
             "schedules" => self.schedules_refresh(),
             "goose" => {
+                self.profiles_load();
                 self.goose_cheap_load();
                 if self.settings.goose_setup.is_none() {
                     self.goose_setup_load();
@@ -1340,6 +1342,7 @@ impl AppController {
             }
             "keyboard" => self.settings_keyboard_automation(&args[1..]),
             "connection" => self.settings_connection_automation(&args[1..]),
+            "profiles" => self.profiles_automation(&args[1..]),
             "goose-setup" => self.goose_setup_automation(&args[1..]),
             "schedules" => self.schedules_automation(&args[1..]),
             "import" => self.settings_import_automation(&args[1..]),

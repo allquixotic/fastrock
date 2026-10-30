@@ -6,6 +6,18 @@ fn main() -> anyhow::Result<()> {
             std::io::stdout().lock(),
         );
     }
+    if std::env::args_os().nth(1).as_deref()
+        == Some(std::ffi::OsStr::new("--fastrock-provider-credential"))
+    {
+        let id = std::env::args()
+            .nth(2)
+            .ok_or_else(|| anyhow::anyhow!("Credential identity required"))?;
+        anyhow::ensure!(
+            std::env::args_os().count() == 3,
+            "Unexpected credential helper arguments"
+        );
+        return codex_gui::credential_helper(&id);
+    }
     codex_gui::prepare_process_env();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

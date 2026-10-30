@@ -1,11 +1,12 @@
 use crate::app::AppController;
 use crate::ui::{GooseOption, GooseState};
 use serde_json::json;
-use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 
 impl AppController {
     pub(crate) fn goose_controls_install(&mut self) {
         self.goose_setup_install();
+        self.profiles_install();
         self.schedules_install();
         self.window
             .global::<GooseState>()
@@ -255,9 +256,9 @@ impl AppController {
                         state.set_cheap_name(profile.name.into());
                         state.set_cheap_model(profile.model.into());
                         state.set_cheap_provider(
-                            ["aws_bedrock", "openai", "anthropic"]
+                            super::provider_policy::choices()
                                 .iter()
-                                .position(|p| *p == profile.provider)
+                                .position(|(p, _)| *p == profile.provider)
                                 .unwrap_or(0) as i32,
                         );
                         state.set_cheap_status(super::summary_service::status().into());
@@ -278,9 +279,10 @@ impl AppController {
         }
         let profile = super::cheap_profile::CheapProfile {
             name: state.get_cheap_name().trim().to_owned(),
-            provider: ["aws_bedrock", "openai", "anthropic"]
-                .get(state.get_cheap_provider() as usize)
-                .unwrap_or(&"")
+            provider: state
+                .get_provider_ids()
+                .row_data(state.get_cheap_provider() as usize)
+                .unwrap_or_default()
                 .to_string(),
             model: state.get_cheap_model().trim().to_owned(),
         };

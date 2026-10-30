@@ -1,0 +1,26 @@
+{
+  "result": "PASS",
+  "binary_sha256": "9c4b90eaebd26e6428838fd59ac4e4b263d4c4c6b71da5872c9bf58efcfda58a",
+  "peak_process_bytes": 145805312,
+  "named_profiles": 3,
+  "stale_editor_rejected": true,
+  "blank_key_preserved": true,
+  "independent_concurrent_credentials": true,
+  "direct_anthropic": true,
+  "named_cheap_profile": true,
+  "rotated_endpoint_and_credential": true,
+  "moved_helper_repaired": true,
+  "legacy_credentials_unchanged": true,
+  "no_plaintext_keys": true,
+  "date": "2026-10-30",
+  "host": "games",
+  "test": "dev/windows-profiles-smoke.py",
+  "evidence": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\profiles-native-7",
+  "repeat_evidence": [
+    "profiles-native-4",
+    "profiles-native-5",
+    "profiles-native-6"
+  ],
+  "distribution": "local development fixture only; no release publication",
+  "earlier_intermittent_summary_timeout": "profiles-native-2: unresolved, recorded as SPEC B142; four subsequent diagnostic runs passed"
+}

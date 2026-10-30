@@ -8,12 +8,18 @@ mod history;
 mod hooks;
 mod mcp;
 mod model;
+mod profile_controls;
+pub(crate) mod profiles;
 mod queue;
 mod schedule;
 pub(crate) use queue::Recovery;
 mod rpc;
 mod sessions;
 mod summary_service;
+
+pub(crate) fn summary_diagnostic() -> String {
+    summary_service::diagnostic()
+}
 
 pub(crate) fn summaries_idle() -> bool {
     summary_service::idle()
@@ -109,6 +115,7 @@ pub(crate) async fn connect(
         .clone()
         .or_else(|| std::env::current_dir().ok())
         .ok_or_else(|| anyhow::anyhow!("Working directory unavailable"))?;
+    profiles::prepare().await?;
     hooks::prepare(cwd.clone()).await?;
     let connection = embedded::connect().await?;
     connect_streams(

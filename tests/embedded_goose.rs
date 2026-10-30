@@ -322,3 +322,8 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
     );
     Ok(())
 }
+
+#[path = "../src/goose/provider_policy.rs"]
+mod provider_policy;
+#[path = "../src/goose/setup.rs"]
+mod setup;

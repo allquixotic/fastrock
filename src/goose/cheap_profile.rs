@@ -27,10 +27,7 @@ impl CheapProfile {
             "Enter a profile name of at most 128 bytes"
         );
         ensure!(
-            matches!(
-                self.provider.as_str(),
-                "aws_bedrock" | "openai" | "anthropic"
-            ),
+            super::provider_policy::allowed(&self.provider),
             "Select a supported Goose provider"
         );
         ensure!(

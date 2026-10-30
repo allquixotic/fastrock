@@ -35,6 +35,9 @@ mod transport;
 mod ui;
 mod ui_thread;
 mod vault;
+pub fn credential_helper(id: &str) -> anyhow::Result<()> {
+    vault::credential_helper(id)
+}
 mod virtual_workspaces;
 mod window_runtime;
 mod xtab;
