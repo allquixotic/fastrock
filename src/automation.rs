@@ -374,6 +374,11 @@ impl AppController {
                         Some("project") if args.len() == 2 => {
                             state.invoke_project_selected(args[1].parse().unwrap_or(0))
                         }
+                        Some("policy") if args.len() == 3 => {
+                            if let Ok(value) = args[2].parse::<i32>() {
+                                state.invoke_policy_changed(args[1].as_str().into(), value);
+                            }
+                        }
                         Some("folder") if args.len() == 3 => state
                             .invoke_folder_action(args[1].as_str().into(), args[2].as_str().into()),
                         Some("search") => {
@@ -473,7 +478,7 @@ impl AppController {
                         Some("dump") => {
                             if let Some(path) = args.get(1) {
                                 use slint::Model;
-                                let rows = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Thread).map(|row| serde_json::json!({"id":row.id.as_str(),"title":row.title.as_str(),"tooltip":row.tooltip.as_str(),"generated":row.generated_title,"age":row.detail.as_str(),"status":format!("{:?}",row.status),"section":row.section.as_str(),"pinned":row.pinned,"checked":row.checked,"project":row.project.as_str()})).collect::<Vec<_>>();
+                                let rows = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Thread).map(|row| serde_json::json!({"id":row.id.as_str(),"title":row.title.as_str(),"tooltip":row.tooltip.as_str(),"generated":row.generated_title,"age":row.detail.as_str(),"status":format!("{:?}",row.status),"section":row.section.as_str(),"pinned":row.pinned,"autoSettleEnabled":row.auto_settle_enabled,"checked":row.checked,"project":row.project.as_str()})).collect::<Vec<_>>();
                                 let chrome = self.window.global::<crate::ui::AppState>();
                                 let rally = self.window.global::<crate::ui::RallyState>();
                                 let navigation = serde_json::json!({
@@ -492,7 +497,7 @@ impl AppController {
                                 });
                                 let project_folders = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Folder).map(|row| serde_json::json!({"path":row.folder.as_str(),"count":row.count})).collect::<Vec<_>>();
                                 let sections = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Section).map(|row| serde_json::json!({"id":row.id.as_str(),"count":row.count,"collapsed":row.collapsed})).collect::<Vec<_>>();
-                                let data = serde_json::json!({"rows":rows,"sections":sections,"dragging":state.get_dragging(),"dropTarget":state.get_drop_target().as_str(),"organizationReady":state.get_organization_ready(),"organizationError":state.get_organization_error().as_str(),"projectChoices":state.get_project_choices().iter().map(|s|s.to_string()).collect::<Vec<_>>(),"selectionCount":state.get_selection_count(),"projectFolders":project_folders,"navigation":navigation,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string();
+                                let data = serde_json::json!({"rows":rows,"sections":sections,"dragging":state.get_dragging(),"dropTarget":state.get_drop_target().as_str(),"groupProjects":state.get_group_projects(),"workingSection":state.get_working_section(),"autoSettleDays":state.get_auto_settle_days(),"organizationReady":state.get_organization_ready(),"organizationError":state.get_organization_error().as_str(),"projectChoices":state.get_project_choices().iter().map(|s|s.to_string()).collect::<Vec<_>>(),"selectionCount":state.get_selection_count(),"projectFolders":project_folders,"navigation":navigation,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string();
                                 let path = path.clone();
                                 self.backend.spawn(async move {
                                     let _ = tokio::fs::write(path, data).await;

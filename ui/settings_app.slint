@@ -6,6 +6,7 @@
 import { ScrollView, ComboBox, Switch, SpinBox, LineEdit, AboutSlint } from "std-widgets.slint";
 import { Theme, FlatButton } from "theme.slint";
 import { SettingsState } from "settings_state.slint";
+import { SidebarState } from "sidebar.slint";
 import { SettingsMetrics, PageHeader, Banner, Card, SectionTitle, KeyValueList, ItemRowView } from "settings_widgets.slint";
 
 // Preference card: title and description on the left, control on the right.
@@ -54,7 +55,7 @@ export component AppearancePage inherits Rectangle {
     VerticalLayout {
         PageHeader {
             title: "Appearance";
-            subtitle: "Preferences for this app, saved in gui.json in your Codex home.";
+            subtitle: "Display, conversation and sidebar preferences.";
             side-padding: root.side;
         }
         ScrollView {
@@ -69,9 +70,37 @@ export component AppearancePage inherits Rectangle {
                 padding-bottom: Theme.pad-xl;
                 spacing: Theme.pad-m;
 
-                SectionTitle {
-                    title: "Display";
+                SectionTitle { title: "Sidebar"; }
+                PrefRow {
+                    title: "Group conversations by repository";
+                    description: "Show repository folders inside each sidebar section.";
+                    Switch {
+                        enabled: SidebarState.organization-ready;
+                        checked <=> SidebarState.group-projects;
+                        toggled => { SidebarState.policy-changed("group-projects", self.checked ? 1 : 0); }
+                    }
                 }
+                PrefRow {
+                    title: "Working section";
+                    description: "Keep running conversations in a separate section until they need you.";
+                    Switch {
+                        enabled: SidebarState.organization-ready;
+                        checked <=> SidebarState.working-section;
+                        toggled => { SidebarState.policy-changed("working-section", self.checked ? 1 : 0); }
+                    }
+                }
+                PrefRow {
+                    title: "Auto-settle after days";
+                    description: "Move inactive conversations to Settled. Zero disables this. New activity returns them to Active; pinned conversations and those awaiting input stay visible.";
+                    note: "Each conversation can opt out using its sidebar menu.";
+                    SpinBox {
+                        width: 120px; minimum: 0; maximum: 365;
+                        enabled: SidebarState.organization-ready;
+                        value <=> SidebarState.auto-settle-days;
+                        edited => { SidebarState.policy-changed("auto-settle-days", self.value); }
+                    }
+                }
+                SectionTitle { title: "Display"; }
                 PrefRow {
                     title: "Theme";
                     description: "Follow the system setting or always use light or dark colors.";

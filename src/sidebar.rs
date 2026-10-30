@@ -874,7 +874,12 @@ impl AppController {
             projects::bind(thread, &self.sidebar.projects);
         }
         let marks = self.sidebar_marks();
+        self.organization_observe_activity(&threads, &marks, now);
         let specs = self.organization_rows(&threads, &marks, has_more, now);
+        let activity: HashMap<_, _> = threads
+            .iter()
+            .map(|t| (t.id.as_str(), t.updated_at))
+            .collect();
         let project_roots: HashMap<_, _> = threads
             .iter()
             .map(|t| (t.id.as_str(), t.group_root()))
@@ -907,7 +912,8 @@ impl AppController {
                     row.title = title.into();
                     row.tooltip = tooltip.into();
                     row.generated_title = generated;
-                    self.organization_decorate(&mut row, now);
+                    let at = activity.get(row.id.as_str()).copied().unwrap_or(now);
+                    self.organization_decorate(&mut row, at, now);
                 }
                 row
             })

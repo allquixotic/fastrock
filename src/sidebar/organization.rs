@@ -19,6 +19,7 @@ pub(super) struct Controller {
     requested: HashSet<String>,
     removed: HashSet<String>,
     dragged: Option<String>,
+    auto_deadline: Option<i64>,
 }
 pub(super) fn working(status: SidebarThreadStatus) -> bool {
     matches!(
@@ -55,6 +56,12 @@ impl AppController {
     pub(super) fn organization_bind(&mut self) {
         let ui = self.window.global::<SidebarState>();
         ui.set_project_choices(ModelRc::from(self.sidebar.organization.labels.clone()));
+        ui.on_policy_changed(crate::ui_thread::scoped_callback!(|key, value| {
+            let key = key.to_string();
+            crate::ui_thread::with_app(move |app| {
+                app.organization_request(Some(Mutation::Policy { key, value }))
+            });
+        }));
         ui.on_drag_begin(crate::ui_thread::scoped_callback!(|id| {
             let id = id.to_string();
             crate::ui_thread::with_app(move |app| app.organization_drag_begin(id));
@@ -157,21 +164,31 @@ impl AppController {
             let subset: Vec<_> = threads
                 .iter()
                 .filter(|t| {
-                    org.state.section(
+                    org.state.section_at(
                         &t.id,
                         marks.get(&t.id).is_some_and(|m| working(m.status)),
+                        marks.get(&t.id).is_some_and(|m| attention(m.status)),
+                        t.updated_at,
                         now,
                     ) == section
                 })
                 .cloned()
                 .collect();
+            let empty_collapsed = HashSet::new();
             let mut contents = projects::rows(
                 &subset,
                 &projects,
-                &self.sidebar.collapsed,
+                if org.state.policy.group_projects {
+                    &self.sidebar.collapsed
+                } else {
+                    &empty_collapsed
+                },
                 false,
                 section == "active" && self.sidebar.is_unfiltered(),
             );
+            if !org.state.policy.group_projects {
+                contents.retain(|row| !matches!(row, RowSpec::Folder { .. }));
+            }
             if contents.is_empty() {
                 continue;
             }
@@ -307,12 +324,45 @@ impl AppController {
         self.sidebar.organization.requested.remove(id);
         self.organization_fetch_retained();
     }
-    pub(super) fn organization_decorate(&self, row: &mut SidebarRow, now: i64) {
+    pub(super) fn organization_observe_activity(
+        &mut self,
+        threads: &[ThreadSummary],
+        marks: &HashMap<String, ThreadMark>,
+        now: i64,
+    ) {
+        self.sidebar.organization.auto_deadline = threads
+            .iter()
+            .filter(|t| {
+                !marks
+                    .get(&t.id)
+                    .is_some_and(|m| working(m.status) || attention(m.status))
+            })
+            .filter_map(|t| {
+                self.sidebar
+                    .organization
+                    .state
+                    .auto_settle_at(&t.id, t.updated_at)
+            })
+            .filter(|at| *at > now)
+            .min();
+    }
+    pub(super) fn organization_decorate(&self, row: &mut SidebarRow, activity: i64, now: i64) {
         let org = &self.sidebar.organization;
         row.section = org
             .state
-            .section(row.id.as_str(), working(row.status), now)
+            .section_at(
+                row.id.as_str(),
+                working(row.status),
+                attention(row.status),
+                activity,
+                now,
+            )
             .into();
+        row.auto_settle_enabled = !org
+            .state
+            .entries
+            .get(row.id.as_str())
+            .is_some_and(|e| e.auto_settle_disabled);
         row.pinned = org
             .state
             .entries
@@ -365,9 +415,18 @@ impl AppController {
         ui.set_organization_error(org.error.as_str().into());
         ui.set_selecting(org.selecting);
         ui.set_selection_count(org.selected.len() as i32);
+        ui.set_group_projects(org.state.policy.group_projects);
+        ui.set_working_section(org.state.policy.working_section);
+        ui.set_auto_settle_days(org.state.policy.auto_settle_days.unwrap_or(0) as i32);
         let now = unix_now();
         org.wake_timer.stop();
-        if let Some(at) = org.state.next_wake(now) {
+        if let Some(at) = org
+            .state
+            .next_wake(now)
+            .into_iter()
+            .chain(org.auto_deadline)
+            .min()
+        {
             org.wake_timer.start(
                 slint::TimerMode::SingleShot,
                 Duration::from_secs(at.saturating_sub(now) as u64),
@@ -436,9 +495,8 @@ impl AppController {
                 self.sidebar_render();
             }
             "pin" | "unpin" | "settle" | "unsettle" | "wake" | "snooze-hour" | "snooze-day"
-            | "snooze-custom" | "mark-unread" | "mark-read" => {
-                self.organization_apply(vec![id.into()], action)
-            }
+            | "snooze-custom" | "mark-unread" | "mark-read" | "auto-settle-on"
+            | "auto-settle-off" => self.organization_apply(vec![id.into()], action),
             "move-up" | "move-down" => {
                 let Some(row) = self
                     .sidebar
@@ -455,7 +513,8 @@ impl AppController {
                     .filter(|r| {
                         r.kind == SidebarRowKind::Thread
                             && r.section == row.section
-                            && r.project == row.project
+                            && (!self.sidebar.organization.state.policy.group_projects
+                                || r.project == row.project)
                     })
                     .map(|r| r.id.to_string())
                     .collect();
@@ -598,7 +657,8 @@ impl AppController {
             .filter(|r| {
                 r.kind == SidebarRowKind::Thread
                     && r.section.as_str() == section
-                    && r.project == source.project
+                    && (!self.sidebar.organization.state.policy.group_projects
+                        || r.project == source.project)
                     && r.id.as_str() != id
             })
             .map(|r| r.id.to_string())
@@ -630,6 +690,8 @@ impl AppController {
             "settle" => Action::Settle(true),
             "unsettle" => Action::Settle(false),
             "wake" => Action::Wake,
+            "auto-settle-on" => Action::AutoSettle(true),
+            "auto-settle-off" => Action::AutoSettle(false),
             "snooze-hour" => Action::Snooze(unix_now() + 3600),
             "snooze-day" => Action::Snooze(unix_now() + 86400),
             "snooze-custom" => {

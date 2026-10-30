@@ -1578,3 +1578,22 @@ Receipt: `docs/benchmarks/sidebar-drag-games-2026-10-30.json`.
 The existing native organization fixture also passed on this binary, including
 batch controls, project scope, timed wake and delayed failure wake.
 T52 remains open for the rest of the T3 organization audit. No release tag.
+
+### Sidebar preference verification — 2026-10-30
+
+Native Appearance settings control repository grouping, the Working section,
+and auto-settle days (three by default, matching pinned T3; zero disables it).
+Per-conversation menus can opt out. Auto-settle is derived from actual activity,
+with one nearest-deadline timer shared with snooze; pinned, working and attention
+rows stay visible. New activity, explicit wake and snooze expiry reset the
+inactivity period. No provider work is dispatched by these preferences.
+
+On games, 753 application tests, isolated renderer and drag regression passed.
+The native preference fixture clicked actual switches and edited the SpinBox
+with keyboard input, then verified flat/grouped rows, a streaming conversation
+with Working enabled/disabled, opt-out, invalid-value preservation and restart.
+Inactivity boundary/exemption/wake behavior is covered by the state unit test;
+the native fixture does not wait three days. Peak 136,871,936 bytes.
+Mac compile and build/release policy checks passed; screenshot inspected.
+SHA-256 `641ae5bdf4916bc16abe497e202c5df019e64ccac4925cf299cdd054c7edd84c`. Receipt:
+`docs/benchmarks/sidebar-policy-games-2026-10-30.json`. T52 remains open; no tag.

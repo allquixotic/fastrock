@@ -17,6 +17,7 @@ export struct SidebarRow {
     project: string,
     section: string,
     pinned: bool,
+    auto-settle-enabled: bool,
     checked: bool,
     kind: SidebarRowKind,
     // Thread id (thread rows) or folder path (folder rows).
@@ -36,6 +37,10 @@ export struct SidebarRow {
 }
 
 export global SidebarState {
+    in-out property <bool> group-projects;
+    in-out property <bool> working-section;
+    in-out property <int> auto-settle-days;
+    callback policy-changed(string, int);
     in property <bool> dragging;
     in property <string> drop-target;
     in-out property <float> drop-zone-top;
@@ -319,6 +324,11 @@ component ThreadRowView inherits Rectangle {
             MenuItem { title: "Move up"; enabled: SidebarState.organization-ready && (item.section == "pinned" || item.section == "active"); activated => { SidebarState.thread-action(item.id, "move-up"); } }
             MenuItem { title: "Move down"; enabled: SidebarState.organization-ready && (item.section == "pinned" || item.section == "active"); activated => { SidebarState.thread-action(item.id, "move-down"); } }
             MenuItem { title: "Mark unread"; activated => { SidebarState.thread-action(item.id, "mark-unread"); } }
+            MenuItem {
+                title: item.auto-settle-enabled ? "Disable auto-settle" : "Enable auto-settle";
+                enabled: SidebarState.organization-ready && !SidebarState.archived;
+                activated => { SidebarState.thread-action(item.id, item.auto-settle-enabled ? "auto-settle-off" : "auto-settle-on"); }
+            }
             MenuItem { title: "Select"; activated => { SidebarState.thread-action(item.id, "select"); } }
             MenuSeparator { }
             MenuItem {

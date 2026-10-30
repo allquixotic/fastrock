@@ -21,6 +21,24 @@ pub(crate) struct Entry {
     pub pinned: bool,
     pub settled_at: Option<i64>,
     pub snoozed_until: Option<i64>,
+    pub auto_settle_disabled: bool,
+    pub last_woken_at: Option<i64>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub(crate) struct Policy {
+    pub group_projects: bool,
+    pub working_section: bool,
+    pub auto_settle_days: Option<u32>,
+}
+impl Default for Policy {
+    fn default() -> Self {
+        Self {
+            group_projects: true,
+            working_section: true,
+            auto_settle_days: Some(3),
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -31,6 +49,7 @@ pub(crate) struct State {
     pub order: Vec<String>,
     pub collapsed: BTreeSet<String>,
     pub project_names: BTreeMap<String, String>,
+    pub policy: Policy,
 }
 impl Default for State {
     fn default() -> Self {
@@ -41,10 +60,43 @@ impl Default for State {
             order: vec![],
             collapsed: BTreeSet::new(),
             project_names: BTreeMap::new(),
+            policy: Policy::default(),
         }
     }
 }
 impl State {
+    pub fn section_at(
+        &self,
+        id: &str,
+        working: bool,
+        attention: bool,
+        activity: i64,
+        now: i64,
+    ) -> &'static str {
+        let base = self.section(id, working, now);
+        if base == "active"
+            && !working
+            && !attention
+            && self
+                .auto_settle_at(id, activity)
+                .is_some_and(|at| at <= now)
+        {
+            "settled"
+        } else {
+            base
+        }
+    }
+    pub fn auto_settle_at(&self, id: &str, activity: i64) -> Option<i64> {
+        let days = self.policy.auto_settle_days?;
+        let entry = self.entries.get(id);
+        if entry.is_some_and(|e| e.auto_settle_disabled || e.pinned || e.settled_at.is_some()) {
+            return None;
+        }
+        let activity = activity
+            .max(entry.and_then(|e| e.last_woken_at).unwrap_or(0))
+            .max(entry.and_then(|e| e.snoozed_until).unwrap_or(0));
+        (activity > 0).then(|| activity.saturating_add(i64::from(days) * 86400))
+    }
     pub fn section(&self, id: &str, working: bool, now: i64) -> &'static str {
         if let Some(e) = self.entries.get(id) {
             if e.snoozed_until.is_some_and(|at| at > now) {
@@ -57,7 +109,11 @@ impl State {
                 return "pinned";
             }
         }
-        if working { "working" } else { "active" }
+        if working && self.policy.working_section {
+            "working"
+        } else {
+            "active"
+        }
     }
     pub fn next_wake(&self, now: i64) -> Option<i64> {
         self.entries
@@ -86,6 +142,7 @@ impl State {
                     match action {
                         Action::Pin(value) => {
                             e.pinned = value;
+                            e.last_woken_at = Some(now);
                             if value {
                                 e.snoozed_until = None;
                                 e.settled_at = None;
@@ -94,6 +151,9 @@ impl State {
                         Action::Settle(value) => {
                             e.settled_at = value.then_some(now);
                             e.snoozed_until = None;
+                            if !value {
+                                e.last_woken_at = Some(now);
+                            }
                         }
                         Action::Snooze(until) => {
                             e.snoozed_until = Some(until);
@@ -102,7 +162,9 @@ impl State {
                         Action::Wake => {
                             e.snoozed_until = None;
                             e.settled_at = None;
+                            e.last_woken_at = Some(now);
                         }
+                        Action::AutoSettle(enabled) => e.auto_settle_disabled = !enabled,
                     }
                 }
             }
@@ -137,6 +199,7 @@ impl State {
                 entry.pinned = section == "pinned";
                 entry.settled_at = (section == "settled").then_some(now);
                 entry.snoozed_until = None;
+                entry.last_woken_at = Some(now);
                 let mut seen = BTreeSet::new();
                 self.order = order
                     .into_iter()
@@ -144,6 +207,14 @@ impl State {
                     .filter(|id| seen.insert(id.clone()))
                     .collect();
             }
+            Mutation::Policy { key, value } => match (key.as_str(), value) {
+                ("group-projects", 0..=1) => self.policy.group_projects = value != 0,
+                ("working-section", 0..=1) => self.policy.working_section = value != 0,
+                ("auto-settle-days", 0..=365) => {
+                    self.policy.auto_settle_days = (value > 0).then_some(value as u32)
+                }
+                _ => return Err("Invalid sidebar preference".into()),
+            },
             Mutation::Collapse { section, collapsed } => {
                 if !["pinned", "active", "working", "snoozed", "settled"]
                     .contains(&section.as_str())
@@ -188,6 +259,7 @@ pub(crate) enum Action {
     Settle(bool),
     Snooze(i64),
     Wake,
+    AutoSettle(bool),
 }
 #[derive(Clone, Debug)]
 pub(crate) enum Mutation {
@@ -196,6 +268,10 @@ pub(crate) enum Mutation {
         action: Action,
     },
     Order(Vec<String>),
+    Policy {
+        key: String,
+        value: i32,
+    },
     Place {
         id: String,
         section: String,
@@ -225,7 +301,14 @@ fn read(home: &Path) -> Result<State, String> {
     }
     let state: State = serde_json::from_slice(&bytes)
         .map_err(|_| "Sidebar metadata is invalid; original file preserved")?;
-    if state.version != 1 || state.entries.len() > MAX_ENTRIES || state.order.len() > MAX_ENTRIES {
+    if state.version != 1
+        || state.entries.len() > MAX_ENTRIES
+        || state.order.len() > MAX_ENTRIES
+        || state
+            .policy
+            .auto_settle_days
+            .is_some_and(|days| !(1..=365).contains(&days))
+    {
         return Err("Unsupported sidebar metadata; original file preserved".into());
     }
     Ok(state)
@@ -320,6 +403,110 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn v68_auto_settle_deadlines_attention_opt_out_and_activity() {
+        let mut state = State::default();
+        let activity = 1000;
+        let deadline = activity + 3 * 86400;
+        assert_eq!(
+            state.section_at("goose:a", false, false, activity, deadline - 1),
+            "active"
+        );
+        assert_eq!(
+            state.section_at("goose:a", false, false, activity, deadline),
+            "settled"
+        );
+        assert_eq!(
+            state.section_at("goose:a", true, false, activity, deadline),
+            "working"
+        );
+        assert_eq!(
+            state.section_at("goose:a", false, true, activity, deadline),
+            "active"
+        );
+        assert_eq!(
+            state.section_at("goose:a", false, false, deadline, deadline),
+            "active"
+        );
+        state
+            .apply(action(&["goose:a"], Action::AutoSettle(false)), deadline)
+            .unwrap();
+        assert_eq!(state.auto_settle_at("goose:a", activity), None);
+        assert_eq!(
+            state.section_at("goose:a", false, false, activity, deadline),
+            "active"
+        );
+        state
+            .apply(action(&["goose:a"], Action::AutoSettle(true)), deadline)
+            .unwrap();
+        state
+            .apply(action(&["goose:a"], Action::Wake), deadline)
+            .unwrap();
+        assert_eq!(
+            state.auto_settle_at("goose:a", activity),
+            Some(deadline + 3 * 86400)
+        );
+        state
+            .apply(
+                action(&["goose:b"], Action::Snooze(deadline + 3600)),
+                deadline,
+            )
+            .unwrap();
+        assert_eq!(
+            state.section_at("goose:b", false, false, activity, deadline),
+            "snoozed"
+        );
+        assert_eq!(
+            state.section_at("goose:b", false, false, activity, deadline + 3600),
+            "active"
+        );
+        state
+            .apply(action(&["goose:c"], Action::Pin(true)), activity)
+            .unwrap();
+        assert_eq!(
+            state.section_at("goose:c", false, false, activity, deadline),
+            "pinned"
+        );
+        state
+            .apply(
+                Mutation::Policy {
+                    key: "working-section".into(),
+                    value: 0,
+                },
+                deadline,
+            )
+            .unwrap();
+        assert_eq!(
+            state.section_at("goose:running", true, false, activity, deadline),
+            "active"
+        );
+        state
+            .apply(
+                Mutation::Policy {
+                    key: "auto-settle-days".into(),
+                    value: 0,
+                },
+                deadline,
+            )
+            .unwrap();
+        assert_eq!(
+            state.section_at("goose:old", false, false, activity, deadline),
+            "active"
+        );
+        let saved = state.clone();
+        assert!(
+            state
+                .apply(
+                    Mutation::Policy {
+                        key: "auto-settle-days".into(),
+                        value: 366
+                    },
+                    deadline
+                )
+                .is_err()
+        );
+        assert_eq!(state, saved);
+    }
     #[tokio::test]
     async fn v68_drop_updates_group_and_order_atomically() {
         let temp = tempfile::tempdir().unwrap();

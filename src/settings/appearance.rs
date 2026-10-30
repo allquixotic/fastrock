@@ -99,7 +99,7 @@ impl AppController {
                 if renderer != self.prefs.renderer {
                     self.prefs.renderer = renderer;
                     self.toast(format!(
-                        "Renderer set to {}. Restart Codex to apply it.",
+                        "Renderer set to {}. Restart Fastrock to apply it.",
                         renderer_label(renderer)
                     ));
                 }

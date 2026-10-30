@@ -1,0 +1,12 @@
+{
+  "result": "PASS",
+  "binary_sha256": "641ae5bdf4916bc16abe497e202c5df019e64ccac4925cf299cdd054c7edd84c",
+  "peak_process_bytes": 136871936,
+  "native_settings_pointer_and_keyboard": true,
+  "flat_and_grouped": true,
+  "working_preference": true,
+  "auto_settle_preference": true,
+  "per_chat_opt_out": true,
+  "invalid_preserved": true,
+  "restart": true
+}
