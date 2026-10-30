@@ -4,6 +4,7 @@
 // Feature views talk to Rust through their own globals; this file only places
 // them. Every global used from Rust must be re-exported here.
 
+import { TerminalPane, TerminalState, TerminalCell, TerminalTab } from "terminal.slint";
 import { CommandPalette, CommandPaletteState, CommandPaletteRow } from "command-palette.slint";
 import { LineEdit, ListView, Palette, AboutSlint } from "std-widgets.slint";
 import { Theme, FlatButton, LinkButton, Badge, Divider } from "theme.slint";
@@ -26,6 +27,7 @@ import { RallyView, RallyState, RallyChoice, RallyRow, RallyCell, RallyLane, Ral
 import { PendingMessageState, PendingMessageEditor } from "pending-message.slint";
 
 export {
+    TerminalState, TerminalCell, TerminalTab,
     CommandPaletteState, CommandPaletteRow,
     ProfileState, ProfileRow,
     ScheduleState, ScheduleRow, ScheduleDay,
@@ -716,6 +718,11 @@ component WorkspaceHeader inherits Rectangle {
             clicked => { open-tabs.show(); }
         }
         if AppState.active-kind == TabKindCode.thread: LinkButton {
+            text: "Terminal";
+            text-color: TerminalState.visible ? Theme.accent : Theme.text-muted;
+            clicked => { AppState.menu-action("toggle-terminal"); }
+        }
+        if AppState.active-kind == TabKindCode.thread: LinkButton {
             text: "Info";
             text-color: AppState.info-visible ? Theme.accent : Theme.text-muted;
             clicked => { AppState.toggle-info(); }
@@ -1121,6 +1128,7 @@ export component MainWindow inherits Window {
         }
         Menu {
             title: "View";
+            MenuItem { title: "Toggle Terminal"; activated => { AppState.menu-action("toggle-terminal"); } }
             MenuItem { title: "Command Palette…"; activated => { AppState.menu-action("command-palette"); } }
             MenuItem {
                 title: "Toggle Sidebar";
@@ -1252,6 +1260,7 @@ export component MainWindow inherits Window {
                     if AppState.has-active-tab && AppState.active-kind == TabKindCode.settings: SettingsView { }
                     if AppState.has-active-tab && AppState.active-kind == TabKindCode.rally: RallyView { }
                         }
+                        if TerminalState.visible && AppState.active-kind == TabKindCode.thread: TerminalPane { }
                     }
                 }
 
@@ -1307,7 +1316,7 @@ export component MainWindow inherits Window {
         height: parent.height;
     }
 
-    if AppState.server-status != "ready" && AppState.active-kind != TabKindCode.settings && AppState.active-kind != TabKindCode.rally: StatusOverlay {
+    if AppState.server-status != "ready" && !TerminalState.visible && AppState.active-kind != TabKindCode.settings && AppState.active-kind != TabKindCode.rally: StatusOverlay {
         // Backend availability must not block the independent Rally project.
         x: conversation-pane.absolute-position.x;
         y: conversation-pane.absolute-position.y;

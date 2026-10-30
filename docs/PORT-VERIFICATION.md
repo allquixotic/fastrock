@@ -1376,3 +1376,38 @@ Mac library compilation, formatting, build-policy and
 diff checks passed; no Mac execution. Remaining terminal/checkpoint panels,
 provider effort defaults, Goose capability controls and full acceptance remain
 open. No release tag or binary publication.
+
+
+## 0.4.0 native workspace terminals — 2026-10-30
+
+Native Slint terminal tabs use an owned PTY, VT cells, a 5,000-row history bound,
+16 ms changed-cell updates, bounded input/output queues and coalesced resize.
+Closed shells retain scrollable history without retaining the PTY. Windows Job
+Objects own descendants; Unix shells use process groups. All process/storage
+work runs off the UI thread. The header, View menu, command palette and
+configurable shortcut open a terminal for the selected conversation.
+
+Bound conversations receive renewable vwork temporary copies. Named imports
+stop the shell first, guard the original revision, then release through vwork's
+source-recovery protocol. Closing a conversation or quitting stops its shells;
+restart does not replay them. Startup is excluded once shutdown begins.
+
+The native fixture `dev/windows-terminal-smoke.py` verified actual typing and
+copy/paste, ANSI/wide text, resize and detached scroll anchoring, closed-history
+scrolling, palette focus restoration, Escape during model streaming, Ctrl+C,
+explicit file import, recovery of unimported source, unchanged original checkout,
+retained drafts, owned descendant cleanup on Close/chat-close/Quit, and restart
+without shell replay. The old offset-reset implementation failed the delayed
+output viewport check; the fix passed. Synchronous focus events also fixed the
+initial terminal Escape regression. Receipt:
+`docs/benchmarks/terminal-games-2026-10-30.json`; native evidence:
+`C:\Users\SeanMcNamara\fastrock-040-policy\terminal-native-7`.
+
+Windows passed 735 application tests, 18 workspace tests, the native renderer
+and standalone embedded Goose fixture. Native palette and three-turn summary,
+search, two-window Rally transfer and tray regressions passed. Mac library
+compilation, formatting, build-policy and diff checks passed; no Mac execution.
+Executable SHA-256 `890b9fd23e6ec191f0b19b3e96877b41519be4cc2509fc551bc019014c5708e2`; terminal fixture peak
+163,041,280 bytes under its 2 GB guard. This is not the full
+V45 benchmark. Checkpoints, Goose capability controls and final T3/RC acceptance
+remain open. No release tag or binary publication.

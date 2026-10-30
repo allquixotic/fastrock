@@ -1,0 +1,21 @@
+{
+  "result": "PASS",
+  "binary_sha256": "890b9fd23e6ec191f0b19b3e96877b41519be4cc2509fc551bc019014c5708e2",
+  "peak_process_bytes": 163041280,
+  "native_input": true,
+  "copy_paste": true,
+  "escape_preserves_stream": true,
+  "palette_returns_terminal_focus": true,
+  "closed_history_retained": true,
+  "output_keeps_scroll_anchor": true,
+  "control_c": true,
+  "chat_close_cleanup": true,
+  "restart_no_shell_replay": true,
+  "vt_history_and_resize": true,
+  "explicit_vwork_import": true,
+  "unimported_recovery": true,
+  "source_unchanged": true,
+  "draft_retained": true,
+  "owned_descendants_closed": true,
+  "quit_cleanup": true
+}

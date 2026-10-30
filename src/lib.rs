@@ -30,6 +30,7 @@ mod settings;
 mod shortcuts;
 mod sidebar;
 mod startup;
+mod terminal;
 mod threads;
 mod transcript;
 mod transport;
@@ -287,6 +288,7 @@ fn run_app(
         rt.block_on(app.rally.flush());
     }
     drop(apps);
+    rt.block_on(terminal::shutdown());
     stop_backend(&rt, &backend, thread_ids);
     perf::mark("shutdown-done");
     Ok(())
@@ -321,7 +323,11 @@ fn install_termination_handler(rt: &tokio::runtime::Handle, backend: &Backend) {
                 ui_thread::with_app_now_for(id, |app| thread_ids.extend(app.prepare_for_exit()));
             }
             let shutdown = rt.block_on(async {
-                tokio::time::timeout(SESSION_END_BUDGET, backend.shutdown(thread_ids)).await
+                tokio::time::timeout(SESSION_END_BUDGET, async {
+                    terminal::shutdown().await;
+                    backend.shutdown(thread_ids).await
+                })
+                .await
             });
             if shutdown.is_err() {
                 tracing::warn!("timed out stopping the app-server at logout");

@@ -69,6 +69,8 @@ i-slint-core = { version = "=1.18.1", features = ["shared-parley"] }
 i-slint-backend-winit = { version = "=1.18.1", default-features = false, features = ["renderer-software"] }
 notify-rust = { workspace = true }
 pulldown-cmark = { workspace = true }
+portable-pty = "0.9.0"
+vt100 = "0.18.1"
 rfd = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -129,7 +131,7 @@ libc = { workspace = true }
 
 # Attaches to the parent console for `--help` and argument errors.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { workspace = true, features = ["Win32_System_Console", "Win32_UI_WindowsAndMessaging", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
+windows-sys = { workspace = true, features = ["Win32_System_Console", "Win32_UI_WindowsAndMessaging", "Win32_Storage_FileSystem", "Win32_System_Threading", "Win32_System_JobObjects", "Win32_Security"] }
 
 [package.metadata.cargo-shear]
 # Only enabled for its `fontconfig-dlopen` feature (see above).
@@ -139,6 +141,7 @@ ignored = ["i-slint-common"]
 slint-build = { workspace = true, features = ["compat-1-18"] }
 
 [dev-dependencies]
+git2 = "0.21"
 async-trait = "0.1"
 wiremock = "0.6"
 codex-model-provider-info = { workspace = true }

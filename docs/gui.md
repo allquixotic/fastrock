@@ -19,6 +19,24 @@ and loaded conversations; prefix `>` to show commands only. Use arrows and Enter
 or click a result. Escape closes the palette without interrupting active work.
 The keyboard binding can be changed in Settings → Keyboard.
 
+Open **Terminal** in the conversation header, View menu, command palette, or
+with **Ctrl+`** (**Cmd+`** on Mac). Each conversation can have multiple native
+terminal tabs. Drag the top divider to resize; wheel through the last 5,000 rows.
+Select cells to copy, or use **Copy** for the visible screen. **Paste** supports
+bracketed paste when the foreground program requests it. Keyboard copy/paste is
+Ctrl+Shift+C/V on Windows and Cmd+C/V on Mac; Ctrl+C goes to the shell. Escape
+inside the terminal does not interrupt the model. **Hide** keeps the shell running.
+
+A conversation bound to vwork opens an isolated, renewable temporary copy.
+Enter relative source paths, one per line, then **Import paths and close** to stop
+the shell and import those files with a revision check. Concurrent edits reject
+the import. Closing preserves other source edits in a vwork recovery workspace,
+shown in the terminal status. Ordinary folder conversations run in their local
+folder. Closing the conversation or explicitly quitting stops owned shell
+processes; closing the last window to the tray keeps them running. Restart never
+replays a shell or command automatically. Windows terminals start `cmd.exe /D /Q`;
+PowerShell and other interactive tools can be launched from it.
+
 Conversations appear in the sidebar. Click the active title in the header for
 rename, fork, compact, export and other conversation actions. **Open tabs** also
 reaches open child conversations and files. The sidebar footer opens settings;

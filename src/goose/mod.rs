@@ -567,6 +567,14 @@ impl Adapter {
                 self.manage(params, method).await
             }
             "thread/unsubscribe" => self.close_session(params).await,
+            "fastrock/goose/terminalContext" => {
+                let id = session_id(text(params, "threadId"))?;
+                let sessions = self.sessions.lock().await;
+                let s = sessions
+                    .get(id)
+                    .ok_or_else(|| error("Open a Goose conversation first"))?;
+                Ok(json!({"cwd": s.info["cwd"], "workspace": s.binding.workspace}))
+            }
             "fastrock/goose/config" => {
                 let id = session_id(text(params, "threadId"))?;
                 let sessions = self.sessions.lock().await;

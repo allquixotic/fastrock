@@ -1,0 +1,116 @@
+// Native terminal grid: VT parsing and bounded history live in Rust.
+import { Button, TextEdit, ScrollView } from "std-widgets.slint";
+import { Theme, FlatButton } from "theme.slint";
+export struct TerminalCell { text: string, foreground: color, background: color, bold: bool, italic: bool, underline: bool, span: int }
+export struct TerminalTab { id: int, title: string, selected: bool }
+export global TerminalState {
+    in property <bool> visible;
+    in property <bool> running;
+    in property <bool> virtual-copy;
+    in property <[TerminalCell]> cells;
+    in property <[TerminalTab]> tabs;
+    in property <int> cols: 80;
+    in property <int> rows: 24;
+    in property <int> cursor-row: -1;
+    in property <int> cursor-col: -1;
+    in property <int> scrollback;
+    in property <int> history;
+    in property <string> status;
+    in property <string> cwd;
+    in-out property <string> paths;
+    in-out property <float> pane-height: 300;
+    in-out property <int> selection-start: -1;
+    in-out property <int> selection-end: -1;
+    in-out property <bool> focused;
+    in-out property <int> focus-generation;
+    callback action(string);
+    callback select(int);
+    callback key(string, bool, bool, bool, bool);
+    callback resize(int, int);
+    callback scroll(int);
+}
+export component TerminalPane inherits Rectangle {
+    background: Theme.surface;
+    min-height: 180px;
+    max-height: clamp(TerminalState.pane-height * 1px, 180px, 800px);
+    preferred-height: self.max-height; vertical-stretch: 0;
+    VerticalLayout {
+        spacing: 0px;
+        Rectangle {
+            height: 5px; background: drag.has-hover || drag.pressed ? Theme.accent : Theme.border;
+            property <length> start-y; property <float> start-height;
+            drag := TouchArea { mouse-cursor: ns-resize;
+                pointer-event(event) => { if event.kind == PointerEventKind.down { parent.start-y = self.absolute-position.y + self.mouse-y; parent.start-height = TerminalState.pane-height; } }
+                moved => { TerminalState.pane-height = max(180, parent.start-height + (parent.start-y - self.absolute-position.y - self.mouse-y) / 1px); }
+            }
+        }
+        HorizontalLayout {
+            padding-left: 8px; padding-right: 8px; spacing: 4px; height: 32px;
+            Text { text: "Terminal"; color: Theme.text-muted; vertical-alignment: center; }
+            ScrollView {
+                horizontal-stretch: 1; vertical-scrollbar-policy: always-off;
+                HorizontalLayout { spacing: 4px;
+                    for tab in TerminalState.tabs: FlatButton { text: tab.title; checked: tab.selected; clicked => { TerminalState.select(tab.id); } }
+                }
+            }
+            FlatButton { text: "+"; clicked => { TerminalState.action("new"); } }
+            FlatButton { text: "Copy"; clicked => { TerminalState.action("copy"); } }
+            FlatButton { text: "Paste"; enabled: TerminalState.running; clicked => { TerminalState.action("paste"); } }
+            FlatButton { text: "Close"; clicked => { TerminalState.action("close"); } }
+            FlatButton { text: "Hide"; clicked => { TerminalState.action("hide"); } }
+        }
+        Text { text: (TerminalState.virtual-copy ? "Isolated vwork copy · " : "Local folder · ") + TerminalState.cwd; color: Theme.text-faint; font-size: Theme.font-size-small; overflow: elide; }
+        focus := FocusScope {
+            vertical-stretch: 1;
+            property <int> focus-generation: TerminalState.focus-generation;
+            changed focus-generation => { self.focus(); }
+            init => { self.focus(); TerminalState.focused = self.has-focus; }
+            focus-gained => { TerminalState.focused = true; }
+            focus-lost => { TerminalState.focused = false; }
+            key-pressed(event) => { TerminalState.key(event.text, event.modifiers.control, event.modifiers.shift, event.modifiers.alt, event.modifiers.meta); return EventResult.accept; }
+            Rectangle {
+                background: #16181d; clip: true;
+                measure := Text { text: "M"; font-family: Theme.mono-font; font-size: 13px; opacity: 0; }
+                property <length> cell-width: max(1px, measure.preferred-width);
+                property <length> cell-height: 18px;
+                property <int> grid-cols: clamp(floor((self.width - 12px) / self.cell-width), 10, 200);
+                property <int> grid-rows: clamp(floor(self.height / self.cell-height), 2, 80);
+                changed grid-cols => { TerminalState.resize(self.grid-rows, self.grid-cols); }
+                changed grid-rows => { TerminalState.resize(self.grid-rows, self.grid-cols); }
+                init => { TerminalState.resize(self.grid-rows, self.grid-cols); }
+                for cell[index] in TerminalState.cells: Rectangle {
+                    x: mod(index, TerminalState.cols) * parent.cell-width;
+                    y: floor(index / TerminalState.cols) * parent.cell-height;
+                    width: cell.span * parent.cell-width; height: parent.cell-height;
+                    background: TerminalState.selection-start >= 0 && index >= min(TerminalState.selection-start, TerminalState.selection-end) && index <= max(TerminalState.selection-start, TerminalState.selection-end) ? #36557b : cell.background;
+                    Text { text: cell.text; color: cell.foreground; font-family: Theme.mono-font; font-size: 13px; font-weight: cell.bold ? 700 : 400; font-italic: cell.italic; vertical-alignment: center; }
+                    if cell.underline: Rectangle { y: parent.height - 2px; height: 1px; background: cell.foreground; }
+                }
+                if TerminalState.cursor-row >= 0 && TerminalState.running: Rectangle {
+                    x: TerminalState.cursor-col * parent.cell-width; y: TerminalState.cursor-row * parent.cell-height;
+                    width: parent.cell-width; height: parent.cell-height;
+                    background: focus.has-focus ? #d7dae040 : transparent; border-width: 1px; border-color: #d7dae080;
+                }
+                select := TouchArea {
+                    width: parent.width - 12px; mouse-cursor: text;
+                    property <int> cell-index: clamp(floor(self.mouse-y / parent.cell-height),0,TerminalState.rows - 1) * TerminalState.cols + clamp(floor(self.mouse-x / parent.cell-width),0,TerminalState.cols - 1);
+                    pointer-event(event) => { if event.button == PointerEventButton.left && event.kind == PointerEventKind.down { focus.focus(); TerminalState.selection-start = self.cell-index; TerminalState.selection-end = self.cell-index; } }
+                    moved => { TerminalState.selection-end = self.cell-index; }
+                    scroll-event(event) => { TerminalState.scroll(event.delta-y > 0px ? 3 : -3); return EventResult.accept; }
+                }
+                Rectangle {
+                    x: parent.width - 10px; width: 10px; background: #ffffff0c;
+                    Rectangle { width: 8px; height: max(14px, parent.height * TerminalState.rows / max(1, TerminalState.history + TerminalState.rows)); y: (parent.height - self.height) * (1 - TerminalState.scrollback / max(1, TerminalState.history)); background: #ffffff40; }
+                    TouchArea { clicked => { TerminalState.scroll(self.mouse-y < parent.height / 2 ? TerminalState.rows : -TerminalState.rows); } scroll-event(event) => { TerminalState.scroll(event.delta-y > 0px ? 3 : -3); return EventResult.accept; } }
+                }
+            }
+        }
+        if TerminalState.virtual-copy && TerminalState.running: Text { text: "Import named source files, one relative path per line:"; color: Theme.text-muted; font-size: Theme.font-size-small; }
+        if TerminalState.virtual-copy && TerminalState.running: HorizontalLayout {
+            padding: 4px; spacing: 6px;
+            TextEdit { text <=> TerminalState.paths; height: 42px; horizontal-stretch: 1; }
+            Button { text: "Import paths and close"; clicked => { TerminalState.action("import"); } }
+        }
+        Text { text: TerminalState.status + (TerminalState.scrollback > 0 ? " · " + TerminalState.scrollback + " lines back" : ""); color: Theme.text-muted; font-size: Theme.font-size-small; wrap: word-wrap; }
+    }
+}

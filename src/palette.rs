@@ -107,6 +107,10 @@ impl AppController {
         if self.window.global::<AppState>().get_dialog_open() {
             return;
         }
+        self.palette_terminal_focus = self
+            .window
+            .global::<crate::ui::TerminalState>()
+            .get_focused();
         state.set_query("".into());
         self.palette_refresh();
         self.window.global::<CommandPaletteState>().set_open(true);
@@ -115,7 +119,12 @@ impl AppController {
         let state = self.window.global::<CommandPaletteState>();
         state.set_open(false);
         state.set_rows(ModelRc::default());
-        self.restore_focus();
+        let terminal = self.window.global::<crate::ui::TerminalState>();
+        if std::mem::take(&mut self.palette_terminal_focus) && terminal.get_visible() {
+            terminal.set_focus_generation(terminal.get_focus_generation().wrapping_add(1));
+        } else {
+            self.restore_focus();
+        }
     }
     fn palette_refresh(&mut self) {
         let active = self.active_thread_index().and_then(|i| self.thread_tab(i));
@@ -140,6 +149,12 @@ impl AppController {
                 "Browse workspace files",
                 "Files, changes and explicit integration",
                 true,
+            ),
+            (
+                "toggle-terminal",
+                "Toggle terminal",
+                "Interactive shell for this conversation",
+                active.is_some(),
             ),
             ("open-file", "Open file", "Native file viewer", true),
             (

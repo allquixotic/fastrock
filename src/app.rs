@@ -317,6 +317,8 @@ pub(crate) type DialogCallback = Box<dyn FnOnce(&mut AppController, Option<Strin
 
 /// All UI-thread state. Lives in a thread-local; see [`crate::ui_thread`].
 pub(crate) struct AppController {
+    pub(crate) terminal: crate::terminal::Controller,
+    pub(crate) palette_terminal_focus: bool,
     pub(crate) virtual_workspaces: crate::virtual_workspaces::Controller,
     pub(crate) window: MainWindow,
     pub(crate) backend: Backend,
@@ -389,6 +391,8 @@ impl AppController {
             state.set_server_status("starting".into());
         }
         Self {
+            terminal: crate::terminal::Controller::default(),
+            palette_terminal_focus: false,
             virtual_workspaces: crate::virtual_workspaces::Controller::default(),
             window,
             backend,
@@ -433,6 +437,7 @@ impl AppController {
     pub(crate) fn bind(&mut self) {
         self.bind_chrome();
         self.palette_bind();
+        self.terminal_bind();
         self.load_window_icon();
         self.apply_theme();
         self.reload_keymap();
@@ -1125,6 +1130,7 @@ impl AppController {
         }
         self.transcript_show();
         self.composer_show();
+        self.terminal_show();
         self.approvals_show();
         self.info_show();
         match kind {
@@ -1321,7 +1327,12 @@ impl AppController {
             other => other,
         };
         match tab.kind {
-            TabKind::Thread(thread) => self.on_thread_tab_closed(*thread),
+            TabKind::Thread(thread) => {
+                if let Some(id) = &thread.thread_id {
+                    self.terminal_close_thread(id);
+                }
+                self.on_thread_tab_closed(*thread);
+            }
             TabKind::File(file) => self.files_on_tab_closed(*file),
             TabKind::Rally(mut rally) => {
                 if let Some(task) = rally.task.take() {
@@ -1511,6 +1522,14 @@ impl AppController {
             }
         }
         let action = self.keymap.lookup(press)?;
+        if self
+            .window
+            .global::<crate::ui::TerminalState>()
+            .get_focused()
+            && !matches!(action, "toggle-terminal" | "command-palette")
+        {
+            return None;
+        }
         // Escape only interrupts a running turn; otherwise widgets keep it.
         if action == "escape"
             && !self
@@ -1539,6 +1558,7 @@ impl AppController {
     fn run_shortcut(&mut self, name: &str) {
         match name {
             "command-palette" => self.palette_toggle(),
+            "toggle-terminal" => self.terminal_toggle(),
             "new-tab" => self.open_new_tab_page(),
             "close-tab" => {
                 if let Some(index) = self.active {

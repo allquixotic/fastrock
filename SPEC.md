@@ -144,6 +144,8 @@ V59: Named direct-provider profiles ! unchanged Goose public declarative APIs an
 
 V60: Native command palette ! cached commands/projects/chats, bounded deterministic matching and virtual rows; keyboard/pointer actions ! existing guarded handlers; Escape ! close overlay without interrupting background work; draft/focus ! retained. Verify: v60 palette bounds/ranking test and native keyboard/draft/running-turn fixture.
 
+V61: Native terminal ! explicit user launch, owned process lifecycle, bounded VT scrollback and coalesced changed-cell updates. Bound workspace ! renewable vwork copy; import ! named paths and expected revision; close ! stop owned processes and preserve unimported source through vwork recovery. Restart ! no automatic shell/command replay. Verify: v61 VT/input/bounds tests and native PTY/resize/scroll/copy/lease/recovery/process-exit fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -195,14 +197,14 @@ T36|~|Embedded session/prompt/close and three Runtime routes verified on games f
 T37|~|Embedded Goose; remove Codex UI/connection; native defaults and creation/restore/switch scope guards; preserve configuration; named profiles via public command-auth/vault, saved effort defaults and explicit model IDs verified; AWS isolation R7 and remaining acceptance open|V38,V39,V52,V57,V59,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
 T39|~|Port T3 V2 orchestration; isolated forks/delegation and native timed schedules verified; signed native webhook scheduling implemented; remaining coordination acceptance open; no quotas|V41,V50,V55,V56,V58,I.orchestration
-T40|~|Native T3 main UI/sidebar/panels, repository projects, independent Rally project, schedule/webhook and provider editors; native command palette verified; auxiliary UI parity remains open|V42,V51,V60,I.questions,I.links
+T40|~|Native T3 main UI/sidebar/panels, repository projects, independent Rally project, schedule/webhook and provider editors; native command palette and workspace terminals verified; checkpoint/capability UI parity remains open|V42,V51,V60,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and bounded arbitrary history viewports|V1,V9,V32,V37,V43,V53,I.scroll
 T43|~|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
 T44|~|Watchdog-protected games benchmarks, full Windows verification, Mac compile and feature-complete signed CI RC/final|V23,V38–V47,V54,I.distribution
 T45|x|In-process Rally windows and scoped UI/backend routing|V38,V42,V47,V48
 T46|x|Native command palette with bounded matching, keyboard/pointer navigation and retained drafts|V42,V60
-T47|.|Native interactive terminal panels with isolated user-requested processes, bounded scrollback and lifecycle checks|V38,V42,V43,V47
+T47|x|Native interactive terminal panels with isolated user-requested processes, bounded scrollback and lifecycle checks|V38,V42,V43,V47,V61
 T48|.|Conversation checkpoint/review/restore workflows over guarded vwork revisions|V40,V41,V42,V49
 T49|x|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
 T50|.|Complete native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42
@@ -228,6 +230,8 @@ Core startup audit, 2026-10-29: removed automatic login-shell PATH probing and r
 Native-window foundation verification, 2026-10-29: one shared embedded backend, explicit UI ownership for native callbacks/timers/async and blocking tasks, single-target tool/permission routing, per-window input queues, one ordered mailbox writer, and durable same-process Rally handoff. Games 699 application tests, one renderer test, 16 workspace fixtures and standalone Goose fixture passed. Native three-turn plus second-window conversation smoke preserved separate exports, found both current summaries, moved unsaved Rally name/filter drafts out and back, and observed both owner records under PID 1580. Eight local provider calls, local Rally GETs only; peak process memory 176,660,480 bytes. Binary SHA-256 `1c0dab9c60888b7c785a481716871dd9b1360d5994ce5628a65c558efe3602c5`; games receipt `C:\Users\SeanMcNamara\fastrock-040-policy\windows-native-2\acceptance.json`. Mac compile/static audits passed; no Mac execution. Last-window tray continuation and restart recovery remain T43/T45 acceptance work; no release tag.
 
 Tray lifecycle verification, 2026-10-29: native Slint tray, last-window close preserves active work, restore retains conversation state, native menu Quit flushes asynchronous preferences and stops the shared runtime. Games 700 application tests, one renderer test, 16 workspace fixtures and standalone embedded Goose fixture passed. Combined three-turn/two-window/Rally navigation and draft-transfer fixture passed with eight local model calls, local Rally GETs only and 179,818,496 peak process bytes. Binary SHA-256 `9d00955e020a3d93ce9a75f6a23d94cc77e831d1a5a17e8c2d38fcc493b5ebfb`; games receipt `C:\Users\SeanMcNamara\fastrock-040-policy\tray-native-8\acceptance.json`. Both document owners share PID 6468; native window count includes the tray popup. Mac compile, build policy, formatting and diff checks passed. T43 remains open for restart Resume/draft recovery; T44 full-scale comparison and release remain open. No Mac execution or release tag.
+
+Terminal verification, 2026-10-30: 735 application tests, 18 workspace tests, renderer, standalone embedded Goose and full native terminal fixture passed on games. Guarded import/stale revision/recovery, VT/input bounds, final-output retention, closed-history scroll/resize, native copy/paste/Ctrl+C, Escape/palette focus during streaming, detached output anchoring, process ownership, chat/Quit cleanup and no restart replay verified. Native palette and three-turn/two-window/Rally/tray regressions passed. Mac compile/static audits passed, no Mac execution. Terminal peak 163,041,280 bytes; SHA-256 `890b9fd23e6ec191f0b19b3e96877b41519be4cc2509fc551bc019014c5708e2`; receipt `docs/benchmarks/terminal-games-2026-10-30.json`. T47 complete; checkpoints/capability/T3 acceptance remain open. No release tag.
 
 ## §B BUGS
 id|date|cause|fix
@@ -467,3 +471,12 @@ B147|2026-10-30|Weak store owner expired before Engine destructor released redb 
 B148|2026-10-30|Fastrock treated Goose model catalog as allowlist; custom Opus ID vanished after switching models|Use public Goose model-switch API for bounded explicit IDs; native model field and switch-back regression; effort/provider constraints retained; V39
 
 B149|2026-10-30|Effort fixture compared raw model URL with unescaped ID; AWS correctly encoded colon|Decode fixture path before exact ID comparison; verify low/high effort in actual request bodies; V39
+
+B150|2026-10-30|Terminal component root referenced parent geometry outside its scope; Slint compile rejected it|Use bounded preferred panel height; V61
+B151|2026-10-30|Terminal layout inferred minimum from its parent-dependent height; compile also rejected String error propagation|Preferred/max height with fixed minimum avoids parent sizing cycle; explicit error conversion; V61
+B152|2026-10-30|Terminal clipboard fixture captured before posted native Copy callback ran|Wait for event-loop callback before observing clipboard; B146/V61
+B153|2026-10-30|Terminal focused during initialization before deferred has-focus tracker sampled it; global Escape handler saw false and interrupted model|Initialize focus state and use synchronous gained/lost callbacks; native active-stream Escape regression; V61
+B154|2026-10-30|Terminal chat-close fixture invoked nonexistent thread tab action, then toggled retained terminal off|Use actual close-tab command; inspect owned PID before checking exit; V61
+B155|2026-10-30|Global terminal visibility made first toggle on a different chat hide an absent panel|Open a terminal whenever selected chat has none; V61
+B156|2026-10-30|Terminal output reset detached scrollback offset after vt100 advanced its anchor|Preserve parser anchoring; delayed-output native viewport regression; V61
+B157|2026-10-30|Palette always returned focus to composer, losing the newly added terminal focus target|Retain terminal origin through palette dismissal; active-stream native regression; V60/V61
