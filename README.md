@@ -17,8 +17,9 @@ Only Goose's Bedrock, direct OpenAI and direct Anthropic providers are enabled.
 Expand **Goose options** above Send for the session's model, mode and supported
 reasoning choices. External Codex and remote agent connections are removed;
 Codex files remain untouched. [Embedded runtime status and limitations](docs/goose-acp.md)
-describe the verified foundation and outstanding 0.4.0 work. The T3 sidebar/header foundation is present; full repository/workspace binding,
-auxiliary panels, orchestration and arbitrary old-history navigation remain in progress.
+describe the verified foundation and outstanding 0.4.0 work. The T3 sidebar/header,
+registered repository projects, workspace-bound chats and isolated forks are present.
+Auxiliary panels, full orchestration and arbitrary old-history navigation remain in progress.
 The 1,000-conversation/eight-stream/10,000-message benchmark has passed on games;
 [verification evidence](docs/PORT-VERIFICATION.md) records the 0.3.4 comparison.
 
@@ -40,9 +41,10 @@ authorized opt-level 2 settings below.
 
 ## Test builds
 
-[Fastrock 0.4.0-alpha.1](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-alpha.1)
+[Fastrock 0.4.0-alpha.2](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-alpha.2)
 is available as a signed Windows x64 ZIP with embedded Goose and vwork. Extract
-it and run `fastrock.exe`. This prerelease provides the embedded-runtime milestone;
+it and run `fastrock.exe`. This prerelease adds repository projects, isolated
+conversation/workspace forks and reviewed integration to the embedded runtime;
 the outstanding 0.4.0 features and live-profile acceptance remain open.
 All release assets are built and published by CI. Current releases compile
 macOS for compatibility; historical Mac releases include signed, notarized DMGs.

@@ -1049,3 +1049,22 @@ was changed. Raw receipt: `docs/benchmarks/scale-projects-games-2026-10-29.json`
 full evidence: `fastrock-040-policy\scale-project-1` on games. The following
 alpha.2 version/notes update changes no application behavior; CI rebuilds and
 verifies the exact release assets.
+
+## Alpha.2 published artifact verification
+
+CI run `40990019192` passed for source `3769d3029c1397b6bbc5d453536fe37a46285748`.
+The published Windows ZIP SHA-256 is
+`c09eaee8d5c4da97322215d1a1f18378b460c746bcb7462b2ecfed3e3a84838a`.
+The download matches its checksum and GitHub digest; bundled and online GitHub
+attestation verification bind it to the expected source and release workflow.
+`BUILD.json` identifies the same source, clean build and authorized profile.
+
+The exact downloaded executable has SHA-256
+`0cd17445bbed311008084ee6034bf853532a1db32f4261611ded9876d2347857`.
+Independent Authenticode verification on games reports Valid, Sean McNamara as
+publisher, and a Microsoft RFC3161 timestamp. CI's native Rally, concurrent Goose,
+vwork/project/fork/merge, selection, summary/multiwindow, process recovery and queue
+recovery fixtures all passed against these signed bytes; scrolling also passed.
+Windows Rust tests passed, macOS compiled without tests or publication, and the
+temporary build runner was removed. Receipt:
+`docs/benchmarks/alpha2-release-verification.json`. Live profiles remain unverified.
