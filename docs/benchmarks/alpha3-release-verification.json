@@ -1,0 +1,71 @@
+{
+  "release": "v0.4.0-alpha.3",
+  "source_commit": "57870318bc735dd5baf4fa32171fdecb371cc97a",
+  "workflow_run": 40995814299,
+  "zip_sha256": "b2f6dc3fa74757982c241498a4bb9c2a8b90d5feea2869ea33ad0274781a9e43",
+  "games_signature": {
+    "status": "Valid",
+    "publisher": "CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US",
+    "timestampPublisher": "CN=Microsoft Public RSA Time Stamping Authority, OU=nShield TSS ESN:7A00-05E0-D947, OU=Microsoft America Operations, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+    "sha256": "848093701FDE94186DDCFB0AEFCFA2C0923AEEA6488D43FD611F64860FCA5275"
+  },
+  "ci_native_fixtures": {
+    "goose-chat-smoke": {
+      "result": "PASS",
+      "binary_sha256": "848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275",
+      "peak_process_bytes": 144248832
+    },
+    "history-smoke": {
+      "result": "PASS",
+      "binary_sha256": "848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275",
+      "peak_process_bytes": 148045824
+    },
+    "process-recovery-smoke": {
+      "result": "PASS",
+      "binary_sha256": "848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275",
+      "peak_process_bytes": 150110208
+    },
+    "provider-setup-smoke": {
+      "result": "PASS",
+      "binary_sha256": "848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275",
+      "peak_process_bytes": 139108352
+    },
+    "queue-recovery-smoke": {
+      "result": "PASS",
+      "binary_sha256": "848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275",
+      "peak_process_bytes": 152047616
+    },
+    "rally-smoke": {
+      "result": "PASS",
+      "binary_sha256": "848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275",
+      "peak_process_bytes": 164827136
+    },
+    "selection-smoke": {
+      "result": "PASS",
+      "binary_sha256": "848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275",
+      "peak_process_bytes": 157212672
+    },
+    "summary-smoke": {
+      "result": "PASS",
+      "binary_sha256": "848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275",
+      "peak_process_bytes": 182743040
+    },
+    "vwork-smoke": {
+      "result": "PASS",
+      "binary_sha256": "848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275",
+      "peak_process_bytes": 164286464
+    },
+    "scroll-smoke": {
+      "binary_sha256": "848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275",
+      "peak_process_bytes": 163328000,
+      "frame_p95_ms": {
+        "prose": 4.876,
+        "table": 3.323,
+        "code": 3.283,
+        "tools": 3.643,
+        "streaming": 5.012
+      }
+    }
+  },
+  "live_provider_validation": false
+}

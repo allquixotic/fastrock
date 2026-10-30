@@ -43,10 +43,10 @@ authorized opt-level 2 settings below.
 
 ## Test builds
 
-[Fastrock 0.4.0-alpha.2](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-alpha.2)
+[Fastrock 0.4.0-alpha.3](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-alpha.3)
 is available as a signed Windows x64 ZIP with embedded Goose and vwork. Extract
-it and run `fastrock.exe`. This prerelease adds repository projects, isolated
-conversation/workspace forks and reviewed integration to the embedded runtime;
+it and run `fastrock.exe`. This prerelease adds bounded history navigation and
+native Goose provider defaults to repository projects, isolated forks and reviewed integration;
 the outstanding 0.4.0 features and live-profile acceptance remain open.
 All release assets are built and published by CI. Current releases compile
 macOS for compatibility; historical Mac releases include signed, notarized DMGs.

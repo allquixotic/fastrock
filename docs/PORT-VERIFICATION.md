@@ -1119,3 +1119,24 @@ the 32 GB ceiling. Hypervisor available memory stayed above 5.79 GB with a healt
 heartbeat. The monitor stopped afterward; no VM or host settings changed. Raw
 receipt: `docs/benchmarks/scale-history-games-2026-10-29.json`; full evidence on
 games: `fastrock-040-policy\history-native-1` and `scale-history-1`.
+
+## Alpha.3 published artifact verification
+
+CI run `40995814299` passed for source `57870318bc735dd5baf4fa32171fdecb371cc97a`.
+The downloaded Windows ZIP SHA-256 is
+`b2f6dc3fa74757982c241498a4bb9c2a8b90d5feea2869ea33ad0274781a9e43`;
+it matches the published checksum and GitHub digest. Online and bundled GitHub
+attestations bind it to the expected release tag, source and workflow. `BUILD.json`
+records the same clean source, run and authorized build profile.
+
+The downloaded executable SHA-256 is
+`848093701fde94186ddcfb0aefcfa2c0923aeea6488d43fd611f64860fca5275`.
+Independent verification on games reports a Valid Sean McNamara Authenticode
+signature with a Microsoft RFC3161 timestamp. All nine native CI acceptance
+fixtures passed against these same signed bytes, including the new provider
+defaults and bounded-history fixtures; scrolling also passed. CI passed 708
+application tests, one isolated rendering test, 17 workspace tests and standalone
+embedded Goose verification. macOS compiled without tests or publication. The
+temporary Mac runner was removed. Receipt:
+`docs/benchmarks/alpha3-release-verification.json`. Final 0.4.0 and live-profile
+acceptance remain open.
