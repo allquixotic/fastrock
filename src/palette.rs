@@ -195,6 +195,12 @@ impl AppController {
                 active.is_some(),
             ),
             (
+                "checkpoints",
+                "Checkpoints",
+                "Review or restore files and conversation",
+                active.is_some(),
+            ),
+            (
                 "fork",
                 "Fork conversation",
                 "Create an isolated workspace",

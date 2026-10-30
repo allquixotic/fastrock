@@ -12,6 +12,7 @@ mod approvals;
 mod async_questions;
 mod automation;
 mod backend;
+mod checkpoint_controls;
 mod composer;
 mod connection;
 mod files;

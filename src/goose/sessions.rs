@@ -235,7 +235,7 @@ impl Adapter {
             .await
             .get(id)
             .is_some_and(|s| !s.loaded);
-        if needs_load {
+        if needs_load && !self.recovery_history(id).await? {
             if self.embedded_runtime {
                 super::provider_policy::restored(id)
                     .await
@@ -480,6 +480,11 @@ impl Adapter {
                 .get(&id)
                 .filter(|s| s.loaded)
                 .ok_or_else(|| error("Open the Goose session before sending"))?;
+            if s.recovery_only {
+                return Err(error(
+                    "Review the uncertain history in Checkpoints or fork before the interrupted turn before sending new work",
+                ));
+            }
             if s.active.is_some() {
                 return Err(error("This Goose conversation already has an active turn"));
             }
@@ -509,6 +514,9 @@ impl Adapter {
             return Err(unsupported("image prompts"));
         }
         let tid = uuid::Uuid::new_v4().to_string();
+        self.checkpoint_capture(&id, &tid, "before", "Before turn")
+            .await
+            .map_err(|e| error(format!("Save checkpoint before turn: {e:#}")))?;
         if !self
             .sessions
             .lock()
@@ -572,6 +580,16 @@ impl Adapter {
     async fn finish_turn(self: &Arc<Self>, id: &str, tid: &str, reply: Reply) {
         let completed = reply.as_ref().is_ok_and(|r| r["stopReason"] == "end_turn");
         self.cancel_answers(id).await;
+        let capture = if completed {
+            self.checkpoint_capture(id, tid, "after", "Completed turn")
+                .await
+        } else {
+            Ok(None)
+        };
+        let captured = capture.is_ok();
+        if let Err(e) = capture {
+            let _=self.emit(json!({"method":"error","params":{"threadId":ui_id(id),"turnId":tid,"willRetry":false,"error":{"message":format!("Save completed-turn checkpoint: {e:#}")}}}));
+        }
         let mut sessions = self.sessions.lock().await;
         let Some(s) = sessions.get_mut(id) else {
             return;
@@ -579,10 +597,6 @@ impl Adapter {
         if s.active.as_deref() != Some(tid) {
             return;
         }
-        s.active = None;
-        s.run_id = None;
-        s.cancel_requested = false;
-        s.echo_user = None;
         s.info["updatedAt"] = json!(chrono::Utc::now().to_rfc3339());
         s.info["_meta"]["lastMessageAt"] = s.info["updatedAt"].clone();
         let summarize = completed && !s.ephemeral;
@@ -618,7 +632,7 @@ impl Adapter {
             json!({"method":"turn/completed","params":{"threadId":ui_id(id),"turn":t}});
         let outcome = delegated.then(|| super::delegation::outcome(t));
         drop(sessions);
-        let mut saved = true;
+        let mut saved = captured;
         if let Some(outcome) = outcome {
             if let Err(e) = self.save_delegate_outcome(id, outcome).await {
                 saved = false;
@@ -626,11 +640,26 @@ impl Adapter {
             }
         }
         self.settle_dispatch(id, tid, completed && saved).await;
-        let _=self.emit(json!({"method":"thread/status/changed","params":{"threadId":ui_id(id),"status":{"type":"idle"}}}));
-        self.changed.notify_waiters();
-        if let Err(error) = self.emit(completion) {
-            tracing::error!(error = %error.message, "could not deliver turn completion");
+        {
+            // Keep restore/start blocked through durable completion. Publish its
+            // events while holding the same state lock that admits idle work.
+            let mut sessions = self.sessions.lock().await;
+            let Some(s) = sessions
+                .get_mut(id)
+                .filter(|s| s.active.as_deref() == Some(tid))
+            else {
+                return;
+            };
+            s.active = None;
+            s.run_id = None;
+            s.cancel_requested = false;
+            s.echo_user = None;
+            let _=self.emit(json!({"method":"thread/status/changed","params":{"threadId":ui_id(id),"status":{"type":"idle"}}}));
+            if let Err(error) = self.emit(completion) {
+                tracing::error!(error = %error.message, "could not deliver turn completion");
+            }
         }
+        self.changed.notify_waiters();
         if summarize {
             if let Some(service) = &self.summaries {
                 service.completed(id.to_owned()).await;
@@ -690,6 +719,32 @@ impl Adapter {
             "thread/unarchive" => "unarchive",
             _ => "compact",
         };
+        // Compaction mutates the same public conversation storage as rewind.
+        // Serialize it with turns/restores and leave uncertain history intact.
+        let compact_gate = if suffix == "compact" {
+            Some(self.gate(id).await)
+        } else {
+            None
+        };
+        let _compact_lock = match &compact_gate {
+            Some(gate) => Some(gate.lock().await),
+            None => None,
+        };
+        if suffix == "compact" {
+            let sessions = self.sessions.lock().await;
+            let session = sessions
+                .get(id)
+                .ok_or_else(|| error("Open the conversation before compacting"))?;
+            if session.active.is_some() || session.recovery_only {
+                return Err(error(
+                    "Wait for the turn or resolve recovery before compacting",
+                ));
+            }
+            drop(sessions);
+            self.checkpoint_ready(id)
+                .await
+                .map_err(|e| error(e.to_string()))?;
+        }
         let mut args = json!({"sessionId":id});
         if suffix == "rename" {
             args["title"] = params["name"].clone();
@@ -814,4 +869,81 @@ fn prompt(input: &Value) -> Result<Vec<Value>, JSONRPCErrorError> {
         },
         _=>Err(error(format!("Goose does not support this input type: {}",text(part,"type")))),
     }).collect()
+}
+
+#[cfg(test)]
+mod completion_tests {
+    use super::*;
+    #[tokio::test]
+    async fn v63_turn_remains_busy_until_completion_is_durable_and_emitted() {
+        let temp = tempfile::tempdir().unwrap();
+        let (rpc, _incoming, tasks) = Rpc::stream(tokio::io::empty(), tokio::io::sink());
+        let _tasks = TaskGuard(tasks);
+        let (events, mut receive) = mpsc::channel(32);
+        let (jobs, _jobs) = mpsc::channel(4);
+        let mut session = Session::new("session", "C:\\fixture");
+        session.loaded = true;
+        session.active = Some("turn".into());
+        let mut t = turn("turn", "inProgress");
+        t["items"] = json!([{"type":"agentMessage","id":"answer","text":"done"}]);
+        session.turns.push(t);
+        let adapter = Arc::new(Adapter {
+            rpc,
+            events,
+            sessions: Mutex::new(HashMap::from([("session".into(), session)])),
+            gates: Mutex::new(HashMap::new()),
+            answers: Mutex::new(HashMap::new()),
+            jobs,
+            capabilities: Mutex::new(Value::Null),
+            defaults: Mutex::new(Value::Null),
+            cwd: "C:\\fixture".into(),
+            mcp: mcp::Bridge::new().await.unwrap(),
+            queue: Mutex::new(HashMap::new()),
+            queue_root: temp.path().join("queue"),
+            vwork_paths: fastrock_workspaces::vwork::DiscoveryPaths {
+                user_home: temp.path().into(),
+                configs: Vec::new(),
+                search: Vec::new(),
+                default_vwork_home: temp.path().join("vwork"),
+            },
+            embedded_runtime: false,
+            summaries: None,
+            changed: tokio::sync::Notify::new(),
+            schedules: Mutex::new(schedule::model::State::open(
+                temp.path().join("schedule.json"),
+            )),
+            schedule_gate: Mutex::new(()),
+            webhook_listener: Mutex::new(Default::default()),
+        });
+        // Stop completion at the durable queue boundary without timing sleeps.
+        let queue_guard = adapter.queue.lock().await;
+        let worker = adapter.clone();
+        let finish = tokio::spawn(async move {
+            worker
+                .finish_turn("session", "turn", Ok(json!({"stopReason":"end_turn"})))
+                .await;
+        });
+        tokio::time::timeout(std::time::Duration::from_secs(5), receive.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            adapter.sessions.lock().await["session"].active.as_deref(),
+            Some("turn"),
+            "Restore must not see idle while completion is still settling"
+        );
+        drop(queue_guard);
+        finish.await.unwrap();
+        assert!(adapter.sessions.lock().await["session"].active.is_none());
+        let mut completed = false;
+        while let Ok(event) = receive.try_recv() {
+            if let AppServerEvent::ServerNotification(note) = event {
+                completed |= json!(note).to_string().contains("turn/completed");
+            }
+        }
+        assert!(
+            completed,
+            "Idle requires an already-emitted completion event"
+        );
+    }
 }

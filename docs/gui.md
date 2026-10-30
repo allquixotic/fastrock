@@ -37,6 +37,24 @@ processes; closing the last window to the tray keeps them running. Restart never
 replays a shell or command automatically. Windows terminals start `cmd.exe /D /Q`;
 PowerShell and other interactive tools can be launched from it.
 
+Open **Checkpoints** in the conversation header or command palette. Fastrock
+captures the conversation boundary and virtual source revision before and after
+completed turns. **Save checkpoint** adds a named manual snapshot. Select a row
+to inspect file changes and the message count; the displayed diff runs from the
+checkpoint to the current files, so restoring reverses it. Choose **Files**,
+**Conversation**, or both, then **Restore selected**. The original repository
+checkout remains unchanged. Restore first saves a retained backup that can also
+be selected later.
+
+File restore requires an isolated workspace, no active terminal/temporary lease,
+and a complete current review. Large or stale reviews cannot restore files.
+Conversation rewind checks exact message content and boundaries; if compaction
+changed that history, the panel explains why conversation restore is unavailable.
+If a restore is interrupted, reopen Checkpoints to **Restore retained backup**
+or **Keep reviewed state**. Queued work stays paused until Resume. Saved tool
+calls with uncertain outcomes open as read-only history; restore a completed
+checkpoint or fork before the interrupted turn to continue without replaying them.
+
 Conversations appear in the sidebar. Click the active title in the header for
 rename, fork, compact, export and other conversation actions. **Open tabs** also
 reaches open child conversations and files. The sidebar footer opens settings;

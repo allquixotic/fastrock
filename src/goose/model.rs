@@ -38,6 +38,7 @@ pub(super) struct Session {
     pub cancel_requested: bool,
     pub replaying: bool,
     pub loaded: bool,
+    pub recovery_only: bool,
     pub ephemeral: bool,
     pub last_chunk: String,
     pub echo_user: Option<String>,

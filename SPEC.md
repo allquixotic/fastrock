@@ -39,6 +39,7 @@ Broader GUI contract: repository `GUI.md`.
 - I.vwork: embedded vwork Engine and public tool API, exclusive existing redb owner; workspace browser/editor/compaction and compressed current search summaries share database.
 - I.orchestration: persistent threads/runs/queues/lineage/mailboxes/schedules; delegate/message/wait/interrupt/fork/model switch/explicit merge/recovery; no quota features.
 - I.search: immediate deterministic substring plus bounded parallel fuzzy search; background cheap-model current-summary replacement and backfill.
+- I.checkpoints: per-turn/manual snapshots, native file review, guarded file restore and Goose conversation rewind; durable interrupted-restore review.
 - I.lifecycle: close-to-tray, explicit Quit, restart Resume and safe cancellation.
 
 ## §R REFERENCES
@@ -146,6 +147,10 @@ V60: Native command palette ! cached commands/projects/chats, bounded determinis
 
 V61: Native terminal ! explicit user launch, owned process lifecycle, bounded VT scrollback and coalesced changed-cell updates. Bound workspace ! renewable vwork copy; import ! named paths and expected revision; close ! stop owned processes and preserve unimported source through vwork recovery. Restart ! no automatic shell/command replay. Verify: v61 VT/input/bounds tests and native PTY/resize/scroll/copy/lease/recovery/process-exit fixture.
 
+V62: Checkpoints ! immutable turn/manual metadata compressed in owning vwork redb; file revisions ! pinned through public vwork commit API, survive squash/GC. Review ! bounded, read-only, exact source/current revisions; incomplete/stale review ! no restore. Restore ! new virtual revision, original checkout and prior history unchanged. Verify: v62 capture/reopen/GC/review/stale-head tests and native checkpoint panel fixture.
+
+V63: Conversation rewind ! unchanged Goose public storage API, completed-message boundary, idle/isolated ownership and stale-content guard. Combined restore ! durable original conversation/revision before mutation; interruption ! review-only, queues paused, no automatic replay. Recoverable backup ! retained; unrelated profiles/settings/history ! preserved. Verify: v63 boundary/journal/failure/restart tests and native file/conversation restore/recovery fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -197,7 +202,7 @@ T36|~|Embedded session/prompt/close and three Runtime routes verified on games f
 T37|~|Embedded Goose; remove Codex UI/connection; native defaults and creation/restore/switch scope guards; preserve configuration; named profiles via public command-auth/vault, saved effort defaults and explicit model IDs verified; AWS isolation R7 and remaining acceptance open|V38,V39,V52,V57,V59,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
 T39|~|Port T3 V2 orchestration; isolated forks/delegation and native timed schedules verified; signed native webhook scheduling implemented; remaining coordination acceptance open; no quotas|V41,V50,V55,V56,V58,I.orchestration
-T40|~|Native T3 main UI/sidebar/panels, repository projects, independent Rally project, schedule/webhook and provider editors; native command palette and workspace terminals verified; checkpoint/capability UI parity remains open|V42,V51,V60,I.questions,I.links
+T40|~|Native T3 main UI/sidebar/panels, repository projects, independent Rally project, schedule/webhook and provider editors; native command palette, workspace terminals and durable checkpoints verified; capability UI/T3 acceptance remains open|V42,V51,V60,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and bounded arbitrary history viewports|V1,V9,V32,V37,V43,V53,I.scroll
 T43|~|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
@@ -205,7 +210,7 @@ T44|~|Watchdog-protected games benchmarks, full Windows verification, Mac compil
 T45|x|In-process Rally windows and scoped UI/backend routing|V38,V42,V47,V48
 T46|x|Native command palette with bounded matching, keyboard/pointer navigation and retained drafts|V42,V60
 T47|x|Native interactive terminal panels with isolated user-requested processes, bounded scrollback and lifecycle checks|V38,V42,V43,V47,V61
-T48|.|Conversation checkpoint/review/restore workflows over guarded vwork revisions|V40,V41,V42,V49
+T48|x|Conversation checkpoint/review/restore workflows over guarded vwork revisions|V40,V41,V42,V49,V62,V63,I.checkpoints
 T49|x|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
 T50|.|Complete native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42
 T51|.|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44
@@ -232,6 +237,8 @@ Native-window foundation verification, 2026-10-29: one shared embedded backend, 
 Tray lifecycle verification, 2026-10-29: native Slint tray, last-window close preserves active work, restore retains conversation state, native menu Quit flushes asynchronous preferences and stops the shared runtime. Games 700 application tests, one renderer test, 16 workspace fixtures and standalone embedded Goose fixture passed. Combined three-turn/two-window/Rally navigation and draft-transfer fixture passed with eight local model calls, local Rally GETs only and 179,818,496 peak process bytes. Binary SHA-256 `9d00955e020a3d93ce9a75f6a23d94cc77e831d1a5a17e8c2d38fcc493b5ebfb`; games receipt `C:\Users\SeanMcNamara\fastrock-040-policy\tray-native-8\acceptance.json`. Both document owners share PID 6468; native window count includes the tray popup. Mac compile, build policy, formatting and diff checks passed. T43 remains open for restart Resume/draft recovery; T44 full-scale comparison and release remain open. No Mac execution or release tag.
 
 Terminal verification, 2026-10-30: 735 application tests, 18 workspace tests, renderer, standalone embedded Goose and full native terminal fixture passed on games. Guarded import/stale revision/recovery, VT/input bounds, final-output retention, closed-history scroll/resize, native copy/paste/Ctrl+C, Escape/palette focus during streaming, detached output anchoring, process ownership, chat/Quit cleanup and no restart replay verified. Native palette and three-turn/two-window/Rally/tray regressions passed. Mac compile/static audits passed, no Mac execution. Terminal peak 163,041,280 bytes; SHA-256 `890b9fd23e6ec191f0b19b3e96877b41519be4cc2509fc551bc019014c5708e2`; receipt `docs/benchmarks/terminal-games-2026-10-30.json`. T47 complete; checkpoints/capability/T3 acceptance remain open. No release tag.
+
+Checkpoint verification, 2026-10-30: 738 application tests, 24 workspace tests, renderer, standalone Goose and native checkpoint fixture passed on games. Exact boundary/config preservation, GC pins, concurrent capture, stale/incomplete review, leases, file/conversation restore, durable partial-restore recovery and approved uncertain-tool read-only loading verified. Terminal/palette/summary/two-window/Rally/tray regressions passed. Mac compile/static checks passed. SHA-256 `83c72f8add308112b3e7c32628c24f59f440bcbd09912703a6e2e3ca89a69989`, peak 150,126,592 bytes; receipt `docs/benchmarks/checkpoints-games-2026-10-30.json`. T48 complete; T50/T51/full acceptance open. No release tag.
 
 ## §B BUGS
 id|date|cause|fix
@@ -480,3 +487,8 @@ B154|2026-10-30|Terminal chat-close fixture invoked nonexistent thread tab actio
 B155|2026-10-30|Global terminal visibility made first toggle on a different chat hide an absent panel|Open a terminal whenever selected chat has none; V61
 B156|2026-10-30|Terminal output reset detached scrollback offset after vt100 advanced its anchor|Preserve parser anchoring; delayed-output native viewport regression; V61
 B157|2026-10-30|Palette always returned focus to composer, losing the newly added terminal focus target|Retain terminal origin through palette dismissal; active-stream native regression; V60/V61
+B158|2026-10-30|Checkpoint fixture treated git2 0.21 reference name Result as Option|Use is_ok_and; compile oracle; V62
+B159|2026-10-30|Upstream session/load activates pending or already-approved tool continuations; ordinary restore/restart could replay uncertain work|Read public stored history without activating an agent while tools or restore are unresolved; explicit safe checkpoint/fork required; v63_uncertain_history_is_read_only_without_activating_tools; V41/V63
+B160|2026-10-30|Recovery projection moved non-Copy Role; test used Value for JsonObject and Display for Vec|Borrow role, use object map and JSON serialization; compile oracle; V63
+B161|2026-10-30|Native recovery fault was compiled out because application profile disables debug assertions|Gate deliberate interruption on explicit UI automation plus fixture flag; rerun identical application bytes; V63
+B162|2026-10-30|Turn became idle before durable queue settlement and completion notification; restore could race the old completion event|Keep active until settled and emit completion under the state lock; deterministic queue-barrier test failed before fix; v63_turn_remains_busy_until_completion_is_durable_and_emitted; V41/V63

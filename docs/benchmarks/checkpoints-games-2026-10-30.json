@@ -1,0 +1,35 @@
+{
+  "binary_sha256": "83c72f8add308112b3e7c32628c24f59f440bcbd09912703a6e2e3ca89a69989",
+  "peak_bytes": 150126592,
+  "turn_checkpoints": 4,
+  "checks": [
+    "manual/turn capture",
+    "native diff",
+    "file + exact conversation restore",
+    "retained backup",
+    "draft retention",
+    "stale review guard",
+    "original checkout unchanged",
+    "durable interrupted restore",
+    "restart review only",
+    "explicit rollback",
+    "files-only restore",
+    "conversation-only restore",
+    "approved uncertain tools never activated",
+    "read-only recovery preserves stored messages"
+  ],
+  "result": "PASS",
+  "application_tests": 738,
+  "workspace_tests": 24,
+  "renderer_test": true,
+  "standalone_embedded_goose": true,
+  "native_regressions": [
+    "terminal",
+    "palette",
+    "three-turn summaries/search",
+    "two-window Rally transfer",
+    "tray lifecycle"
+  ],
+  "mac_compile": true,
+  "completion_race_failed_before_fix": true
+}

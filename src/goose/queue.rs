@@ -99,6 +99,22 @@ impl Adapter {
         let id = session_id(text(params, "threadId"))?.to_string();
         let gate = self.gate(&id).await;
         let lock = gate.lock().await;
+        if method == "fastrock/goose/resumeQueue" {
+            if self
+                .sessions
+                .lock()
+                .await
+                .get(&id)
+                .is_some_and(|s| s.recovery_only)
+            {
+                return Err(error(
+                    "Review the interrupted restore or uncertain tools in Checkpoints before resuming",
+                ));
+            }
+            self.checkpoint_ready(&id)
+                .await
+                .map_err(|e| error(e.to_string()))?;
+        }
         self.load_queue(&id).await?;
         let mut queues = self.queue.lock().await;
         let state = queues

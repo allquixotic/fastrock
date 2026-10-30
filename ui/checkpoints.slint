@@ -1,0 +1,95 @@
+// T3-style checkpoint review, adapted to virtual source and Goose history.
+import { Button, LineEdit, CheckBox, ListView } from "std-widgets.slint";
+import { Theme, FlatButton } from "theme.slint";
+export struct CheckpointRow { id: string, title: string, detail: string }
+export global CheckpointState {
+    in property <bool> open;
+    in property <bool> busy;
+    in property <bool> can-files;
+    in property <bool> can-conversation;
+    in property <bool> reviewed;
+    in property <bool> more;
+    in property <bool> recovery;
+    in property <bool> blocked;
+    in property <[CheckpointRow]> rows;
+    in property <[string]> lines;
+    in property <string> selected;
+    in property <string> description;
+    in property <string> status;
+    in-out property <string> label;
+    in-out property <bool> files;
+    in-out property <bool> conversation;
+    callback action(string);
+    callback select(string);
+}
+export component CheckpointPanel inherits Rectangle {
+    background: #00000060;
+    TouchArea { clicked => { CheckpointState.action("close"); } }
+    focus := FocusScope {
+        init => { self.focus(); }
+        capture-key-pressed(event) => {
+            if event.text == Key.Escape { CheckpointState.action("close"); return EventResult.accept; }
+            return EventResult.reject;
+        }
+        key-pressed(event) => { return EventResult.accept; }
+        Rectangle {
+            x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+            width: min(1100px, max(0px, parent.width - 32px));
+            height: min(800px, max(0px, parent.height - 48px));
+            background: Theme.surface; border-color: Theme.border-strong; border-width: 1px; border-radius: Theme.radius;
+            TouchArea { }
+            VerticalLayout {
+                padding: Theme.pad-m; spacing: Theme.pad-s;
+                HorizontalLayout {
+                    Text { text: "Checkpoints"; color: Theme.text; font-size: Theme.font-size; vertical-alignment: center; horizontal-stretch: 1; }
+                    FlatButton { text: "Refresh"; enabled: !CheckpointState.busy; clicked => { CheckpointState.action("refresh"); } }
+                    FlatButton { text: "Close"; clicked => { CheckpointState.action("close"); } }
+                }
+                if CheckpointState.blocked: Text { text: "A restore was interrupted. Review its retained backup, then restore it or keep the current state. Queued work remains paused."; color: Theme.text; wrap: word-wrap; }
+                HorizontalLayout {
+                    LineEdit { text <=> CheckpointState.label; placeholder-text: "Optional checkpoint label"; horizontal-stretch: 1; enabled: !CheckpointState.busy && !CheckpointState.blocked; }
+                    Button { text: "Save checkpoint"; enabled: !CheckpointState.busy && !CheckpointState.blocked; clicked => { CheckpointState.action("capture"); } }
+                }
+                HorizontalLayout {
+                    spacing: Theme.pad-m;
+                    VerticalLayout {
+                        width: min(300px, parent.width * 0.35);
+                        ListView {
+                            horizontal-scrollbar-policy: always-off;
+                            for row in CheckpointState.rows: Rectangle {
+                                height: 58px;
+                                background: row.id == CheckpointState.selected ? Theme.selected : transparent;
+                                VerticalLayout { padding: 6px; spacing: 2px;
+                                    Text { text: row.title; color: Theme.text; overflow: elide; }
+                                    Text { text: row.detail; color: Theme.text-muted; font-size: Theme.font-size-small; overflow: elide; }
+                                }
+                                TouchArea { enabled: !CheckpointState.busy; mouse-cursor: pointer; clicked => { CheckpointState.select(row.id); } }
+                            }
+                        }
+                        if CheckpointState.more: Button { text: "Older checkpoints"; enabled: !CheckpointState.busy; clicked => { CheckpointState.action("older"); } }
+                    }
+                    VerticalLayout {
+                        horizontal-stretch: 1; spacing: Theme.pad-s;
+                        Text { text: CheckpointState.description; color: Theme.text-muted; wrap: word-wrap; }
+                        Text { text: "Diff: checkpoint → current files. Restore reverses these changes."; color: Theme.text-faint; font-size: Theme.font-size-small; wrap: word-wrap; }
+                        ListView {
+                            vertical-stretch: 1; horizontal-scrollbar-policy: as-needed;
+                            for line in CheckpointState.lines: Text { text: line; color: line.starts-with("+") ? #37a46d : line.starts-with("-") ? #d16868 : Theme.text; font-family: Theme.mono-font; font-size: 12px; height: 18px; }
+                        }
+                        FlatButton { text: "Copy review"; enabled: CheckpointState.reviewed; clicked => { CheckpointState.action("copy"); } }
+                        if !CheckpointState.blocked: HorizontalLayout {
+                            CheckBox { text: "Files"; checked <=> CheckpointState.files; enabled: !CheckpointState.busy && CheckpointState.can-files; }
+                            CheckBox { text: "Conversation"; checked <=> CheckpointState.conversation; enabled: !CheckpointState.busy && CheckpointState.can-conversation; }
+                            Button { text: "Restore selected"; enabled: !CheckpointState.busy && CheckpointState.reviewed && (CheckpointState.files || CheckpointState.conversation); clicked => { CheckpointState.action("restore"); } }
+                        }
+                        if CheckpointState.recovery: HorizontalLayout {
+                            Button { text: "Restore retained backup"; enabled: !CheckpointState.busy && CheckpointState.reviewed; clicked => { CheckpointState.action("rollback"); } }
+                            Button { text: "Keep reviewed state"; enabled: !CheckpointState.busy && CheckpointState.reviewed; clicked => { CheckpointState.action("keep"); } }
+                        }
+                    }
+                }
+                Text { text: CheckpointState.busy ? "Working…" : CheckpointState.status; color: Theme.text-muted; wrap: word-wrap; }
+            }
+        }
+    }
+}

@@ -55,6 +55,7 @@ pub(crate) enum Step {
     /// Optional vwork window fixture operations (no implicit local exports).
     VirtualWorkspaces(Vec<String>),
     Terminal(Vec<String>),
+    Checkpoints(Vec<String>),
     /// Click a rendered native control by its exact visible label.
     ClickText(String),
     /// Wait for the active thread's cached purpose and background queue to settle.
@@ -488,6 +489,7 @@ impl AppController {
                 Step::InjectRequest(request) => self.approvals_automation_inject(request),
                 Step::Composer(args) => self.composer_automation(&args),
                 Step::Terminal(args) => self.terminal_automation(&args),
+                Step::Checkpoints(args) => self.checkpoints_automation(&args),
                 Step::VirtualWorkspaces(args) => self.virtual_workspaces_automation(&args),
                 Step::Bedrock(args) => self.bedrock_automation(&args),
                 Step::Forward(text) => {

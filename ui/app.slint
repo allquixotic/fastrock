@@ -1,3 +1,4 @@
+import { CheckpointPanel, CheckpointState, CheckpointRow } from "checkpoints.slint";
 // Main window: tab strip, sidebar, active tab content, info pane, and the
 // shared modal dialog, toast, and status overlays.
 //
@@ -28,7 +29,7 @@ import { PendingMessageState, PendingMessageEditor } from "pending-message.slint
 
 export {
     TerminalState, TerminalCell, TerminalTab,
-    CommandPaletteState, CommandPaletteRow,
+    CommandPaletteState, CommandPaletteRow, CheckpointState, CheckpointRow,
     ProfileState, ProfileRow,
     ScheduleState, ScheduleRow, ScheduleDay,
     GooseState, GooseOption, GooseSetupField,
@@ -723,6 +724,10 @@ component WorkspaceHeader inherits Rectangle {
             clicked => { AppState.menu-action("toggle-terminal"); }
         }
         if AppState.active-kind == TabKindCode.thread: LinkButton {
+            text: "Checkpoints"; text-color: Theme.text-muted;
+            clicked => { AppState.menu-action("checkpoints"); }
+        }
+        if AppState.active-kind == TabKindCode.thread: LinkButton {
             text: "Info";
             text-color: AppState.info-visible ? Theme.accent : Theme.text-muted;
             clicked => { AppState.toggle-info(); }
@@ -1201,7 +1206,7 @@ export component MainWindow inherits Window {
     // matches them against the keymap (src/shortcuts.rs).
     shortcuts := FocusScope {
         capture-key-pressed(event) => {
-            if AppState.dialog-open || AppState.about-open || CommandPaletteState.open {
+            if AppState.dialog-open || AppState.about-open || CommandPaletteState.open || CheckpointState.open {
                 return EventResult.reject;
             }
             // While the composer's suggestion popup is open, Esc closes it.
@@ -1330,6 +1335,8 @@ export component MainWindow inherits Window {
     }
 
     if PendingMessageState.open: PendingMessageEditor { width: parent.width; height: parent.height; }
+
+    if CheckpointState.open: CheckpointPanel { width: parent.width; height: parent.height; }
 
     if CommandPaletteState.open: CommandPalette { width: parent.width; height: parent.height; }
 

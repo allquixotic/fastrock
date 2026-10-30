@@ -1411,3 +1411,42 @@ Executable SHA-256 `890b9fd23e6ec191f0b19b3e96877b41519be4cc2509fc551bc019014c57
 163,041,280 bytes under its 2 GB guard. This is not the full
 V45 benchmark. Checkpoints, Goose capability controls and final T3/RC acceptance
 remain open. No release tag or binary publication.
+
+
+## 0.4.0 checkpoints and recovery — 2026-10-30
+
+Turn/manual checkpoint metadata is compressed in the existing vwork redb.
+Unmodified vwork's public commit operation pins file revisions through squash
+and GC; restores create guarded new revisions and leave the original checkout
+intact. Native Slint review supports files, conversation, or both, with bounded
+diffs and exact Goose message-boundary checks. Public Goose storage APIs preserve
+provider/session configuration. A durable compressed restore journal retains the
+original conversation and pinned revision before either store changes. Interrupted
+operations require explicit rollback or acceptance of the reviewed current state.
+Queues remain paused. Compaction is serialized with restores and turns. A
+deterministic queue-barrier test reproduced an idle/completion race; completion
+now stays active until its durable handoff and notification are finished.
+
+Upstream Goose can activate saved tool continuations during session/load. Fastrock
+therefore renders uncertain history directly from public session storage without
+activating an agent. The native fixture seeded an already-approved request with
+no stored result and verified no provider turn or stored-message mutation on open
+or Resume. Continuing requires a safe checkpoint or fork before that turn.
+
+Games passed 738 application tests, 24 workspace tests (including six checkpoint
+and journal tests), native renderer and standalone embedded Goose. The checkpoint
+fixture covered manual/per-turn capture, file/mode diff, combined and individual
+restore modes, recoverable backups, stale previews, retained drafts, unchanged
+checkout, deliberate interruption, restart review and explicit rollback. Eight
+concurrent captures, GC/reopen, active-lease exclusion and repeated failed
+recovery were also tested. Terminal, palette, three-turn summary/search,
+two-window Rally transfer and tray regressions passed. Mac library compilation,
+formatting, build/release-policy and diff checks passed; no Mac application tests
+or GUI execution.
+
+Receipt: `docs/benchmarks/checkpoints-games-2026-10-30.json`; native evidence:
+`C:\Users\SeanMcNamara\fastrock-040-policy\checkpoint-native-4`.
+Executable SHA-256 `83c72f8add308112b3e7c32628c24f59f440bcbd09912703a6e2e3ca89a69989`;
+checkpoint fixture peak 150,126,592 bytes under its 2 GB guard. Goose capability
+controls, final T3 audit and full RC acceptance remain open. No release tag or
+binary publication.

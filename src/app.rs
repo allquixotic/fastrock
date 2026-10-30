@@ -318,6 +318,7 @@ pub(crate) type DialogCallback = Box<dyn FnOnce(&mut AppController, Option<Strin
 /// All UI-thread state. Lives in a thread-local; see [`crate::ui_thread`].
 pub(crate) struct AppController {
     pub(crate) terminal: crate::terminal::Controller,
+    pub(crate) checkpoints: crate::checkpoint_controls::Controller,
     pub(crate) palette_terminal_focus: bool,
     pub(crate) virtual_workspaces: crate::virtual_workspaces::Controller,
     pub(crate) window: MainWindow,
@@ -392,6 +393,7 @@ impl AppController {
         }
         Self {
             terminal: crate::terminal::Controller::default(),
+            checkpoints: crate::checkpoint_controls::Controller::default(),
             palette_terminal_focus: false,
             virtual_workspaces: crate::virtual_workspaces::Controller::default(),
             window,
@@ -438,6 +440,7 @@ impl AppController {
         self.bind_chrome();
         self.palette_bind();
         self.terminal_bind();
+        self.checkpoints_install();
         self.load_window_icon();
         self.apply_theme();
         self.reload_keymap();
@@ -1131,6 +1134,7 @@ impl AppController {
         self.transcript_show();
         self.composer_show();
         self.terminal_show();
+        self.checkpoints_context_changed();
         self.approvals_show();
         self.info_show();
         match kind {
@@ -1559,6 +1563,7 @@ impl AppController {
         match name {
             "command-palette" => self.palette_toggle(),
             "toggle-terminal" => self.terminal_toggle(),
+            "checkpoints" => self.checkpoints_open(),
             "new-tab" => self.open_new_tab_page(),
             "close-tab" => {
                 if let Some(index) = self.active {

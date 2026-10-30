@@ -1,5 +1,7 @@
 //! Embedded Goose adapter. Goose owns agents/config/storage; these are UI projections.
 mod cheap_profile;
+mod checkpoint_storage;
+mod checkpoints;
 mod controls;
 mod delegation;
 mod delegation_tools;
@@ -11,6 +13,7 @@ mod model;
 mod profile_controls;
 pub(crate) mod profiles;
 mod queue;
+mod recovery_history;
 mod schedule;
 pub(crate) use queue::Recovery;
 mod effort_controls;
@@ -567,6 +570,15 @@ impl Adapter {
                 self.manage(params, method).await
             }
             "thread/unsubscribe" => self.close_session(params).await,
+            "fastrock/checkpoint/list"
+            | "fastrock/checkpoint/capture"
+            | "fastrock/checkpoint/review"
+            | "fastrock/checkpoint/restore"
+            | "fastrock/checkpoint/rollback"
+            | "fastrock/checkpoint/keep" => {
+                self.checkpoint_request(params, method.rsplit('/').next().unwrap())
+                    .await
+            }
             "fastrock/goose/terminalContext" => {
                 let id = session_id(text(params, "threadId"))?;
                 let sessions = self.sessions.lock().await;
