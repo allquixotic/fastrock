@@ -10,6 +10,7 @@
 import { ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 import { GooseState, GooseSettingsPage } from "goose.slint";
+import { RecipesPage } from "recipes.slint";
 import { CapabilitiesPage } from "capabilities.slint";
 import { SchedulesPage } from "schedules.slint";
 import { BedrockPage } from "bedrock.slint";
@@ -75,6 +76,7 @@ component SettingsNav inherits Rectangle {
             if GooseState.active: NavButton { id: "goose"; title: "Goose"; }
             if GooseState.active: NavButton { id: "schedules"; title: "Schedules"; }
             if GooseState.active: NavButton { id: "capabilities"; title: "Tools & hooks"; }
+            if GooseState.active: NavButton { id: "recipes"; title: "Recipes"; }
             if !GooseState.active: VerticalLayout {
             NavCaption {
                 text: "Configuration";
@@ -186,6 +188,7 @@ export component SettingsView inherits Rectangle {
             if SettingsState.page == "goose": GooseSettingsPage { }
             if SettingsState.page == "schedules": SchedulesPage { }
             if SettingsState.page == "capabilities": CapabilitiesPage { }
+            if SettingsState.page == "recipes": RecipesPage { }
             if SettingsState.page == "all": AllSettingsPage { }
             if SettingsState.page == "raw": RawConfigPage { }
             if SettingsState.page == "account": AccountPage { }

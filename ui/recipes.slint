@@ -1,0 +1,77 @@
+import { ComboBox, LineEdit, TextEdit, ListView, ScrollView } from "std-widgets.slint";
+import { Theme, FlatButton } from "theme.slint";
+export struct RecipeRow { id: string, title: string, description: string }
+export struct RecipeParameter { key: string, description: string, kind: string, required: bool, value: string, options: [string] }
+export global RecipeState {
+    in property <[RecipeRow]> rows;
+    in property <[string]> projects;
+    in-out property <int> project-index: -1;
+    in-out property <[RecipeParameter]> parameters;
+    in property <string> selected;
+    in property <bool> busy;
+    in property <string> status;
+    in property <bool> editing;
+    in-out property <bool> deleting;
+    in-out property <bool> dirty;
+    in-out property <string> content;
+    callback action(string);
+    callback select(string);
+}
+export component RecipesPage inherits Rectangle {
+    background: Theme.surface;
+    ScrollView {
+        content-height: content.preferred-height;
+        content := VerticalLayout {
+            alignment: start; padding: Theme.pad-l; spacing: Theme.pad-m;
+            Text { text: "Goose recipes"; color: Theme.text; font-size: 20px; font-weight: 600; }
+            Text { text: "Reusable instructions, prompts, model settings and tools. Prepare a new workspace conversation, then review and send its prompt."; color: Theme.text-muted; wrap: word-wrap; }
+            HorizontalLayout {
+                FlatButton { text: "Reload recipes"; enabled: !RecipeState.busy && !RecipeState.dirty; clicked => { RecipeState.action("list"); } }
+                FlatButton { text: "New recipe"; enabled: !RecipeState.busy && !RecipeState.dirty; clicked => { RecipeState.action("new"); } }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            ListView {
+                height: RecipeState.editing ? 130px : 280px;
+                for item in RecipeState.rows: Rectangle {
+                    height: 58px; background: item.id == RecipeState.selected ? Theme.hover : transparent;
+                    VerticalLayout { padding: Theme.pad-s;
+                        Text { text: item.title; color: Theme.text; overflow: elide; }
+                        Text { text: item.description; color: Theme.text-muted; overflow: elide; }
+                    }
+                    TouchArea { enabled: !RecipeState.busy && !RecipeState.dirty; clicked => { RecipeState.select(item.id); } }
+                }
+            }
+            if RecipeState.editing: VerticalLayout {
+                spacing: Theme.pad-m;
+                Text { text: "Recipe YAML or JSON"; color: Theme.text; }
+                TextEdit { height: 260px; text <=> RecipeState.content; enabled: !RecipeState.busy; edited => { RecipeState.dirty = true; } }
+                HorizontalLayout {
+                    FlatButton { text: "Save recipe"; enabled: !RecipeState.busy && RecipeState.dirty; clicked => { RecipeState.action("save"); } }
+                    FlatButton { text: "Discard edits"; enabled: !RecipeState.busy; clicked => { RecipeState.action("discard"); } }
+                    if RecipeState.selected != "": FlatButton { text: "Delete recipe"; enabled: !RecipeState.busy && !RecipeState.dirty; clicked => { RecipeState.deleting = true; } }
+                    Rectangle { horizontal-stretch: 1; }
+                }
+                if RecipeState.deleting: HorizontalLayout {
+                    Text { text: "Delete this recipe? A backup is retained."; color: Theme.text; }
+                    FlatButton { text: "Confirm deletion"; enabled: !RecipeState.busy && !RecipeState.dirty; clicked => { RecipeState.action("delete"); } }
+                    FlatButton { text: "Cancel"; enabled: !RecipeState.busy; clicked => { RecipeState.deleting = false; } }
+                }
+                if RecipeState.selected != "": VerticalLayout {
+                    spacing: Theme.pad-m;
+                    Text { text: "Parameters"; color: Theme.text; font-weight: 600; }
+                    for parameter in RecipeState.parameters: VerticalLayout {
+                        spacing: 4px;
+                        Text { text: parameter.key + " · " + parameter.kind + (parameter.required ? " · required" : " · optional"); color: Theme.text; }
+                        Text { text: parameter.description; color: Theme.text-muted; wrap: word-wrap; }
+                        if parameter.options.length > 0: ComboBox { model: parameter.options; current-value <=> parameter.value; enabled: !RecipeState.busy && !RecipeState.dirty; }
+                        if parameter.options.length == 0: LineEdit { text <=> parameter.value; enabled: !RecipeState.busy && !RecipeState.dirty; }
+                    }
+                    Text { text: "Repository"; color: Theme.text; }
+                    ComboBox { model: RecipeState.projects; current-index <=> RecipeState.project-index; enabled: !RecipeState.busy; }
+                    FlatButton { text: "Prepare recipe conversation"; enabled: !RecipeState.busy && !RecipeState.dirty && RecipeState.project-index >= 0; clicked => { RecipeState.action("prepare"); } }
+                }
+            }
+            Text { text: RecipeState.status; color: Theme.text-muted; wrap: word-wrap; }
+        }
+    }
+}

@@ -81,6 +81,16 @@ impl Adapter {
         }) {
             args["_meta"]["provider"] = json!(provider);
         }
+        match super::recipes::session_recipe(params, &servers).await {
+            Ok(Some(deeplink)) => args["_meta"]["recipeDeeplink"] = json!(deeplink),
+            Ok(None) => {}
+            Err(error) => {
+                if let Some(registration) = &registration {
+                    self.mcp.remove(&registration.key).await;
+                }
+                return Err(error);
+            }
+        }
         let reply = self.rpc.call("session/new", args).await;
         let response = match reply {
             Ok(r) => r,

@@ -220,6 +220,21 @@ impl AppController {
         (self.thread_tab(index)?.extras.open_generation == generation).then_some(index)
     }
 
+    pub(crate) fn attach_recipe_conversation(
+        &mut self,
+        response: ThreadStartResponse,
+        workspace: serde_json::Value,
+        prompt: String,
+    ) {
+        let mut thread = ThreadTab::new(response.cwd.clone().into_path_buf());
+        thread.extras.workspace = serde_json::from_value(workspace).ok();
+        thread.xtab_enabled = self.prefs.cross_tab_tools;
+        thread.composer.text = prompt;
+        let index = self.push_tab(TabKind::Thread(Box::new(thread)), true);
+        self.on_thread_started(index, response);
+        self.refresh_tabs();
+    }
+
     fn on_thread_started(&mut self, index: usize, response: ThreadStartResponse) {
         crate::perf::mark("thread-started");
         let Some(thread) = self.thread_tab_mut(index) else {

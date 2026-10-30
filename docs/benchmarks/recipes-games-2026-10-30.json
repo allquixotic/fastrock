@@ -1,0 +1,22 @@
+{
+  "result": "PASS",
+  "binary_sha256": "d3a1e714e0806b7e1acf86398ac478160d99b5e99a78b1b8ad9532fbcaa74093",
+  "peak_process_bytes": 144539648,
+  "native_recipe_edit": true,
+  "stale_edit_preserved": true,
+  "guarded_delete_with_backup": true,
+  "typed_parameters": true,
+  "provider_scope_enforced": true,
+  "recipe_model_applied": true,
+  "prepared_prompt_retained": true,
+  "embedded_workspace_tool_executed": true,
+  "extension_replacement_retains_workspace": true,
+  "restart_no_recipe_run": true,
+  "resume_retains_recipe_and_workspace": true,
+  "application_tests": 748,
+  "standalone_goose": "PASS",
+  "mac_library_compile": "PASS",
+  "capability_regression": "PASS",
+  "source_only": true,
+  "native_evidence": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\recipe-native-6"
+}

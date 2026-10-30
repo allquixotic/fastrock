@@ -155,6 +155,8 @@ V64: Native Goose capabilities ! public APIs, off-UI IO, bounded catalog, idle-s
 
 V65: Native Goose startup/settings writes ! reject malformed or oversized writable config before public APIs can recover it as empty. Original bytes ! retained; parser diagnostics ! never expose credential-bearing lines. Verify: v65_malformed_goose_config_is_preserved_before_capability_edits.
 
+V66: Native recipes ! unchanged Goose validation/render/storage APIs, bounded documents/parameters, stale-save/delete guards and original-byte backups. Prepare ! registered isolated workspace, supported provider checked before activation, mandatory embedded tool bindings retained; no automatic prompt or restart run. Parameter rendering ! no silent second interpretation. Verify: v66 recipe render/stale/backup tests and native recipe/edit/parameter/provider/workspace/restart fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -216,7 +218,7 @@ T46|x|Native command palette with bounded matching, keyboard/pointer navigation 
 T47|x|Native interactive terminal panels with isolated user-requested processes, bounded scrollback and lifecycle checks|V38,V42,V43,V47,V61
 T48|x|Conversation checkpoint/review/restore workflows over guarded vwork revisions|V40,V41,V42,V49,V62,V63,I.checkpoints
 T49|x|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
-T50|~|Complete native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42,V64,V65
+T50|x|Native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42,V64,V65,V66
 T51|.|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44
 
 V53 verification, 2026-10-29: games 708 application + one renderer + 17 workspace tests and standalone embedded Goose fixture passed; native history navigation/selection/stream/export passed. Full 1,000/eight/10,000 workload passed, 217,894,912 peak process bytes; arbitrary 100-entry pages restored in 4–6 ms. Recent-frame p95 10.380 ms exceeds earlier 0.3.4 baseline 8.487 ms; no general scrolling-speedup claim. Mac compile only passed. Evidence: docs/PORT-VERIFICATION.md and docs/benchmarks/scale-history-games-2026-10-29.json. T42/T44 remain open for remaining acceptance.
@@ -245,6 +247,8 @@ Terminal verification, 2026-10-30: 735 application tests, 18 workspace tests, re
 Checkpoint verification, 2026-10-30: 738 application tests, 24 workspace tests, renderer, standalone Goose and native checkpoint fixture passed on games. Exact boundary/config preservation, GC pins, concurrent capture, stale/incomplete review, leases, file/conversation restore, durable partial-restore recovery and approved uncertain-tool read-only loading verified. Terminal/palette/summary/two-window/Rally/tray regressions passed. Mac compile/static checks passed. SHA-256 `83c72f8add308112b3e7c32628c24f59f440bcbd09912703a6e2e3ca89a69989`, peak 150,126,592 bytes; receipt `docs/benchmarks/checkpoints-games-2026-10-30.json`. T48 complete; T50/T51/full acceptance open. No release tag.
 
 Capability controls verification, 2026-10-30: 745 application tests and standalone embedded Goose passed on games. Native extension defaults/add, permission persistence, actual in-process code-mode MCP call, idle mutation guard, new disabled hook plugin, validated/backup hook save, actual Stop hook execution, closed-selection recovery, credential preservation and restart without foreground replay passed. Background summary backfill remains authorized. Native layout screenshot inspected; Mac compile passed. SHA-256 `4c2a33b212a944f5b83369a83f74f7f32336341a43efe3d06dca548243387c2c`, peak 143,155,200 bytes. T50 remains open for recipes; T51/full acceptance open. No release tag.
+
+Recipe verification, 2026-10-30: 748 application tests, standalone embedded Goose, native recipe fixture and capability regression passed on games. Native library create/edit/backup/delete, stale external edit preservation, typed/file parameters, provider rejection, recipe model, prepared prompt, actual embedded workspace tool call, no restart dispatch, and explicit Resume after library deletion verified. Mac compile/static checks passed. SHA-256 `d3a1e714e0806b7e1acf86398ac478160d99b5e99a78b1b8ad9532fbcaa74093`, peak 144,539,648 bytes; receipt `docs/benchmarks/recipes-games-2026-10-30.json`. T50 complete; T51/full acceptance remain open. No release tag.
 
 ## §B BUGS
 id|date|cause|fix
@@ -517,3 +521,9 @@ B170|2026-10-30|Capability page ScrollView distributed spare height into oversiz
 B171|2026-10-30|Capability restart fixture counted authorized background summary backfill as foreground replay after cancellation|Assert no non-summary provider dispatch, retain all captured requests; V44,V47
 
 B172|2026-10-30|Capability protection used displayed names only; custom vwork alias could detach workspace tools|Protect configured vwork commands and persisted session binding aliases, exact tool prefix; V64
+
+B173|2026-10-30|New recipe page referenced nonexistent Theme.panel/bg properties|Read theme tokens and use Theme.surface; compile native Slint before fixture; V42
+
+B174|2026-10-30|Recipe fixture changed dirty state before queued New pointer event, disabling New before dispatch; waiting after content was too late|Wait immediately after New pointer event, before setting content; V66
+
+B175|2026-10-30|Saving a newly created recipe opened its document but left library rows stale|Refresh catalog after document reload; native saved-library/deletion fixture; V66

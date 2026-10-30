@@ -133,3 +133,23 @@ hook definitions, rejects stale edits and retains the original as a backup.
 Defaults and hooks apply to newly activated sessions. The bundled vwork policy is
 protected. Malformed Goose configuration is preserved and must be repaired before
 native settings can overwrite it.
+
+### Goose recipes
+
+Settings → Recipes lists the existing Goose recipe library. Select a recipe to
+edit its YAML/JSON, or create a new recipe. Save validates against Goose's schema;
+editing an existing recipe retains its original bytes in a backup alongside it.
+Reload instead of overwriting a document changed by another editor. Deletion
+requires its own confirmation and also retains a backup.
+
+A saved recipe exposes its declared parameters, including selection, numeric,
+date, boolean and file inputs. Choose a registered repository and use **Prepare
+recipe conversation** to create an isolated vwork workspace. The prepared prompt
+appears in the composer; review it and Send to begin. Model/provider settings
+come from the recipe, within Fastrock's supported provider scope. Recipe extension
+lists retain Fastrock's embedded workspace and coordination tools. Existing
+conversations keep their stored recipe snapshot when the library file changes.
+
+Goose's ACP API renders supplied recipes again. Fastrock checks that this second
+render leaves the prepared recipe unchanged; parameter text that would introduce
+another template expansion is rejected before providers or extensions activate.

@@ -17,6 +17,9 @@ mod model;
 mod profile_controls;
 pub(crate) mod profiles;
 mod queue;
+pub(crate) mod recipe_controls;
+mod recipe_storage;
+mod recipes;
 mod recovery_history;
 mod schedule;
 pub(crate) use queue::Recovery;
@@ -543,6 +546,10 @@ impl Adapter {
                 )
             }
             "thread/start" => self.new_session(params).await,
+            method if method.starts_with("fastrock/recipe/") => {
+                self.recipe_request(params, method.trim_start_matches("fastrock/recipe/"))
+                    .await
+            }
             method if method.starts_with("fastrock/capability/") => {
                 self.capability_request(params, method.rsplit('/').next().unwrap())
                     .await

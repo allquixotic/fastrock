@@ -1477,3 +1477,32 @@ Receipt: `docs/benchmarks/capabilities-games-2026-10-30.json`. Native evidence:
 `4c2a33b212a944f5b83369a83f74f7f32336341a43efe3d06dca548243387c2c`;
 peak 143,155,200 bytes under the 2 GB fixture guard. Recipes, final T3 audit and
 full RC acceptance remain open. No released binary or tag.
+
+
+## 0.4.0 native Goose recipes — 2026-10-30
+
+Settings → Recipes discovers the existing Goose library and provides a native
+YAML/JSON editor, typed parameters and repository selection. Public Goose APIs
+validate/render/store recipes. Existing bytes are backed up before edits or
+confirmed deletion; a stale form preserves an external editor's changes.
+Preparation creates an isolated workspace and leaves the prompt in the composer.
+Recipe model settings are applied within the supported provider scope, before
+activation. Explicit recipe extension lists retain mandatory embedded workspace
+and coordination tools. A second rendering pass must preserve the prepared
+recipe exactly; expressions introduced by parameter text are refused if Goose
+would reinterpret them.
+
+The native fixture verified invalid schema/provider/number/missing-parameter
+rejection; string/select/file inputs; preserved prompts; the selected Bedrock
+model; actual embedded source reads; unchanged original checkout; stale edit
+refusal; backup and confirmed deletion; restart without foreground work; and
+explicit Resume with the original recipe/workspace after its library file was
+deleted. Recipe and capability controls passed on the same executable.
+
+Windows passed 748 application tests and standalone embedded Goose. Mac library
+compilation, formatting and build/release policy checks passed. Receipt:
+`docs/benchmarks/recipes-games-2026-10-30.json`; peak 144,539,648
+bytes under the 2 GB fixture guard. SHA-256:
+`d3a1e714e0806b7e1acf86398ac478160d99b5e99a78b1b8ad9532fbcaa74093`.
+T50 is complete. Final T3 UI/recovery audit and full RC acceptance remain open.
+No release tag or binary publication.

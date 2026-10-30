@@ -83,6 +83,7 @@ pub(crate) const PAGES: &[&str] = &[
     "goose",
     "schedules",
     "capabilities",
+    "recipes",
     "common",
     "all",
     "raw",
@@ -394,6 +395,7 @@ pub(crate) struct SettingsController {
     pub(crate) profiles: Vec<crate::goose::profiles::Profile>,
     pub(crate) goose_setup: Option<crate::goose::setup::Setup>,
     pub(crate) schedules: Value,
+    pub(crate) recipes: crate::goose::recipe_controls::Controller,
     pub(crate) capabilities: crate::goose::capability_controls::Controller,
     pub(crate) schedules_stale: bool,
     pub(crate) import: import::ImportState,
@@ -695,6 +697,7 @@ impl AppController {
                 "goose",
                 "schedules",
                 "capabilities",
+                "recipes",
                 "appearance",
                 "keyboard",
                 "connection",
@@ -722,6 +725,7 @@ impl AppController {
         match page {
             "schedules" => self.schedules_refresh(),
             "capabilities" => self.capabilities_load(),
+            "recipes" => self.recipes_load(),
             "goose" => {
                 self.profiles_load();
                 self.goose_cheap_load();
@@ -1348,6 +1352,7 @@ impl AppController {
             "connection" => self.settings_connection_automation(&args[1..]),
             "profiles" => self.profiles_automation(&args[1..]),
             "capabilities" => self.capabilities_automation(&args[1..]),
+            "recipes" => self.recipes_automation(&args[1..]),
             "goose-setup" => self.goose_setup_automation(&args[1..]),
             "schedules" => self.schedules_automation(&args[1..]),
             "import" => self.settings_import_automation(&args[1..]),
