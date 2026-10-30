@@ -378,6 +378,38 @@ async fn restricted_mcp_routes_namespaced_tool_to_its_session() {
 }
 
 #[tokio::test]
+async fn v68_sidebar_metadata_never_activates_closed_sessions() {
+    let (client, temp) = fixture().await;
+    let id = new(&client, temp.path()).await;
+    call(&client, "thread/unsubscribe", json!({"threadId":id}))
+        .await
+        .unwrap();
+    let before = call(&client, "thread/loaded/list", json!({}))
+        .await
+        .unwrap();
+    let result = call(&client, "fastrock/thread/metadata", json!({"ids":[id]}))
+        .await
+        .unwrap();
+    assert_eq!(result["data"][0]["id"], id);
+    assert_eq!(
+        call(&client, "thread/loaded/list", json!({}))
+            .await
+            .unwrap(),
+        before
+    );
+    assert!(
+        call(
+            &client,
+            "fastrock/thread/metadata",
+            json!({"ids":vec![id;129]})
+        )
+        .await
+        .is_err()
+    );
+    client.shutdown().await.unwrap();
+}
+
+#[tokio::test]
 async fn immediate_cancel_is_not_lost() {
     let (mut client, temp) = fixture().await;
     let id = new(&client, temp.path()).await;

@@ -103,6 +103,7 @@ enum ServerState {
 }
 
 struct Shared {
+    organization: crate::sidebar::organization_store::Store,
     prefs: crate::prefs::Writer,
     pub(crate) sessions: crate::session_restore::Writer,
     rt: tokio::runtime::Handle,
@@ -122,6 +123,9 @@ pub(crate) struct Backend {
 }
 
 impl Backend {
+    pub(crate) fn organization(&self) -> &crate::sidebar::organization_store::Store {
+        &self.shared.organization
+    }
     pub(crate) fn save_prefs(&self, home: std::path::PathBuf, prefs: crate::prefs::Prefs) {
         self.shared.prefs.save(home, prefs);
     }
@@ -176,6 +180,7 @@ impl Backend {
         let backend = Self {
             window_id: ui_thread::MAIN,
             shared: Arc::new(Shared {
+                organization: crate::sidebar::organization_store::Store::new(&rt),
                 prefs: crate::prefs::Writer::new(&rt),
                 sessions: crate::session_restore::Writer::new(&rt),
                 rt: rt.clone(),
@@ -342,6 +347,9 @@ impl Backend {
 
     /// Unsubscribes `thread_ids`, stops the server, and flushes telemetry.
     pub(crate) async fn shutdown(&self, thread_ids: Vec<String>) {
+        if let Err(error) = self.shared.organization.flush().await {
+            tracing::warn!(%error, "Sidebar metadata not flushed at shutdown");
+        }
         if let Err(error) = self.shared.prefs.flush().await {
             tracing::warn!(%error,"UI preferences not flushed at shutdown");
         }

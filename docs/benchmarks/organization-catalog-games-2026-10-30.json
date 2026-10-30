@@ -1,0 +1,9 @@
+{
+  "result": "PASS",
+  "binary_sha256": "b0ccc9060e8f5217a485641b6bc8c167e0d5ce1b2004517724328962290e0c88",
+  "peak_process_bytes": 61534208,
+  "stored_conversations": 100,
+  "first_page": 50,
+  "pinned_outside_first_page": "goose:benchmark-0000",
+  "provider_activation": false
+}

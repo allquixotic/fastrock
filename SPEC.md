@@ -159,6 +159,8 @@ V66: Native recipes ! unchanged Goose validation/render/storage APIs, bounded do
 
 V67: Native repository identity ! stable across display labels; generated IDs ! absent from project selectors/header. New ordinary chats ! immediately visible before first completed turn, retain project grouping through list refresh, never enter archived view; ephemeral/delegate chats ! remain excluded. IO ! off UI thread. Verify: dev/windows-sidebar-smoke.py first-stream/project/header/search/archive/age/title fixture.
 
+V68: Sidebar pin/settle/snooze/order ! durable GUI metadata, separate from Goose history; shared-window edits ! serialized, acknowledged after atomic save, invalid existing file ! preserved. Snooze deadline ! one wake timer, no agent dispatch; explicit new input, new request/failure ! wake/unsettle. Pinned metadata beyond catalog page one ! visible without loading agent/history. Project filters and batch selection ! stable IDs; selection ! visible rows only. Status changes ! incremental row/group updates, no provider reload per stream chunk. Verify: v68 state/store/order/reopen/malformed/metadata tests, dev/windows-organization-smoke.py and dev/windows-organization-catalog-smoke.py.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -222,6 +224,9 @@ T48|x|Conversation checkpoint/review/restore workflows over guarded vwork revisi
 T49|x|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
 T50|x|Native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42,V64,V65,V66
 T51|~|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44,V67
+T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch controls and persisted ordering|V42,V67,V68
+T53|.|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48
+T54|.|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63
 
 V53 verification, 2026-10-29: games 708 application + one renderer + 17 workspace tests and standalone embedded Goose fixture passed; native history navigation/selection/stream/export passed. Full 1,000/eight/10,000 workload passed, 217,894,912 peak process bytes; arbitrary 100-entry pages restored in 4–6 ms. Recent-frame p95 10.380 ms exceeds earlier 0.3.4 baseline 8.487 ms; no general scrolling-speedup claim. Mac compile only passed. Evidence: docs/PORT-VERIFICATION.md and docs/benchmarks/scale-history-games-2026-10-29.json. T42/T44 remain open for remaining acceptance.
 
@@ -535,3 +540,15 @@ B176|2026-10-30|New chat sidebar waited for completed-turn catalog; project sele
 B177|2026-10-30|Visible question/empty-state/help/tool text retained Codex branding after removing Codex backend|Use agent/Fastrock wording and Fastrock documentation; expose new Goose pages in palette; V42
 
 B178|2026-10-30|Fresh Goose session projected absent lastMessageAt as epoch zero; live sidebar retained empty preview during first stream|Use creation time before first message and update cached preview on first send; native age/title assertions; V67
+
+B179|2026-10-30|New sidebar section rows omitted from visible-title budget height match|Account for section height in virtual viewport; exhaustive compile check; V68
+
+B180|2026-10-30|Broad automation match anchor inserted sidebar callbacks into PendingMessageState handler|Move callbacks under explicit Step::Sidebar anchor; compile fixture interface; V68
+
+B181|2026-10-30|Organization fixture searched an older prompt keyword absent from title/current snippet and its synthetic summary|Wait for summaries, search the actual fixture summary keyword; collapsed-group assertion unchanged; V44,V68
+
+B182|2026-10-30|Audit found native Delete exposed ThreadDelete while embedded adapter had no matching route|T54: add guarded public Goose deletion and native fixture before RC; V42
+
+B183|2026-10-30|Goose failed turns return runtime to Idle, bypassing SystemError-only snooze wake and failure dot|Wake on failed TurnCompleted and show retained last_error while idle; native delayed HTTP failure fixture; V13,V68
+
+B184|2026-10-30|Delayed HTTP-500 fixture assumed one request but unmodified AWS SDK retried three times|Allow bounded upstream HTTP retries; assert resulting native failure/wake and no timer/restart dispatch instead; V68

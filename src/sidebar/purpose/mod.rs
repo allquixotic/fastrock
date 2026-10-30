@@ -208,7 +208,7 @@ impl AppController {
                 let height = match row.kind {
                     SidebarRowKind::Folder => 30.0,
                     SidebarRowKind::Thread => 28.0,
-                    SidebarRowKind::More => 32.0,
+                    SidebarRowKind::More | SidebarRowKind::Section => 32.0,
                 };
                 let visible = y + height > top && y < bottom;
                 y += height;

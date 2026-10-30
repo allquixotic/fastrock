@@ -109,6 +109,7 @@ pub(crate) enum Step {
     Snapshot(PathBuf),
     /// Accept (true) or cancel (false) the open dialog.
     Dialog(bool),
+    DialogText(String),
     /// Answer the visible approval card ("accept", "decline", "cancel",
     /// "skip", "submit", "escape", "key:<k>", "option:<n>",
     /// "select:<field>:<choice>", "text:<field>:<value>").
@@ -362,6 +363,19 @@ impl AppController {
                 Step::Sidebar(args) => {
                     let state = self.window.global::<crate::ui::SidebarState>();
                     match args.first().map(String::as_str) {
+                        Some("thread") if args.len() == 3 => state
+                            .invoke_thread_action(args[1].as_str().into(), args[2].as_str().into()),
+                        Some("organization") if args.len() == 2 => {
+                            state.invoke_organization_action(args[1].as_str().into())
+                        }
+                        Some("section") if args.len() == 2 => {
+                            state.invoke_section_toggle(args[1].as_str().into())
+                        }
+                        Some("project") if args.len() == 2 => {
+                            state.invoke_project_selected(args[1].parse().unwrap_or(0))
+                        }
+                        Some("folder") if args.len() == 3 => state
+                            .invoke_folder_action(args[1].as_str().into(), args[2].as_str().into()),
                         Some("search") => {
                             let query = args.get(1).cloned().unwrap_or_default();
                             state.set_search_text(query.as_str().into());
@@ -399,7 +413,7 @@ impl AppController {
                         Some("dump") => {
                             if let Some(path) = args.get(1) {
                                 use slint::Model;
-                                let rows = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Thread).map(|row| serde_json::json!({"id":row.id.as_str(),"title":row.title.as_str(),"tooltip":row.tooltip.as_str(),"generated":row.generated_title,"age":row.detail.as_str(),"status":format!("{:?}",row.status)})).collect::<Vec<_>>();
+                                let rows = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Thread).map(|row| serde_json::json!({"id":row.id.as_str(),"title":row.title.as_str(),"tooltip":row.tooltip.as_str(),"generated":row.generated_title,"age":row.detail.as_str(),"status":format!("{:?}",row.status),"section":row.section.as_str(),"pinned":row.pinned,"checked":row.checked,"project":row.project.as_str()})).collect::<Vec<_>>();
                                 let chrome = self.window.global::<crate::ui::AppState>();
                                 let rally = self.window.global::<crate::ui::RallyState>();
                                 let navigation = serde_json::json!({
@@ -417,7 +431,8 @@ impl AppController {
                                     "openChats": self.tabs.iter().filter_map(|tab| tab.thread().map(|thread| serde_json::json!({"id":thread.thread_id,"paused":self.thread_recovery_paused(thread),"draft":if self.shown_composer_tab() == Some(tab.id) { self.window.global::<crate::ui::ComposerState>().get_text().to_string() } else { thread.composer.text.clone() },"attachments":thread.composer.attachments.iter().map(|a| &a.path).collect::<Vec<_>>(),"uncertain":thread.recovered_sends.len()}))).collect::<Vec<_>>(),
                                 });
                                 let project_folders = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Folder).map(|row| serde_json::json!({"path":row.folder.as_str(),"count":row.count})).collect::<Vec<_>>();
-                                let data = serde_json::json!({"rows":rows,"projectFolders":project_folders,"navigation":navigation,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string();
+                                let sections = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Section).map(|row| serde_json::json!({"id":row.id.as_str(),"count":row.count,"collapsed":row.collapsed})).collect::<Vec<_>>();
+                                let data = serde_json::json!({"rows":rows,"sections":sections,"organizationReady":state.get_organization_ready(),"organizationError":state.get_organization_error().as_str(),"projectChoices":state.get_project_choices().iter().map(|s|s.to_string()).collect::<Vec<_>>(),"selectionCount":state.get_selection_count(),"projectFolders":project_folders,"navigation":navigation,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string();
                                 let path = path.clone();
                                 self.backend.spawn(async move {
                                     let _ = tokio::fs::write(path, data).await;
@@ -482,6 +497,10 @@ impl AppController {
                         .with_winit_window(|window| window.set_minimized(minimized));
                 }
                 Step::Snapshot(path) => self.automation_snapshot(&path),
+                Step::DialogText(text) => self
+                    .window
+                    .global::<crate::ui::AppState>()
+                    .set_dialog_input(text.into()),
                 Step::Dialog(accept) => {
                     self.window
                         .global::<crate::ui::AppState>()

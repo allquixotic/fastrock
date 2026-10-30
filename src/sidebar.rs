@@ -8,6 +8,8 @@
 //! in place without refetching.
 
 mod activity;
+mod organization;
+pub(crate) mod organization_store;
 mod projects;
 mod purpose;
 mod search;
@@ -137,6 +139,12 @@ pub(crate) fn group_by_folder(threads: &[ThreadSummary]) -> Vec<FolderGroup<'_>>
 /// One sidebar row before relative times and open-tab marks are applied.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum RowSpec {
+    Section {
+        id: String,
+        title: String,
+        count: usize,
+        collapsed: bool,
+    },
     Folder {
         path: PathBuf,
         count: usize,
@@ -327,6 +335,7 @@ fn status_for_phase(phase: ThreadPhase) -> SidebarThreadStatus {
 /// Sidebar state shared by all tabs.
 #[derive(Default)]
 pub(crate) struct SidebarController {
+    organization: organization::Controller,
     projects: Vec<fastrock_workspaces::projects::Project>,
     projects_loading: bool,
     purpose: purpose::PurposeController,
@@ -390,6 +399,7 @@ impl SidebarController {
 
 impl AppController {
     pub(crate) fn sidebar_bind(&mut self) {
+        self.organization_bind();
         self.sidebar.purpose = purpose::PurposeController::load(self.codex_home.as_deref());
         self.sidebar.activity = activity::ActivityController::load(self.codex_home.as_deref());
         let state = self.window.global::<SidebarState>();
@@ -496,6 +506,13 @@ impl AppController {
     pub(crate) fn sidebar_on_notification(&mut self, notification: &ServerNotification) {
         self.activity_notification(notification);
         self.purpose_on_notification(notification);
+        // Goose completes failed turns in the idle runtime state. A failure is
+        // still a hand-raise: it must leave snooze even without SystemError.
+        if let ServerNotification::TurnCompleted(done) = notification {
+            if done.turn.status == codex_app_server_protocol::TurnStatus::Failed {
+                self.organization_wake_input(&done.thread_id);
+            }
+        }
         match notification {
             ServerNotification::ThreadStarted(started) => {
                 let thread = &started.thread;
@@ -525,6 +542,7 @@ impl AppController {
                 if self.sidebar.archived {
                     self.sidebar_remove_thread(&unarchived.thread_id);
                 }
+                self.organization_restore(&unarchived.thread_id);
                 self.sidebar_refresh();
             }
             ServerNotification::ThreadDeleted(deleted) => {
@@ -567,6 +585,24 @@ impl AppController {
         if *previous == marks {
             return;
         }
+        let regroup = marks.iter().any(|(id, mark)| {
+            organization::working(mark.status)
+                != previous
+                    .get(id)
+                    .is_some_and(|old| organization::working(old.status))
+        }) || previous
+            .iter()
+            .any(|(id, mark)| organization::working(mark.status) && !marks.contains_key(id));
+        let wake: Vec<_> = marks
+            .iter()
+            .filter(|(id, mark)| {
+                organization::attention(mark.status)
+                    && !previous
+                        .get(*id)
+                        .is_some_and(|old| organization::attention(old.status))
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
         let changed: HashSet<&String> = marks
             .iter()
             .filter(|(id, mark)| previous.get(*id) != Some(*mark))
@@ -585,6 +621,19 @@ impl AppController {
             }
         }
         *previous = marks;
+        if regroup || !wake.is_empty() {
+            slint::Timer::single_shot(
+                Duration::ZERO,
+                crate::ui_thread::scoped_callback!(move || {
+                    crate::ui_thread::with_app(move |app| {
+                        for id in wake {
+                            app.organization_wake_input(&id);
+                        }
+                        app.sidebar_render();
+                    });
+                }),
+            );
+        }
     }
 
     /// Shows the sidebar and focuses its search box.
@@ -804,6 +853,7 @@ impl AppController {
         let has_more = self.sidebar.next_cursor.is_some();
         let mut threads = self.sidebar.threads.clone();
         merge_page(&mut threads, self.sidebar.history_hits.clone());
+        merge_page(&mut threads, self.organization_retained());
         if !self.sidebar.archived {
             let query = self.sidebar.search_term.to_lowercase();
             let live = self
@@ -823,14 +873,12 @@ impl AppController {
         for thread in &mut threads {
             projects::bind(thread, &self.sidebar.projects);
         }
-        let specs = projects::rows(
-            &threads,
-            &self.sidebar.projects,
-            &self.sidebar.collapsed,
-            has_more,
-            self.sidebar.is_unfiltered(),
-        );
         let marks = self.sidebar_marks();
+        let specs = self.organization_rows(&threads, &marks, has_more, now);
+        let project_roots: HashMap<_, _> = threads
+            .iter()
+            .map(|t| (t.id.as_str(), t.group_root()))
+            .collect();
         let mut row_index = HashMap::new();
         let rows: Vec<SidebarRow> = specs
             .into_iter()
@@ -840,12 +888,26 @@ impl AppController {
                     row_index.insert(id.clone(), index);
                 }
                 let mut row = to_slint_row(spec, now, &marks);
+                if row.kind == SidebarRowKind::Folder {
+                    if let Some(project) = self
+                        .sidebar
+                        .projects
+                        .iter()
+                        .find(|p| dunce::simplified(&p.root) == Path::new(row.folder.as_str()))
+                    {
+                        row.title = self.sidebar_project_name(project).into();
+                    }
+                }
                 if row.kind == SidebarRowKind::Thread {
+                    if let Some(root) = project_roots.get(row.id.as_str()) {
+                        row.project = root.to_string_lossy().as_ref().into();
+                    }
                     let (title, tooltip, generated) =
                         self.purpose_display(row.id.as_str(), row.title.as_str());
                     row.title = title.into();
                     row.tooltip = tooltip.into();
                     row.generated_title = generated;
+                    self.organization_decorate(&mut row, now);
                 }
                 row
             })
@@ -854,6 +916,7 @@ impl AppController {
         self.sidebar.row_index = row_index;
         *self.sidebar.marks.borrow_mut() = marks;
         self.sidebar_render_state();
+        self.organization_render();
         self.purpose_schedule_missing();
     }
 
@@ -883,7 +946,9 @@ impl AppController {
             if let Some(thread) = tab.thread()
                 && let Some(id) = thread.thread_id.as_deref()
             {
-                let status = if matches!(thread.phase, ThreadPhase::Idle | ThreadPhase::Closed) {
+                let status = if thread.phase == ThreadPhase::Idle && thread.last_error.is_some() {
+                    SidebarThreadStatus::Error
+                } else if matches!(thread.phase, ThreadPhase::Idle | ThreadPhase::Closed) {
                     self.sidebar.activity.idle_status(id)
                 } else {
                     status_for_phase(thread.phase)
@@ -901,6 +966,7 @@ impl AppController {
     }
 
     fn sidebar_remove_thread(&mut self, thread_id: &str) {
+        let removed_retained = self.organization_forget(thread_id);
         self.sidebar.recent.retain(|thread| thread.id != thread_id);
         let removed_live = self.sidebar.live.remove(thread_id).is_some();
         let before = self.sidebar.threads.len() + self.sidebar.history_hits.len();
@@ -908,7 +974,10 @@ impl AppController {
         self.sidebar
             .history_hits
             .retain(|thread| thread.id != thread_id);
-        if removed_live || self.sidebar.threads.len() + self.sidebar.history_hits.len() != before {
+        if removed_live
+            || removed_retained
+            || self.sidebar.threads.len() + self.sidebar.history_hits.len() != before
+        {
             self.sidebar_render();
             self.newtab_on_threads_changed();
         }
@@ -933,6 +1002,9 @@ impl AppController {
     }
 
     fn sidebar_thread_action(&mut self, thread_id: &str, action: &str) {
+        if self.organization_thread_action(thread_id, action) {
+            return;
+        }
         let Some(thread) = self
             .sidebar
             .threads
@@ -964,6 +1036,10 @@ impl AppController {
     }
 
     fn sidebar_folder_action(&mut self, path: PathBuf, action: &str) {
+        if action == "rename-project" {
+            self.organization_rename_project(&path);
+            return;
+        }
         match action {
             "toggle" => {
                 if !self.sidebar.collapsed.remove(&path) {
@@ -1136,6 +1212,19 @@ fn list_params(
 
 fn to_slint_row(spec: RowSpec, now: i64, marks: &HashMap<String, ThreadMark>) -> SidebarRow {
     match spec {
+        RowSpec::Section {
+            id,
+            title,
+            count,
+            collapsed,
+        } => SidebarRow {
+            kind: SidebarRowKind::Section,
+            id: id.into(),
+            title: title.into(),
+            count: count as i32,
+            collapsed,
+            ..SidebarRow::default()
+        },
         RowSpec::Folder {
             path,
             count,
@@ -1154,6 +1243,7 @@ fn to_slint_row(spec: RowSpec, now: i64, marks: &HashMap<String, ThreadMark>) ->
                 collapsed,
                 status: SidebarThreadStatus::NotOpen,
                 selected: false,
+                ..SidebarRow::default()
             }
         }
         RowSpec::Thread {
@@ -1175,6 +1265,7 @@ fn to_slint_row(spec: RowSpec, now: i64, marks: &HashMap<String, ThreadMark>) ->
                 collapsed: false,
                 status: mark.status,
                 selected: mark.selected,
+                ..SidebarRow::default()
             }
         }
         RowSpec::More => SidebarRow {

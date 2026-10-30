@@ -4,16 +4,20 @@
 // Rust (src/sidebar.rs) flattens folders and threads into `SidebarState.rows`
 // and keeps the open-tab status dots up to date.
 
-import { LineEdit, ListView, ScrollView } from "std-widgets.slint";
+import { CheckBox, ComboBox, LineEdit, ListView, ScrollView } from "std-widgets.slint";
 import { Theme, FlatButton, LinkButton } from "theme.slint";
 
 // Mirrored by `RowSpec` in src/sidebar.rs.
-export enum SidebarRowKind { folder, thread, more }
+export enum SidebarRowKind { folder, thread, more, section }
 
 // Status of a thread that is open in a tab (`not-open` otherwise).
 export enum SidebarThreadStatus { not-open, unread, idle, starting, running, waiting, error }
 
 export struct SidebarRow {
+    project: string,
+    section: string,
+    pinned: bool,
+    checked: bool,
     kind: SidebarRowKind,
     // Thread id (thread rows) or folder path (folder rows).
     id: string,
@@ -32,6 +36,15 @@ export struct SidebarRow {
 }
 
 export global SidebarState {
+    in property <[string]> project-choices;
+    in property <int> project-index;
+    in property <bool> organization-ready;
+    in property <string> organization-error;
+    in property <bool> selecting;
+    in property <int> selection-count;
+    callback project-selected(int);
+    callback organization-action(string);
+    callback section-toggle(string);
     in property <bool> rally-selected;
     in property <int> rally-count;
     callback open-rally();
@@ -169,6 +182,10 @@ component FolderRowView inherits Rectangle {
                 title: "Copy path";
                 activated => { SidebarState.folder-action(item.folder, "copy-path"); }
             }
+            MenuItem {
+                title: "Project display name…";
+                activated => { SidebarState.folder-action(item.folder, "rename-project"); }
+            }
             MenuSeparator { }
             MenuItem {
                 title: item.collapsed ? "Expand" : "Collapse";
@@ -272,6 +289,28 @@ component ThreadRowView inherits Rectangle {
             }
             MenuSeparator { }
             MenuItem {
+                title: item.pinned ? "Unpin" : "Pin";
+                enabled: SidebarState.organization-ready && !SidebarState.archived;
+                activated => { SidebarState.thread-action(item.id, item.pinned ? "unpin" : "pin"); }
+            }
+            MenuItem {
+                title: item.section == "settled" ? "Unsettle" : "Settle";
+                enabled: SidebarState.organization-ready && !SidebarState.archived;
+                activated => { SidebarState.thread-action(item.id, item.section == "settled" ? "unsettle" : "settle"); }
+            }
+            Menu {
+                title: "Snooze";
+                MenuItem { title: "For one hour"; enabled: SidebarState.organization-ready; activated => { SidebarState.thread-action(item.id, "snooze-hour"); } }
+                MenuItem { title: "For one day"; enabled: SidebarState.organization-ready; activated => { SidebarState.thread-action(item.id, "snooze-day"); } }
+                MenuItem { title: "Until…"; enabled: SidebarState.organization-ready; activated => { SidebarState.thread-action(item.id, "snooze-custom"); } }
+                MenuItem { title: "Wake now"; enabled: SidebarState.organization-ready; activated => { SidebarState.thread-action(item.id, "wake"); } }
+            }
+            MenuItem { title: "Move up"; enabled: SidebarState.organization-ready && (item.section == "pinned" || item.section == "active"); activated => { SidebarState.thread-action(item.id, "move-up"); } }
+            MenuItem { title: "Move down"; enabled: SidebarState.organization-ready && (item.section == "pinned" || item.section == "active"); activated => { SidebarState.thread-action(item.id, "move-down"); } }
+            MenuItem { title: "Mark unread"; activated => { SidebarState.thread-action(item.id, "mark-unread"); } }
+            MenuItem { title: "Select"; activated => { SidebarState.thread-action(item.id, "select"); } }
+            MenuSeparator { }
+            MenuItem {
                 title: "Rename…";
                 activated => { SidebarState.thread-action(item.id, "rename"); }
             }
@@ -292,7 +331,10 @@ component ThreadRowView inherits Rectangle {
 
         touch := TouchArea {
             mouse-cursor: pointer;
-            clicked => { SidebarState.open-thread(item.id, item.folder); }
+            clicked => {
+                if SidebarState.selecting { SidebarState.thread-action(item.id, "select"); }
+                else { SidebarState.open-thread(item.id, item.folder); }
+            }
             pointer-event(event) => {
                 if event.button == PointerEventButton.right && event.kind == PointerEventKind.down {
                     thread-menu.show({ x: self.mouse-x, y: self.mouse-y });
@@ -305,13 +347,17 @@ component ThreadRowView inherits Rectangle {
         x: Theme.pad-s;
         width: parent.width - 2 * Theme.pad-s;
         border-radius: Theme.radius-small;
-        background: item.selected ? Theme.selected : touch.has-hover ? Theme.hover : transparent;
+        background: item.selected || item.checked ? Theme.selected : touch.has-hover ? Theme.hover : transparent;
 
         HorizontalLayout {
-            padding-left: 22px;
+            padding-left: SidebarState.selecting ? 8px : 22px;
             padding-right: Theme.pad-m;
             spacing: Theme.pad-m;
 
+            if SidebarState.selecting: CheckBox {
+                checked: item.checked;
+                toggled => { SidebarState.thread-action(item.id, "select"); }
+            }
             StatusDot {
                 status: item.status;
                 y: (parent.height - self.height) / 2;
@@ -358,6 +404,21 @@ component MoreRowView inherits Rectangle {
         horizontal-alignment: center;
         vertical-alignment: center;
     }
+}
+
+component SectionRowView inherits Rectangle {
+    in property <SidebarRow> item;
+    height: 32px;
+    HorizontalLayout {
+        padding-left: 12px; padding-right: 12px; spacing: 6px;
+        Text { text: item.collapsed ? "▸" : "▾"; color: Theme.text-faint; width: 12px; vertical-alignment: center; }
+        Text { text: item.title; font-size: Theme.font-size-small; color: Theme.text-muted; font-weight: 600; vertical-alignment: center; horizontal-stretch: 1; }
+        Text { text: item.count; font-size: Theme.font-size-small; color: Theme.text-faint; vertical-alignment: center; }
+    }
+    TouchArea { mouse-cursor: pointer; clicked => { SidebarState.section-toggle(item.id); } }
+    accessible-role: button;
+    accessible-label: item.title + " conversations";
+    accessible-action-default => { SidebarState.section-toggle(item.id); }
 }
 
 export component Sidebar inherits Rectangle {
@@ -446,11 +507,43 @@ export component Sidebar inherits Rectangle {
             height: 30px;
             padding-left: 12px;
             padding-right: 10px;
-            Text { text: "Projects"; color: Theme.text-muted; font-size: Theme.font-size-small; vertical-alignment: center; }
+            ComboBox {
+                model: SidebarState.project-choices;
+                current-index: SidebarState.project-index;
+                selected => { SidebarState.project-selected(self.current-index); }
+            }
             LinkButton {
                 text: "+"; width: 26px; accessible-label: "Add repository project";
                 clicked => { SidebarState.add-project(); }
             }
+            LinkButton {
+                text: SidebarState.selecting ? "Done" : "Select";
+                clicked => { SidebarState.organization-action("select"); }
+            }
+        }
+
+        if SidebarState.selecting: VerticalLayout {
+            spacing: 4px; padding: 8px;
+            HorizontalLayout {
+                Text { text: SidebarState.selection-count + " selected"; color: Theme.text-muted; vertical-alignment: center; }
+                LinkButton { text: "All"; clicked => { SidebarState.organization-action("select-all"); } }
+                LinkButton { text: "Clear"; clicked => { SidebarState.organization-action("clear"); } }
+            }
+            HorizontalLayout {
+                FlatButton { text: "Pin"; enabled: SidebarState.selection-count > 0 && SidebarState.organization-ready; clicked => { SidebarState.organization-action("pin"); } }
+                FlatButton { text: "Settle"; enabled: SidebarState.selection-count > 0 && SidebarState.organization-ready; clicked => { SidebarState.organization-action("settle"); } }
+                FlatButton { text: "Snooze…"; enabled: SidebarState.selection-count > 0 && SidebarState.organization-ready; clicked => { SidebarState.organization-action("snooze-custom"); } }
+            }
+            HorizontalLayout {
+                LinkButton { text: "Wake"; enabled: SidebarState.selection-count > 0 && SidebarState.organization-ready; clicked => { SidebarState.organization-action("wake"); } }
+                LinkButton { text: "Unpin"; enabled: SidebarState.selection-count > 0 && SidebarState.organization-ready; clicked => { SidebarState.organization-action("unpin"); } }
+                LinkButton { text: "Unread"; enabled: SidebarState.selection-count > 0; clicked => { SidebarState.organization-action("mark-unread"); } }
+            }
+        }
+        if SidebarState.organization-error != "": VerticalLayout {
+            padding: 8px;
+            Text { text: SidebarState.organization-error; color: Theme.danger; wrap: word-wrap; }
+            LinkButton { text: "Retry organization"; clicked => { SidebarState.organization-action("retry"); } }
         }
 
         if SidebarState.searching-history: Text {
@@ -472,6 +565,7 @@ export component Sidebar inherits Rectangle {
                     height: row.kind == SidebarRowKind.folder ? 30px
                         : row.kind == SidebarRowKind.thread ? 28px
                         : 32px;
+                    if row.kind == SidebarRowKind.section: SectionRowView { item: row; }
                     if row.kind == SidebarRowKind.folder: FolderRowView {
                         item: row;
                     }

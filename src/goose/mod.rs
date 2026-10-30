@@ -561,6 +561,7 @@ impl Adapter {
             "fastrock/project/open" => self.open_project(params).await,
             "thread/fork" => self.fork_session(params).await,
             "thread/list" => self.list_sessions(params).await,
+            "fastrock/thread/metadata" => self.sidebar_metadata(params).await,
             "thread/loaded/list" => Ok(
                 json!({"data":self.sessions.lock().await.iter().filter(|(_,s)|s.loaded).map(|(id,_)|ui_id(id)).collect::<Vec<_>>(),"nextCursor":null}),
             ),

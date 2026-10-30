@@ -721,6 +721,10 @@ impl AppController {
             return false;
         }
         let client_id = session::new_client_message_id();
+        let organization_id = thread.thread_id.clone();
+        if let Some(id) = organization_id {
+            self.organization_wake_input(&id);
+        }
         let preview = user_input_preview(&input);
         self.transcript_push_local_user_message(index, &client_id, &input);
         let Some(thread) = self.thread_tab_mut(index) else {

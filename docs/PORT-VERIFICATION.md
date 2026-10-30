@@ -1525,3 +1525,34 @@ build/release policy checks passed; no Mac application tests or GUI.
 T51 remains open: pinned/working/snoozed/settled sidebar organization, complete
 T3 interaction comparison and final summary-timeout evidence still need acceptance.
 This is source progress, not release-candidate readiness; no release tag/assets.
+
+Native sidebar organization, 2026-10-30 (T52, V68): pinned, active, working,
+snoozed and settled groups now use one shared in-process writer with bounded
+commands and atomic GUI metadata saves. Native project filtering, project display
+names, batch pin/settle/snooze/wake/read controls, group collapse and move-up/down
+ordering preserve stable conversation IDs. Snooze uses a nearest-deadline timer
+and never dispatches work. New input, pending attention and failed-turn events
+wake parked chats. Failed Goose turns use an idle runtime state; the sidebar
+retains their error marker without disabling an explicit retry.
+
+`dev/windows-organization-smoke.py` passed creation across two repositories,
+running pinned/working/active transitions, batch pinning, manual ordering,
+collapsed-group search, display names, persistence, timed wake without provider
+dispatch, and a deliberately delayed local HTTP failure waking a snoozed chat.
+The older build remained snoozed/idle on that failure; the final build passed.
+Unmodified AWS SDK retried the fixture HTTP 500 three times. Final SHA-256
+`78af10d60498545cc96198f0cca7730eb1fd15d296a75239278eda8dee0bf02c`, peak
+141,119,488 bytes; `docs/benchmarks/organization-games-2026-10-30.json`.
+
+`dev/windows-organization-catalog-smoke.py` seeded 100 chats through unchanged
+Goose APIs. A pinned chat outside the first 50 rows appeared without loading an
+agent or contacting a provider. That fixture used the preceding build with the
+same metadata implementation; receipt records its exact hash. 751 application
+tests and Mac compatibility compile passed on the final build. Before the final
+failed-turn handling change, the isolated renderer and native sidebar, palette,
+summary/navigation/two-window/tray regressions also passed. Build/release policy
+checks and formatting passed. No Mac execution or published binaries.
+
+T52 remains open for drag interaction and the remaining T3 organization audit.
+T53 tracks original-window/temporary-session recovery; T54 tracks the discovered
+missing embedded Delete route and its guarded individual/batch workflow.

@@ -1,0 +1,14 @@
+{
+  "result": "PASS",
+  "binary_sha256": "78af10d60498545cc96198f0cca7730eb1fd15d296a75239278eda8dee0bf02c",
+  "peak_process_bytes": 141119488,
+  "native_groups": true,
+  "failure_wakes_snoozed_chat": true,
+  "batch_pin": true,
+  "project_filter": true,
+  "manual_order": true,
+  "collapse_and_search": true,
+  "project_name": true,
+  "restart_persistence": true,
+  "timed_wake_without_dispatch": true
+}

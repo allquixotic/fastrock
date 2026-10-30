@@ -132,6 +132,17 @@ impl ActivityController {
     }
 }
 impl AppController {
+    pub(super) fn activity_mark(&mut self, ids: &[String], unread: bool) {
+        for id in ids {
+            let entry = self.sidebar.activity.entries.entry(id.clone()).or_default();
+            if unread {
+                entry.unread = true;
+            } else {
+                entry.read();
+            }
+        }
+        self.activity_save();
+    }
     pub(super) fn activity_observe(&mut self, threads: &[Thread]) {
         for thread in threads.iter().filter(|thread| !thread.ephemeral) {
             let activity = &mut self.sidebar.activity;

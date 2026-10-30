@@ -1207,7 +1207,7 @@ impl AppController {
                 .project_id
                 .as_ref()
                 .and_then(|id| self.sidebar.projects().iter().find(|p| &p.id == id))
-                .map(|p| p.name.clone())
+                .map(|p| self.sidebar_project_name(p).to_owned())
                 .unwrap_or_else(|| {
                     if thread.extras.workspace.is_some() {
                         "Workspace".to_owned()

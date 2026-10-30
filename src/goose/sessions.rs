@@ -186,6 +186,58 @@ impl Adapter {
         Ok(result)
     }
 
+    /// Metadata-only lookup for pinned rows outside the first catalog page.
+    /// Does not load an agent, extensions, history, or provider credentials.
+    pub(super) async fn sidebar_metadata(&self, params: &Value) -> Reply {
+        let ids = params["ids"]
+            .as_array()
+            .filter(|ids| ids.len() <= 128)
+            .ok_or_else(|| error("Expected at most 128 conversation IDs"))?;
+        let mut data = Vec::new();
+        for value in ids {
+            let id = session_id(
+                value
+                    .as_str()
+                    .ok_or_else(|| error("Invalid conversation ID"))?,
+            )?;
+            if id.len() > 512 {
+                return Err(error("Invalid conversation ID"));
+            }
+            let Ok(info) = self
+                .rpc
+                .call("_goose/unstable/session/info", json!({"sessionId":id}))
+                .await
+            else {
+                continue;
+            };
+            let info = &info["session"];
+            if !info["_meta"]["archivedAt"].is_null()
+                || matches!(
+                    info["_meta"]["sessionType"].as_str(),
+                    Some("hidden" | "sub_agent" | "terminal")
+                )
+            {
+                continue;
+            }
+            if self
+                .sessions
+                .lock()
+                .await
+                .get(id)
+                .is_some_and(|s| s.ephemeral)
+            {
+                continue;
+            }
+            let mut session = Session::new(id, &self.cwd);
+            session.info = info.clone();
+            session.binding = self.binding_record(id).await?;
+            if session.binding.delegation.is_none() {
+                data.push(session.thread());
+            }
+        }
+        Ok(json!({"data": data}))
+    }
+
     pub(super) async fn list_sessions(&self, params: &Value) -> Reply {
         if !params["parentThreadId"].is_null() {
             return self.child_threads(params).await;
