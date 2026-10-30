@@ -1677,3 +1677,64 @@ Windows uses literal `cmd.exe` shell syntax and starts suspended, assigns the pr
 Games passed 762 application tests, the isolated renderer, `dev/windows-shell-smoke.py`, and the existing interactive terminal fixture. The shell fixture verifies quoting, output bounds, human cancellation, busy/paused guards, persistent history/next-turn context, source recovery and descendant cleanup after Stop, Quit and forced process death. Mac compile only passed in 21.78 seconds with nine existing warnings; no Mac tests or GUI ran. Formatting, build policy and five release-policy tests passed.
 
 Tested SHA-256: `ba7fda5fa5757a02d7bbb5b2f247bdae37356a72d6d43a27ec62f23f0ed86844`; native peak 143,089,664 bytes under the 2 GB watchdog. Receipt: [shell-games-2026-10-30.json](benchmarks/shell-games-2026-10-30.json). Source-only milestone; temporary-session/window recovery, deletion and final UI/acceptance work remain.
+
+## 0.4.0 temporary side chats and original window recovery — 2026-10-30
+
+Side chats fork completed reference history into a hidden Goose session and an
+isolated virtual workspace or ordinary working directory. A hidden boundary and
+system instructions separate temporary work from the parent. Parent app-agent
+routes and active goals are excluded. Quit and crash recovery preserve side
+history and drafts, while explicit close discards the temporary history. A hidden
+ID reservation prevents unchanged Goose's daily allocator from reusing deleted
+identities against retained Fastrock metadata.
+
+Games passed 765 application tests, the isolated renderer, native side-chat
+acceptance, and delegation/shell regressions. The side fixture verifies a running
+parent, isolated edits, ordinary-folder isolation, hidden reference boundaries,
+Quit/crash recovery, explicit discard and no replay. Peak 153,800,704 bytes;
+receipt [side-games-2026-10-30.json](benchmarks/side-games-2026-10-30.json).
+Mac compatibility compile and static policy checks passed.
+
+Window recovery now restores each original window's chat grouping, logical size,
+visible position, active chat or Rally document, and child Rally registry.
+Registries are claimed before retired-document recovery. A removed monitor falls
+back to safe placement; a failed child-window creation retains its saved drafts.
+All agents remain paused until Resume.
+
+Games passed 767 application tests, isolated renderer, native window acceptance,
+and the full Rally regression. Native evidence covers separate main/side drafts,
+a dirty child Rally document, active-chat and active-document restoration, Quit
+and forced-crash recovery, offscreen fallback and no flattening or dispatch.
+The Rally regression passed 82 local fixture requests, including 13 explicit
+fixture writes; no production Rally service was used. Window-fixture peak
+160,894,976 bytes; receipt
+[window-recovery-games-2026-10-30.json](benchmarks/window-recovery-games-2026-10-30.json).
+Mac compatibility compile and static policy checks passed. No release tag.
+
+## 0.4.0 permanent conversation deletion — 2026-10-30
+
+Native individual and batch Delete use unchanged Goose's public session APIs.
+Deletion refuses active work, drafts, pending/uncertain queues, schedules,
+undeleted children, active workspace leases and pending restores. Durable intent
+precedes history deletion; restart only completes cleanup when history is
+already absent. Otherwise another explicit Delete is required. Repository files
+and virtual workspaces remain intact.
+
+Cleanup removes current search summaries, checkpoint/restore history, owned
+conversation sidecars and cached UI content. ID-only tombstones prevent stale
+summary completions and stale-window manual-title saves from resurrecting text.
+A higher hidden Goose ID prevents identity reuse. Failed batch targets remain
+selected. Text entered while deletion waits is retained in a fresh conversation.
+
+Games passed 771 application tests, 19 workspace/summary/checkpoint tests, the
+isolated renderer, native deletion acceptance and side-chat regression. The
+three-turn summary/search/navigation/multiple-window/tray regression also passed
+on the same executable. Native deletion covers partial batches, draft/queue
+guards, confirmation/cancel, restart cleanup versus explicit retry, legacy cached
+title cleanup and typing during a delayed SQLite write. Screenshot inspected.
+Peak 142,618,624 bytes under the 2 GB watchdog; SHA-256
+`c9ec9e08aca5add5dadb32b7d735547af2d3ecd16c92c9c62ccba52d83a5784b`.
+Receipt: [delete-games-2026-10-30.json](benchmarks/delete-games-2026-10-30.json).
+Mac compatibility compile passed in 24.85 seconds with nine existing warnings;
+formatting and build/release policy checks passed. No Mac execution or release
+tag. T54 is complete; remaining T3 UI audit and final RC acceptance stay open.

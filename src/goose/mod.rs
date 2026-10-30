@@ -9,6 +9,7 @@ mod config_guard;
 mod controls;
 mod delegation;
 mod delegation_tools;
+mod deletion;
 mod embedded;
 mod history;
 mod hooks;
@@ -114,6 +115,7 @@ struct Adapter {
     vwork_paths: fastrock_workspaces::vwork::DiscoveryPaths,
     embedded_runtime: bool,
     summaries: Option<Arc<summary_service::Service>>,
+    deletions: Mutex<deletion::State>,
     changed: tokio::sync::Notify,
     schedules: Mutex<schedule::model::State>,
     schedule_gate: Mutex<()>,
@@ -254,6 +256,7 @@ where
         schedules: Mutex::new(schedule::open(queue_root.join("schedules.json")).await?),
         schedule_gate: Mutex::new(()),
         webhook_listener: Mutex::new(Default::default()),
+        deletions: Mutex::new(deletion::open(queue_root.join("deletions")).await?),
         queue_root,
         summaries,
         vwork_paths,
@@ -326,6 +329,10 @@ where
     }
     let (writer, mut requests) = mpsc::channel::<Value>(256);
     if adapter.embedded_runtime {
+        adapter
+            .recover_deletions()
+            .await
+            .map_err(|e| anyhow::anyhow!(e.message))?;
         if let Some(task) = schedule::webhook::listen(adapter.clone()).await {
             guard.0.push(task);
         }
@@ -517,7 +524,21 @@ impl Adapter {
     async fn request(self: &Arc<Self>, request: &Value) -> Reply {
         let method = text(request, "method");
         let params = &request["params"];
+        if method != "thread/delete"
+            && let Some(id) = params["threadId"]
+                .as_str()
+                .and_then(|id| id.strip_prefix("goose:"))
+        {
+            if let Err(e) = self.deletion_ready(id).await {
+                if method == "thread/unsubscribe" {
+                    return Ok(json!({"status":"unsubscribed"}));
+                }
+                return Err(e);
+            }
+        }
         match method {
+            "thread/delete" => self.delete_session(params).await,
+            "fastrock/thread/deletions" => self.deletion_page(params).await,
             "fastrock/shutdown" => {
                 // Stop scheduling even if its storage cannot be saved; existing
                 // sessions must still be cancelled and closed on explicit Quit.

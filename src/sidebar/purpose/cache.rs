@@ -1,5 +1,5 @@
 //! GUI-owned results only: the temporary model conversation is never persisted.
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -23,23 +23,32 @@ pub(super) struct Entry {
 pub(super) struct Cache {
     pub version: u32,
     pub threads: BTreeMap<String, Entry>,
+    pub deleted: BTreeSet<String>,
 }
 impl Default for Cache {
     fn default() -> Self {
         Self {
             version: 1,
             threads: BTreeMap::new(),
+            deleted: BTreeSet::new(),
         }
     }
 }
 impl Cache {
+    pub fn forget(&mut self, id: &str) {
+        self.threads.remove(id);
+        self.deleted.insert(id.into());
+    }
     pub fn load(home: Option<&Path>) -> Self {
         let Some(home) = home else {
             return Self::default();
         };
         match std::fs::read(home.join(FILE)) {
             Ok(bytes) => match serde_json::from_slice::<Self>(&bytes) {
-                Ok(cache) if cache.version == 1 => cache,
+                Ok(mut cache) if cache.version == 1 => {
+                    cache.threads.retain(|id, _| !cache.deleted.contains(id));
+                    cache
+                }
                 _ => {
                     tracing::warn!("Ignoring incompatible GUI thread summary cache");
                     Self::default()
@@ -53,10 +62,16 @@ impl Cache {
         }
     }
     pub fn save(&self, home: &Path) -> std::io::Result<()> {
+        static WRITE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let _guard = WRITE
+            .lock()
+            .map_err(|_| std::io::Error::other("Summary cache lock poisoned"))?;
         std::fs::create_dir_all(home)?;
         // Preserve manual renames made by another concurrently running instance.
         let mut merged = self.clone();
-        for (id, previous) in Self::load(Some(home)).threads {
+        let previous = Self::load(Some(home));
+        merged.deleted.extend(previous.deleted);
+        for (id, previous) in previous.threads {
             if previous.manual_title.is_some() {
                 let entry = merged.threads.entry(id).or_default();
                 if entry.manual_title.is_none() {
@@ -64,6 +79,7 @@ impl Cache {
                 }
             }
         }
+        merged.threads.retain(|id, _| !merged.deleted.contains(id));
         let bytes = serde_json::to_vec_pretty(&merged).map_err(std::io::Error::other)?;
         let temporary = home.join(format!("{FILE}.{}.tmp", std::process::id()));
         let mut options = std::fs::OpenOptions::new();
@@ -188,5 +204,43 @@ mod tests {
         );
         assert_eq!(plain_tooltip("**Fancy**"), None);
         assert_eq!(plain_tooltip(""), None);
+    }
+}
+
+#[cfg(test)]
+mod deletion_tests {
+    use super::*;
+    #[test]
+    fn v77_deleted_manual_title_survives_stale_window_save_and_restart() {
+        let home = tempfile::tempdir().unwrap();
+        let mut cache = Cache::default();
+        cache.threads.insert(
+            "goose:deleted".into(),
+            Entry {
+                manual_title: Some("private title".into()),
+                tooltip: "private summary".into(),
+                ..Default::default()
+            },
+        );
+        cache.threads.insert(
+            "goose:kept".into(),
+            Entry {
+                manual_title: Some("retained title".into()),
+                ..Default::default()
+            },
+        );
+        cache.save(home.path()).unwrap();
+        let stale = cache.clone();
+        cache.forget("goose:deleted");
+        cache.save(home.path()).unwrap();
+        stale.save(home.path()).unwrap();
+        let restored = Cache::load(Some(home.path()));
+        assert!(!restored.threads.contains_key("goose:deleted"));
+        assert_eq!(
+            restored.threads["goose:kept"].manual_title.as_deref(),
+            Some("retained title")
+        );
+        let bytes = std::fs::read_to_string(home.path().join(FILE)).unwrap();
+        assert!(!bytes.contains("private title") && !bytes.contains("private summary"));
     }
 }

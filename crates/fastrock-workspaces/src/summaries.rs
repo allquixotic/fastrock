@@ -64,6 +64,10 @@ impl Summaries {
                         next = previous
                             .checked_add(1)
                             .ok_or_else(|| anyhow::anyhow!("Summary generation exhausted"))?;
+                        ensure!(
+                            next < u64::MAX,
+                            "Summary generation exhausted or conversation deleted"
+                        );
                         requested.insert(id.as_str(), next)?;
                         transaction.open_table(CURRENT)?;
                     }
@@ -77,6 +81,7 @@ impl Summaries {
     /// The caller's persisted user-turn ordinal is monotonic. Duplicate delivery
     /// is harmless, and a slow old completion cannot replace a newer summary.
     pub async fn request(&self, id: String, revision: u64) -> Result<()> {
+        ensure!(revision < u64::MAX, "Reserved summary revision");
         self.0
             .run(move |store| {
                 store.with_engine(|engine| {
@@ -112,7 +117,9 @@ impl Summaries {
                     let transaction = engine.db.begin_write()?;
                     {
                         let requested = transaction.open_table(REQUESTED)?;
-                        if requested.get(id.as_str())?.map(|v| v.value()) != Some(summary.revision)
+                        if summary.revision == u64::MAX
+                            || requested.get(id.as_str())?.map(|v| v.value())
+                                != Some(summary.revision)
                         {
                             return Ok(false);
                         }
@@ -121,6 +128,26 @@ impl Summaries {
                     }
                     transaction.commit()?;
                     Ok(true)
+                })
+            })
+            .await
+    }
+
+    /// Keep only an ID tombstone so an old asynchronous completion cannot
+    /// recreate deleted conversation text. Goose IDs are never reused by Fastrock.
+    pub async fn forget(&self, id: String) -> Result<()> {
+        self.0
+            .run(move |store| {
+                store.with_engine(|engine| {
+                    let transaction = engine.db.begin_write()?;
+                    {
+                        transaction.open_table(CURRENT)?.remove(id.as_str())?;
+                        transaction
+                            .open_table(REQUESTED)?
+                            .insert(id.as_str(), u64::MAX)?;
+                    }
+                    transaction.commit()?;
+                    Ok(())
                 })
             })
             .await

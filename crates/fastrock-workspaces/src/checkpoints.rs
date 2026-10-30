@@ -156,6 +156,40 @@ pub async fn capture(
         txn.commit()?;Ok(checkpoint)
     })).await
 }
+/// Delete conversation metadata and restore-history backups. Virtual source
+/// revisions/commits belong to the workspace and remain intact.
+pub async fn forget(connection: &Connection, session: String) -> Result<()> {
+    key(&session, "delete")?;
+    connection
+        .run(move |store| {
+            store.with_engine(|engine| {
+                let transaction = engine.db.begin_write()?;
+                journal::forget_records(&transaction, &session)?;
+                remove_records(&transaction, POINTS, &session)?;
+                transaction.commit()?;
+                Ok(())
+            })
+        })
+        .await
+}
+fn remove_records(
+    transaction: &redb::WriteTransaction,
+    definition: TableDefinition<&str, &[u8]>,
+    session: &str,
+) -> Result<()> {
+    let mut table = transaction.open_table(definition)?;
+    let start = format!("{session}\0");
+    let end = format!("{session}\u{1}");
+    let keys = table
+        .range(start.as_str()..end.as_str())?
+        .map(|entry| entry.map(|(key, _)| key.value().to_owned()))
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    for key in keys {
+        table.remove(key.as_str())?;
+    }
+    Ok(())
+}
+
 pub async fn get(connection: &Connection, session: String, id: String) -> Result<Checkpoint> {
     connection
         .run(move |store| {

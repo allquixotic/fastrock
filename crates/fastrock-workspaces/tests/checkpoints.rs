@@ -517,3 +517,105 @@ async fn v62_concurrent_turn_captures_share_the_store_without_exclusive_lock_fai
         8
     );
 }
+
+#[tokio::test]
+async fn v77_delete_checkpoints_preserves_pending_restore_and_workspace_source() {
+    use checkpoints::journal::{self, Journal};
+    let f = Fixture::new(1024 * 1024).await;
+    let target = checkpoints::capture(&f.connection, Some("chat".into()), point("target"))
+        .await
+        .unwrap();
+    let mut neighbor = point("neighbor");
+    neighbor.session = "session-other".into();
+    let neighbor = checkpoints::capture(&f.connection, Some("chat".into()), neighbor)
+        .await
+        .unwrap();
+    f.write("keep this source\n", "100644").await;
+    let backup = checkpoints::capture(&f.connection, Some("chat".into()), point("backup"))
+        .await
+        .unwrap();
+    let review = checkpoints::review(
+        &f.connection,
+        "session".into(),
+        "target".into(),
+        Some("chat".into()),
+    )
+    .await
+    .unwrap();
+    let record = Journal {
+        backup,
+        target,
+        files: false,
+        conversation: true,
+        original: json!("private history"),
+        status: "pending".into(),
+    };
+    assert!(
+        journal::apply(&f.connection, review, record, || anyhow::bail!(
+            "interrupted provider"
+        ))
+        .await
+        .is_err()
+    );
+    assert!(
+        checkpoints::forget(&f.connection, "session".into())
+            .await
+            .is_err()
+    );
+    assert!(
+        checkpoints::get(&f.connection, "session".into(), "target".into())
+            .await
+            .is_ok()
+    );
+    assert!(
+        journal::pending(&f.connection, "session".into())
+            .await
+            .unwrap()
+            .is_some()
+    );
+    let recovery = checkpoints::review(
+        &f.connection,
+        "session".into(),
+        "backup".into(),
+        Some("chat".into()),
+    )
+    .await
+    .unwrap();
+    journal::resolve(&f.connection, recovery, "backup".into(), false, |_| Ok(()))
+        .await
+        .unwrap();
+    let revision = f.head().await;
+    checkpoints::forget(&f.connection, "session".into())
+        .await
+        .unwrap();
+    checkpoints::forget(&f.connection, "session".into())
+        .await
+        .unwrap();
+    assert!(
+        checkpoints::get(&f.connection, "session".into(), "target".into())
+            .await
+            .is_err()
+    );
+    assert!(
+        checkpoints::get(&f.connection, "session".into(), "backup".into())
+            .await
+            .is_err()
+    );
+    assert!(
+        journal::get(&f.connection, "session".into(), "backup".into())
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        checkpoints::get(&f.connection, "session-other".into(), "neighbor".into())
+            .await
+            .unwrap(),
+        neighbor
+    );
+    assert_eq!(f.head().await, revision);
+    assert_eq!(read(&f.connection).await, "keep this source\n");
+    assert_eq!(
+        std::fs::read(f.root.join("file.txt")).unwrap(),
+        b"original\r\n"
+    );
+}

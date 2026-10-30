@@ -225,3 +225,48 @@ async fn v40_embedded_workspace_revision_guard_and_utf8() {
     };
     assert_eq!(saved.text, "λ — edited\n");
 }
+
+#[tokio::test]
+async fn v77_deleted_summary_cannot_be_resurrected_by_late_completion() {
+    let temp = tempfile::tempdir().unwrap();
+    let summaries = Summaries(Connection::new(temp.path().to_owned()));
+    let old = Summary {
+        revision: 1,
+        text: "private history summary".into(),
+        ..Default::default()
+    };
+    for id in ["goose:delete", "goose:keep"] {
+        summaries.request(id.into(), 1).await.unwrap();
+        assert!(summaries.replace(id.into(), old.clone()).await.unwrap());
+    }
+    summaries.forget("goose:delete".into()).await.unwrap();
+    assert!(
+        !summaries
+            .replace("goose:delete".into(), old.clone())
+            .await
+            .unwrap()
+    );
+    assert!(summaries.advance("goose:delete".into()).await.is_err());
+    summaries.request("goose:delete".into(), 2).await.unwrap();
+    assert!(
+        !summaries
+            .replace(
+                "goose:delete".into(),
+                Summary {
+                    revision: 2,
+                    ..old.clone()
+                }
+            )
+            .await
+            .unwrap()
+    );
+    assert!(
+        summaries
+            .get("goose:delete".into())
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(summaries.get("goose:keep".into()).await.unwrap(), Some(old));
+    assert_eq!(summaries.page(None, 10).await.unwrap().len(), 1);
+}

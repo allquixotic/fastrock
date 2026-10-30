@@ -106,6 +106,22 @@ impl Service {
         self.queue.pending.lock().unwrap().push(id, true);
         self.queue.notify.notify_one();
     }
+    pub async fn forget(&self, id: &str) -> Result<()> {
+        let _guard = self.queue.commit.lock().await;
+        {
+            let mut pending = self.queue.pending.lock().unwrap();
+            pending.ids.retain(|old| old != id);
+            pending.queued.remove(id);
+            if let Some((active, cancel)) = &pending.active {
+                if active == id {
+                    cancel.store(true, Ordering::Relaxed);
+                }
+            }
+        }
+        Summaries(Connection::new(self.home.clone()))
+            .forget(super::model::ui_id(id))
+            .await
+    }
     pub fn current(&self, id: &str) -> bool {
         self.queue.ready.load(Ordering::Relaxed)
             && !FAILED.load(Ordering::Relaxed)
@@ -219,14 +235,15 @@ async fn run(queue: Arc<Queue>, summaries: &Summaries, manager: &SessionManager)
         let job = queue.pending.lock().unwrap().pop();
         if let Some((id, cancelled)) = job {
             let result = process(manager, summaries, &queue, &id, &cancelled).await;
+            let failed = result.is_err() && !cancelled.load(Ordering::Relaxed);
             {
                 let mut pending = queue.pending.lock().unwrap();
                 pending.active = None;
-                if result.is_err() {
+                if failed {
                     pending.push(id, false);
                 }
             }
-            if result.is_err() {
+            if failed {
                 FAILED.store(true, Ordering::Relaxed);
                 // Missing credentials must not hammer the provider for every
                 // imported conversation. Retry once per minute, latest data only.

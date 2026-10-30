@@ -1,0 +1,15 @@
+{
+  "result": "PASS",
+  "binary_sha256": "c9ec9e08aca5add5dadb32b7d735547af2d3ecd16c92c9c62ccba52d83a5784b",
+  "peak_process_bytes": 142618624,
+  "native_batch_partial_results": true,
+  "draft_preserved": true,
+  "typing_during_delete_preserved": true,
+  "durable_queue_guard": true,
+  "individual_confirm_and_cancel": true,
+  "history_and_owned_metadata_removed": true,
+  "repository_unchanged": true,
+  "restart_finishes_cleanup_only": true,
+  "existing_history_requires_explicit_retry": true,
+  "no_restart_dispatch": true
+}

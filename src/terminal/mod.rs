@@ -124,7 +124,21 @@ impl AppController {
             self.restore_focus();
         }
     }
+    pub(crate) fn terminal_delete_guard(&self, id: &str) -> bool {
+        self.terminal
+            .entries
+            .iter()
+            .any(|e| e.thread == id && !e.frame.finished)
+    }
     fn terminal_new(&mut self) {
+        if self
+            .active_thread_index()
+            .and_then(|i| self.thread_tab(i))
+            .is_some_and(|t| t.extras.deleting)
+        {
+            self.toast("Deletion is pending. Terminal was not opened.");
+            return;
+        }
         let Some(thread) = self.terminal_thread() else {
             return;
         };

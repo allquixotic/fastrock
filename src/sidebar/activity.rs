@@ -185,6 +185,10 @@ impl AppController {
                 move |_| request,
                 move |app, result: Result<ThreadTurnsListResponse, BackendError>| {
                     app.sidebar.activity.loading.remove(&id);
+                    if app.sidebar.deleted.contains(&id) {
+                        app.activity_pump();
+                        return;
+                    }
                     let entry = app.sidebar.activity.entries.entry(id.clone()).or_default();
                     if let Ok(page) = result {
                         entry.observed_updated = Some(updated);
@@ -229,6 +233,16 @@ impl AppController {
 
     pub(super) fn activity_notification(&mut self, notification: &ServerNotification) {
         use ServerNotification as N;
+        if let N::ThreadDeleted(event) = notification {
+            let state = &mut self.sidebar.activity;
+            state.entries.remove(&event.thread_id);
+            state.statuses.remove(&event.thread_id);
+            state.pending.retain(|(id, _)| id != &event.thread_id);
+            state.loading.remove(&event.thread_id);
+            state.goals.remove(&event.thread_id);
+            self.activity_save();
+            return;
+        }
         if let N::ThreadStatusChanged(changed) = notification {
             self.sidebar.activity.statuses.insert(
                 changed.thread_id.clone(),

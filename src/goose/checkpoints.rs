@@ -158,6 +158,7 @@ impl Adapter {
         let id = session_id(text(params, "threadId"))?.to_owned();
         let gate = self.gate(&id).await;
         let lock = gate.lock().await;
+        self.deletion_ready(&id).await?;
         let result = self
             .checkpoint_request_locked(&id, params, action)
             .await

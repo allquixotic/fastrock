@@ -8,13 +8,16 @@ at opt-level 0. Goose and vwork are pinned, unmodified Rust dependencies;
 release archives include their licenses. Existing 0.3.x binaries retain the
 historical settings documented below.
 
-Windows x64 ZIP publication is authorized at usable verified prerelease milestones.
-Mac builds check compatibility without publishing Mac assets. Final 0.4.0 awaits
-all `SPEC.md` acceptance, including the user's live Bedrock profile validation.
-The first candidate is 0.4.0-alpha.1: embedded runtime/storage, native navigation,
-summary search, tray/recovery and preserved Rally workflows. Its full-scale games
-benchmark passed against 0.3.4. Full T3 parity remains incomplete; see the
-[prerelease scope](prerelease-notes.md). Publication requires signed CI acceptance.
+Further binary publication is gated on feature-complete, verified release-candidate
+readiness. Development source is committed and pushed to main; local fixture builds
+are not releases. RC assets must pass signed CI acceptance. Mac builds check
+compatibility without publishing Mac assets. Final 0.4.0 also requires the user's
+live Bedrock profile validation; fixture acceptance does not establish live access.
+
+The published alpha.1–alpha.3 builds are historical development milestones, not
+release candidates. Their [prerelease notes](prerelease-notes.md) describe that
+older scope. Current completion status and acceptance evidence are tracked in
+`SPEC.md` and [verification](PORT-VERIFICATION.md).
 
 ## Stable 0.3.4
 

@@ -285,6 +285,9 @@ impl Adapter {
             .collect();
         let mut data = Vec::new();
         for (_, child) in entries.iter().take(limit) {
+            if self.deleted(child).await {
+                continue;
+            }
             self.require_child(parent, child).await?;
             let info = self
                 .rpc

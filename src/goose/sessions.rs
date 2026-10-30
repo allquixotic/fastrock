@@ -275,7 +275,7 @@ impl Adapter {
         let mut data = Vec::new();
         for info in reply["sessions"].as_array().into_iter().flatten() {
             let id = text(info, "sessionId");
-            if id.is_empty() {
+            if id.is_empty() || self.deleted(id).await {
                 continue;
             }
             let binding = self.binding_record(id).await?;
@@ -296,6 +296,7 @@ impl Adapter {
         let id = session_id(text(params, "threadId"))?;
         let gate = self.gate(id).await;
         let _lock = gate.lock().await;
+        self.deletion_ready(id).await?;
         let known = self.sessions.lock().await.contains_key(id);
         if !known {
             let info = self
@@ -552,6 +553,8 @@ impl Adapter {
         self.start_turn_locked(params).await
     }
     pub(super) async fn start_turn_locked(self: &Arc<Self>, params: &Value) -> Reply {
+        self.deletion_ready(session_id(text(params, "threadId"))?)
+            .await?;
         if !params["outputSchema"].is_null() {
             return Err(unsupported("Structured output constraints"));
         }
@@ -1001,6 +1004,7 @@ mod completion_tests {
             mcp: mcp::Bridge::new().await.unwrap(),
             queue: Mutex::new(HashMap::new()),
             queue_root: temp.path().join("queue"),
+            deletions: Mutex::new(Default::default()),
             vwork_paths: fastrock_workspaces::vwork::DiscoveryPaths {
                 user_home: temp.path().into(),
                 configs: Vec::new(),

@@ -124,6 +124,12 @@ impl State {
     }
     fn apply(&mut self, mutation: Mutation, now: i64) -> Result<(), String> {
         match mutation {
+            Mutation::Forget(ids) => {
+                for id in &ids {
+                    self.entries.remove(id);
+                }
+                self.order.retain(|id| !ids.contains(id));
+            }
             Mutation::Threads { ids, action } => {
                 if ids.len() > 10_000
                     || ids
@@ -263,6 +269,7 @@ pub(crate) enum Action {
 }
 #[derive(Clone, Debug)]
 pub(crate) enum Mutation {
+    Forget(Vec<String>),
     Threads {
         ids: Vec<String>,
         action: Action,

@@ -30,6 +30,14 @@ pub(crate) struct Recovery {
     pub uncertain: Vec<Value>,
 }
 impl QueueState {
+    pub(super) fn ensure_deletable(&self) -> Result<(), JSONRPCErrorError> {
+        if self.dispatch.is_some() || !self.pending.is_empty() || !self.uncertain.is_empty() {
+            return Err(error(
+                "Remove queued messages and dismiss reviewed recovery records before deleting",
+            ));
+        }
+        Ok(())
+    }
     fn reorder(&mut self, ids: &[String]) -> Result<(), JSONRPCErrorError> {
         let by_id = self
             .pending
@@ -101,6 +109,7 @@ impl Adapter {
         let id = session_id(text(params, "threadId"))?.to_string();
         let gate = self.gate(&id).await;
         let _lock = gate.lock().await;
+        self.deletion_ready(&id).await?;
         {
             let sessions = self.sessions.lock().await;
             let session = sessions
@@ -160,6 +169,15 @@ impl Adapter {
     }
     // Callers hold the session gate. The queue mutex serializes disk snapshots
     // with completion callbacks, which must not reacquire that gate.
+    pub(super) async fn queue_delete_ready(&self, id: &str) -> Result<(), JSONRPCErrorError> {
+        self.load_queue(id).await?;
+        self.queue
+            .lock()
+            .await
+            .get(id)
+            .ok_or_else(|| error("Queue unavailable"))?
+            .ensure_deletable()
+    }
     pub(super) async fn load_queue(&self, id: &str) -> Result<Recovery, JSONRPCErrorError> {
         let mut queues = self.queue.lock().await;
         if !queues.contains_key(id) {
@@ -189,6 +207,7 @@ impl Adapter {
         let id = session_id(text(params, "threadId"))?.to_string();
         let gate = self.gate(&id).await;
         let lock = gate.lock().await;
+        self.deletion_ready(&id).await?;
         if method == "fastrock/goose/resumeQueue" {
             if self
                 .sessions
@@ -465,6 +484,21 @@ fn validate_items(state: &QueueState) -> Result<(), JSONRPCErrorError> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn v77_delete_rejects_pending_inflight_and_uncertain_work() {
+        let mut queue = super::QueueState::default();
+        assert!(queue.ensure_deletable().is_ok());
+        queue.pending.push(serde_json::json!({"id":"pending"}));
+        assert!(queue.ensure_deletable().is_err());
+        queue.pending.clear();
+        queue.dispatch = Some(serde_json::json!({"id":"dispatch"}));
+        assert!(queue.ensure_deletable().is_err());
+        queue.quarantine("uncertain");
+        assert!(queue.ensure_deletable().is_err());
+        queue.uncertain.clear();
+        assert!(queue.ensure_deletable().is_ok());
+    }
+
     use super::*;
     fn item(id: &str) -> Value {
         json!({"id":id,"clientUserMessageId":id,"input":[{"type":"text","text":"Retain UTF-8 é"},{"type":"localImage","path":"fixture.png"}]})

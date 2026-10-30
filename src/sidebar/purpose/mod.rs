@@ -299,7 +299,7 @@ impl AppController {
                 self.purpose_enqueue(event.thread_id.clone());
             }
             ServerNotification::ThreadDeleted(event) => {
-                self.sidebar.purpose.cache.threads.remove(&event.thread_id);
+                self.sidebar.purpose.cache.forget(&event.thread_id);
                 *self
                     .sidebar
                     .purpose

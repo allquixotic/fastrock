@@ -180,6 +180,8 @@ V75: Side chats ! hidden recoverable Goose sessions, isolated workspace/director
 
 V76: Window recovery ! original chat groups, child Rally registry, logical size, reachable position and active chat/document; preclaim child registries off UI thread before retired-document recovery. Saved child creation failure ! preserve its snapshot; delayed Rally load ! never override restored selection or save empty drafts. Recovery ! no agent dispatch, including temporary side chats. Verify: v76 snapshot/registry/writer tests and dev/windows-window-recovery-smoke.py.
 
+V77: Permanent deletion ! unchanged Goose public API, durable intent, reserved identity and no source/workspace deletion. Busy agents, local drafts, pending/uncertain queue records, schedules, children, leases and pending restores ! guarded. Remove history/current summary/checkpoint backups and cached UI content; stale summary completion ! cannot resurrect deleted data. Interrupted deletion ! block new work; resume cleanup only when Goose history is already absent, otherwise explicit Delete retry. Batch ! retain failed targets and newly typed drafts. Verify: v77 deletion/storage/guard tests and dev/windows-delete-smoke.py.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -245,7 +247,7 @@ T50|x|Native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,
 T51|~|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44,V67
 T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch controls and persisted ordering|V42,V67,V68
 T53|x|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48,V75,V76
-T54|.|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63
+T54|x|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63,V74,V77
 T55|x|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63,V74,V75
 T56|~|Native queue start/reorder, compressed-source mentions, in-process Review and explicit owned shell commands verified; remaining visible typed-route audit open|V38,V40,V41,V42,V70,V71,V72,V73
 
@@ -642,3 +644,19 @@ B210|2026-10-30|Open-chat restore flattened every native window into MAIN; Rally
 B211|2026-10-30|Window capture assumed Slint position returned Result; pinned API returns PhysicalPosition directly|Capture concrete position; locked Windows compile; V76
 
 B212|2026-10-30|New window fixture had an unmatched closing parenthesis|Compile fixture before native execution; V76
+
+B213|2026-10-30|Native permanent-delete action had no embedded Goose route or batch control; app sidecars could outlive deleted history|Guarded public deletion, durable cleanup and native batch results; V74,V77
+
+B214|2026-10-30|Deletion state added to Adapter but omitted from completion-race test fixture|Initialize fixture state; locked Windows test compile; V77
+
+B215|2026-10-30|Deletion UI assumed sidebar index stored summaries and accessed private selection state|Read summary list; use organization-owned deselection; locked Windows compile; V77
+
+B216|2026-10-30|Late-draft preservation moved non-Copy effort from a borrowed tab|Clone provider effort into fresh draft; locked Windows compile; V77
+
+B217|2026-10-30|Deletion fixture assumed ordinary chats persist a virtual-workspace binding|Locate durable queue instead; native fixture retry; V77
+
+B218|2026-10-30|Deletion batch handler was attached to per-thread organization dispatch; native Delete did nothing|Attach handler to batch dispatch; native pointer acceptance; V77
+
+B219|2026-10-30|GUI cache save merged removed manual titles back from disk; interrupted deletion could leave cached content after restart|Persist title tombstones and reconcile completed deletion IDs on startup; V77
+
+B220|2026-10-30|Deletion fixture decoded the UTF-8 recovery snapshot with Windows locale encoding|Read JSON as UTF-8; native late-draft round trip; V77

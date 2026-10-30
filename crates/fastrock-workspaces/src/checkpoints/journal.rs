@@ -70,6 +70,13 @@ fn save(engine: &Engine, journal: &Journal) -> Result<()> {
     txn.commit()?;
     Ok(())
 }
+pub(super) fn forget_records(transaction: &redb::WriteTransaction, session: &str) -> Result<()> {
+    ensure!(
+        transaction.open_table(PENDING)?.get(session)?.is_none(),
+        "Resolve the pending restore before deleting its conversation"
+    );
+    super::remove_records(transaction, JOURNALS, session)
+}
 pub async fn get(connection: &Connection, session: String, id: String) -> Result<Journal> {
     connection
         .run(move |store| store.with_engine(|e| load(e, &session, &id)))

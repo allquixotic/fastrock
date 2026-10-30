@@ -8,6 +8,7 @@
 //! in place without refetching.
 
 mod activity;
+mod deletion;
 mod organization;
 pub(crate) mod organization_store;
 mod projects;
@@ -370,6 +371,7 @@ pub(crate) struct SidebarController {
     /// Ephemeral and sub-agent threads seen starting; they are not listed,
     /// so their turns do not change the list.
     unlisted: HashSet<String>,
+    deleted: HashSet<String>,
     error: Option<String>,
     collapsed: HashSet<PathBuf>,
     rows: Rc<VecModel<SidebarRow>>,
@@ -491,6 +493,7 @@ impl AppController {
     }
 
     pub(crate) fn sidebar_on_server_ready(&mut self) {
+        self.sidebar_sync_deletions();
         self.sidebar_reload();
     }
 
@@ -548,7 +551,7 @@ impl AppController {
                 self.sidebar_refresh();
             }
             ServerNotification::ThreadDeleted(deleted) => {
-                self.sidebar_remove_thread(&deleted.thread_id);
+                self.sidebar_deleted(&deleted.thread_id);
             }
             ServerNotification::ThreadNameUpdated(updated) => {
                 match updated
@@ -1153,38 +1156,7 @@ impl AppController {
     }
 
     fn sidebar_delete(&mut self, thread: ThreadSummary) {
-        self.show_dialog(
-            DialogRequest::confirm(
-                "Delete thread?",
-                format!(
-                    "“{}” and its history will be permanently deleted. This cannot be undone.",
-                    thread.title
-                ),
-            )
-            .accept_label("Delete")
-            .destructive(),
-            Box::new(move |app, accepted| {
-                if accepted.is_none() {
-                    return;
-                }
-                let thread_id = thread.id;
-                let params = ThreadDeleteParams {
-                    thread_id: thread_id.clone(),
-                };
-                app.backend.call(
-                    |request_id| ClientRequest::ThreadDelete { request_id, params },
-                    move |app, result: Result<ThreadDeleteResponse, BackendError>| match result {
-                        Ok(_) => {
-                            if let Some(index) = app.tab_index_for_thread(&thread_id) {
-                                app.close_tab(index);
-                            }
-                            app.sidebar_remove_thread(&thread_id);
-                        }
-                        Err(err) => app.toast(format!("Could not delete: {}", err.user_message())),
-                    },
-                );
-            }),
-        );
+        self.sidebar_delete_many(vec![thread.id]);
     }
 }
 

@@ -84,6 +84,7 @@ const INTERRUPT_RETRY_DELAY: Duration = Duration::from_millis(150);
 /// lifecycle requests.
 #[derive(Debug, Default)]
 pub(crate) struct ThreadExtras {
+    pub(crate) deleting: bool,
     pub(crate) workspace: Option<fastrock_workspaces::session::Selection>,
     pub(crate) project_id: Option<String>,
     /// Set when the tab is a side chat: the thread it branched from.
@@ -379,6 +380,15 @@ impl AppController {
                 };
                 match result {
                     Ok(response) => app.on_thread_resumed(index, response),
+                    Err(err)
+                        if err
+                            .user_message()
+                            .contains("This conversation was permanently deleted") =>
+                    {
+                        if let Some(id) = app.thread_tab(index).and_then(|t| t.thread_id.clone()) {
+                            app.sidebar_deleted(&id);
+                        }
+                    }
                     Err(err) if restart_unsaved && is_unsaved_thread_error(&err.user_message()) => {
                         tracing::info!(
                             thread_id,
@@ -1315,6 +1325,9 @@ fn classify_steer_error(
 /// Why a tab cannot take input, if it cannot: its thread never started, or
 /// it was lost (a side chat after a restart). Such input would wait forever.
 fn input_refusal(thread: &ThreadTab) -> Option<&'static str> {
+    if thread.extras.deleting {
+        return Some("Deletion is pending. Your draft will be preserved.");
+    }
     if thread.thread_id.is_some() {
         return None;
     }

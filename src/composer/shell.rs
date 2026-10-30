@@ -61,6 +61,10 @@ impl AppController {
             self.toast("Wait for the thread to start before running a command");
             return;
         }
+        if thread.extras.deleting {
+            self.toast("Deletion is pending. Your command was not run.");
+            return;
+        }
         if thread.is_busy() {
             self.toast("Wait for the current turn before running a command");
             return;

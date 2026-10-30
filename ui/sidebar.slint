@@ -613,6 +613,7 @@ export component Sidebar inherits Rectangle {
                 LinkButton { text: "Wake"; enabled: SidebarState.selection-count > 0 && SidebarState.organization-ready; clicked => { SidebarState.organization-action("wake"); } }
                 LinkButton { text: "Unpin"; enabled: SidebarState.selection-count > 0 && SidebarState.organization-ready; clicked => { SidebarState.organization-action("unpin"); } }
                 LinkButton { text: "Unread"; enabled: SidebarState.selection-count > 0; clicked => { SidebarState.organization-action("mark-unread"); } }
+                LinkButton { text: "Delete"; enabled: SidebarState.selection-count > 0; clicked => { SidebarState.organization-action("delete"); } }
                 LinkButton { text: "Retitle"; enabled: SidebarState.selection-count > 0 && SidebarState.regenerating-titles == 0; clicked => { SidebarState.organization-action("regenerate-title"); } }
             }
         }

@@ -94,7 +94,7 @@ impl AppController {
         }));
         self.organization_request(None);
     }
-    fn organization_request(&mut self, mutation: Option<Mutation>) {
+    pub(super) fn organization_request(&mut self, mutation: Option<Mutation>) {
         let Some(home) = self.codex_home.clone() else {
             return;
         };
@@ -312,6 +312,9 @@ impl AppController {
         });
     }
 
+    pub(super) fn organization_deselect(&mut self, id: &str) {
+        self.sidebar.organization.selected.remove(id);
+    }
     pub(super) fn organization_forget(&mut self, id: &str) -> bool {
         self.sidebar.organization.removed.insert(id.into());
         let before = self.sidebar.organization.retained.len();
@@ -551,6 +554,8 @@ impl AppController {
     }
     fn organization_action(&mut self, action: &str) {
         match action {
+            "delete" => self
+                .sidebar_delete_many(self.sidebar.organization.selected.iter().cloned().collect()),
             "regenerate-title" => self.sidebar_regenerate_titles(
                 self.sidebar.organization.selected.iter().cloned().collect(),
             ),
