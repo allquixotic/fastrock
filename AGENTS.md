@@ -29,8 +29,11 @@ explicit profile, else Bedrock GPT-6 Luna; unavailable means text search only.
 Codex conversation files stay untouched and disappear from the UI.
 Authorized 2026-10-29: application/dependencies opt-level=2, lto="off" including
 local ThinLTO, debug=0, 256 codegen units, incremental, no stripping/packing.
-Build scripts stay unoptimized. Signed usable 0.4.0 prereleases authorized;
-final release requires full acceptance. Windows x64 ZIP only; Mac compile only.
+Build scripts stay unoptimized. 2026-10-30 supersedes milestone publication:
+no further released binaries until the complete spec is implemented and verified
+as a release candidate. Continue source commits/pushes and local fixture builds;
+do not tag/publish incomplete milestones. Final release requires full acceptance.
+Windows x64 ZIP only; Mac compile only.
 Benchmark on games before releases: 1,000 conversations, eight streaming agents,
 10,000-message history against 0.3.x. Stop test at 32 GB process memory, then
 reduce workload tenfold; monitor host/guest headroom and preserve VM availability.

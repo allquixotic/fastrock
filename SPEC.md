@@ -19,7 +19,7 @@ Broader GUI contract: repository `GUI.md`.
 - Search performs immediate case-insensitive title/current-summary matching, then bounded multithreaded fuzzy search over current summaries. No model call per query; cancel obsolete searches.
 - Track Mac/games free space; clean identified stale build junk only when needed.
 - Native Slint 1.18.1; bound transcript memory; no idle repaint polling.
-- 0.4.0: signed Windows x64 ZIP via CI, Mac compatibility compile only. Usable signed prereleases authorized; final requires full acceptance. Imported distribution records historical.
+- 2026-10-30 supersedes milestone publication: no further 0.4.0 binaries published before feature-complete, verified release-candidate readiness. Source commits/pushes and local fixture builds continue. Signed Windows x64 ZIP via CI; Mac compile only. Final requires full acceptance; prior releases historical.
 - Commit/push main directly; no draft PR workflow. CI builds/signs/verifies/publishes releases with persistent incremental caches; no unsigned fallback.
 - Never run GUI tests or launch this project's GUI on Sean's Mac unless the user explicitly says "test the GUI on this Mac"; use Windows hosts.
 - Publish only after development verification passes. Explicit 0.2.0 exception: official profile optimizes at level 1 with full debug info, packed symbols, LTO off; fast defaults remain.
@@ -115,7 +115,7 @@ V42: T3 visual/interaction parity ! native Slint; project ! repository with work
 V43: Huge history ! lossless compressed cold pages, bounded resident/render caches, asynchronous prefetch/restore, stable anchors/selection/copy/export; no whole-history layout or UI-thread IO. Verify: compressed-history roundtrip/random-jump/selection/stream-boundary fixtures.
 V44: Search ! deterministic local immediate case-insensitive title/summary matches, bounded parallel fuzzy continuation and cancellation. Every user-facing completed turn ! cheap-model compaction-length keyword summary replaces old summary off UI thread; no recursive summarizing of summary jobs. Backfill ! one latest per old Goose conversation. Cheap profile visible; no expensive fallback. Verify: search ordering/cancellation/budget and summary scheduling/replacement/backfill fixtures.
 V45: Games workload ! 1,000 threads/eight streams/10,000 messages; benchmark watchdog stops fixture at 32 GB process memory or inadequate host/guest headroom, records abort, retries at tenfold lower scale. Kernel memory cap ! include owned child processes; unavailable/stale host monitoring ! fail closed. Never terminate unrelated app/VM or exhaust host. Verify: watchdog fixtures and measured games comparison.
-V46: 0.4.0 application/dependencies ! opt=2, debug=0, LTO="off", 256 codegen units, incremental, no strip; Windows signed CI ZIP only, Mac compile only. Prerelease ! usable verified milestone; stable ! all acceptance and required routes. Verify: build/release policy tests, signed receipts and Windows acceptance.
+V46: 0.4.0 application/dependencies ! opt=2, debug=0, LTO="off", 256 codegen units, incremental, no strip; Windows signed CI ZIP only, Mac compile only. Further prerelease ! V54 feature-complete RC; stable ! all acceptance and required routes. Verify: build/release policy tests, signed receipts and Windows acceptance.
 V47: Last window close ! tray continuation, explicit Quit ! cancel/save/exit, restart ! restore chats/drafts/settings without executing pending work. Uncertain local sends ! review-only; malformed session snapshot ! preserved without overwrite; draft attachment files ! retained. Verify: native close/tray/Quit and recovery fixtures.
 
 V48: Native windows ! one embedded backend/store owner; callbacks, timers, async results and server requests route to owning window. Rally moves preserve drafts/recovery without starting a process. Verify: scoped routing tests and native two-window transfer/interaction fixture.
@@ -129,6 +129,8 @@ V51: Project ! registered repository; workspace chats group by repository while 
 V52: Graphical Goose defaults ! public config APIs, known non-secret keys only, background IO, preserve credentials/extensions/other providers. Stale forms ! reject; invalid endpoint/secret field ! no writes. Partial save ! explicit reload; shared AWS settings/restart/environment precedence ! visible. Verify: v52 setup tests and native provider-defaults/restart fixture.
 
 V53: Historical viewport ! at most 100 indexed entries and their turn metadata, bounded decoded cache; arbitrary ordinal ! no scan/layout of preceding history. New activity ! retain reading position; Latest/send ! restore current tail with live-event deduplication. Stale async result ! discard; failed jump ! retain current page; selection ! clear on page replacement; full export ! unchanged. Verify: v53 indexed-window/state tests and games old/middle/latest/stream/export fixture.
+
+V54: Further 0.4.0 publication ! feature-complete verified spec and RC/final version only; incomplete/missing implementation tasks ! reject before CI build/publication. RC may await live-profile acceptance; final ! all 0.4.0 tasks complete. Verify: ReleasePolicy.test_v54_publication_requires_feature_complete_spec.
 
 ## §T TASKS
 id|status|task|cites
@@ -185,7 +187,7 @@ T40|~|Native T3 main UI/sidebar/panels, registered repository projects and perma
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and bounded arbitrary history viewports|V1,V9,V32,V37,V43,V53,I.scroll
 T43|~|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
-T44|~|Watchdog-protected games benchmarks, full Windows verification, Mac compile and signed CI milestones/final|V23,V38–V47,I.distribution
+T44|~|Watchdog-protected games benchmarks, full Windows verification, Mac compile and feature-complete signed CI RC/final|V23,V38–V47,V54,I.distribution
 T45|x|In-process Rally windows and scoped UI/backend routing|V38,V42,V47,V48
 
 V53 verification, 2026-10-29: games 708 application + one renderer + 17 workspace tests and standalone embedded Goose fixture passed; native history navigation/selection/stream/export passed. Full 1,000/eight/10,000 workload passed, 217,894,912 peak process bytes; arbitrary 100-entry pages restored in 4–6 ms. Recent-frame p95 10.380 ms exceeds earlier 0.3.4 baseline 8.487 ms; no general scrolling-speedup claim. Mac compile only passed. Evidence: docs/PORT-VERIFICATION.md and docs/benchmarks/scale-history-games-2026-10-29.json. T42/T44 remain open for remaining acceptance.

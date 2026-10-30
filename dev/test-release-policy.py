@@ -10,11 +10,25 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from release_config import build_plan, release_tag, suffix
+from release_config import assert_publishable, build_plan, release_tag, suffix
 from debug_symbols import verify_windows, verify_macos
 
 
 class ReleasePolicy(unittest.TestCase):
+    def test_v54_publication_requires_feature_complete_spec(self):
+        complete = '\n'.join(f'T{n}|x|verified' for n in range(36, 46))
+        assert_publishable('0.4.0-rc.1', complete)
+        assert_publishable('0.4.0', complete)
+        live_pending = complete.replace('T36|x|', 'T36|~|').replace('T44|x|', 'T44|~|')
+        assert_publishable('0.4.0-rc.1', live_pending)
+        for version, spec in [('0.4.0-alpha.4', complete), ('0.4.0-beta.1', complete),
+                              ('0.4.0', live_pending), ('0.4.0-rc.1', ''),
+                              ('0.4.0-rc.1', complete.replace('T39|x|', 'T39|~|')),
+                              ('0.4.0-rc.1', complete + '\nT46|.|new feature'),
+                              ('0.4.0-rc.1', complete + '\nT39|x|duplicate')]:
+            with self.assertRaises(AssertionError):
+                assert_publishable(version, spec)
+
     def test_v46_only_authorized_stable_versions(self):
         self.assertEqual(build_plan('0.2.0')['profile'], 'official')
         self.assertEqual(build_plan('0.2.0')['lto'], 'off')
