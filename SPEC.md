@@ -48,6 +48,7 @@ R3: Ghostty v1.4.0, 83fb95624b0439ee660c2679b43b38c8b63769cd; idle incremental L
 R5: vwork 0.3.4, c53cea4879bc0e12735ae1c89bd7d5ca3e9b1910; public Engine/protocol, redb 4.4, zstd level/config retained; https://github.com/allquixotic/vwork.
 R6: Goose 1.57.0 hooks accept command actions only; Agent hook manager is private. Authorized hook exception permits Fastrock helper mode using vwork protocol::hook, no separate vwork install.
 R7: Goose Bedrock construction uses process-global config/environment; independent concurrent AWS credential/region profiles need a supported upstream API. ACP supports upstream effort values, not arbitrary custom strings. User authorizes fixture-only development and will validate live profiles on own machine.
+R8: Goose 1.57.0 public secret setters can fall back to plaintext files; no public vault-only writer. Fastrock graphical setup edits non-secret settings only until a supported vault-only integration exists.
 R4: AWS Runtime supports Converse/InvokeModel and OpenAI-compatible APIs; Runtime/Mantle routes differ; exact model/profile must preserve installed working configuration; https://docs.aws.amazon.com/bedrock/latest/userguide/endpoints.html.
 
 ## §V INVARIANTS
@@ -125,6 +126,8 @@ V50: Bound conversation ! persisted workspace default and separate scratch cwd; 
 
 V51: Project ! registered repository; workspace chats group by repository while retaining actual scratch cwd. Native repository open ! in-process import of committed HEAD, reuse registration, preserve dirty/untracked source. Empty registered projects ! remain visible outside search. Verify: v51 repository/sidebar tests and native registration/grouping fixture.
 
+V52: Graphical Goose defaults ! public config APIs, known non-secret keys only, background IO, preserve credentials/extensions/other providers. Stale forms ! reject; invalid endpoint/secret field ! no writes. Partial save ! explicit reload; shared AWS settings/restart/environment precedence ! visible. Verify: v52 setup tests and native provider-defaults/restart fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -173,7 +176,7 @@ T33|x|Shared localhost vwork MCP, database-level compaction, actual Goose/games 
 T34|x|Widen text selection hit areas, selectable tool/command details, Windows interaction/scroll checks, Mac compile and signed Fastrock 0.3.4; no vwork changes|V9,V15,V23,V32,V37,I.distribution
 T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only release policy; policy audit passed, games ReleasePolicy 3 passed/1 Apple-only skipped|V46,I.distribution
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
-T37|~|Replace external backend/core bridges with embedded Goose; remove Codex UI/connection, preserve Goose configuration|V38,V39,I.goose
+T37|~|Embedded Goose; remove Codex UI/connection; graphical non-secret provider defaults, preserve configuration; vault-only credential setup blocked by R8|V38,V39,V52,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
 T39|~|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; isolated conversation forks; no quotas|V41,V50,I.orchestration
 T40|~|Native T3 main UI/sidebar/panels, registered repository projects and permanent independent Rally project|V42,V51,I.questions,I.links

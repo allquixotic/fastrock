@@ -120,6 +120,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-vwork-smoke.py build/release-inputs/fastrock.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/windows-provider-setup-smoke.py build/release-inputs/fastrock.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-selection-smoke.py build/release-inputs/fastrock.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-scroll-benchmark.py build/release-inputs/fastrock.exe --output build/scroll-smoke --frames 120
@@ -138,6 +140,7 @@ jobs:
             build/rally-smoke/
             build/goose-chat-smoke/
             build/vwork-smoke/
+            build/provider-setup-smoke/
             build/windows-tests.log
             build/windows-signing.json
             build/scroll-smoke/

@@ -388,6 +388,7 @@ pub(crate) struct SettingsController {
     pub(crate) diagnostics: diagnostics::DiagnosticsState,
     pub(crate) keyboard: keyboard::KeyboardState,
     pub(crate) connection: connection::ConnectionState,
+    pub(crate) goose_setup: Option<crate::goose::setup::Setup>,
     pub(crate) import: import::ImportState,
     pub(crate) feedback: feedback::FeedbackState,
     pub(crate) sandbox: windows_sandbox::SandboxState,
@@ -710,7 +711,12 @@ impl AppController {
             return;
         }
         match page {
-            "goose" => self.goose_cheap_load(),
+            "goose" => {
+                self.goose_cheap_load();
+                if self.settings.goose_setup.is_none() {
+                    self.goose_setup_load();
+                }
+            }
             "common" | "all" => self.settings_fields_activate(page),
             "raw" => self.settings_raw_activate(),
             "account" => self.settings_account_activate(),
@@ -1328,6 +1334,7 @@ impl AppController {
             }
             "keyboard" => self.settings_keyboard_automation(&args[1..]),
             "connection" => self.settings_connection_automation(&args[1..]),
+            "goose-setup" => self.goose_setup_automation(&args[1..]),
             "import" => self.settings_import_automation(&args[1..]),
             "feedback" => self.settings_feedback_automation(&args[1..]),
             other => tracing::warn!(action = other, "unknown settings automation action"),

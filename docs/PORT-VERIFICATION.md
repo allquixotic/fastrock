@@ -1068,3 +1068,22 @@ recovery fixtures all passed against these signed bytes; scrolling also passed.
 Windows Rust tests passed, macOS compiled without tests or publication, and the
 temporary build runner was removed. Receipt:
 `docs/benchmarks/alpha2-release-verification.json`. Live profiles remain unverified.
+
+## Graphical non-secret provider defaults
+
+Post-alpha.2 development adds Settings → Goose → Provider defaults using
+unchanged Goose's public configuration APIs. Windows compilation, Mac compatibility
+checking, 707 application tests, the isolated rendering test, 16 workspace tests
+and the standalone embedded Goose fixture passed. Native games acceptance
+`setup-native-1` exercised invalid endpoint rejection, preserved credentials and
+unrelated settings, saved Bedrock Runtime endpoint/region/model, and full process
+restart using the selected model at the loopback fixture. Peak process memory was
+134,340,608 bytes. The existing native summary/search/settings fixture also passed
+(`setup-summary-1`, 145,920,000 bytes). The settings screenshot was inspected.
+
+Tested executable SHA-256:
+`ad3583b542050dea9b176bf05427588db2bcae15530e67a0293e744d0db382f5`.
+Unit coverage rejects stale saves and preserves other provider entries, extensions,
+and credential bytes. The fixture is included in future signed Windows CI gates.
+Credential editing remains unavailable: Goose's public secret writer permits
+plaintext fallback and exposes no vault-only option. No Goose source changes.

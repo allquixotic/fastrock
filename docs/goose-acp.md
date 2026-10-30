@@ -21,6 +21,14 @@ agent transports are removed; legacy Codex files are not migrated or deleted.
 Account quota panels, snapshot storage and polling are removed. Conversation
 context and token-use information remain available independently of account limits.
 
+Settings → Goose → Provider defaults edits the default provider/model, AWS
+profile/region, Bedrock Runtime endpoint, OpenAI base URL and Anthropic host.
+It uses Goose's public configuration APIs on a worker, preserves unrelated
+configuration, and rejects a stale form if another window changed these values.
+Blank optional fields remove the saved override. Quit and restart Fastrock after
+saving; environment overrides still apply and existing conversations retain their
+session configuration. AWS settings are shared across the embedded runtime.
+
 ## Verification and remaining acceptance
 
 The standalone `embedded_goose` test isolates environment/configuration before
@@ -38,6 +46,11 @@ Unchanged Goose currently has these integration limits:
   per-provider construction API is needed for that degree of profile isolation.
 - ACP reasoning configuration accepts Goose's supported effort values. Arbitrary
   custom reasoning strings are rejected by upstream and must not be advertised.
+- Public Goose secret setters can fall back to plaintext storage when the OS
+  credential vault is unavailable. They expose no vault-only option. The new
+  defaults form therefore leaves credentials untouched and does not accept API
+  keys or bearer tokens; secure graphical credential editing remains blocked on
+  a supported integration. No Goose source is patched.
 - Goose hooks are command actions; its agent hook manager is private. Fastrock's
   `--vwork-hook` helper evaluates the original vwork policy without opening a UI
   or database. Setup installs a Goose plugin and migrates recognized vwork hook
@@ -89,7 +102,7 @@ malformed or newer-format snapshots remain untouched. Image paths are retained
 with drafts; their files are no longer deleted on a fixed age limit. Temporary
 side sessions and the original multiwindow arrangement are not yet restored.
 
-Graphical provider/credential setup, repository/workspace binding, full T3 orchestration/UI,
+Graphical credential setup, project-local plugin discovery, full T3 orchestration/UI,
 arbitrary old-history navigation and original window/temporary-session recovery
 remain tracked in `SPEC.md`. This development foundation is not a completed 0.4.0
 release. Historical 0.3.x transport details follow for old releases only.

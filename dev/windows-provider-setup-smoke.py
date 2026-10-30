@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""V52: native provider defaults, unchanged credentials and restart, loopback only."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+from embedded_provider_fixture import ProviderFixture, ProcessGuard
+
+assert sys.platform == 'win32', 'Run native acceptance on Windows only'
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('binary', type=Path)
+parser.add_argument('--output', type=Path, default=Path('build/provider-setup-smoke'))
+args = parser.parse_args()
+binary, out = args.binary.resolve(), args.output.resolve()
+out.mkdir(parents=True, exist_ok=False)
+provider = ProviderFixture()
+env = provider.environment(out)
+config = out / 'goose/config/config.yaml'
+value = json.loads(config.read_text(encoding='utf-8'))
+value['CUSTOM_SETTING'] = 'preserve me'
+config.write_text(json.dumps(value), encoding='utf-8')
+secrets = config.with_name('secrets.yaml')
+original_secrets = b'ANTHROPIC_API_KEY: fixture-unused-preserve\n'
+secrets.write_bytes(original_secrets)
+
+
+def control(*args):
+    return {'settings': ['goose-setup', *args]}
+
+
+def dump(name):
+    return [control('dump', str(out / (name + '.json'))), {'wait': 300}]
+
+
+def run(steps, name):
+    script = out / (name + '-steps.json')
+    script.write_text(json.dumps(steps), encoding='utf-8')
+    with (out / (name + '.log')).open('w', encoding='utf-8') as log:
+        process = subprocess.Popen([str(binary)], env=dict(env, CODEX_GUI_AUTOMATION=str(script)),
+                                   stdout=log, stderr=log)
+        return ProcessGuard(process, timeout=90).wait()
+
+
+try:
+    peak = run([{'wait_ready': 30000}, {'resize': [1440, 1100]},
+                {'open_settings': 'goose'}, {'wait': 1000}, {'click_text': 'Provider defaults'},
+                {'wait': 300}, *dump('initial'),
+                control('field', 'OPENAI_BASE_URL', 'https://fixture.invalid?key=secret'),
+                {'click_text': 'Save provider defaults'}, {'wait': 500}, *dump('invalid'),
+                control('field', 'OPENAI_BASE_URL', ''),
+                control('field', 'AWS_REGION', 'us-west-2'),
+                control('field', 'AWS_ENDPOINT_URL_BEDROCK_RUNTIME', provider.endpoint),
+                control('model', 'openai.gpt-6-luna'),
+                {'click_text': 'Save provider defaults'}, {'wait': 1000}, *dump('saved'),
+                {'snapshot': str(out / 'provider-defaults.png')}, {'quit': True}], 'setup')
+    initial = json.loads((out / 'initial.json').read_text(encoding='utf-8'))
+    invalid = json.loads((out / 'invalid.json').read_text(encoding='utf-8'))
+    saved = json.loads((out / 'saved.json').read_text(encoding='utf-8'))
+    assert initial['loaded'] and not initial['busy'] and initial['model'] == 'openai.gpt-6.1-sol', initial
+    assert 'cannot contain' in invalid['status'], invalid
+    assert 'Saved in Goose' in saved['status'] and saved['model'] == 'openai.gpt-6-luna', saved
+    assert saved['fields']['AWS_REGION'] == 'us-west-2', saved
+    assert secrets.read_bytes() == original_secrets, 'Setup changed credentials'
+    assert 'preserve me' in config.read_text(encoding='utf-8'), 'Setup lost unrelated configuration'
+    peak = max(peak, run([{'wait_ready': 30000}, {'new_thread': str(out / 'project')},
+                {'wait_idle': 30000}, {'send': 'Verify saved provider defaults'},
+                {'wait_idle': 30000}, {'wait': 1200},
+                {'transcript': 'export-complete:' + str(out / 'conversation.md')}, {'wait': 500},
+                {'open_settings': 'goose'}, {'wait': 1000}, *dump('restored'), {'quit': True}], 'restart'))
+    restored = json.loads((out / 'restored.json').read_text(encoding='utf-8'))
+    assert restored['model'] == 'openai.gpt-6-luna', restored
+    assert restored['fields']['AWS_REGION'] == 'us-west-2', restored
+    assert provider.requests and all('/model/openai.gpt-6-luna/' in r['path'] for r in provider.requests), provider.requests
+    assert not provider.errors, provider.errors
+    assert secrets.read_bytes() == original_secrets
+    assert (out / 'provider-defaults.png').stat().st_size > 1000
+    (out / 'acceptance.json').write_text(json.dumps(dict(result='PASS',
+        binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(), peak_process_bytes=peak,
+        native_provider_setup=True, invalid_url_rejected=True, credentials_preserved=True,
+        restart_uses_saved_model=True), indent=2), encoding='utf-8')
+    print('PASS: native provider defaults, URL validation, credentials preserved, restart uses saved model')
+finally:
+    provider.close()
+    provider.write_evidence(out)

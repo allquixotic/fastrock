@@ -19,6 +19,8 @@ pub(crate) fn summaries_idle() -> bool {
 mod fork;
 mod fork_storage;
 mod projects;
+pub(crate) mod setup;
+mod setup_controls;
 mod summary_worker;
 #[cfg(test)]
 mod tests;
