@@ -38,6 +38,7 @@ pub(crate) struct RallyController {
     pub releases: Vec<Object>,
     store: Option<Store>,
     initial_store: Option<Store>,
+    recovery_ready: bool,
     window_identity: Option<(std::path::PathBuf, String)>,
     epoch: u64,
     error: String,
@@ -479,9 +480,13 @@ impl AppController {
                             app.rally_restore(document);
                         }
                     }
+                    app.rally.recovery_ready = true;
+                    app.finish_restored_selection();
                     app.rally_connect(None);
                 }
                 Err(e) => {
+                    app.rally.recovery_ready = true;
+                    app.finish_restored_selection();
                     app.rally.error = e.to_string();
                     app.rally_show();
                 }
@@ -3951,7 +3956,7 @@ impl AppController {
 
 impl AppController {
     fn rally_windows_tick(&mut self) {
-        if self.rally.window_polling {
+        if self.rally.window_polling || !self.session_restore_ready {
             return;
         }
         let Some(store) = self.rally.store.clone() else {
@@ -4134,7 +4139,7 @@ impl AppController {
                 let (created_tx, created_rx) = tokio::sync::oneshot::channel();
                 let child_store = store.clone();
                 ui_thread::post(move |app| {
-                    let result = app.rally_create_window(master, child_id, child_store);
+                    let result = app.rally_create_window(master, child_id, child_store, None);
                     let _ = created_tx.send(result);
                 });
                 if let Err(error) = created_rx.await? {
@@ -4156,18 +4161,65 @@ impl AppController {
             ui_thread::post(move |app| app.rally_finish_transfer(id, result));
         });
     }
+    pub(crate) fn rally_saved_window(&self) -> Option<crate::session_restore::RallyWindow> {
+        self.rally
+            .window_identity
+            .as_ref()
+            .map(|(root, id)| crate::session_restore::RallyWindow {
+                root: root.clone(),
+                id: id.clone(),
+            })
+    }
+    pub(crate) fn rally_active_document_identity(&self) -> Option<String> {
+        self.active
+            .and_then(|index| self.tabs.get(index))
+            .and_then(|tab| match &tab.kind {
+                TabKind::Rally(document) => Some(document.identity.clone()),
+                _ => None,
+            })
+    }
+    pub(crate) fn rally_recovery_ready(&self) -> bool {
+        self.rally.recovery_ready
+    }
+    pub(crate) fn rally_activate_recovered_document(&mut self, identity: &str) {
+        if let Some(index) = self.tabs.iter().position(
+            |tab| matches!(&tab.kind,TabKind::Rally(document) if document.identity==identity),
+        ) {
+            self.activate_tab(index);
+        }
+    }
+    pub(crate) fn restore_native_window(
+        &self,
+        owner: u64,
+        saved: crate::session_restore::Window,
+    ) -> Result<()> {
+        let rally = saved
+            .rally
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Saved child window has no prepared registry"))?;
+        self.rally_create_window(
+            rally.root.clone(),
+            rally.id.clone(),
+            rally.store(),
+            Some((owner, saved)),
+        )
+    }
     fn rally_create_window(
         &self,
         root: std::path::PathBuf,
         id: String,
         store: Store,
+        recovery: Option<(u64, crate::session_restore::Window)>,
     ) -> Result<()> {
         let window = crate::ui::MainWindow::new()?;
         window.window().set_size(slint::LogicalSize::new(
             self.prefs.window_width,
             self.prefs.window_height,
         ));
-        let owner = ui_thread::reserve();
+        let owner = recovery
+            .as_ref()
+            .map(|(owner, _)| *owner)
+            .unwrap_or_else(ui_thread::reserve);
         let backend = self.backend.for_window(owner);
         let ready = backend.ready_snapshot();
         let mut app = AppController::new(
@@ -4177,6 +4229,7 @@ impl AppController {
             self.codex_home.clone(),
         );
         app.connection_choice = self.connection_choice.clone();
+        app.session_restore_pending = recovery.map(|(_, window)| window);
         app.rally.window_identity = Some((root, id));
         // The prepared file contains exactly the moving document; loading remains
         // off-thread in rally_bind, so creation never performs filesystem I/O.

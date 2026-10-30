@@ -136,6 +136,30 @@ impl Chat {
 pub(crate) struct Window {
     chats: Vec<Chat>,
     active: Option<usize>,
+    #[serde(default)]
+    size: Option<[f32; 2]>,
+    #[serde(default)]
+    position: Option<[i32; 2]>,
+    #[serde(default)]
+    pub(crate) rally: Option<RallyWindow>,
+    #[serde(default)]
+    active_document: Option<String>,
+}
+#[derive(Clone, Serialize, Deserialize)]
+pub(crate) struct RallyWindow {
+    pub(crate) root: PathBuf,
+    pub(crate) id: String,
+}
+impl RallyWindow {
+    pub(crate) fn store(&self) -> crate::rally::store::Store {
+        crate::rally::store::Store {
+            directory: self.root.join("windows").join(&self.id),
+        }
+    }
+}
+pub(crate) enum Active {
+    Chat(crate::app::TabId),
+    Rally(String),
 }
 #[derive(Clone, Serialize, Deserialize)]
 struct Snapshot {
@@ -166,6 +190,75 @@ fn read(home: &Path) -> Result<Snapshot, String> {
     let snapshot: Snapshot = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     if snapshot.version != 1 {
         return Err("Unknown open-chat snapshot version".into());
+    }
+    validate(&snapshot)?;
+    Ok(snapshot)
+}
+fn validate(snapshot: &Snapshot) -> Result<(), String> {
+    let mut registries = std::collections::BTreeSet::new();
+    let mut chats = std::collections::BTreeSet::new();
+    if snapshot.windows.len() > 128 {
+        return Err("Too many saved windows to restore safely; recovery file preserved".into());
+    }
+    for (owner, window) in &snapshot.windows {
+        if window.size.is_some_and(|s| {
+            s.iter()
+                .any(|v| !v.is_finite() || !(400.0..=10000.0).contains(v))
+        }) {
+            return Err("Invalid saved window size".into());
+        }
+        if let Some(rally) = &window.rally {
+            if *owner == crate::ui_thread::MAIN
+                || !rally.root.is_absolute()
+                || uuid::Uuid::parse_str(&rally.id).is_err()
+                || !registries.insert((rally.root.clone(), rally.id.clone()))
+            {
+                return Err("Invalid or duplicate saved Rally window identity".into());
+            }
+        }
+        for chat in &window.chats {
+            if let Some(id) = &chat.thread_id {
+                if !chats.insert(id) {
+                    return Err(
+                        "A saved conversation belongs to multiple windows; recovery file preserved"
+                            .into(),
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
+}
+/// Claim every child registry before the main window can recover retired Rally
+/// documents. All filesystem work happens on the blocking worker.
+fn prepare_windows(mut snapshot: Snapshot) -> Result<Snapshot, String> {
+    validate(&snapshot)?;
+    for (owner, window) in &mut snapshot.windows {
+        if *owner == crate::ui_thread::MAIN {
+            continue;
+        }
+        let window = Arc::make_mut(window);
+        if window.rally.is_none() {
+            let parent = crate::rally::store::Store::new();
+            let mut prefs = parent.load().map_err(|e| e.to_string())?;
+            prefs.documents.clear();
+            prefs.open_rally_tabs.clear();
+            let registry = RallyWindow {
+                root: parent.directory,
+                id: uuid::Uuid::new_v4().to_string(),
+            };
+            registry.store().save(&prefs).map_err(|e| e.to_string())?;
+            window.rally = Some(registry);
+        }
+        let rally = window.rally.as_ref().unwrap();
+        // Validate the store before claiming it; corrupt drafts stay untouched.
+        rally.store().load().map_err(|e| e.to_string())?;
+        crate::rally::windows::WindowHub::restore_identity(
+            &rally.store(),
+            rally.root.clone(),
+            rally.id.clone(),
+        )
+        .map_err(|e| e.to_string())?;
     }
     Ok(snapshot)
 }
@@ -217,6 +310,12 @@ impl Writer {
         });
         Self { updates, finished }
     }
+    fn adopt(&self, snapshot: Snapshot) {
+        self.updates.send_modify(|save| {
+            save.snapshot.windows.extend(snapshot.windows);
+            save.revision += 1;
+        });
+    }
     fn enable(&self, home: PathBuf) {
         self.updates.send_modify(|save| {
             save.enabled = true;
@@ -252,12 +351,33 @@ impl AppController {
             return;
         }
         let shown = self.shown_composer_tab();
-        let mut window = Window::default();
+        let size = self.window.window().size();
+        let position = self.window.window().position();
+        let scale = self.window.window().scale_factor().max(0.1);
+        let mut window = Window {
+            size: Some([
+                (size.width as f32 / scale).clamp(400., 10000.),
+                (size.height as f32 / scale).clamp(400., 10000.),
+            ]),
+            position: Some([position.x, position.y]),
+            rally: self.rally_saved_window(),
+            active_document: match &self.session_restore_active {
+                Some(Active::Rally(id)) => Some(id.clone()),
+                Some(Active::Chat(_)) => None,
+                None => self.rally_active_document_identity(),
+            },
+            ..Default::default()
+        };
         for (index, tab) in self.tabs.iter().enumerate() {
             let Some(thread) = tab.thread() else {
                 continue;
             };
-            if self.active == Some(index) {
+            let active = match &self.session_restore_active {
+                Some(Active::Chat(id)) => *id == tab.id,
+                Some(Active::Rally(_)) => false,
+                None => self.active == Some(index),
+            };
+            if active {
                 window.active = Some(window.chats.len());
             }
             let text = (shown == Some(tab.id))
@@ -269,6 +389,10 @@ impl AppController {
             .save(self.backend.window_id(), window);
     }
     pub(crate) fn restore_open_chats(&mut self) {
+        if let Some(window) = self.session_restore_pending.take() {
+            self.restore_saved_window(window);
+            return;
+        }
         if self.backend.window_id() != crate::ui_thread::MAIN {
             self.session_restore_ready = true;
             return;
@@ -278,39 +402,111 @@ impl AppController {
         };
         self.backend.spawn(async move {
             let path = home.clone();
-            let loaded = tokio::task::spawn_blocking(move || read(&path)).await.map_err(|e| e.to_string()).and_then(|v| v);
+            let loaded = tokio::task::spawn_blocking(move || read(&path).and_then(prepare_windows)).await.map_err(|e|e.to_string()).and_then(|v|v);
             crate::ui_thread::post(move |app| {
                 let snapshot = match loaded {
                     Ok(snapshot) => snapshot,
                     Err(error) => {
-                        app.push_warning(format!("Open chats could not be restored: {error}. The original recovery file is preserved; draft saving is disabled for this launch."));
+                        app.push_warning(format!("Open windows could not be restored: {error}. The original recovery file is preserved; draft saving is disabled for this launch."));
                         return;
                     }
                 };
-                let mut active = None;
-                for window in snapshot.windows.values() {
-                    for (position, chat) in window.chats.iter().cloned().enumerate() {
-                        if chat.thread_id.as_ref().is_some_and(|id| !id.starts_with("goose:")) { continue; }
-                        let existing = chat.thread_id.as_ref().and_then(|id| app.tab_index_for_thread(id));
-                        let restored = chat.restore();
-                        let index = if let Some(index) = existing {
-                            let thread = app.thread_tab_mut(index).unwrap();
-                            if thread.composer.text.is_empty() { thread.composer = restored.composer; }
-                            thread.recovered_sends.extend(restored.recovered_sends);
-                            thread.recovery_paused = true;
-                            index
-                        } else { app.push_tab(TabKind::Thread(Box::new(restored)), true) };
-                        if window.active == Some(position) && active.is_none() { active = Some(index); }
+                // Runtime IDs may have changed, or the user may already have
+                // opened another window. Reserve fresh owners for each child.
+                let windows: BTreeMap<_,_> = snapshot.windows.into_iter().map(|(old, window)| {
+                    (if old == crate::ui_thread::MAIN { old } else { crate::ui_thread::reserve() }, window)
+                }).collect();
+                app.backend.sessions().adopt(Snapshot { version:1, windows:windows.clone() });
+                for (owner, window) in &windows {
+                    if *owner == crate::ui_thread::MAIN { continue; }
+                    if let Err(error) = app.restore_native_window(*owner, window.as_ref().clone()) {
+                        app.push_warning(format!("A saved window could not open: {error}. Its drafts remain saved for the next launch."));
                     }
                 }
-                app.session_restore_ready = true;
-                if let Some(index) = active { app.activate_tab(index); }
-                app.save_open_chats();
+                app.restore_saved_window(windows.get(&crate::ui_thread::MAIN).map(|w|w.as_ref().clone()).unwrap_or_default());
                 app.backend.sessions().enable(home);
-                if app.backend.is_ready() { app.reattach_recovered_chats(); }
-                app.composer_refresh();
             });
         });
+    }
+    fn restore_saved_window(&mut self, window: Window) {
+        if let Some([width, height]) = window.size {
+            self.window
+                .window()
+                .set_size(slint::LogicalSize::new(width, height));
+        }
+        if let Some([x, y]) = window.position {
+            // A removed monitor must not strand the recovered window offscreen.
+            use slint::winit_030::WinitWindowAccessor;
+            self.window.window().with_winit_window(|native| {
+                let reachable = native.available_monitors().any(|monitor| {
+                    let p = monitor.position();
+                    let s = monitor.size();
+                    (x as i64) >= p.x as i64
+                        && (x as i64) < p.x as i64 + s.width as i64
+                        && (y as i64) >= p.y as i64
+                        && (y as i64) < p.y as i64 + s.height as i64
+                });
+                if reachable {
+                    native.set_outer_position(slint::winit_030::winit::dpi::PhysicalPosition::new(
+                        x, y,
+                    ));
+                }
+            });
+        }
+        let mut active = None;
+        for (position, chat) in window.chats.into_iter().enumerate() {
+            if chat
+                .thread_id
+                .as_ref()
+                .is_some_and(|id| !id.starts_with("goose:"))
+            {
+                continue;
+            }
+            let existing = chat
+                .thread_id
+                .as_ref()
+                .and_then(|id| self.tab_index_for_thread(id));
+            let restored = chat.restore();
+            let index = if let Some(index) = existing {
+                let thread = self.thread_tab_mut(index).unwrap();
+                if thread.composer.text.is_empty() {
+                    thread.composer = restored.composer;
+                }
+                thread.recovered_sends.extend(restored.recovered_sends);
+                thread.recovery_paused = true;
+                index
+            } else {
+                self.push_tab(TabKind::Thread(Box::new(restored)), true)
+            };
+            if window.active == Some(position) {
+                active = Some(Active::Chat(self.tabs[index].id));
+            }
+        }
+        self.session_restore_active = window.active_document.map(Active::Rally).or(active);
+        self.session_restore_ready = true;
+        self.finish_restored_selection();
+        self.save_open_chats();
+        if self.backend.is_ready() {
+            self.reattach_recovered_chats();
+        }
+        self.composer_refresh();
+    }
+    pub(crate) fn finish_restored_selection(&mut self) {
+        if !self.session_restore_ready || !self.rally_recovery_ready() {
+            return;
+        }
+        match self.session_restore_active.take() {
+            Some(Active::Chat(id)) => {
+                if let Some(index) = self.tab_index_by_id(id) {
+                    self.activate_tab(index);
+                }
+            }
+            Some(Active::Rally(id)) => {
+                self.rally_activate_recovered_document(&id);
+            }
+            None => {}
+        }
+        self.save_open_chats();
     }
     pub(crate) fn reattach_recovered_chats(&mut self) {
         let targets: Vec<_> = self
@@ -359,6 +555,95 @@ impl AppController {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn v76_snapshot_preserves_groups_geometry_and_unique_ownership() {
+        let mut snapshot = Snapshot::default();
+        for owner in 1..=2 {
+            let mut thread = ThreadTab::new(PathBuf::from("fixture"));
+            thread.thread_id = Some(format!("goose:window-{owner}"));
+            thread.composer.text = format!("draft {owner}");
+            snapshot.windows.insert(
+                owner,
+                Arc::new(Window {
+                    chats: vec![Chat::capture(&thread, None)],
+                    active: Some(0),
+                    size: Some([1100., 800.]),
+                    position: Some([100, 200]),
+                    ..Default::default()
+                }),
+            );
+        }
+        let temp = tempfile::tempdir().unwrap();
+        write(temp.path(), &snapshot).unwrap();
+        let saved = read(temp.path()).unwrap();
+        assert_eq!(saved.windows.len(), 2);
+        assert_eq!(saved.windows[&2].chats[0].draft.text, "draft 2");
+        assert_eq!(saved.windows[&2].size, Some([1100., 800.]));
+        assert_eq!(saved.windows[&2].position, Some([100, 200]));
+        Arc::make_mut(snapshot.windows.get_mut(&2).unwrap()).chats[0].thread_id =
+            Some("goose:window-1".into());
+        assert!(validate(&snapshot).is_err());
+        let legacy: Window = serde_json::from_value(json!({"chats":[],"active":null})).unwrap();
+        assert!(legacy.size.is_none() && legacy.rally.is_none());
+    }
+    #[tokio::test]
+    async fn v76_preclaim_and_writer_preserve_child_documents_and_failed_window() {
+        use crate::rally::{
+            store::{Document, Preferences, Store},
+            windows::WindowHub,
+        };
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store {
+            directory: temp.path().join("rally"),
+        };
+        let parent = WindowHub::new(&store).unwrap();
+        let prefs = Preferences {
+            documents: vec![Document {
+                identity: "child-document".into(),
+                assistant_draft: "retained Rally draft".into(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let (id, child) = parent.prepare_child(&prefs).unwrap();
+        std::fs::remove_file(child.directory.join("launching")).unwrap();
+        assert_eq!(parent.retired_documents().unwrap().len(), 1);
+        let mut snapshot = Snapshot::default();
+        let mut thread = ThreadTab::new(PathBuf::from("child"));
+        thread.composer.text = "child chat draft".into();
+        snapshot.windows.insert(
+            2,
+            Arc::new(Window {
+                chats: vec![Chat::capture(&thread, None)],
+                rally: Some(RallyWindow {
+                    root: parent.root.clone(),
+                    id,
+                }),
+                active_document: Some("child-document".into()),
+                ..Default::default()
+            }),
+        );
+        let prepared = prepare_windows(snapshot).unwrap();
+        assert!(parent.retired_documents().unwrap().is_empty());
+        assert_eq!(
+            child.load().unwrap().documents[0].assistant_draft,
+            "retained Rally draft"
+        );
+        let writer = Writer::new(&tokio::runtime::Handle::current());
+        writer.adopt(prepared);
+        writer.save(1, Window::default()); // The child could not be created.
+        writer.enable(temp.path().into());
+        writer.flush().await.unwrap();
+        let saved = read(temp.path()).unwrap();
+        assert_eq!(saved.windows[&2].chats[0].draft.text, "child chat draft");
+        assert_eq!(
+            saved.windows[&2].active_document.as_deref(),
+            Some("child-document")
+        );
+        let mut duplicate = saved.clone();
+        duplicate.windows.insert(3, saved.windows[&2].clone());
+        assert!(validate(&duplicate).is_err());
+    }
     #[test]
     fn v47_snapshot_retains_drafts_and_quarantines_local_sends() {
         let mut thread = ThreadTab::new(PathBuf::from("fixture"));
@@ -446,6 +731,7 @@ mod tests {
                 Window {
                     chats: vec![Chat::capture(&thread, None)],
                     active: Some(0),
+                    ..Default::default()
                 },
             );
         }

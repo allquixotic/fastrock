@@ -55,6 +55,27 @@ impl WindowHub {
             uuid::Uuid::new_v4().to_string(),
         )
     }
+    /// A recovered window must never steal a registry from another live process.
+    pub fn restore_identity(store: &Store, root: PathBuf, id: String) -> Result<Self> {
+        ensure!(
+            uuid::Uuid::parse_str(&id).is_ok(),
+            "Invalid window identity"
+        );
+        let path = root.join("windows").join(&id).join("owner.json");
+        match std::fs::read(&path) {
+            Ok(bytes) => {
+                let owner: Owner = serde_json::from_slice(&bytes)
+                    .context("Invalid saved window owner; preserve its drafts")?;
+                ensure!(
+                    owner.pid == std::process::id() || !process_alive(owner.pid),
+                    "Saved window is still owned by another running Fastrock process"
+                );
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e.into()),
+        }
+        Self::with_identity(store, root, id)
+    }
     pub fn with_identity(store: &Store, root: PathBuf, id: String) -> Result<Self> {
         ensure!(
             uuid::Uuid::parse_str(&id).is_ok(),

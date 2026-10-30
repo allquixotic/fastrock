@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "binary_sha256": "1edba0f4bac2f612be38a2b8a2314fc644800a3347067f87e2c05fd818b8613d",
+  "peak_process_bytes": 160894976,
+  "original_window_groups": true,
+  "logical_geometry": true,
+  "removed_monitor_fallback": true,
+  "side_and_main_drafts": true,
+  "active_chat_and_rally_document": true,
+  "child_registry_preserved": true,
+  "dirty_rally_draft": true,
+  "no_rally_writes": true,
+  "quit_and_crash_recovery": true,
+  "no_flattening": true,
+  "no_restart_dispatch": true
+}

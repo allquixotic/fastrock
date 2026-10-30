@@ -178,6 +178,8 @@ V74: Deletion ! reserve a higher hidden Goose ID before removing history; later 
 
 V75: Side chats ! hidden recoverable Goose sessions, isolated workspace/directory, inherited history reference only with a persisted agent-only boundary before load; exclude unfinished inherited turn and app delegation tools. Quit/restart ! preserve open chat/draft and require Resume; explicit close ! discard history. Boundary injection ! idempotent exact control message only. Verify: v75 storage/boundary/recovery tests and dev/windows-side-smoke.py.
 
+V76: Window recovery ! original chat groups, child Rally registry, logical size, reachable position and active chat/document; preclaim child registries off UI thread before retired-document recovery. Saved child creation failure ! preserve its snapshot; delayed Rally load ! never override restored selection or save empty drafts. Recovery ! no agent dispatch, including temporary side chats. Verify: v76 snapshot/registry/writer tests and dev/windows-window-recovery-smoke.py.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -242,7 +244,7 @@ T49|x|Saved profile effort defaults through supported Goose APIs and native sele
 T50|x|Native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42,V64,V65,V66
 T51|~|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44,V67
 T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch controls and persisted ordering|V42,V67,V68
-T53|.|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48
+T53|x|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48,V75,V76
 T54|.|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63
 T55|x|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63,V74,V75
 T56|~|Native queue start/reorder, compressed-source mentions, in-process Review and explicit owned shell commands verified; remaining visible typed-route audit open|V38,V40,V41,V42,V70,V71,V72,V73
@@ -293,6 +295,8 @@ Shell verification, 2026-10-30: games 762 application tests, isolated renderer, 
 
 
 Side-chat verification, 2026-10-30: games 765 application tests, isolated renderer, native side fixture, delegation and shell regressions passed. Parent streaming, reference boundary, isolated vwork edit, hidden storage, excluded delegation, ordinary isolated directory, draft/Quit/crash recovery, explicit discard and safe ID reservation verified. Mac compile only and static checks passed. SHA-256 `9002f7fe367e2e170caa4f63a84f0b1abbf734174e95f86306da6624e17fe8d7`; peak 153,800,704 bytes; receipt `docs/benchmarks/side-games-2026-10-30.json`. T55 complete; original-window recovery and full acceptance remain open. No release tag.
+
+Window recovery verification, 2026-10-30: games 767 application tests, isolated renderer, original-window native fixture and full native Rally regression passed. Window grouping/geometry, removed-monitor fallback, active chat/document, side and Rally drafts, registry ownership and Quit/crash recovery without dispatch or document flattening verified. Mac compile only and static policy/format checks passed. SHA-256 `1edba0f4bac2f612be38a2b8a2314fc644800a3347067f87e2c05fd818b8613d`; peak 160,894,976 bytes; receipt `docs/benchmarks/window-recovery-games-2026-10-30.json`. T53 complete; guarded deletion/UI audit/full acceptance remain open. No release tag.
 
 ## §B BUGS
 id|date|cause|fix
@@ -632,3 +636,9 @@ B207|2026-10-30|Side fork inherited parent goal/TODO and unbound vwork/app MCP r
 B208|2026-10-30|Side native fixture requested hold prompts with nonstreaming provider config|Enable fixture streaming for cancellation/crash checks; V75
 
 B209|2026-10-30|Bedrock merges adjacent hidden boundary and user question; fixture interpreted their combined text as its command|Ignore exact control-message block only in fixture command parser; assert full provider body preserves boundary; V75
+
+B210|2026-10-30|Open-chat restore flattened every native window into MAIN; Rally retired-store recovery could also flatten child documents before ownership restoration|Restore window groups and geometry, preclaim child registries, persist active selection after both stores load; V76
+
+B211|2026-10-30|Window capture assumed Slint position returned Result; pinned API returns PhysicalPosition directly|Capture concrete position; locked Windows compile; V76
+
+B212|2026-10-30|New window fixture had an unmatched closing parenthesis|Compile fixture before native execution; V76
