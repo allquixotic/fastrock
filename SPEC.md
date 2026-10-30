@@ -251,7 +251,7 @@ T40|x|Native T3 main UI/sidebar/panels and repository projects, independent Rall
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|x|Lossless cold transcript compression, bounded decoded/rendered caches and arbitrary indexed history verified at 1,000 conversations/eight streams/10,000 messages; comparison recorded without blanket scrolling-speedup claim|V1,V9,V32,V37,V43,V53,I.scroll
 T43|x|Tray continuation, explicit Quit, original-window restoration and restart Resume verified|V41,V47,I.lifecycle
-T44|~|Full games comparison, Windows tests, Mac compile and signed RC2 publication verified; final 0.4.0 awaits live-profile acceptance T36|V23,V38–V47,V54,I.distribution
+T44|~|Full games comparison, Windows tests, Mac compile and signed RC4 publication verified; final 0.4.0 awaits live-profile acceptance T36|V23,V38–V47,V54,I.distribution
 T45|x|In-process Rally windows and scoped UI/backend routing|V38,V42,V47,V48
 T46|x|Native command palette with bounded matching, keyboard/pointer navigation and retained drafts|V42,V60
 T47|x|Native interactive terminal panels with isolated user-requested processes, bounded scrollback and lifecycle checks|V38,V42,V43,V47,V61
@@ -265,7 +265,7 @@ T54|x|Connect native individual/batch deletion to Goose public delete API with a
 T55|x|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63,V74,V75
 T56|x|Native queue start/reorder, compressed-source mentions, Review, explicit shell, Goose slash commands and local Changes verified|V38,V40,V41,V42,V70,V71,V72,V73,V80
 T57|x|RC2 summary priority/config/hook fixes; 781 tests, eight native cases and guarded full-scale games workload passed; provider routes fixture-verified|V38,V39,V44,V65,V82,V83,V84
-T58|x|Bounded native effort-control completion verified on games; Windows/Mac compile passed; signed full matrix remains CI publication gate|V39,V54,V83,I.distribution
+T58|x|Bounded native effort-control completion passed on games and signed RC4; 34 native cases, Rust suites, package/attestation/signature verified|V39,V54,V83,I.distribution
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 

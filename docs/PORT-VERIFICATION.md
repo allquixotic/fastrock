@@ -1972,3 +1972,38 @@ Peak process memory was 140,771,328 bytes.
 RC4 Windows application/tests compiled and macOS library compilation passed.
 No application or tests ran on the Mac. The full signed CI matrix is the
 remaining publication gate.
+
+
+### RC4 signed publication and independent verification
+
+[Fastrock 0.4.0-rc.4](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.4)
+was published by [CI run 41121907826](https://github.com/allquixotic/fastrock/actions/runs/41121907826)
+from `18f82b0d6a589772cc9be6c5db170d7f4a8a224e`. Both platforms compiled; Windows
+passed 781 application tests, one isolated renderer test, 30 workspace tests,
+the standalone embedded Goose fixture, release-policy tests (one Mac-only skip)
+and four watchdog tests. No Mac application or tests ran, and no Mac binaries
+were published. The temporary build runner removed its registration.
+
+All 34 native acceptance cases passed on the exact signed executable in 929.65
+seconds, including the corrected effort fixture and the new summary-priority
+regression. The latter observed no summary requests between three tool calls,
+preempted a stalled summary and retried after the foreground turn. Goose naming
+remained enabled. Supplementary catalog and all five native scrolling scenarios
+also passed. These CI measurements supplement the full games comparison above.
+
+The Windows ZIP is 138,167,747 bytes, SHA-256
+`3f86bdae70ce95479bc54a47b04c72b32c3e50d786fb7a574fd3066a95f3ab45`.
+Its executable SHA-256 is
+`cd6f502bc5b020eebb9b4fea5f829eaa004f30e1a5477a5f7abb1c294ff41f3a`.
+An independent download verified the checksum, exact source/build settings and
+bundled licenses, plus the GitHub attestation bound to RC4, its source commit
+and release workflow. Read-only checks on games verified the same executable,
+Sean McNamara's expected Authenticode publisher and a Microsoft timestamp without
+launching the application.
+
+The [release receipt](benchmarks/rc4-release-ci-2026-10-30.json) contains the full
+case results, summary request ordering, supplementary measurements and artifact
+identity. This completes RC4 acceptance. Final 0.4.0 still awaits live-profile
+acceptance; the reported three-minute first-response delay remains unmeasured
+with the working profile. Confirmed summary contention and migration defects
+are fixed, with phase timings available for the next live comparison.
