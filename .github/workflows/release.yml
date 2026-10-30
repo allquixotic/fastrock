@@ -72,6 +72,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           python dev/test-release-policy.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/test-fixture-watchdog.py -v
       - name: Azure login for Artifact Signing (OIDC)
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
         with:
@@ -114,26 +116,35 @@ jobs:
         run: |
           python dev/windows-rally-smoke.py build/release-inputs/fastrock.exe --ci
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python dev/windows-goose-smoke.py build/release-inputs/fastrock.exe --ci
+          python dev/windows-goose-smoke.py build/release-inputs/fastrock.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-vwork-smoke.py build/release-inputs/fastrock.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-selection-smoke.py build/release-inputs/fastrock.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-scroll-benchmark.py build/release-inputs/fastrock.exe --output build/scroll-smoke --frames 120
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/windows-summary-smoke.py build/release-inputs/fastrock.exe --output build/summary-smoke --turns 3 --navigation --windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/windows-summary-smoke.py build/release-inputs/fastrock.exe --output build/queue-recovery-smoke --recovery
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python dev/windows-summary-smoke.py build/release-inputs/fastrock.exe --output build/process-recovery-smoke --process-recovery
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         if: always()
         with:
           name: windows-signing-and-rally-evidence
           path: |
             build/rally-smoke/
-            build/goose-rally-smoke/
             build/goose-chat-smoke/
             build/vwork-smoke/
             build/windows-tests.log
             build/windows-signing.json
             build/scroll-smoke/
             build/selection-smoke/
+            build/summary-smoke/
+            build/queue-recovery-smoke/
+            build/process-recovery-smoke/
           compression-level: 0
           if-no-files-found: ignore
       - name: Package signed binary and matching symbols

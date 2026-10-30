@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repeatable software-rendered transcript scrolling. Local ACP fixture only."""
+"""Repeatable software-rendered transcript scrolling. Embedded Goose and loopback Bedrock/MCP fixtures only."""
 import argparse
 import hashlib
 import json
@@ -12,6 +12,7 @@ import sys
 import time
 import ctypes
 from ctypes import wintypes
+from embedded_provider_fixture import ProviderFixture, ProcessGuard
 
 assert sys.platform == 'win32', 'Run benchmarks on Windows, never Sean\'s Mac'
 parser = argparse.ArgumentParser(description=__doc__)
@@ -49,11 +50,10 @@ steps += [{'minimized': True}, {'wait': 300}, {'minimized': False}, {'wait': 500
           {'snapshot': str(out / 'restored.png')}, {'quit': True}]
 script = out / 'steps.json'
 script.write_text(json.dumps(steps), encoding='utf-8')
-env = dict(os.environ, FASTROCK_HOME=str(out / 'home'), CODEX_HOME=str(out / 'codex'),
-           FASTROCK_GOOSE=sys.executable, FASTROCK_GOOSE_FIXTURE=str(root / 'dev/external-goose-fixture.py'),
-           CODEX_GUI_AUTOMATION=str(script), SLINT_BACKEND='winit-software', SLINT_SCALE_FACTOR=str(args.scale))
-for key in ('FASTROCK_FIXTURE_ARTIFACT', 'FASTROCK_RALLY_TOKEN', 'SLINT_DEBUG_PERFORMANCE'):
-    env.pop(key, None)
+provider = ProviderFixture(tools=True)
+env = provider.environment(out, streaming=True)
+env.update(CODEX_GUI_AUTOMATION=str(script), SLINT_SCALE_FACTOR=str(args.scale))
+env.pop('SLINT_DEBUG_PERFORMANCE', None)
 def restore_windows(pid):
     user32 = ctypes.windll.user32
     @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
@@ -67,17 +67,11 @@ def restore_windows(pid):
 
 with (out / 'app.log').open('w', encoding='utf-8') as log:
     process = subprocess.Popen([str(args.binary.resolve()), '--remote', 'goose'], env=env, cwd=root, stdout=log, stderr=log)
-    deadline = time.monotonic() + 300
     try:
-        while process.poll() is None:
-            assert time.monotonic() < deadline, 'Benchmark timed out'
-            restore_windows(process.pid)
-            time.sleep(.2)
-        assert process.returncode == 0, process.returncode
+        peak = ProcessGuard(process, timeout=300).wait(lambda: restore_windows(process.pid))
     finally:
-        if process.poll() is None:
-            process.kill()
-            process.wait()
+        provider.close()
+        provider.write_evidence(out)
 log = (out / 'app.log').read_text(encoding='utf-8')
 assert 'timed out' not in log and 'benchmark write failed' not in log, log[-3000:]
 
@@ -86,7 +80,9 @@ def distribution(values):
     return {k: round(values[min(len(values)-1, int((len(values)-1)*q))] / 1000, 3)
             for k, q in [('p50_ms', .5), ('p95_ms', .95), ('p99_ms', .99)]}
 
-receipt = dict(binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+assert len(provider.tool_calls) == 6, provider.tool_calls
+assert any(request['prompt'] == 'benchmark-stream' for request in provider.requests)
+receipt = dict(backend='embedded-goose', peak_process_bytes=peak, binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                host=platform.node(), os=platform.platform(), requested_frames=args.frames,
                input='Slint native wheel events, 16.667 ms timer; tick latency includes event-loop work', scenarios={})
 for name in scenarios:

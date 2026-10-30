@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Native Windows Slint acceptance using ONLY loopback HTTP and stdio fixtures.
+"""Native Windows Slint acceptance using ONLY loopback model/tool and Rally HTTP fixtures.
 Retains scripts, snapshots, request log and state dumps in build/rally-smoke.
 """
 import base64, hashlib, json, os, re, shutil, subprocess, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
+from embedded_provider_fixture import ProviderFixture, ProcessGuard
 
 ROOT=Path(__file__).resolve().parent.parent
-GOOSE='--goose' in sys.argv
-OUT=ROOT/'build'/('goose-rally-smoke' if GOOSE else 'rally-smoke')
+OUT=ROOT/'build'/'rally-smoke'
 OUT.mkdir(parents=True,exist_ok=True)
 TOKEN='fixture-token-not-a-secret'
 
@@ -117,6 +117,8 @@ def main():
     print("Native executable SHA-256: "+binary_sha,flush=True)
     shutil.rmtree(OUT);OUT.mkdir(parents=True)
     fixture=RallyFixture()
+    provider=ProviderFixture(artifact=fixture.story['_ref'])
+    peak=0
     threading.Thread(target=fixture.server.serve_forever,daemon=True).start()
     home=OUT/'home'; home.mkdir(exist_ok=True); codex=OUT/'codex-home';codex.mkdir(exist_ok=True)
     (home/'rally.json').write_text(json.dumps({'rallyEndpoint':fixture.base,'rallyWorkspace':fixture.workspace['_ref'],'rallyProject':fixture.project['_ref'],'projectChildren':False}),encoding='utf-8')
@@ -149,9 +151,9 @@ def main():
         gesture=next(i for i,step in enumerate(script) if step.get('rally',[])[:1]==['points'])
         script[gesture:gesture+2]=[rally('move',fixture.story['_ref'],'In-Progress','',fixture.ref('HierarchicalRequirement',102),'above'),wait(300)]
     scriptpath=OUT/'script.json';scriptpath.write_text(json.dumps(script),encoding='utf-8')
-    env=dict(os.environ,FASTROCK_HOME=str(home),CODEX_HOME=str(codex),FASTROCK_CODEX=sys.executable,FASTROCK_CODEX_FIXTURE=str(ROOT/'dev'/'external-codex-fixture.py'),FASTROCK_RALLY_TOKEN=TOKEN,FASTROCK_FIXTURE_ARTIFACT=fixture.story['_ref'],CODEX_GUI_AUTOMATION=str(scriptpath),SLINT_BACKEND='winit-software',RUST_BACKTRACE='1')
-    if GOOSE:
-        env.update(FASTROCK_GOOSE=sys.executable,FASTROCK_GOOSE_FIXTURE=str(ROOT/'dev'/'external-goose-fixture.py'))
+    env=provider.environment(OUT)
+    env.update(FASTROCK_HOME=str(home), CODEX_HOME=str(codex), FASTROCK_RALLY_TOKEN=TOKEN,
+               CODEX_GUI_AUTOMATION=str(scriptpath), RUST_BACKTRACE='1')
     driver_errors=[]
     def drive_drag(proc):
         if (OUT/'drag-done').exists():return
@@ -188,16 +190,15 @@ def main():
             raise AssertionError('Native drag coordinates not reached')
         except Exception as e:driver_errors.append(str(e))
     def run():
+        nonlocal peak
         with (OUT/'app.log').open('a',encoding='utf-8') as log:
-            proc=subprocess.Popen([str(binary),'--remote','goose' if GOOSE else 'codex'],cwd=ROOT,env=env,stdout=log,stderr=log)
+            proc=subprocess.Popen([str(binary),'--remote','goose'],cwd=ROOT,env=env,stdout=log,stderr=log)
             driver=None
             if not ci_mode:
                 driver=threading.Thread(target=drive_drag,args=(proc,),daemon=True);driver.start()
-            try: code=proc.wait(timeout=150)
-            except subprocess.TimeoutExpired: proc.kill();raise AssertionError('Native automation timeout; inspect app.log')
+            peak=max(peak, ProcessGuard(proc, timeout=150).wait())
             if driver:driver.join(timeout=2)
             assert not driver_errors,driver_errors
-            assert code==0, f'Native app failed ({code}); inspect app.log'
     try:
         run()
         for name in ('list','board','detail','dirty','saved','views','proposal','applied'):
@@ -229,6 +230,7 @@ def main():
         assert fixture.story['Description']=='<h2>Edited heading</h2><p>Native <b>bold</b></p>'
         assert 'Native saved view' in load('views')['views']
         assert load('proposal')['proposal']==1, 'Dynamic tool proposal did not reach native dock'
+        assert any('toolUse' in c for r in provider.requests for m in r['body']['messages'] for c in m['content']), 'Embedded Goose did not execute the proposal tool'
         assert fixture.story['Name']=='AI reviewed title','Reviewed proposal not applied'
         # Restart same real binary with persisted native document/session drafts.
         scriptpath.write_text(json.dumps([{'wait_ready':30000},wait(detail=True),*dump('restored'),snap('restored'),{'quit':True}]),encoding='utf-8')
@@ -249,11 +251,13 @@ def main():
         assert all(r['query'].get('workspace')==fixture.workspace['_ref'] for r in fixture.requests if r['path']=='hierarchicalrequirement' and r['method']=='GET'), 'Scope lost'
         assert any(r['path'].startswith('AttributeDefinition/') and r['path'].endswith('/AllowedValues') and r['query'].get('workspace')==fixture.workspace['_ref'] for r in fixture.requests),'Realistic scoped enum metadata was not loaded'
         assert [lane['name'] for lane in load('mixed')['lanes']]==['Defined','In-Progress','Completed','Accepted'],'Enum metadata lost Team Board lanes'
-        receipt={'backend':'goose-acp' if GOOSE else 'codex','binary_sha256':binary_sha,'requests':len(fixture.requests),'explicit_writes':len(writes),'result':'PASS','native_mouse_drag':not ci_mode,'native_user_picker_click':True,'board_move_mode':'callback' if ci_mode else 'Windows mouse','realistic_allowed_value_metadata':True}
+        receipt={'backend':'embedded-goose', 'peak_process_bytes':peak, 'provider_requests':len(provider.requests),'binary_sha256':binary_sha,'requests':len(fixture.requests),'explicit_writes':len(writes),'result':'PASS','native_mouse_drag':not ci_mode,'native_user_picker_click':True,'board_move_mode':'callback' if ci_mode else 'Windows mouse','realistic_allowed_value_metadata':True}
         (OUT/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8')
         print(f'PASS: native Slint list/board/drag/rank/undo/swimlanes/detail/create/relations/rich/discussion/views/bulk/assistant/restart/window-transfer; {len(fixture.requests)} fixture requests, {len(writes)} explicit writes')
         print('Board move mode: '+receipt['board_move_mode'])
     finally:
+        provider.close()
+        provider.write_evidence(OUT)
         (OUT/'binary.sha256').write_text(binary_sha+'\n');(OUT/'requests.json').write_text(json.dumps(fixture.requests,indent=2),encoding='utf-8');fixture.server.shutdown()
 
 if __name__=='__main__': main()

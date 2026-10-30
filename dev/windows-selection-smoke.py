@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V37: native pointer/keyboard/clipboard selection with a local Goose fixture."""
+"""V37: native pointer/keyboard/clipboard selection with embedded Goose and local Bedrock/MCP fixtures."""
 import argparse
 import ast
 import ctypes
@@ -12,6 +12,7 @@ import subprocess
 import sys
 import threading
 import time
+from embedded_provider_fixture import ProviderFixture, ProcessGuard
 
 assert sys.platform == 'win32', 'Run GUI checks on Windows, never Sean\'s Mac'
 root = Path(__file__).resolve().parents[1]
@@ -80,7 +81,7 @@ steps += drag('code-second-line', 'Code padding selection', 23, 29, 'second', -8
 steps += drag('code-glyph', 'Code padding selection', 5, 12, 'padding')
 
 steps += new_thread()
-steps += [{'send': 'selection-tools'}, {'wait_idle': 30000}, {'click_text': 'Goose.Selection tool'},
+steps += [{'send': 'selection-tools'}, {'wait_idle': 30000}, {'transcript': 'expand-all'},
           {'transcript': 'scroll-top'}, {'wait': 600}]
 steps += drag('tool-arguments', 'Arguments:', 0, 10, 'Arguments:', -8)
 line = lambda i: f'Selection output {i:02d}: **literal** <tag> é 👩‍💻'
@@ -97,23 +98,23 @@ steps += [{'snapshot': str(out / 'tools.png')}, {'click_text': 'Copy All'}, {'wa
 
 script = out / 'steps.json'
 script.write_text(json.dumps(steps), encoding='utf-8')
-env = dict(os.environ, FASTROCK_HOME=str(out / 'home'), CODEX_HOME=str(out / 'codex'),
-           FASTROCK_GOOSE=sys.executable, FASTROCK_GOOSE_FIXTURE=str(root / 'dev/external-goose-fixture.py'),
-           CODEX_GUI_AUTOMATION=str(script), SLINT_BACKEND='winit-software', SLINT_SCALE_FACTOR=str(args.scale))
-for key in ('FASTROCK_FIXTURE_ARTIFACT', 'FASTROCK_RALLY_TOKEN'):
-    env.pop(key, None)
+provider = ProviderFixture(tools=True)
+env = provider.environment(out)
+env.update(CODEX_GUI_AUTOMATION=str(script), SLINT_SCALE_FACTOR=str(args.scale))
 evidence, errors = [], []
 with (out / 'app.log').open('w', encoding='utf-8') as log:
     process = subprocess.Popen([str(args.binary.resolve()), '--remote', 'goose'], cwd=root, env=env, stdout=log, stderr=log)
     driver = threading.Thread(target=drive_copy_menus, args=(process, evidence, errors), daemon=True)
     driver.start()
     try:
-        assert process.wait(timeout=120) == 0, 'GUI process failed'
+        peak = ProcessGuard(process, timeout=120).wait()
     finally:
         if process.poll() is None:
             process.kill()
             process.wait()
         driver.join(timeout=5)
+        provider.close()
+        provider.write_evidence(out)
 log = (out / 'app.log').read_text(encoding='utf-8')
 assert not errors, errors
 assert len(evidence) == 3, evidence
@@ -124,10 +125,11 @@ for name, value in expected.items():
     actual = (out / (name + '.txt')).read_text(encoding='utf-8')
     assert actual == value, (name, repr(actual), repr(value))
 complete = (out / 'tool-all.txt').read_text(encoding='utf-8')
-assert 'Goose.Selection tool' in complete and 'ARGUMENT_END' in complete, complete
+assert 'selection tool' in complete.lower() and 'ARGUMENT_END' in complete, complete
+assert [call['name'] for call in provider.tool_calls] == ['selection_tool'], provider.tool_calls
 assert all(line(i) in complete for i in range(24)), complete
 receipt = dict(result='PASS', binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
-               scale=args.scale, clipboard_cases=list(expected), native_menus=evidence,
+               backend='embedded-goose', peak_process_bytes=peak, scale=args.scale, clipboard_cases=list(expected), native_menus=evidence,
                complete_tool_copy=True, cross_virtual_row_selection=True)
 (out / 'acceptance.json').write_text(json.dumps(receipt, indent=2) + '\n')
 print(json.dumps(receipt, indent=2))

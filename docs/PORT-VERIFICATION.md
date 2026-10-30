@@ -829,3 +829,49 @@ Persistent chats from all windows currently reopen together in the main window.
 Original window layout and temporary side-session recovery remain under T43.
 Full-scale performance comparison and the remaining 0.4.0 features remain open;
 no release tag or live provider/Rally calls.
+
+## 0.4.0 development: embedded release fixtures
+
+On 2026-10-29, the Windows release fixtures stopped emulating an external ACP
+backend. The actual embedded Goose crate now receives loopback Bedrock Converse
+and AWS event-stream responses, executes configured fixture MCP tools, and calls
+Fastrock's Rally/vwork adapters. Isolated Goose/AWS configuration uses fake keys;
+no live provider or Rally service is contacted. Every native smoke has a 2 GB
+process cap. Two Windows watchdog tests verified that timeout and memory-limit
+failures terminate only the owned process, leaving an unrelated process alive.
+
+Games verified executable SHA-256
+`c66a72c9660ababbe0adb2a9b7451446e2ed97c632c0c8d6e017c2c8c0c5830c`:
+
+- Concurrent streamed conversations and isolated cancellation: 142,073,856 peak
+  process bytes (`goose-chat-smoke-2`).
+- Full Rally list/board/rank/undo/detail/create/relations/rich text/discussion/
+  saved views/bulk/proposal/Apply/restart/window transfer: 82 loopback requests,
+  13 explicit fixture writes, two model calls, 155,328,512 peak process bytes.
+  CI mode exercises the move callback; native picker, Apply and window controls
+  remain real UI interactions.
+- Real embedded vwork: register/import committed source, create workspace, edit,
+  compact, conflicting model tool edit, reject stale save, reload and save with
+  the new revision. UTF-8 BOM/CRLF and executable mode preserved; source checkout
+  untouched; no installed Goose/vwork or daemon connection file. Default embedded
+  database also available without legacy extension configuration. Peak process
+  memory: 155,504,640 bytes.
+- Selection: all 17 clipboard cases, three native menus, Unicode, links, tool
+  arguments/output and selection across virtual rows passed; 156,835,840 bytes.
+- Five 120-frame scroll scenarios passed, including tool output and active
+  streaming. Frame p95: prose 6.973 ms, table 5.029 ms, code 4.406 ms, tools
+  5.597 ms, streaming 7.172 ms. Peak process memory: 158,982,144 bytes. These are
+  small smoke workloads, not the required 1,000-chat/10,000-message comparison.
+- Three-turn summary/search plus two-window Rally navigation passed: eight local
+  model requests, both native windows in PID 8336, 171,483,136 peak process bytes.
+
+Evidence is under
+`C:\Users\SeanMcNamara\fastrock-040-policy\ci-fixtures\build\` in each fixture's
+`acceptance.json` (scrolling uses `summary.json`). Backend queue recovery also passed at 148,451,328 peak process bytes; forced
+process/draft recovery passed at 146,235,392 bytes. Both required explicit Resume
+and retained uncertain sends for review without replay. CI now includes these
+recovery cases and summary/search on the signed bytes.
+No Rust/application change in this milestone; prior 706 application tests,
+16 workspace fixtures and Mac compatibility compile remain applicable. Full
+performance comparison, remaining 0.4.0 features and live-profile acceptance
+remain open; no release tag.

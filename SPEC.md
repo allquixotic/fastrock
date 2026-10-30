@@ -174,7 +174,7 @@ T40|~|Native T3 main UI/sidebar/panels, repository projects and permanent indepe
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and efficient arbitrary scrolling|V1,V9,V32,V37,V43,I.scroll
 T43|~|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
-T44|.|Watchdog-protected games benchmarks, full Windows verification, Mac compile and signed CI milestones/final|V23,V38–V47,I.distribution
+T44|~|Watchdog-protected games benchmarks, full Windows verification, Mac compile and signed CI milestones/final|V23,V38–V47,I.distribution
 T45|x|In-process Rally windows and scoped UI/backend routing|V38,V42,V47,V48
 
 Port acceptance: v0.2.0-alpha.3, source 97a2ef394b1591ba9e0421a2cf376055899ece30; 676 Mac headless tests; games native mouse/picker, 82 fixture requests/13 writes, late drafts/restart/window transfer; both OS binaries unoptimized; no Mac GUI or real Rally writes. ZIP SHA-256 a6f56551249d377e292db78735622e4af59d0e9c2947f79478cba299ab5d0d75. Hosted run 38036468741: 667 Windows tests + callback UI/package/cache passed on alpha.2 source. Detailed evidence: docs/PORT-VERIFICATION.md.
@@ -392,3 +392,6 @@ B114|2026-10-29|Snapshot capture moved non-Copy reasoning choices from borrowed 
 B115|2026-10-29|Native recovery fixture decoded UTF-8 dumps with Windows locale encoding|Read JSON explicitly as UTF-8; source/recovered files preserved identical Unicode; V47
 B116|2026-10-29|Composer cleared input before backend rejected a send to a recovered paused queue|Check local/backend recovery pause before changing the draft; native recovery send-refusal check; V41,V47
 B117|2026-10-29|Process-recovery fixture used a fixed delay for asynchronous summary completion|Wait on the shared worker becoming idle after turn completion; V44,V47
+
+B118|2026-10-29|Release GUI fixtures still selected removed external ACP backends|Exercise embedded Goose against isolated local Bedrock/MCP fixtures; preserve native Rally/selection/scroll coverage and memory caps; V38,V39,V42,V46
+B119|2026-10-29|Local provider fixture compared prompts including Fastrock turn-context metadata|Strip the appended turn-context before choosing deterministic fixture responses; native embedded streaming/cancellation fixture; V39
