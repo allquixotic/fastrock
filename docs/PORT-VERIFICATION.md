@@ -953,3 +953,26 @@ Executable SHA-256:
 This is the embedded-runtime milestone, not final 0.4.0 acceptance. Repository
 and conversation workspace binding, remaining orchestration, auxiliary UI panels,
 arbitrary old-history navigation and live required-model validation remain open.
+
+## Post-alpha.1: reviewed workspace integration
+
+Games passed five `v49` embedded integration tests and two browser-state tests:
+read-only review, either-head stale rejection, upstream conflict preservation,
+mode-only changes, incomplete-preview refusal, active-operation exclusion and
+single-use review. The application suite passed 708 tests plus the isolated
+native renderer; nine existing workspace tests and the embedded-Goose fixture
+also passed. Mac compatibility compilation and build-policy/format checks passed.
+
+The native vwork fixture forked a real redb workspace, edited its child, reviewed
+and explicitly merged into the parent, and checked the resulting Unicode/CRLF
+file. It also checked that editing a draft immediately disables the rendered
+Apply control. Existing compaction/revision-conflict and source-checkout checks
+passed. No external backend or live model/Rally service was used.
+
+Final fixture receipt: games
+`C:\Users\SeanMcNamara\fastrock-040-policy\merge-native-2\acceptance.json`.
+Peak process memory was 168,271,872 bytes under the 2 GB fixture guard.
+Development executable SHA-256:
+`6d497f4e0998bc7ff00bcac8c83d370ea504a99305f579be08b54b2360774450`.
+This step is not part of the already published alpha.1 package; automatic
+conversation/delegation bindings remain open.

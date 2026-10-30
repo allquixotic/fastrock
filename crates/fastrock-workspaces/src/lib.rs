@@ -6,6 +6,7 @@ use std::{future::Future, pin::Pin};
 use thiserror::Error;
 
 pub mod embedded;
+pub mod integration;
 pub mod scrollback;
 pub mod search;
 pub mod summaries;
@@ -76,6 +77,11 @@ pub enum Request {
         workspace: String,
         name: String,
     },
+    ReviewMerge {
+        workspace: String,
+        source: String,
+    },
+    Merge(integration::MergeReview),
     Diff {
         workspace: String,
     },
@@ -95,6 +101,8 @@ pub enum Reply {
         revision: String,
     },
     Created(Workspace),
+    MergeReview(integration::MergeReview),
+    MergeResult(integration::MergeResult),
     Report(String),
 }
 #[derive(Debug, Error)]

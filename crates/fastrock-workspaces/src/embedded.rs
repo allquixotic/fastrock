@@ -103,6 +103,27 @@ impl Store {
         f(&engine)
     }
 
+    /// Review and integration need one consistent pair of workspace heads.
+    /// Every regular operation holds a read guard, including MCP mutations;
+    /// this guard therefore excludes tools, compaction and maintenance too.
+    pub(crate) fn with_exclusive_engine<T>(
+        &self,
+        f: impl FnOnce(&Engine) -> Result<T>,
+    ) -> Result<T> {
+        ensure!(
+            !self.failed.load(Ordering::Acquire),
+            "Workspace maintenance failed; restart Fastrock for recovery"
+        );
+        let engine = self.engine.try_write().map_err(|_| {
+            anyhow::anyhow!("A workspace operation is active; review again after it finishes")
+        })?;
+        ensure!(
+            !self.failed.load(Ordering::Acquire),
+            "Workspace maintenance failed; restart Fastrock for recovery"
+        );
+        f(&engine)
+    }
+
     fn call(&self, op: &str, args: &Value) -> Result<Value> {
         if op == "database_compact" {
             ensure!(

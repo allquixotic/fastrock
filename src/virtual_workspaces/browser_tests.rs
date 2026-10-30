@@ -358,3 +358,75 @@ fn v24_renaming_extension_keeps_dirty_workspace_editable() {
     assert_eq!(browser.snapshot().text, "keep this draft");
     assert!(!browser.action("virtual-save").is_empty());
 }
+
+fn reviewed(browser: &mut Browser, complete: bool) {
+    browser.action("virtual-merge-source:child");
+    let work = browser.action("virtual-merge-review");
+    assert!(matches!(
+        &work[..],
+        [Work::Call {
+            request: Request::ReviewMerge { .. },
+            ..
+        }]
+    ));
+    browser.apply(Event::Complete {
+        epoch: epoch(&work),
+        result: Ok(Reply::MergeReview(
+            fastrock_workspaces::integration::MergeReview {
+                target: "task-000000".into(),
+                source: "child".into(),
+                target_revision: "r1".into(),
+                source_revision: "r2".into(),
+                report: "reviewed changes".into(),
+                complete,
+            },
+        )),
+    });
+}
+
+#[test]
+fn v49_merge_requires_current_complete_review_and_consumes_it() {
+    let mut browser = opened();
+    assert!(browser.action("virtual-merge-apply").is_empty());
+    reviewed(&mut browser, false);
+    assert!(!browser.snapshot().can_merge);
+    assert!(browser.action("virtual-merge-apply").is_empty());
+    reviewed(&mut browser, true);
+    assert!(browser.snapshot().can_merge);
+    let work = browser.action("virtual-merge-apply");
+    assert!(matches!(
+        &work[..],
+        [Work::Call {
+            request: Request::Merge(_),
+            ..
+        }]
+    ));
+    assert!(!browser.snapshot().can_merge);
+    browser.apply(Event::Complete {
+        epoch: epoch(&work),
+        result: Err("changed after review".into()),
+    });
+    assert!(browser.action("virtual-merge-apply").is_empty());
+    assert_eq!(browser.snapshot().text, "old\r\n");
+}
+
+#[test]
+fn v49_edit_source_change_and_report_change_invalidate_review() {
+    for action in [
+        "virtual-edit:unsaved",
+        "virtual-merge-source:other",
+        "virtual-compact",
+        "virtual-diff",
+    ] {
+        let mut browser = opened();
+        reviewed(&mut browser, true);
+        browser.action(action);
+        assert!(!browser.snapshot().can_merge, "{action}");
+    }
+    let mut browser = opened();
+    reviewed(&mut browser, true);
+    browser.action("virtual-edit:unsaved");
+    assert!(browser.action("virtual-merge-review").is_empty());
+    assert!(browser.action("virtual-merge-apply").is_empty());
+    assert_eq!(browser.snapshot().text, "unsaved");
+}

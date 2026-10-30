@@ -17,6 +17,19 @@ to embedded MCP handlers. Unsupported environment overrides, custom working
 directories, tool filters or CLI forms fail explicitly instead of launching a
 standalone core service. Keep the old files intact when diagnosing a migration.
 
+The native Virtual window can explicitly integrate a fork: select the target
+workspace, enter the source workspace name, choose **Review incoming changes**,
+then **Apply reviewed merge**. The review shows source and target changes since
+their shared ancestor, including file modes. Apply uses vwork's original merge
+under the exclusive embedded owner lock and checks both reviewed revisions.
+Changed revisions require another review; conflicts leave both workspaces
+unchanged. The source workspace and original filesystem checkout are preserved.
+Draft edits invalidate review. Incomplete previews disable Apply; the current
+view bounds patches to 128 KiB and fewer than 200 changed paths per side.
+
+Conversation-to-workspace binding and automatic isolated delegation are still
+in development. The reviewed merge UI is newer than the alpha.1 release.
+
 The sections below document historical 0.3.x behavior only.
 
 ---

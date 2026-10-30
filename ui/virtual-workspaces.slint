@@ -42,6 +42,8 @@ export component VirtualWorkspaceWindow inherits Window {
     in property <[string]> database-actions;
     in property <int> database-index: -1;
     in property <bool> database-can-compact;
+    in property <string> merge-source;
+    in property <bool> can-merge;
     callback action(string);
 
     MenuBar {
@@ -102,6 +104,23 @@ export component VirtualWorkspaceWindow inherits Window {
                     text: "Fork selected workspace";
                     enabled: root.workspace-selected && !root.workspace-busy && !root.workspace-dirty && name.text != "";
                     clicked => {root.action("virtual-fork:" + name.text);}
+                }
+                Text {text: "Merge into selected workspace"; color: Theme.text; wrap: word-wrap;}
+                LineEdit {
+                    text: root.merge-source;
+                    placeholder-text: "Source workspace name";
+                    enabled: root.workspace-selected && !root.workspace-busy && !root.workspace-dirty;
+                    edited(text) => {root.action("virtual-merge-source:" + text);}
+                }
+                Button {
+                    text: "Review incoming changes";
+                    enabled: root.workspace-selected && !root.workspace-busy && !root.workspace-dirty && root.merge-source != "";
+                    clicked => {root.action("virtual-merge-review");}
+                }
+                Button {
+                    text: "Apply reviewed merge";
+                    enabled: root.can-merge;
+                    clicked => {root.action("virtual-merge-apply");}
                 }
             }
             VerticalLayout {

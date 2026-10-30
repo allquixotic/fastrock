@@ -53,7 +53,7 @@ impl AppController {
             "dump" => {
                 if let Some(path) = args.get(1) {
                     let view = self.virtual_workspaces.browser.snapshot();
-                    let value = serde_json::json!({"visible":view.visible,"dirty":view.dirty,"text":view.text,"status":view.status,"report":view.report,"title":view.title,"canCompact":view.can_compact,"databaseIndex":view.database_index});
+                    let value = serde_json::json!({"visible":view.visible,"dirty":view.dirty,"text":view.text,"status":view.status,"report":view.report,"title":view.title,"canCompact":view.can_compact,"databaseIndex":view.database_index,"mergeSource":view.merge_source,"canMerge":view.can_merge,"widgetCanMerge":self.virtual_workspaces.window.as_ref().is_some_and(|window| window.get_can_merge())});
                     let path = path.clone();
                     self.backend.spawn(async move {
                         let _ = tokio::fs::write(path, value.to_string()).await;
@@ -129,6 +129,7 @@ impl AppController {
             if let Some(window) = &self.virtual_workspaces.window {
                 let (dirty, status) = self.virtual_workspaces.browser.edit_status();
                 window.set_workspace_dirty(dirty);
+                window.set_can_merge(false);
                 window.set_workspace_status(status.into());
                 if window.get_workspace_text().as_str() != self.virtual_workspaces.browser.text() {
                     window.set_workspace_text(self.virtual_workspaces.browser.text().into());
@@ -179,6 +180,8 @@ impl AppController {
         window.set_workspace_has_next(view.has_next);
         window.set_workspace_has_previous(view.has_previous);
         window.set_workspace_report(view.report.into());
+        window.set_merge_source(view.merge_source.into());
+        window.set_can_merge(view.can_merge);
         window.set_database_can_compact(view.can_compact);
         window.set_database_index(view.database_index);
         window.set_database_labels(ModelRc::new(VecModel::from(

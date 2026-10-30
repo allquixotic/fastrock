@@ -77,7 +77,19 @@ try:
                 virtual('snapshot', str(out / 'virtual.png')), {'wait': 300},
                 virtual('action', 'virtual-discard'), virtual('action', 'virtual-reload'), {'wait': 500},
                 virtual('action', 'virtual-edit:edited\r\n'), virtual('action', 'virtual-save'),
-                {'wait': 500}, *dump('saved'), *turn('vwork-inspect'), {'quit': True}], 'enabled', env)
+                {'wait': 500}, *dump('saved'), *turn('vwork-inspect'),
+                virtual('action', 'virtual-fork:review-child'), {'wait': 500},
+                virtual('file', '0'), {'wait': 500},
+                virtual('action', 'virtual-edit:child change λ\r\n'), virtual('action', 'virtual-save'),
+                {'wait': 500}, virtual('select', '1'), {'wait': 500}, virtual('file', '0'), {'wait': 500},
+                virtual('action', 'virtual-merge-source:review-child'),
+                virtual('action', 'virtual-merge-review'), {'wait': 500}, *dump('merge-review'),
+                virtual('snapshot', str(out / 'merge-review.png')), {'wait': 300},
+                virtual('action', 'virtual-edit:unsaved review draft'), *dump('merge-draft'),
+                virtual('action', 'virtual-discard'), virtual('action', 'virtual-merge-review'), {'wait': 500},
+                virtual('action', 'virtual-merge-apply'), {'wait': 500}, *dump('merged'),
+                virtual('file', '0'), {'wait': 500}, *dump('merged-file'),
+                {'quit': True}], 'enabled', env)
     load = lambda name: json.loads((out / (name + '.json')).read_text(encoding='utf-8'))
     database = load('database-only')
     assert database['visible'] and database['canCompact'] and database['report'], database
@@ -96,6 +108,12 @@ try:
     assert (state / 'workspaces.redb').is_file() and not (state / 'connection.json').exists()
     assert not missing_vwork.exists(), 'Fixture unexpectedly installed vwork'
     assert (out / 'virtual.png').stat().st_size > 1000
+    review, merged = load('merge-review'), load('merged')
+    assert review['canMerge'] and review['widgetCanMerge'] and 'child change λ' in review['report'], review
+    assert not load('merge-draft')['canMerge'] and not load('merge-draft')['widgetCanMerge'], load('merge-draft')
+    assert not merged['canMerge'] and 'Merge applied' in merged['report'], merged
+    assert load('merged-file')['text'] == 'child change λ\r\n', load('merged-file')
+    assert (out / 'merge-review.png').stat().st_size > 1000
     # Vwork is always available in 0.4.0, including without legacy configuration.
     default_env = provider.environment(out / 'default')
     peak = max(peak, run([{'wait_ready': 30000}, {'wait': 1000}, virtual('open'),
@@ -105,7 +123,7 @@ try:
         binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(), peak_process_bytes=peak,
         native_window=True, compaction_preserves_draft=True, conflict_preserves_draft=True,
         revision_checked_save=True, source_checkout_preserved=True, no_backend_installed=True,
-        default_embedded_database=True), indent=2), encoding='utf-8')
+        default_embedded_database=True, reviewed_child_merge=True), indent=2), encoding='utf-8')
     print('PASS: embedded vwork, native edits/compaction/conflicts, source preservation, no installed backends')
 finally:
     provider.close()

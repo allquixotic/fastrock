@@ -648,6 +648,16 @@ impl VworkProvider {
             )?)),
             Request::Diff { workspace } => self.report("workspace_diff", workspace).await,
             Request::Size { workspace } => self.report("workspace_size", workspace).await,
+            Request::ReviewMerge { workspace, source } => {
+                crate::integration::review(&self.embedded, workspace, source)
+                    .await
+                    .map(Reply::MergeReview)
+                    .map_err(|error| WorkspaceError::Message(format!("{error:#}")))
+            }
+            Request::Merge(review) => crate::integration::apply(&self.embedded, review)
+                .await
+                .map(Reply::MergeResult)
+                .map_err(|error| WorkspaceError::Message(format!("{error:#}"))),
         }
     }
     async fn report(&self, op: &str, workspace: String) -> Result<Reply, WorkspaceError> {

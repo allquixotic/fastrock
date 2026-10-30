@@ -1,4 +1,5 @@
 //! Optional workspace UI state. The provider owns all storage/transport details.
+use fastrock_workspaces::integration::{MergeResult, MergeReview};
 use fastrock_workspaces::vwork::{self, Installation, VworkProvider};
 use fastrock_workspaces::{
     Document, FileEntry, FilePage, MAX_TEXT_BYTES, PAGE_SIZE, Reply, Request, WorkspaceProvider,
@@ -49,6 +50,8 @@ pub struct BrowserSnapshot {
     pub databases: Vec<BrowserRow>,
     pub database_index: i32,
     pub can_compact: bool,
+    pub merge_source: String,
+    pub can_merge: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Work {
@@ -110,10 +113,7 @@ pub async fn execute(work: Work) -> Event {
                             }
                         }
                     }
-                    Err(error) => errors.push(format!(
-                        "{}: {error}. Start its vwork daemon and refresh.",
-                        provider.label
-                    )),
+                    Err(error) => errors.push(format!("{}: {error}", provider.label)),
                     _ => errors.push("Invalid workspace catalog".into()),
                 }
             }
@@ -155,6 +155,8 @@ pub struct Browser {
     page_epoch: u64,
     status: String,
     report: String,
+    merge_source: String,
+    merge_review: Option<MergeReview>,
 }
 impl Browser {
     pub fn snapshot(&self) -> BrowserSnapshot {
@@ -230,6 +232,11 @@ impl Browser {
                 .database
                 .as_ref()
                 .is_some_and(|d| self.providers.contains(d)),
+            merge_source: self.merge_source.clone(),
+            can_merge: active
+                && !dirty
+                && !self.busy
+                && self.merge_review.as_ref().is_some_and(|r| r.complete),
         }
     }
     pub fn dirty(&self) -> bool {
@@ -245,6 +252,7 @@ impl Browser {
         &self.edited
     }
     fn begin(&mut self, request: Request) -> Vec<Work> {
+        self.merge_review = None;
         let Some(selection) = &self.selected else {
             self.status = "Select a workspace first".into();
             return vec![];
@@ -292,6 +300,7 @@ impl Browser {
             return vec![];
         }
         if let Some(text) = action.strip_prefix("virtual-edit:") {
+            self.merge_review = None;
             if self.document.is_some() && text.len() <= MAX_TEXT_BYTES && !text.contains('\0') {
                 self.edited = text.into();
             } else {
@@ -319,6 +328,7 @@ impl Browser {
             return vec![];
         }
         if action == "virtual-compact" {
+            self.merge_review = None;
             let Some(database) = self
                 .database
                 .as_ref()
@@ -363,6 +373,26 @@ impl Browser {
             self.status = "Save or Discard unsaved edits before changing files/workspaces".into();
             return vec![];
         }
+        if let Some(source) = action.strip_prefix("virtual-merge-source:") {
+            self.merge_source = source.into();
+            self.merge_review = None;
+            return vec![];
+        }
+        if action == "virtual-merge-review"
+            && let Some(selection) = &self.selected
+        {
+            return self.begin(Request::ReviewMerge {
+                workspace: selection.workspace.clone(),
+                source: self.merge_source.trim().into(),
+            });
+        }
+        if action == "virtual-merge-apply" {
+            if let Some(review) = self.merge_review.take().filter(|r| r.complete) {
+                return self.begin(Request::Merge(review));
+            }
+            self.status = "Review the incoming changes before applying".into();
+            return vec![];
+        }
         if let Some(index) = row_index(action, "virtual-select:", self.catalog_epoch)
             && let Some(s) = self.catalog.get(index).cloned()
         {
@@ -374,6 +404,8 @@ impl Browser {
             self.prefix.clear();
             self.offset = 0;
             self.report.clear();
+            self.merge_source.clear();
+            self.merge_review = None;
             self.status = "Enter a name to create a workspace from this repository".into();
             return self.list();
         }
@@ -446,6 +478,9 @@ impl Browser {
                 errors,
             } => {
                 let changed = self.providers != providers || self.catalog != catalog;
+                if changed {
+                    self.merge_review = None;
+                }
                 if let Some(selection) = &mut self.selected {
                     if let Some(provider) = providers.iter().find(|p| p.id == selection.provider.id)
                     {
@@ -514,6 +549,30 @@ impl Browser {
                     Ok(Reply::Report(report)) => {
                         self.report = report;
                         self.status = "Virtual workspace report".into();
+                    }
+                    Ok(Reply::MergeReview(review)) => {
+                        self.status = if review.complete {
+                            "Review the incoming and target changes, then Apply reviewed merge."
+                        } else {
+                            "Review is incomplete; Apply is disabled. Integrate a smaller set of changes."
+                        }.into();
+                        self.report = review.report.clone();
+                        self.merge_review = Some(review);
+                    }
+                    Ok(Reply::MergeResult(MergeResult::Merged { revision })) => {
+                        self.status = format!(
+                            "Merge applied · {revision}. Reload files to inspect the result."
+                        );
+                        self.document = None;
+                        self.edited.clear();
+                        self.page = None;
+                        self.report =
+                            format!("Merge applied · {revision}. Source workspace preserved.");
+                        return self.list();
+                    }
+                    Ok(Reply::MergeResult(MergeResult::Conflicts { paths })) => {
+                        self.status = "Merge has conflicts; both workspaces are unchanged. Resolve the listed files, then review again.".into();
+                        self.report = paths.join("\n");
                     }
                     Ok(Reply::Created(ws)) => {
                         if let Some(s) = &mut self.selected {

@@ -119,6 +119,8 @@ V47: Last window close ! tray continuation, explicit Quit ! cancel/save/exit, re
 
 V48: Native windows ! one embedded backend/store owner; callbacks, timers, async results and server requests route to owning window. Rally moves preserve drafts/recovery without starting a process. Verify: scoped routing tests and native two-window transfer/interaction fixture.
 
+V49: Explicit workspace integration ! review source/target changes, preserve source and checkout, guard both reviewed heads under exclusive owner lock; stale review/conflicts ! no merge writes. Incomplete review ! Apply disabled; successful dispatch consumes review. Verify: v49 integration/browser tests and native vwork merge fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -168,7 +170,7 @@ T34|x|Widen text selection hit areas, selectable tool/command details, Windows i
 T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only release policy; policy audit passed, games ReleasePolicy 3 passed/1 Apple-only skipped|V46,I.distribution
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
 T37|~|Replace external backend/core bridges with embedded Goose; remove Codex UI/connection, preserve Goose configuration|V38,V39,I.goose
-T38|~|Embed vwork Engine/tools/browser/compaction; compressed current-summary table in same redb|V40,I.vwork
+T38|~|Embed vwork Engine/tools/browser/compaction; reviewed explicit integration; compressed current-summary table in same redb|V40,V49,I.vwork
 T39|~|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; no quotas|V41,I.orchestration
 T40|~|Native T3 main UI/sidebar/panels, repository projects and permanent independent Rally project|V42,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
