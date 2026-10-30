@@ -172,7 +172,11 @@ impl ThreadTab {
         if !preview.is_empty() {
             return truncate_chars(preview.lines().next().unwrap_or(preview), 48);
         }
-        folder_label(&self.cwd)
+        if self.extras.workspace.is_some() {
+            "New conversation".to_owned()
+        } else {
+            folder_label(&self.cwd)
+        }
     }
 
     pub(crate) fn is_busy(&self) -> bool {
@@ -1199,10 +1203,22 @@ impl AppController {
             .map(|tab| &tab.kind)
         {
             Some(TabKind::Thread(thread)) => thread
-                .cwd
-                .file_name()
-                .map(|name| name.to_string_lossy().into_owned())
-                .unwrap_or_default(),
+                .extras
+                .project_id
+                .as_ref()
+                .and_then(|id| self.sidebar.projects().iter().find(|p| &p.id == id))
+                .map(|p| p.name.clone())
+                .unwrap_or_else(|| {
+                    if thread.extras.workspace.is_some() {
+                        "Workspace".to_owned()
+                    } else {
+                        thread
+                            .cwd
+                            .file_name()
+                            .map(|name| name.to_string_lossy().into_owned())
+                            .unwrap_or_default()
+                    }
+                }),
             Some(TabKind::Rally(_)) => "Rally".into(),
             _ => String::new(),
         };
@@ -1633,7 +1649,8 @@ impl AppController {
             "keyboard" => self.open_settings(Some("keyboard")),
             "feedback" => self.open_settings(Some("feedback")),
             "docs" => {
-                let _ = webbrowser::open("https://developers.openai.com/codex");
+                let _ =
+                    webbrowser::open("https://github.com/allquixotic/fastrock/blob/main/GUI.md");
             }
             "fork" | "compact" | "review" | "export" => {
                 if let Some(index) = self.active_thread_index() {

@@ -31,6 +31,8 @@ struct Draft {
 #[derive(Clone, Serialize, Deserialize)]
 struct Chat {
     #[serde(default)]
+    project_id: Option<String>,
+    #[serde(default)]
     workspace: Option<fastrock_workspaces::session::Selection>,
     thread_id: Option<String>,
     cwd: PathBuf,
@@ -58,6 +60,7 @@ impl Chat {
             recovered.push(json!({"id":"local-preparing","input":input,"mode":preparing.mode,"recoveryReason":"Image preparation was interrupted. Review and send manually."}));
         }
         Self {
+            project_id: thread.extras.project_id.clone(),
             workspace: thread.extras.workspace.clone(),
             thread_id: thread.thread_id.clone(),
             cwd: thread.cwd.clone(),
@@ -86,6 +89,7 @@ impl Chat {
     fn restore(self) -> ThreadTab {
         let mut thread = ThreadTab::new(self.cwd);
         thread.extras.workspace = self.workspace;
+        thread.extras.project_id = self.project_id;
         thread.thread_id = self.thread_id;
         thread.name = self.name;
         thread.preview = self.preview;

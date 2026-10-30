@@ -85,6 +85,7 @@ const INTERRUPT_RETRY_DELAY: Duration = Duration::from_millis(150);
 #[derive(Debug, Default)]
 pub(crate) struct ThreadExtras {
     pub(crate) workspace: Option<fastrock_workspaces::session::Selection>,
+    pub(crate) project_id: Option<String>,
     /// Set when the tab is a side chat: the thread it branched from.
     pub(crate) side_parent: Option<SideParent>,
     pub(crate) editing_pending: Option<pending::EditingPending>,
@@ -148,8 +149,12 @@ impl AppController {
         workspace: fastrock_workspaces::session::WorkspaceSession,
     ) {
         let mut thread = ThreadTab::new(workspace.cwd);
+        thread.extras.project_id = Some(fastrock_workspaces::projects::id(
+            &workspace.selection.home,
+            &workspace.repo,
+        ));
         thread.extras.workspace = Some(workspace.selection);
-        thread.name = Some(format!("{} workspace", workspace.repo));
+        thread.name = None;
         thread.xtab_enabled = self.prefs.cross_tab_tools;
         let index = self.replace_new_tab_page_or_push(TabKind::Thread(Box::new(thread)));
         self.start_thread_in_tab(index);
@@ -237,9 +242,11 @@ impl AppController {
 
     fn on_thread_started(&mut self, index: usize, response: ThreadStartResponse) {
         crate::perf::mark("thread-started");
+        self.sidebar_track_live(&response.thread);
         let Some(thread) = self.thread_tab_mut(index) else {
             return;
         };
+        thread.extras.project_id = response.thread.project_id.clone();
         thread.thread_id = Some(response.thread.id.clone());
         thread.cwd = response.cwd.into_path_buf();
         thread.name = response.thread.name;
@@ -252,6 +259,7 @@ impl AppController {
         thread.sandbox = Some(response.sandbox);
         thread.phase = ThreadPhase::Idle;
         self.dispatch_pending_inputs(index);
+        self.sidebar_update_preview(index);
         self.after_thread_opened(index);
     }
 
@@ -385,6 +393,7 @@ impl AppController {
         let Some(thread) = self.thread_tab_mut(index) else {
             return;
         };
+        thread.extras.project_id = response.thread.project_id.clone();
         thread.thread_id = Some(thread_id.clone());
         thread.cwd = response.cwd.into_path_buf();
         thread.name.clone_from(&response.thread.name);
@@ -568,6 +577,7 @@ impl AppController {
                     Ok(response) => {
                         let thread_id = response.thread.id.clone();
                         if let Some(thread) = app.thread_tab_mut(index) {
+                            thread.extras.project_id = response.thread.project_id.clone();
                             thread.thread_id = Some(thread_id.clone());
                             thread.cwd = response.cwd.into_path_buf();
                             if response.thread.name.is_some() {
@@ -731,6 +741,7 @@ impl AppController {
             return true;
         }
         self.dispatch_input(index, input, client_id, mode);
+        self.sidebar_update_preview(index);
         self.refresh_tabs();
         true
     }

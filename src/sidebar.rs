@@ -333,6 +333,7 @@ pub(crate) struct SidebarController {
     activity: activity::ActivityController,
     /// Loaded threads in server order (all pages).
     threads: Vec<ThreadSummary>,
+    live: HashMap<String, ThreadSummary>,
     history_hits: Vec<ThreadSummary>,
     search_run: Option<search::SearchRun>,
     /// Last unfiltered list of active threads; kept while a search or the
@@ -499,6 +500,7 @@ impl AppController {
             ServerNotification::ThreadStarted(started) => {
                 let thread = &started.thread;
                 if !thread.ephemeral && thread.parent_thread_id.is_none() {
+                    self.sidebar_track_live(thread);
                     self.sidebar_refresh();
                 } else {
                     self.sidebar.unlisted.insert(thread.id.clone());
@@ -506,6 +508,9 @@ impl AppController {
             }
             ServerNotification::ThreadClosed(closed) => {
                 self.sidebar.unlisted.remove(&closed.thread_id);
+                if self.sidebar.live.remove(&closed.thread_id).is_some() {
+                    self.sidebar_render();
+                }
             }
             ServerNotification::ThreadArchived(archived) => {
                 self.sidebar
@@ -696,6 +701,11 @@ impl AppController {
                         summary
                     })
                     .collect();
+                if !self.sidebar.archived {
+                    for thread in &page {
+                        self.sidebar.live.remove(&thread.id);
+                    }
+                }
                 if first_page {
                     let old = std::mem::take(&mut self.sidebar.threads);
                     let old_cursor = self.sidebar.next_cursor.take();
@@ -766,11 +776,45 @@ impl AppController {
     }
 
     /// Rebuilds the rows from the loaded threads.
+    pub(crate) fn sidebar_track_live(&mut self, thread: &Thread) {
+        if thread.ephemeral || thread.parent_thread_id.is_some() {
+            return;
+        }
+        let mut summary = ThreadSummary::from_thread(thread);
+        projects::bind(&mut summary, &self.sidebar.projects);
+        self.sidebar.live.insert(thread.id.clone(), summary);
+        self.sidebar_render();
+    }
+
+    pub(crate) fn sidebar_update_preview(&mut self, index: usize) {
+        let Some(tab) = self.thread_tab(index) else {
+            return;
+        };
+        let Some(id) = tab.thread_id.clone() else {
+            return;
+        };
+        let title = thread_title(tab.name.as_deref(), &tab.preview);
+        if title != UNTITLED_THREAD {
+            self.sidebar_set_title(&id, &title);
+        }
+    }
+
     fn sidebar_render(&mut self) {
         let now = unix_now();
         let has_more = self.sidebar.next_cursor.is_some();
         let mut threads = self.sidebar.threads.clone();
         merge_page(&mut threads, self.sidebar.history_hits.clone());
+        if !self.sidebar.archived {
+            let query = self.sidebar.search_term.to_lowercase();
+            let live = self
+                .sidebar
+                .live
+                .values()
+                .filter(|t| query.is_empty() || t.title.to_lowercase().contains(&query))
+                .cloned()
+                .collect();
+            merge_page(&mut threads, live);
+        }
         for thread in &mut threads {
             if let Some(at) = self.sidebar.activity.at(&thread.id) {
                 thread.updated_at = at;
@@ -858,12 +902,13 @@ impl AppController {
 
     fn sidebar_remove_thread(&mut self, thread_id: &str) {
         self.sidebar.recent.retain(|thread| thread.id != thread_id);
+        let removed_live = self.sidebar.live.remove(thread_id).is_some();
         let before = self.sidebar.threads.len() + self.sidebar.history_hits.len();
         self.sidebar.threads.retain(|thread| thread.id != thread_id);
         self.sidebar
             .history_hits
             .retain(|thread| thread.id != thread_id);
-        if self.sidebar.threads.len() + self.sidebar.history_hits.len() != before {
+        if removed_live || self.sidebar.threads.len() + self.sidebar.history_hits.len() != before {
             self.sidebar_render();
             self.newtab_on_threads_changed();
         }
@@ -877,6 +922,7 @@ impl AppController {
             .iter_mut()
             .chain(self.sidebar.history_hits.iter_mut())
             .chain(self.sidebar.recent.iter_mut())
+            .chain(self.sidebar.live.values_mut())
         {
             if thread.id == thread_id {
                 thread.title.clone_from(&title);
@@ -892,6 +938,7 @@ impl AppController {
             .threads
             .iter()
             .chain(self.sidebar.history_hits.iter())
+            .chain(self.sidebar.live.values())
             .find(|thread| thread.id == thread_id)
             .cloned()
         else {

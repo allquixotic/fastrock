@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "binary_sha256": "c744948221216bd562d288ca2d667c6a50b7b8fc66d1f4f7a0c39ee0f6d35e31",
+  "peak_process_bytes": 146042880,
+  "first_stream_visible": true,
+  "project_name_and_scope": true,
+  "search_archive_filters": true,
+  "native_palette_pages": true,
+  "draft_and_restart_identity": true
+}

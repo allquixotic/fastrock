@@ -1506,3 +1506,22 @@ bytes under the 2 GB fixture guard. SHA-256:
 `d3a1e714e0806b7e1acf86398ac478160d99b5e99a78b1b8ad9532fbcaa74093`.
 T50 is complete. Final T3 UI/recovery audit and full RC acceptance remain open.
 No release tag or binary publication.
+
+Native sidebar identity audit, 2026-10-30 (T51, V67): new ordinary chats appear before
+the first completed turn, show the first user prompt during streaming, and use
+creation time until meaningful message activity exists. Repository display names
+replace generated store/workspace identifiers in the header and recipe project
+selector; stable project identity survives restart. Native palette navigation
+reaches Tools and hooks and Goose recipes without losing the composer draft.
+
+`dev/windows-sidebar-smoke.py` passed on games with active/archive/search filters,
+streaming status, fresh age/title and no provider dispatch on restart. Peak process
+memory was 146,042,880 bytes; receipt `docs/benchmarks/sidebar-games-2026-10-30.json`,
+binary SHA-256 `c744948221216bd562d288ca2d667c6a50b7b8fc66d1f4f7a0c39ee0f6d35e31`.
+748 application, 17 workspace/store/checkpoint tests, standalone embedded Goose
+and isolated renderer regression passed. Mac library compatibility check and
+build/release policy checks passed; no Mac application tests or GUI.
+
+T51 remains open: pinned/working/snoozed/settled sidebar organization, complete
+T3 interaction comparison and final summary-timeout evidence still need acceptance.
+This is source progress, not release-candidate readiness; no release tag/assets.

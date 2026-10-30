@@ -404,6 +404,8 @@ impl AppController {
                                 let rally = self.window.global::<crate::ui::RallyState>();
                                 let navigation = serde_json::json!({
                                     "activeKind": format!("{:?}", chrome.get_active_kind()),
+                                    "activeScope": chrome.get_active_scope().as_str(),
+                                    "activeTitle": chrome.get_active_info().title.as_str(),
                                     "agents": self.window.global::<crate::ui::InfoState>().get_agents().iter().map(|agent| serde_json::json!({"id":agent.thread_id.as_str(),"label":agent.label.as_str(),"status":agent.status_text.as_str()})).collect::<Vec<_>>(),
                                     "activeId": chrome.get_active_info().id,
                                     "rallyCount": state.get_rally_count(),

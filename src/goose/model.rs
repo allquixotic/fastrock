@@ -62,6 +62,8 @@ impl Session {
     pub fn thread(&self) -> Value {
         let id = ui_id(text(&self.info, "sessionId"));
         let meta = &self.info["_meta"];
+        let created = timestamp(&meta["createdAt"]);
+        let activity = timestamp(&meta["lastMessageAt"]).max(created);
         let model = self.config_value("model");
         let model = if model.is_empty() {
             text(meta, "modelId")
@@ -81,8 +83,8 @@ impl Session {
             "agentRole":self.binding.delegation.as_ref().map(|_|"Delegate"),
             "projectId":self.binding.workspace.as_ref().map(|w|fastrock_workspaces::projects::id(&w.selection.home,&w.repo)),
             "ephemeral":self.ephemeral,"modelProvider":if provider.is_empty(){"goose"}else{provider},"model":model,
-            "createdAt":timestamp(&meta["createdAt"]),"updatedAt":timestamp(&self.info["updatedAt"]),
-            "recencyAt":timestamp(&meta["lastMessageAt"]),"cwd":self.info["cwd"],"cliVersion":"Goose ACP",
+            "createdAt":created,"updatedAt":timestamp(&self.info["updatedAt"]),
+            "recencyAt":activity,"cwd":self.info["cwd"],"cliVersion":"Goose ACP",
             "source":"appServer","historyMode":"paginated","status":if self.active.is_some(){json!({"type":"active","activeFlags":[]})}else{json!({"type":"idle"})},"turns":[]})
     }
     pub fn response(&self) -> Value {

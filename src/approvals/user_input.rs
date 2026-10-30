@@ -335,7 +335,10 @@ impl UserInputForm {
         if self.asynchronous {
             return Ok(Answer {
                 result: serde_json::Value::Null,
-                notice: Some((NoticeKind::Info, "You dismissed Codex's questions".into())),
+                notice: Some((
+                    NoticeKind::Info,
+                    "You dismissed the agent's questions".into(),
+                )),
                 open_url: None,
             });
         }
@@ -343,9 +346,9 @@ impl UserInputForm {
             answers: HashMap::new(),
         };
         let text = if self.questions.len() == 1 {
-            "You skipped Codex's question"
+            "You skipped the agent's question"
         } else {
-            "You skipped Codex's questions"
+            "You skipped the agent's questions"
         };
         Ok(Answer {
             result: serde_json::to_value(response)?,
@@ -356,8 +359,8 @@ impl UserInputForm {
 
     pub(crate) fn card(&self) -> CardView {
         let title = match self.questions.len() {
-            1 => "Codex has a question".to_string(),
-            count => format!("Codex has {count} questions"),
+            1 => "The agent has a question".to_string(),
+            count => format!("The agent has {count} questions"),
         };
         let mut card = CardView::form(
             title,
@@ -372,7 +375,7 @@ impl UserInputForm {
             },
         );
         if self.asynchronous {
-            card.reason = "Codex can keep working. Choose an answer or type your own; Submit sends it to this conversation.".into();
+            card.reason = "The agent can keep working. Choose an answer or type your own; Submit sends it to this conversation.".into();
         }
         card
     }
@@ -382,7 +385,7 @@ impl UserInputForm {
             Some(state) if self.questions.len() == 1 => {
                 crate::app::truncate_chars(&state.question.question, /*max*/ 80)
             }
-            _ => format!("Codex has {} questions", self.questions.len()),
+            _ => format!("The agent has {} questions", self.questions.len()),
         }
     }
 }
@@ -436,7 +439,7 @@ mod tests {
                 .collect(),
         );
         assert!(!form.is_empty());
-        assert_eq!(form.card().title, "Codex has a question");
+        assert_eq!(form.card().title, "The agent has a question");
         // Empty free-text submissions preserve the pending card and draft.
         assert!(form.submit_answer().is_err());
         form.set_text(0, "Rally-101".into());
@@ -570,7 +573,7 @@ mod tests {
     #[test]
     fn card_lists_every_question() {
         let card = form().card();
-        assert_eq!(card.title, "Codex has 3 questions");
+        assert_eq!(card.title, "The agent has 3 questions");
         let super::super::request::CardBody::Form(view) = card.body else {
             panic!("expected a form");
         };

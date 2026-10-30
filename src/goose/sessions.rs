@@ -150,6 +150,9 @@ impl Adapter {
                 .or_insert_with(|| Session::new(id, cwd));
             session.info["sessionId"] = json!(id);
             session.info["cwd"] = json!(response["_meta"]["workingDir"].as_str().unwrap_or(cwd));
+            if let Some(title) = response["_meta"]["recipe"]["title"].as_str() {
+                session.info["title"] = json!(title);
+            }
             session.config = config_options(&response);
             session.loaded = true;
             session.ephemeral = params["ephemeral"] == true;

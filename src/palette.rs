@@ -175,6 +175,18 @@ impl AppController {
                 "Goose models, endpoints and credentials",
                 true,
             ),
+            (
+                "capabilities",
+                "Tools and hooks",
+                "Goose extensions, tool permissions and code mode",
+                true,
+            ),
+            (
+                "recipes",
+                "Goose recipes",
+                "Reusable prompts, instructions and model settings",
+                true,
+            ),
             ("settings", "Open settings", "Application preferences", true),
             (
                 "keyboard",
@@ -344,6 +356,7 @@ impl AppController {
                     .invoke_open_virtual_workspaces(),
                 "schedules" => self.open_settings(Some("schedules")),
                 "providers" => self.open_settings(Some("goose")),
+                "recipes" | "capabilities" => self.open_settings(Some(row.target.as_str())),
                 "theme-system" | "theme-light" | "theme-dark" => {
                     self.prefs.theme = match row.target.as_str() {
                         "theme-light" => crate::prefs::ThemeChoice::Light,

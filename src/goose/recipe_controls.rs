@@ -94,7 +94,10 @@ impl AppController {
                                     SharedString::from(format!(
                                         "{} · {}",
                                         p["name"].as_str().unwrap_or(""),
-                                        p["root"].as_str().unwrap_or("")
+                                        dunce::simplified(std::path::Path::new(
+                                            p["root"].as_str().unwrap_or("")
+                                        ))
+                                        .display()
                                     ))
                                 })
                                 .collect::<Vec<_>>();

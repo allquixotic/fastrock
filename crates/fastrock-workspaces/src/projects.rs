@@ -58,7 +58,15 @@ pub async fn list(connection: &Connection) -> Result<Vec<Project>> {
                         }
                         Some(Project {
                             id: id(&engine.home, repo),
-                            name: repo.into(),
+                            name: if repo.strip_prefix("project-").is_some_and(|v| {
+                                v.len() == 64 && v.bytes().all(|b| b.is_ascii_hexdigit())
+                            }) {
+                                root.file_name()
+                                    .map(|n| n.to_string_lossy().into_owned())
+                                    .unwrap_or_else(|| repo.to_owned())
+                            } else {
+                                repo.to_owned()
+                            },
                             home: engine.home.clone(),
                             repo: repo.into(),
                             root,

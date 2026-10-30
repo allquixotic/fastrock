@@ -157,6 +157,8 @@ V65: Native Goose startup/settings writes ! reject malformed or oversized writab
 
 V66: Native recipes ! unchanged Goose validation/render/storage APIs, bounded documents/parameters, stale-save/delete guards and original-byte backups. Prepare ! registered isolated workspace, supported provider checked before activation, mandatory embedded tool bindings retained; no automatic prompt or restart run. Parameter rendering ! no silent second interpretation. Verify: v66 recipe render/stale/backup tests and native recipe/edit/parameter/provider/workspace/restart fixture.
 
+V67: Native repository identity ! stable across display labels; generated IDs ! absent from project selectors/header. New ordinary chats ! immediately visible before first completed turn, retain project grouping through list refresh, never enter archived view; ephemeral/delegate chats ! remain excluded. IO ! off UI thread. Verify: dev/windows-sidebar-smoke.py first-stream/project/header/search/archive/age/title fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -219,7 +221,7 @@ T47|x|Native interactive terminal panels with isolated user-requested processes,
 T48|x|Conversation checkpoint/review/restore workflows over guarded vwork revisions|V40,V41,V42,V49,V62,V63,I.checkpoints
 T49|x|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
 T50|x|Native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42,V64,V65,V66
-T51|.|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44
+T51|~|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44,V67
 
 V53 verification, 2026-10-29: games 708 application + one renderer + 17 workspace tests and standalone embedded Goose fixture passed; native history navigation/selection/stream/export passed. Full 1,000/eight/10,000 workload passed, 217,894,912 peak process bytes; arbitrary 100-entry pages restored in 4–6 ms. Recent-frame p95 10.380 ms exceeds earlier 0.3.4 baseline 8.487 ms; no general scrolling-speedup claim. Mac compile only passed. Evidence: docs/PORT-VERIFICATION.md and docs/benchmarks/scale-history-games-2026-10-29.json. T42/T44 remain open for remaining acceptance.
 
@@ -527,3 +529,9 @@ B173|2026-10-30|New recipe page referenced nonexistent Theme.panel/bg properties
 B174|2026-10-30|Recipe fixture changed dirty state before queued New pointer event, disabling New before dispatch; waiting after content was too late|Wait immediately after New pointer event, before setting content; V66
 
 B175|2026-10-30|Saving a newly created recipe opened its document but left library rows stale|Refresh catalog after document reload; native saved-library/deletion fixture; V66
+
+B176|2026-10-30|New chat sidebar waited for completed-turn catalog; project selectors/header exposed generated store/workspace IDs|Cache new ordinary chats until catalog catches up; persist project identity separately from display label; V67
+
+B177|2026-10-30|Visible question/empty-state/help/tool text retained Codex branding after removing Codex backend|Use agent/Fastrock wording and Fastrock documentation; expose new Goose pages in palette; V42
+
+B178|2026-10-30|Fresh Goose session projected absent lastMessageAt as epoch zero; live sidebar retained empty preview during first stream|Use creation time before first message and update cached preview on first send; native age/title assertions; V67
