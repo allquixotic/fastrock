@@ -31,6 +31,7 @@ mod markdown;
 mod model;
 mod navigation;
 mod output;
+pub(crate) use output::strip_ansi;
 pub(crate) mod render;
 pub(crate) mod selection;
 mod store;

@@ -6,7 +6,7 @@ use serde_json::json;
 use std::{path::PathBuf, time::Duration};
 
 #[derive(Clone, Deserialize, Serialize)]
-pub(super) struct ContextInfo {
+pub(crate) struct ContextInfo {
     pub cwd: PathBuf,
     pub workspace: Option<WorkspaceSession>,
 }

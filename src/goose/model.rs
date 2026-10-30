@@ -34,6 +34,7 @@ pub(super) struct Session {
     pub config: Vec<Value>,
     pub turns: fastrock_workspaces::scrollback::History,
     pub active: Option<String>,
+    pub shell: Option<super::shell::Running>,
     pub run_id: Option<String>,
     pub cancel_requested: bool,
     pub replaying: bool,

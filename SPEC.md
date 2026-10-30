@@ -171,6 +171,9 @@ V71: Virtual @ file mentions ! bound workspace metadata through shared in-proces
 V72: Native Review ! in-process repository catalog and bounded exact-target patch, compressed workspace/revision identity, no checkout or source mutation. Uncommitted/base/commit/custom ! preserve semantics, root commits supported; oversized inputs/output ! explicit refusal, binary omission ! explicit. Start ! canonical typed route, existing Goose session/queue/checkpoint safeguards, no restart replay. Verify: v72 local/virtual/limit/typed-route tests and dev/windows-review-smoke.py.
 
 
+V73: Explicit ! commands ! owned bounded-output process, unchanged Goose public storage, durable intent before spawn, no provider call for execution. Busy/recovery ! reject; Stop/Quit ! stop descendants and retain uncertain evidence; restart ! never replay. Compressed source ! renewable temporary lease and preserved recovery edits, no implicit import. Verify: v73 output/process tests and dev/windows-shell-smoke.py.
+
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -238,7 +241,7 @@ T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch 
 T53|.|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48
 T54|.|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63
 T55|.|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63
-T56|~|Native queue start/reorder, compressed-source file mentions and in-process Review verified; shell and remaining visible typed-route audit open|V38,V40,V41,V42,V70,V71,V72
+T56|~|Native queue start/reorder, compressed-source mentions, in-process Review and explicit owned shell commands verified; remaining visible typed-route audit open|V38,V40,V41,V42,V70,V71,V72,V73
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -280,6 +283,9 @@ Capability controls verification, 2026-10-30: 745 application tests and standalo
 Recipe verification, 2026-10-30: 748 application tests, standalone embedded Goose, native recipe fixture and capability regression passed on games. Native library create/edit/backup/delete, stale external edit preservation, typed/file parameters, provider rejection, recipe model, prepared prompt, actual embedded workspace tool call, no restart dispatch, and explicit Resume after library deletion verified. Mac compile/static checks passed. SHA-256 `d3a1e714e0806b7e1acf86398ac478160d99b5e99a78b1b8ad9532fbcaa74093`, peak 144,539,648 bytes; receipt `docs/benchmarks/recipes-games-2026-10-30.json`. T50 complete; T51/full acceptance remain open. No release tag.
 
 Review verification, 2026-10-30: games 760 application tests, three repository-review tests, isolated renderer and native compressed/local Review fixture passed. Uncommitted/base/root-commit/custom targets, no source mutation, draft preservation, recovery/busy guards and no restart replay verified. Mac compile only passed; formatting/build/release policy checks passed. SHA-256 `f89c4f4d81d0c8479d257d8300576a2e4d9371cc510c58e0a8e30b09d441a289`; peak 152,690,688 bytes. Receipt `docs/benchmarks/review-games-2026-10-30.json`. T56 shell and full acceptance remain open; no release tag.
+
+
+Shell verification, 2026-10-30: games 762 application tests, isolated renderer, native !command fixture and interactive-terminal regression passed. Quoted shell syntax/exit codes, timeout/Stop, bounded output, retained rejected drafts, public Goose history/next-turn context, vwork recovery edits and Stop/Quit/forced-crash descendant cleanup verified. Restart never replayed commands; execution made no model request. Mac compile only passed; formatting/build/release policy checks passed. SHA-256 `ba7fda5fa5757a02d7bbb5b2f247bdae37356a72d6d43a27ec62f23f0ed86844`; peak 143,089,664 bytes. Receipt `docs/benchmarks/shell-games-2026-10-30.json`. No release tag.
 
 
 ## §B BUGS
@@ -608,3 +614,6 @@ B199|2026-10-30|Review catalog assumed pre-0.21 git2 string accessors; installed
 B200|2026-10-30|Removed legacy review constants while picker detail still referenced COMMIT_LIMIT|Use accurate local-HEAD/virtual-base detail; locked compile; V72
 B201|2026-10-30|Review fixture assumed Git initial branch master; games config selects main|Explicit fixture feature branch; recovery test requires explicit Resume after interruption; V72
 B202|2026-10-30|Legacy Review response unconditionally set Running after asynchronous turn notifications, potentially resurrecting a completed turn|Use authoritative turn events; reply only reports errors; V41,V72
+
+B203|2026-10-30|Native !command submitted unsupported thread/shellCommand and named Codex in confirmation|Connect explicit owned shell, public Goose history, durable recovery and bounded output; V38,V41,V61,V73
+B204|2026-10-30|Portable PTY CRT argument escaping corrupted cmd.exe inner quotes; child command failed before Stop fixture could find Resume|Direct raw shell launch, Windows suspended start then job assignment before resume; retain PTY only for interactive terminal; V61,V73

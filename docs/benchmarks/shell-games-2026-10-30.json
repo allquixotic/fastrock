@@ -1,0 +1,15 @@
+{
+  "result": "PASS",
+  "binary_sha256": "ba7fda5fa5757a02d7bbb5b2f247bdae37356a72d6d43a27ec62f23f0ed86844",
+  "peak_process_bytes": 143089664,
+  "native_confirmation_and_cancel": true,
+  "quoted_shell_syntax": true,
+  "bounded_output": true,
+  "public_goose_history": true,
+  "next_turn_context": true,
+  "no_model_for_command": true,
+  "virtual_source_recovery": true,
+  "source_unchanged": true,
+  "stop_quit_crash_descendants": true,
+  "no_restart_replay": true
+}

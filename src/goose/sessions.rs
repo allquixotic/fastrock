@@ -642,8 +642,9 @@ impl Adapter {
         Ok(json!({"turn":response_turn}))
     }
 
-    async fn finish_turn(self: &Arc<Self>, id: &str, tid: &str, reply: Reply) {
+    pub(super) async fn finish_turn(self: &Arc<Self>, id: &str, tid: &str, reply: Reply) {
         let completed = reply.as_ref().is_ok_and(|r| r["stopReason"] == "end_turn");
+        let user_command = reply.as_ref().is_ok_and(|r| r["userCommand"] == true);
         self.cancel_answers(id).await;
         let capture = if completed {
             self.checkpoint_capture(id, tid, "after", "Completed turn")
@@ -664,7 +665,7 @@ impl Adapter {
         }
         s.info["updatedAt"] = json!(chrono::Utc::now().to_rfc3339());
         s.info["_meta"]["lastMessageAt"] = s.info["updatedAt"].clone();
-        let summarize = completed && !s.ephemeral;
+        let summarize = completed && !s.ephemeral && !user_command;
         let delegated = s.binding.delegation.is_some();
         let t = s.turn_mut();
         match reply {
@@ -851,6 +852,15 @@ impl Adapter {
         let id = session_id(text(params, "threadId"))?;
         let gate = self.gate(id).await;
         let _lock = gate.lock().await;
+        let shell = self
+            .sessions
+            .lock()
+            .await
+            .get(id)
+            .and_then(|s| s.shell.clone());
+        if let Some(shell) = shell {
+            shell.stop().await?;
+        }
         let ephemeral = self
             .sessions
             .lock()

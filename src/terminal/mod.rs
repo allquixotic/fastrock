@@ -1,5 +1,6 @@
 //! User-requested native PTYs. Core services never use this path.
 mod archive;
+pub(crate) mod command;
 mod input;
 mod lease;
 mod process;
@@ -9,6 +10,7 @@ use crate::{
     app::AppController,
     ui::{TerminalCell, TerminalState, TerminalTab},
 };
+pub(crate) use lease::ContextInfo as CommandContext;
 pub(crate) use runtime::shutdown;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::{

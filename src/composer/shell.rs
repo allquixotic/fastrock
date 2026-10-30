@@ -13,6 +13,8 @@ use crate::app::DialogRequest;
 use crate::app::ThreadPhase;
 use crate::backend::BackendError;
 use crate::transcript::NoticeKind;
+use crate::ui::ComposerState;
+use slint::ComponentHandle;
 
 /// What a `!` message asks for.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -37,7 +39,7 @@ pub(crate) fn parse_shell_command(text: &str) -> Option<ShellInput> {
 /// Body of the one-time confirmation.
 fn confirmation_message(command: &str, folder: &str) -> String {
     format!(
-        "“{command}” runs in {folder} with your full user permissions, outside the sandbox and without approvals. Its output is added to this thread.\n\nCommands you start with ! run this way until you quit Codex."
+        "“{command}” runs in {folder} with your full user permissions, outside the sandbox. Its output is added to this conversation. For a virtual workspace, Fastrock uses a temporary source copy and preserves edits in a recovery workspace for explicit integration.\n\nCommands you start with ! run this way until you quit Fastrock."
     )
 }
 
@@ -57,6 +59,10 @@ impl AppController {
         }
         if thread.thread_id.is_none() || thread.phase == ThreadPhase::Starting {
             self.toast("Wait for the thread to start before running a command");
+            return;
+        }
+        if thread.is_busy() {
+            self.toast("Wait for the current turn before running a command");
             return;
         }
         let folder = crate::newtab::display_path(&thread.cwd);
@@ -98,6 +104,7 @@ impl AppController {
             return;
         };
         let tab_id = self.tabs[index].id;
+        let rejected = format!("!{command}");
         self.backend.call(
             |request_id| ClientRequest::ThreadShellCommand {
                 request_id,
@@ -111,10 +118,23 @@ impl AppController {
                 if let Err(err) = result
                     && let Some(index) = app.tab_index_by_id(tab_id)
                 {
+                    if app.active == Some(index)
+                        && app.window.global::<ComposerState>().get_text().is_empty()
+                    {
+                        app.composer_set_text(rejected.clone(), rejected.len());
+                    } else if app.active != Some(index) {
+                        if let Some(thread) = app
+                            .thread_tab_mut(index)
+                            .filter(|t| t.composer.text.is_empty())
+                        {
+                            thread.composer.text = rejected.clone();
+                        }
+                        app.save_open_chats();
+                    }
                     app.transcript_push_notice(
                         index,
                         NoticeKind::Error,
-                        format!("Could not run the command: {}", err.user_message()),
+                        format!("Could not run {rejected}: {}", err.user_message()),
                     );
                 }
             },

@@ -338,6 +338,9 @@ impl Adapter {
             let _lock = gate.lock().await;
             if let Some(session) = self.sessions.lock().await.get_mut(&id) {
                 session.cancel_requested = true;
+                if let Some(shell) = &session.shell {
+                    shell.cancel();
+                }
             }
             if let Err(e) = self.pause_agent_queue(&id).await {
                 failure = Some(e);

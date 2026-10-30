@@ -28,6 +28,7 @@ mod effort_controls;
 mod effort_defaults;
 mod rpc;
 mod sessions;
+mod shell;
 mod summary_service;
 
 pub(crate) fn summary_diagnostic() -> String {
@@ -573,6 +574,7 @@ impl Adapter {
             "thread/turns/list" | "thread/items/list" => self.history(params, method).await,
             "fastrock/history/window" => self.history_window(params).await,
             "turn/start" => self.start_turn(params).await,
+            "thread/shellCommand" => self.shell_command(params).await,
             "review/start" => self.review_request(params, true).await,
             "fastrock/review/catalog" => self.review_request(params, false).await,
             "turn/interrupt" => {
