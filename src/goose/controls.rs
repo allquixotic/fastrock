@@ -6,6 +6,7 @@ use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 impl AppController {
     pub(crate) fn goose_controls_install(&mut self) {
         self.goose_setup_install();
+        self.schedules_install();
         self.window
             .global::<GooseState>()
             .on_resume_recovered(crate::ui_thread::scoped_callback!(|| {

@@ -1,0 +1,21 @@
+{
+  "result": "PASS",
+  "binary_sha256": "d1b79365b40c93ab7414efbe9ec901920bb202b420b85d61b20af8ead16084b9",
+  "peak_process_bytes": 142938112,
+  "timer_dispatch": true,
+  "fresh_isolated_runs": true,
+  "named_child_runs": true,
+  "manual_run_while_paused": true,
+  "stale_edit_rejected": true,
+  "pause_resume_skip_missed": true,
+  "stop_cancels_child": true,
+  "forced_crash_no_replay": true,
+  "native_recovery_visible": true,
+  "source_checkout_preserved": true,
+  "provider_requests_local": true,
+  "date": "2026-10-30",
+  "host": "games",
+  "test": "dev/windows-schedules-smoke.py",
+  "evidence": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\schedules-native-2",
+  "distribution": "local development fixture only; no release publication"
+}

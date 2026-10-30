@@ -793,6 +793,7 @@ impl AppController {
     pub(crate) fn handle_server_events(&mut self, events: Vec<AppServerEvent>) {
         for event in events {
             match event {
+                AppServerEvent::GooseSchedulesChanged => self.schedules_changed(),
                 AppServerEvent::GooseRecovery {
                     thread_id,
                     recovery,

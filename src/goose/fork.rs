@@ -57,9 +57,13 @@ impl Adapter {
                 ));
             }
             if let Some(task) = &delegation {
-                if source.active.as_deref() != Some(task.source_turn.as_str())
-                    || source.cancel_requested
-                {
+                let allowed = if task.scheduled {
+                    source.active.is_none()
+                } else {
+                    source.active.as_deref() == Some(task.source_turn.as_str())
+                        && !source.cancel_requested
+                };
+                if !allowed {
                     return Err(error("The delegating turn has stopped or changed"));
                 }
             }
@@ -203,7 +207,10 @@ impl Adapter {
             manager
                 .update(&child)
                 .parent_session_id(Some(source_id.into()))
-                .system_generated_name(format!("Task: {}", task.task_id))
+                .system_generated_name(format!(
+                    "Task: {}",
+                    task.label.as_deref().unwrap_or(&task.task_id)
+                ))
                 .apply()
                 .await
                 .map_err(|_| error("Save delegate identity failed"))?;

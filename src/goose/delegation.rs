@@ -11,6 +11,10 @@ pub(super) struct Delegation {
     pub instructions: String,
     pub model: Option<String>,
     pub effort: Option<String>,
+    #[serde(default)]
+    pub scheduled: bool,
+    #[serde(default)]
+    pub label: Option<String>,
 }
 impl Delegation {
     pub fn same_task(&self, other: &Self) -> bool {
@@ -19,6 +23,8 @@ impl Delegation {
             && self.instructions == other.instructions
             && self.model == other.model
             && self.effort == other.effort
+            && self.scheduled == other.scheduled
+            && self.label == other.label
     }
 }
 
@@ -102,6 +108,8 @@ impl Adapter {
                     instructions: args.instructions,
                     model: args.model,
                     effort: args.effort,
+                    scheduled: false,
+                    label: None,
                 };
                 let result = self
                     .fork_bound(&json!({"threadId":ui_id(parent)}), Some(task.clone()))
@@ -227,7 +235,7 @@ impl Adapter {
         Ok(())
     }
 
-    async fn delegate_status(&self, parent: &str, child: &str) -> Reply {
+    pub(super) async fn delegate_status(&self, parent: &str, child: &str) -> Reply {
         self.require_child(parent, child).await?;
         let outcome: Option<Outcome> = super::fork::read_saved(
             &self
@@ -397,6 +405,8 @@ mod tests {
             instructions: "task".into(),
             model: None,
             effort: None,
+            scheduled: false,
+            label: None,
         };
         let mut retry = task.clone();
         retry.source_turn = "later".into();

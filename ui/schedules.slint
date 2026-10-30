@@ -1,0 +1,91 @@
+import { ComboBox, LineEdit, TextEdit, CheckBox, ScrollView } from "std-widgets.slint";
+import { Theme, FlatButton } from "theme.slint";
+
+export struct ScheduleRow { id: string, title: string, detail: string, next: string, paused: bool, running: bool, child: string }
+export struct ScheduleDay { label: string, enabled: bool }
+export global ScheduleState {
+    in property <[ScheduleRow]> rows;
+    in property <[string]> source-names;
+    in property <[string]> source-ids;
+    in-out property <int> source-index;
+    in-out property <string> edit-id;
+    in property <string> create-id;
+    in-out property <string> edit-revision;
+    in-out property <string> title;
+    in-out property <string> prompt;
+    in-out property <int> kind;
+    in-out property <string> minutes: "60";
+    in-out property <string> time: "09:00";
+    in-out property <string> once;
+    in-out property <[ScheduleDay]> days;
+    in property <bool> loading;
+    in property <bool> saving;
+    in property <string> status;
+    callback refresh();
+    callback new-task();
+    callback select(id: string);
+    callback save();
+    callback action(id: string, action: string);
+    callback open-run(id: string);
+}
+export component SchedulesPage inherits Rectangle {
+    ScrollView {
+        VerticalLayout {
+            padding: Theme.pad-xl;
+            spacing: Theme.pad-m;
+            alignment: start;
+            HorizontalLayout {
+                Text { text: "Schedules"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; }
+                FlatButton { text: "New schedule"; enabled: !ScheduleState.saving; clicked => { ScheduleState.new-task(); } }
+                FlatButton { text: "Refresh"; enabled: !ScheduleState.loading; clicked => { ScheduleState.refresh(); } }
+            }
+            Text { text: "Each run starts a fresh conversation in an isolated workspace, using the source conversation’s latest Goose settings and permissions. Changes require explicit integration. Schedules stay paused after restart until you choose Resume."; color: Theme.text-muted; wrap: word-wrap; }
+            for row in ScheduleState.rows: Rectangle {
+                border-radius: Theme.radius-small;
+                background: row.id == ScheduleState.edit-id ? Theme.selected : Theme.surface-sunken;
+                VerticalLayout {
+                    padding: Theme.pad-m;
+                    spacing: Theme.pad-s;
+                    HorizontalLayout {
+                        Text { text: row.title; color: Theme.text; font-weight: 600; horizontal-stretch: 1; wrap: word-wrap; }
+                        FlatButton { text: "Edit"; enabled: !row.running && !ScheduleState.saving; clicked => { ScheduleState.select(row.id); } }
+                    }
+                    Text { text: row.detail; color: Theme.text-muted; wrap: word-wrap; }
+                    Text { text: row.next; color: Theme.text-faint; wrap: word-wrap; }
+                    HorizontalLayout {
+                        FlatButton { text: row.paused ? "Resume schedule" : "Pause schedule"; enabled: !ScheduleState.saving; clicked => { ScheduleState.action(row.id, row.paused ? "resume" : "pause"); } }
+                        FlatButton { text: "Run now"; enabled: !row.running && !ScheduleState.saving; clicked => { ScheduleState.action(row.id, "run"); } }
+                        if row.running: FlatButton { text: "Stop run"; enabled: !ScheduleState.saving; clicked => { ScheduleState.action(row.id, "stop"); } }
+                        if row.child != "": FlatButton { text: "Open run"; clicked => { ScheduleState.open-run(row.child); } }
+                        FlatButton { text: "Delete schedule"; enabled: !row.running && !ScheduleState.saving; clicked => { ScheduleState.action(row.id, "delete"); } }
+                    }
+                }
+            }
+            Text { text: ScheduleState.edit-id == "" ? "New schedule" : "Edit schedule"; color: Theme.text; font-weight: 600; }
+            Text { text: "Source conversation"; color: Theme.text-muted; }
+            ComboBox { model: ScheduleState.source-names; current-index <=> ScheduleState.source-index; enabled: !ScheduleState.saving; }
+            if ScheduleState.source-ids.length == 0: Text { text: "Open a conversation from a project or virtual workspace first."; color: Theme.text-muted; wrap: word-wrap; }
+            LineEdit { text <=> ScheduleState.title; placeholder-text: "Schedule title"; enabled: !ScheduleState.saving; }
+            TextEdit { text <=> ScheduleState.prompt; height: 110px; wrap: word-wrap; enabled: !ScheduleState.saving; }
+            ComboBox { model: ["Every interval", "Daily / weekdays", "Once"]; current-index <=> ScheduleState.kind; enabled: !ScheduleState.saving; }
+            if ScheduleState.kind == 0: HorizontalLayout {
+                Text { text: "Minutes between runs"; color: Theme.text-muted; vertical-alignment: center; }
+                LineEdit { text <=> ScheduleState.minutes; enabled: !ScheduleState.saving; }
+            }
+            if ScheduleState.kind == 1: VerticalLayout {
+                Text { text: "Local time (HH:MM)"; color: Theme.text-muted; }
+                LineEdit { text <=> ScheduleState.time; enabled: !ScheduleState.saving; }
+                HorizontalLayout {
+                    for day in ScheduleState.days: CheckBox { text: day.label; checked <=> day.enabled; enabled: !ScheduleState.saving; }
+                }
+            }
+            if ScheduleState.kind == 2: VerticalLayout {
+                Text { text: "Local date and time (YYYY-MM-DD HH:MM:SS)"; color: Theme.text-muted; }
+                LineEdit { text <=> ScheduleState.once; enabled: !ScheduleState.saving; }
+            }
+            Text { text: "Pause affects future runs. Stop run interrupts current work. Missed occurrences are skipped; an interrupted occurrence is never automatically repeated."; color: Theme.text-faint; wrap: word-wrap; }
+            FlatButton { text: ScheduleState.edit-id == "" ? "Create schedule" : "Save schedule"; enabled: !ScheduleState.saving && ScheduleState.source-ids.length > 0; clicked => { ScheduleState.save(); } }
+            if ScheduleState.status != "": Text { text: ScheduleState.status; color: Theme.text-muted; wrap: word-wrap; }
+        }
+    }
+}

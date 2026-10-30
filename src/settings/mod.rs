@@ -80,6 +80,8 @@ use crate::ui::SettingsState;
 
 /// Settings pages, by the id used in `settings_open_page`.
 pub(crate) const PAGES: &[&str] = &[
+    "goose",
+    "schedules",
     "common",
     "all",
     "raw",
@@ -389,6 +391,8 @@ pub(crate) struct SettingsController {
     pub(crate) keyboard: keyboard::KeyboardState,
     pub(crate) connection: connection::ConnectionState,
     pub(crate) goose_setup: Option<crate::goose::setup::Setup>,
+    pub(crate) schedules: Value,
+    pub(crate) schedules_stale: bool,
     pub(crate) import: import::ImportState,
     pub(crate) feedback: feedback::FeedbackState,
     pub(crate) sandbox: windows_sandbox::SandboxState,
@@ -686,6 +690,7 @@ impl AppController {
         if self.backend.is_goose()
             && ![
                 "goose",
+                "schedules",
                 "appearance",
                 "keyboard",
                 "connection",
@@ -711,6 +716,7 @@ impl AppController {
             return;
         }
         match page {
+            "schedules" => self.schedules_refresh(),
             "goose" => {
                 self.goose_cheap_load();
                 if self.settings.goose_setup.is_none() {
@@ -1335,6 +1341,7 @@ impl AppController {
             "keyboard" => self.settings_keyboard_automation(&args[1..]),
             "connection" => self.settings_connection_automation(&args[1..]),
             "goose-setup" => self.goose_setup_automation(&args[1..]),
+            "schedules" => self.schedules_automation(&args[1..]),
             "import" => self.settings_import_automation(&args[1..]),
             "feedback" => self.settings_feedback_automation(&args[1..]),
             other => tracing::warn!(action = other, "unknown settings automation action"),

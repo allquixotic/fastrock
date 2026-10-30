@@ -1170,3 +1170,28 @@ formatting checks passed; no Mac GUI or tests ran. Executable SHA-256:
 This is a local development build. Scheduling, remaining UI/orchestration work,
 and the recorded provider integration limits remain open. No release was built
 or published to GitHub; the feature-completion publication gate remains active.
+
+## 0.4.0 native schedules — 2026-10-30
+
+Settings → Schedules now manages interval, weekday/local-time, and one-time
+tasks. The in-process dispatcher saves occurrence claims and isolated child
+identity before executable work, rejects overlapping runs and stale edits,
+retains interrupted occurrences for review, and pauses every schedule at restart.
+Creation retries retain identity even after a one-time task finishes. Stop guards
+the occurrence identity independently of metadata revisions or storage health.
+Weekly lookup skips missing local times without losing the following week.
+
+Native games acceptance passed timed dispatch, fresh context, separate vwork
+workspaces, manual runs while paused, edit guards, pause/resume without catch-up,
+Stop before Quit, and forced-crash recovery without replay. The source checkout
+remained unchanged. Peak process memory: 142,938,112 bytes under a 2 GB cap.
+Receipt: `docs/benchmarks/schedules-games-2026-10-30.json`; full evidence:
+`C:\Users\SeanMcNamara\fastrock-040-policy\schedules-native-2`.
+
+Windows passed 715 application tests, one native renderer test, 17 workspace
+tests and the standalone embedded Goose fixture. Native delegation, concurrent
+chat/cancellation, vwork/manual-fork/restart and process-recovery regressions
+passed on the same executable. Mac compilation, formatting and build-policy
+checks passed; no Mac execution. Binary SHA-256:
+`d1b79365b40c93ab7414efbe9ec901920bb202b420b85d61b20af8ead16084b9`.
+Webhook scheduling, remaining UI and provider work remain open. No release/tag.

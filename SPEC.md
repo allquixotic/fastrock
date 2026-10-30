@@ -134,6 +134,8 @@ V54: Further 0.4.0 publication ! feature-complete verified spec and RC/final ver
 
 V55: App delegation ! fresh task context, inherited Goose permission/provider config, isolated copies of every explicit vwork binding and durable parent/task identity before dispatch. Repeated task identity ! same child, no automatic resend; failed setup ! retained idle/hidden child. Delegate tools ! own children only; parent interruption ! stop descendants and pause queues. Built-in shared-workspace delegation ! unavailable in Fastrock sessions; Goose source/config files unchanged. Verify: v55 delegation identity/fresh-context/filter tests and native local-provider delegation/restart fixture.
 
+V56: Schedules ! in-process timer, durable occurrence claim before isolated fresh-context dispatch, one active run per task, stale-edit guards, bounded input. Restart ! all schedules paused; unresolved occurrence ! review-only, no automatic replay or catch-up burst. Pause ! future runs only; Stop ! cancel current descendants; Quit ! exclude new dispatch before closing sessions. Invalid/unwritable state ! preserve evidence and disable dispatch. Local daily time ! once per day across repeated clock times; nonexistent times skipped. Verify: v56 date/state/recovery tests and native scheduled-run/pause/edit/crash fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -184,7 +186,7 @@ T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only releas
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
 T37|~|Embedded Goose; remove Codex UI/connection; graphical non-secret provider defaults, preserve configuration; vault-only credential setup blocked by R8|V38,V39,V52,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
-T39|~|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; isolated conversation forks; no quotas|V41,V50,V55,I.orchestration
+T39|~|Port T3 V2 orchestration; isolated forks/delegation and native timed schedules verified; webhook scheduling and remaining coordination acceptance open; no quotas|V41,V50,V55,V56,I.orchestration
 T40|~|Native T3 main UI/sidebar/panels, registered repository projects and permanent independent Rally project|V42,V51,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and bounded arbitrary history viewports|V1,V9,V32,V37,V43,V53,I.scroll
@@ -420,3 +422,10 @@ B123|2026-10-30|Delegation fixture used terminal /stop command instead of conver
 B124|2026-10-30|Recovery fixture parsed Goose synthetic interrupted-tool text as a current JSON tool reply|Treat combined new user prompt as turn start; preserve interrupted history; fixture-only correction; V55
 B125|2026-10-30|Crash fixture inspected lazy child queue before opening that child|Open restored child without Resume; assert paused native state, uncertain dispatch and no repeated provider call; V41,V55
 B126|2026-10-30|Native dump reported only local draft pause, hiding authoritative Goose queue pause|Dump the same combined recovery predicate used by composer; crashed-child native fixture; V41,V55
+B127|2026-10-30|Goose settings nav id was absent from accepted page catalog, preventing return from another page|Register Goose/Schedules pages; native schedule navigation fixture; V42,V56
+B128|2026-10-30|Schedule delete callback held a Slint global borrow while resetting the controller form|Reset form before borrowing the global; compiler verification; V56
+B129|2026-10-30|Schedule Stop used metadata revision and storage availability, so publication/save failure could reject cancellation of the same run|Guard Stop by occurrence identity; retain cancellation after storage errors; v56 stop-identity test; V56
+B130|2026-10-30|Schedule UI fixture changed fields before deferred New/Edit callbacks reset the form|Yield after native callbacks before typing; fixture correction; V56
+B131|2026-10-30|Queue persistence test counted scheduler state as another conversation queue|Exclude scheduler metadata while retaining pending-input assertion; V41,V56
+B132|2026-10-30|Weekly schedule lookup stopped after seven days, losing the next occurrence after a DST gap|Look through following week; v56 missing-Sunday date fixture; V56
+B133|2026-10-30|Restored schedule source absent from session cache could leave editor pointing at another conversation|Include retained schedule sources in native selector; V56

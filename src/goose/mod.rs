@@ -9,6 +9,7 @@ mod hooks;
 mod mcp;
 mod model;
 mod queue;
+mod schedule;
 pub(crate) use queue::Recovery;
 mod rpc;
 mod sessions;
@@ -90,6 +91,8 @@ struct Adapter {
     embedded_runtime: bool,
     summaries: Option<Arc<summary_service::Service>>,
     changed: tokio::sync::Notify,
+    schedules: Mutex<schedule::model::State>,
+    schedule_gate: Mutex<()>,
 }
 
 pub(crate) async fn connect(
@@ -220,6 +223,8 @@ where
         cwd: cwd.to_string_lossy().into_owned(),
         mcp: bridge,
         queue: Mutex::new(HashMap::new()),
+        schedules: Mutex::new(schedule::open(queue_root.join("schedules.json")).await?),
+        schedule_gate: Mutex::new(()),
         queue_root,
         summaries,
         vwork_paths,
@@ -291,6 +296,9 @@ where
         *adapter.defaults.lock().await = defaults;
     }
     let (writer, mut requests) = mpsc::channel::<Value>(256);
+    if adapter.embedded_runtime {
+        guard.0.push(tokio::spawn(schedule::drive(adapter.clone())));
+    }
     let request_pending = pending.clone();
     guard.0.push(tokio::spawn(async move {
         let mut running = tokio::task::JoinSet::new();
@@ -474,10 +482,16 @@ impl Adapter {
         let params = &request["params"];
         match method {
             "fastrock/shutdown" => {
+                // Stop scheduling even if its storage cannot be saved; existing
+                // sessions must still be cancelled and closed on explicit Quit.
+                let schedule_error = self.pause_schedules().await.err();
                 let ids: Vec<_> = self.sessions.lock().await.keys().cloned().collect();
                 for id in ids {
                     self.close_session(&json!({"threadId":format!("goose:{id}")}))
                         .await?;
+                }
+                if let Some(e) = schedule_error {
+                    return Err(e);
                 }
                 Ok(json!({}))
             }
@@ -500,6 +514,9 @@ impl Adapter {
                 )
             }
             "thread/start" => self.new_session(params).await,
+            method if method.starts_with("fastrock/schedule/") => {
+                self.schedule_request(params, method).await
+            }
             "fastrock/project/list" => self.project_catalog().await,
             "fastrock/project/open" => self.open_project(params).await,
             "thread/fork" => self.fork_session(params).await,

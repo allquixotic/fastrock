@@ -29,6 +29,21 @@ Blank optional fields remove the saved override. Quit and restart Fastrock after
 saving; environment overrides still apply and existing conversations retain their
 session configuration. AWS settings are shared across the embedded runtime.
 
+Settings → Schedules creates interval, local weekday/time, and one-time tasks
+from a workspace-bound conversation. Each occurrence uses that conversation's
+latest Goose settings and permissions, fresh task context, and an isolated copy
+of its virtual workspace. Open run shows the child conversation; review and
+explicit integration remain separate actions. No Goose scheduler or daemon runs.
+
+Pause affects future occurrences; Stop run cancels the active child and its
+descendants. Run now starts a new occurrence, including while paused. Fastrock
+persists the occurrence and child identity before dispatch, allows one active
+occurrence per schedule, and skips missed times. Restart pauses all schedules;
+an interrupted occurrence is retained for review and never automatically replayed.
+Daily schedules use the machine's local time: repeated times run once, missing
+times are skipped. Schedules require Fastrock to remain running, including in the
+tray. Explicit Quit stops scheduling and work. Webhook triggers remain unimplemented.
+
 ## Verification and remaining acceptance
 
 The standalone `embedded_goose` test isolates environment/configuration before
