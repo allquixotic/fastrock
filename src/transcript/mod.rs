@@ -1167,9 +1167,7 @@ impl AppController {
             "copy" => self.copy_to_clipboard(&target.destination()),
             "browser" => {
                 if let Some(url) = target.browser_url() {
-                    if let Err(err) = webbrowser::open(&url) {
-                        self.toast(format!("Could not open link: {err}"));
-                    }
+                    self.open_browser(&url);
                 } else {
                     self.toast(format!("Cannot open {url}"));
                 }
@@ -1193,14 +1191,7 @@ impl AppController {
             .unwrap_or_default();
         match links::classify_link(url, &cwd) {
             LinkTarget::Web(url) => {
-                if self.automation.is_some() {
-                    // Test the real glyph/click route without starting another app.
-                    eprintln!("codex-gui automation: web link activated: {url}");
-                    return;
-                }
-                if let Err(err) = webbrowser::open(&url) {
-                    self.toast(format!("Could not open link: {err}"));
-                }
+                self.open_browser(&url);
             }
             LinkTarget::File { path, line } => self.open_file_tab(path, line),
             LinkTarget::Unknown(url) => self.toast(format!("Cannot open {url}")),

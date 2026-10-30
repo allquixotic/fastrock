@@ -1,0 +1,56 @@
+{
+  "binary_sha256": "dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9",
+  "seed_sha256": "d09a0b1a9c0e07b01524b2efe8486e30ed0c65273ac8fe1f897e70177fe2b82d",
+  "host": "GAMES",
+  "os": "Windows-11-10.0.26100-SP0",
+  "backend": "external Goose 1.57.0",
+  "hard_cap_bytes": 32000000000,
+  "attempts": [
+    {
+      "divisor": 1,
+      "stored_conversations": 1000,
+      "history_messages": 10000,
+      "concurrent_streams": 8,
+      "phases": {
+        "seed": {
+          "cap_bytes": 1532569600,
+          "peak_app_bytes": 107503616,
+          "peak_tree_commit_bytes": 102080512
+        },
+        "app": {
+          "cap_bytes": 1581709312,
+          "peak_app_bytes": 182415360,
+          "peak_tree_commit_bytes": 220450816
+        }
+      },
+      "result": "PASS",
+      "peak_concurrent_streams": 8,
+      "history_open_observed_ms": 1102.0,
+      "switch_dispatch_ms": [
+        1.0,
+        0.9,
+        0.7,
+        0.9,
+        1.0
+      ],
+      "frame": {
+        "p50_ms": 6.481,
+        "p95_ms": 8.422,
+        "p99_ms": 9.093
+      },
+      "render": {
+        "p50_ms": 5.503,
+        "p95_ms": 6.763,
+        "p99_ms": 7.762
+      },
+      "event_loop": {
+        "p50_ms": 16.633,
+        "p95_ms": 26.519,
+        "p99_ms": 33.018
+      },
+      "history_export_messages": 10000,
+      "current_summaries_preserved": true
+    }
+  ],
+  "goose_sha256": "89d5849587586765fa335f664fac0a9ed0e466d0f3717dd609ca04ebdffa64e2"
+}

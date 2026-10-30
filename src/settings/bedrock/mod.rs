@@ -1485,9 +1485,7 @@ impl AppController {
     }
 
     fn bedrock_open_url(&mut self, url: &str) {
-        if let Err(err) = webbrowser::open(url) {
-            self.toast(format!("Could not open {url}: {err}"));
-        }
+        self.open_browser(url);
     }
 
     // ----- rendering --------------------------------------------------------

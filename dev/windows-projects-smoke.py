@@ -45,6 +45,10 @@ try:
         {'wait_ready':30000}, {'resize':[1440,1000]}, {'project':['open',str(repo)]}, {'wait':1000}, *dump('loaded'),
         {'project':['reference','missing-branch']}, {'click_text':'Save default'}, {'wait':500}, *dump('invalid'),
         {'project':['reference','feature']}, {'click_text':'Save default'}, {'wait':700}, *dump('saved'),
+        # Click the rendered ComboBox label (not the LineEdit) to verify native
+        # selection stays synchronized after its asynchronous model populated.
+        {'click_text':'feature'}, {'wait':200}, {'key':'down'}, {'key':'return'}, {'wait':200}, *dump('picked-main'),
+        {'click_text':'main'}, {'wait':200}, {'key':'up'}, {'key':'return'}, {'wait':200}, *dump('picked-feature'),
         {'snapshot':str(out/'project-settings.png')}, {'click_text':'New chat'}, {'wait':1000}, {'wait_idle':30000},
         {'composer':['type','Keep project draft é']},
         {'key':'ctrl+shift+P'}, {'wait':200}, {'palette':['query','Project settings']}, {'wait':200}, {'key':'return'}, {'wait':800}, *dump('palette'),
@@ -54,6 +58,7 @@ try:
     assert read('loaded')['branches']==['HEAD','feature','main'], read('loaded')
     assert read('invalid')['error'] and read('invalid')['reference']=='missing-branch', read('invalid')
     assert read('saved')['revision']==1 and read('saved')['reference']=='feature' and not read('saved')['error'], read('saved')
+    assert read('picked-main')['reference']=='main' and read('picked-feature')['reference']=='feature', 'Native branch selection did not update reference'
     assert Path(read('palette')['path']).samefile(repo) and read('palette')['reference']=='feature', read('palette')
     assert read('draft')['draft']=='Keep project draft é', read('draft')
     assert not read('closed')['open'], 'Escape did not close the project editor'

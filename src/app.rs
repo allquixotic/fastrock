@@ -1667,8 +1667,7 @@ impl AppController {
             "keyboard" => self.open_settings(Some("keyboard")),
             "feedback" => self.open_settings(Some("feedback")),
             "docs" => {
-                let _ =
-                    webbrowser::open("https://github.com/allquixotic/fastrock/blob/main/GUI.md");
+                self.open_browser("https://github.com/allquixotic/fastrock/blob/main/docs/gui.md");
             }
             "fork" | "compact" | "review" | "export" => {
                 if let Some(index) = self.active_thread_index() {
@@ -1680,6 +1679,23 @@ impl AppController {
     }
 
     // ----- chrome helpers ---------------------------------------------------
+
+    /// User-requested previews and help use the system browser. Resolving and
+    /// launching that application can block, so keep it off Slint's UI thread.
+    pub(crate) fn open_browser(&mut self, url: &str) {
+        if self.automation.is_some() {
+            eprintln!("codex-gui automation: web link activated: {url}");
+            return;
+        }
+        let url = url.to_owned();
+        self.backend.spawn_blocking(move || {
+            if let Err(error) = webbrowser::open(&url) {
+                crate::ui_thread::post(move |app| {
+                    app.toast(format!("Could not open the browser: {error}"));
+                });
+            }
+        });
+    }
 
     /// Shows a transient message near the bottom of the window.
     pub(crate) fn toast(&mut self, message: impl Into<String>) {

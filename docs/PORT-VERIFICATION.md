@@ -1778,3 +1778,64 @@ state. Startup deletion reconciliation batches cache and organization writes.
 Explicit temporary-chat close records durable discard intent and synchronizes
 queue completion before removing owned metadata, preventing late completion from
 recreating sidecars. Source workspaces remain intact.
+
+### RC1 local acceptance and guarded comparison
+
+All implementation tasks required by the RC gate are complete. The local core
+candidate passed all 33 native cases in 914 seconds, alongside 775 application
+tests, the isolated renderer test, 30 workspace tests and the standalone embedded
+Goose fixture. A final visual check corrected a branch dropdown whose label could
+lag behind its saved value. Active browser launchers now run off the UI thread.
+The final executable passed the application/renderer suites again, native project
+and command workflows, and selection at 200% display scale. macOS compiled only.
+
+The final local binary is
+`3284f028eb47250efe5ed17fe47556a61c1d3ae3f6813170f3f547ec593ca009`.
+The [acceptance receipt](benchmarks/rc1-acceptance-games-2026-10-30.json) separates
+the complete core matrix from the final focused UI checks by executable hash.
+CI must repeat the entire native matrix on the signed artifact before publishing.
+
+Legacy sessions without stored tool selections exposed a restoration bug: Goose
+listed inherited defaults, while its public removal operation started from an
+empty persisted selection. Fastrock now materializes the inherited selection
+through public Goose storage before activation or restriction. Explicit empty
+and restricted selections, malformed state, and unrelated extension data are
+preserved. Native history acceptance verifies inherited Developer tools survive
+and Summon delegation stays restricted. Goose source remains unchanged.
+
+Both benchmark runs used 1,000 stored conversations, eight simultaneous fixture
+streams and a 10,000-message history, with 360 scrolling frames. Neither needed
+the tenfold reduction. A live hypervisor heartbeat, host/guest reserves and job
+limits imposed approximately 1.58 GB of available test headroom, below the 32 GB
+hard cap. No guard tripped and the VM stayed available.
+
+| Measurement | Signed 0.3.4 baseline | Local 0.4.0 RC1 candidate |
+|---|---:|---:|
+| Main-process memory guard peak | 182,415,360 bytes | 228,163,584 bytes |
+| Process-tree peak committed memory | 220,450,816 bytes | 166,637,568 bytes |
+| Observed history open | 1,102 ms | 504 ms |
+| Synchronous tab-switch dispatch | 0.7–1.0 ms | 0.3 ms |
+| Recent-history frame p50 / p95 | 6.481 / 8.422 ms | 4.490 / 9.710 ms |
+| Event-loop interval p95 | 26.519 ms | 17.514 ms |
+
+The main-process guard records the maximum of peak working set and peak pagefile
+usage. Process-tree committed memory is a separate measurement, and the baseline
+includes an external Goose process. The candidate's main-process guard peak grew
+while tree committed memory fell about 24%. Typical frames,
+opening and switching improved, but recent-history p95 was slower; this is not a
+general scrolling-speedup claim or an input-to-photon measurement.
+
+Candidate first/middle/last history pages each rendered 100 entries using less
+than 293 KB of rendered source, restored in 4.829–8.443 ms without walking earlier
+pages. Middle-history scrolling p95 was 5.887 ms. Both versions exported all
+10,000 original messages and retained seeded current summaries without generating
+unnecessary replacements. Raw receipts:
+[baseline](benchmarks/rc1-scale-baseline-games-2026-10-30.json),
+[candidate](benchmarks/rc1-scale-candidate-games-2026-10-30.json).
+
+The historical B142 moved-executable summary timeout remains unexplained. It did
+not recur in the candidate profile, three-turn summary, queue recovery or process
+recovery cases; phase/count diagnostics remain in place. Current acceptance is
+based on those passing runs, not on claiming a proven fix for that old timeout.
+Live Bedrock model/account access still needs the user's working profiles before
+the final 0.4.0 release; fixtures establish routes and integration behavior only.

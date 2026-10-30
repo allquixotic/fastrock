@@ -17,6 +17,11 @@ export global ProjectState {
 }
 
 export component ProjectDialog inherits Rectangle {
+    property <int> requested-branch: ProjectState.reference-index(ProjectState.branches, ProjectState.reference);
+    // ComboBox mutates current-index when its model changes. A plain binding is
+    // replaced by those writes, so synchronize subsequent edits explicitly.
+    changed requested-branch => { branch-picker.current-index = root.requested-branch; }
+    init => { branch-picker.current-index = root.requested-branch; }
     background: #0008;
     TouchArea { }
     FocusScope {
@@ -56,9 +61,8 @@ export component ProjectDialog inherits Rectangle {
                     placeholder-text: "HEAD, branch, tag or full commit ID";
                     enabled: ProjectState.ready && !ProjectState.busy;
                 }
-                ComboBox {
+                branch-picker := ComboBox {
                     model: ProjectState.branches;
-                    current-index: ProjectState.reference-index(ProjectState.branches, ProjectState.reference);
                     enabled: ProjectState.ready && !ProjectState.busy;
                     selected => { ProjectState.select-branch(self.current-index); }
                 }

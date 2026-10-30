@@ -238,13 +238,13 @@ T33|x|Shared localhost vwork MCP, database-level compaction, actual Goose/games 
 T34|x|Widen text selection hit areas, selectable tool/command details, Windows interaction/scroll checks, Mac compile and signed Fastrock 0.3.4; no vwork changes|V9,V15,V23,V32,V37,I.distribution
 T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only release policy; policy audit passed, games ReleasePolicy 3 passed/1 Apple-only skipped|V46,I.distribution
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
-T37|~|Embedded Goose; remove Codex UI/connection; native defaults and creation/restore/switch scope guards; preserve configuration; named profiles via public command-auth/vault, saved effort defaults and explicit model IDs verified; AWS isolation R7 and remaining acceptance open|V38,V39,V52,V57,V59,I.goose
-T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
-T39|~|Port T3 V2 orchestration; isolated forks/delegation and native timed schedules verified; signed native webhook scheduling implemented; remaining coordination acceptance open; no quotas|V41,V50,V55,V56,V58,I.orchestration
-T40|~|Native T3 main UI/sidebar/panels, repository projects, independent Rally project, schedule/webhook and provider editors; native command palette, workspace terminals and durable checkpoints verified; capability UI/T3 acceptance remains open|V42,V51,V60,I.questions,I.links
+T37|x|Embedded Goose and provider scope; native defaults, vault-backed direct profiles, saved efforts and explicit model IDs verified; legacy tools restored without widening explicit selections; unchanged upstream AWS isolation constraint R7 documented|V38,V39,V52,V57,V59,I.goose,V81
+T38|x|In-process vwork Engine/tools/browser/compaction, guarded workspace integration, isolated branch defaults and compressed current summaries verified|V40,V49,V50,I.vwork
+T39|x|Native isolated delegation, messaging/wait/interruption, durable queues, timed and authenticated webhook scheduling verified; no quotas|V41,V50,V55,V56,V58,I.orchestration
+T40|x|Native T3 main UI/sidebar/panels and repository projects, independent Rally project, scheduling/provider editors, commands, diagnostics, terminals and checkpoints verified|V42,V51,V60,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
-T42|~|Lossless compressed transcript cache, incremental rendering and bounded arbitrary history viewports|V1,V9,V32,V37,V43,V53,I.scroll
-T43|~|Tray lifecycle, explicit Quit and restart Resume|V41,V47,I.lifecycle
+T42|x|Lossless cold transcript compression, bounded decoded/rendered caches and arbitrary indexed history verified at 1,000 conversations/eight streams/10,000 messages; comparison recorded without blanket scrolling-speedup claim|V1,V9,V32,V37,V43,V53,I.scroll
+T43|x|Tray continuation, explicit Quit, original-window restoration and restart Resume verified|V41,V47,I.lifecycle
 T44|~|Watchdog-protected games benchmarks, full Windows verification, Mac compile and feature-complete signed CI RC/final|V23,V38–V47,V54,I.distribution
 T45|x|In-process Rally windows and scoped UI/backend routing|V38,V42,V47,V48
 T46|x|Native command palette with bounded matching, keyboard/pointer navigation and retained drafts|V42,V60
@@ -252,12 +252,12 @@ T47|x|Native interactive terminal panels with isolated user-requested processes,
 T48|x|Conversation checkpoint/review/restore workflows over guarded vwork revisions|V40,V41,V42,V49,V62,V63,I.checkpoints
 T49|x|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
 T50|x|Native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42,V64,V65,V66
-T51|~|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44,V67,V78
-T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch controls and persisted ordering|V42,V67,V68,V79
+T51|x|T3 interaction/visual audit complete; candidate profile/summary/recovery acceptance passed; historical B142 not reproduced, original cause unproven and diagnostics retained|V42,V44,V67,V78
+T52|x|Native pin/active/working/snoozed/settled groups, repository scope/settings/default reference, batch controls and persisted drag ordering verified|V42,V67,V68,V79
 T53|x|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48,V75,V76
 T54|x|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63,V74,V77
 T55|x|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63,V74,V75
-T56|~|Native queue start/reorder, compressed-source mentions, in-process Review and explicit owned shell commands verified; remaining visible typed-route audit open|V38,V40,V41,V42,V70,V71,V72,V73,V80
+T56|x|Native queue start/reorder, compressed-source mentions, Review, explicit shell, Goose slash commands and local Changes verified|V38,V40,V41,V42,V70,V71,V72,V73,V80
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -307,6 +307,8 @@ Shell verification, 2026-10-30: games 762 application tests, isolated renderer, 
 Side-chat verification, 2026-10-30: games 765 application tests, isolated renderer, native side fixture, delegation and shell regressions passed. Parent streaming, reference boundary, isolated vwork edit, hidden storage, excluded delegation, ordinary isolated directory, draft/Quit/crash recovery, explicit discard and safe ID reservation verified. Mac compile only and static checks passed. SHA-256 `9002f7fe367e2e170caa4f63a84f0b1abbf734174e95f86306da6624e17fe8d7`; peak 153,800,704 bytes; receipt `docs/benchmarks/side-games-2026-10-30.json`. T55 complete; original-window recovery and full acceptance remain open. No release tag.
 
 Window recovery verification, 2026-10-30: games 767 application tests, isolated renderer, original-window native fixture and full native Rally regression passed. Window grouping/geometry, removed-monitor fallback, active chat/document, side and Rally drafts, registry ownership and Quit/crash recovery without dispatch or document flattening verified. Mac compile only and static policy/format checks passed. SHA-256 `1edba0f4bac2f612be38a2b8a2314fc644800a3347067f87e2c05fd818b8613d`; peak 160,894,976 bytes; receipt `docs/benchmarks/window-recovery-games-2026-10-30.json`. T53 complete; guarded deletion/UI audit/full acceptance remain open. No release tag.
+
+RC preparation acceptance, 2026-10-30: 775 Windows application tests, renderer, 30 workspace tests, embedded Goose fixture and Mac compile passed. Native core matrix 33/33 passed; final UI project/command/200%-scale selection checks passed. Full 1,000/eight/10,000 comparison passed without scale reduction; candidate peak process 228,163,584 bytes, tree commit 166,637,568 bytes. Final local SHA-256 `3284f028eb47250efe5ed17fe47556a61c1d3ae3f6813170f3f547ec593ca009`. Exact signed CI matrix remains publication gate; live AWS profiles/final release remain T36/T44. Evidence: docs/benchmarks/rc1-acceptance-games-2026-10-30.json and rc1-scale-{baseline,candidate}-games-2026-10-30.json.
 
 ## §B BUGS
 id|date|cause|fix
@@ -690,3 +692,7 @@ B229|2026-10-30|Project branch binding used Slint std-widget-internal index-of u
 B230|2026-10-30|Commands fixture captured clipboard before deferred native Copy diff events ran|Yield after pointer dispatch before reading clipboard; V80
 
 B231|2026-10-30|Legacy Goose sessions inherited tools for listing, but public removal started from absent/empty stored selection; Summon restriction erased defaults then failed restore|Materialize inherited tools before activation with public SessionManager API; preserve explicit restrictions/corruption; V81
+
+B232|2026-10-30|Slint ComboBox model initialization replaced current-index binding; typed/saved reference changed while branch label stayed HEAD|Explicit index synchronization plus native rendered-label selection regression; V79
+
+B233|2026-10-30|Active help/transcript/settings browser launchers could block Slint; restart toast still named Codex|Shared background launcher, preserved native-link fixture routing and Goose restart text; V38,V42,V78

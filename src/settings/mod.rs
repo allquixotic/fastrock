@@ -900,14 +900,12 @@ impl AppController {
         state.set_server_ready(false);
         self.settings.snapshot_error = None;
         self.settings_fields_refresh();
-        self.toast("Restarting Codex…");
+        self.toast("Restarting Goose…");
         self.backend.restart();
     }
 
     pub(crate) fn settings_open_url(&mut self, url: &str) {
-        if let Err(err) = webbrowser::open(url) {
-            self.toast(format!("Could not open the browser: {err}"));
-        }
+        self.open_browser(url);
     }
 
     fn settings_open_path(&mut self, which: &str) {

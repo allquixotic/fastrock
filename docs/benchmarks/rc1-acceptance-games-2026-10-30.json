@@ -1,0 +1,361 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.1",
+  "final_local_binary_sha256": "3284f028eb47250efe5ed17fe47556a61c1d3ae3f6813170f3f547ec593ca009",
+  "windows_rust": {
+    "application_tests": 775,
+    "renderer_tests": 1,
+    "workspace_tests": 30,
+    "embedded_goose_fixture": "PASS"
+  },
+  "macos": "compile only; PASS",
+  "native_matrix": {
+    "binary_sha256": "a48c8a046905053e92b009b2dd59361525371f85edbd70321afd30349a28bb83",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 48.32,
+        "peak_tree_bytes": 156991488
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 3.42,
+        "peak_tree_bytes": 155422720
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 30.68,
+        "peak_tree_bytes": 160223232
+      },
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.07,
+        "peak_tree_bytes": 160677888
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 63.16,
+        "peak_tree_bytes": 158953472
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 82.62,
+        "peak_tree_bytes": 158003200
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.85,
+        "peak_tree_bytes": 156692480
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 27.48,
+        "peak_tree_bytes": 157691904
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 17.05,
+        "peak_tree_bytes": 155885568
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.09,
+        "peak_tree_bytes": 156196864
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.5,
+        "peak_tree_bytes": 156651520
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.84,
+        "peak_tree_bytes": 76017664
+      },
+      {
+        "name": "commands",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.43,
+        "peak_tree_bytes": 156434432
+      },
+      {
+        "name": "palette",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.64,
+        "peak_tree_bytes": 156360704
+      },
+      {
+        "name": "terminal",
+        "result": "PASS",
+        "error": null,
+        "seconds": 32.49,
+        "peak_tree_bytes": 156905472
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 41.11,
+        "peak_tree_bytes": 157700096
+      },
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.44,
+        "peak_tree_bytes": 156086272
+      },
+      {
+        "name": "organization",
+        "result": "PASS",
+        "error": null,
+        "seconds": 43.71,
+        "peak_tree_bytes": 157261824
+      },
+      {
+        "name": "sidebar-drag",
+        "result": "PASS",
+        "error": null,
+        "seconds": 32.49,
+        "peak_tree_bytes": 156364800
+      },
+      {
+        "name": "sidebar-policy",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.66,
+        "peak_tree_bytes": 156364800
+      },
+      {
+        "name": "titles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.51,
+        "peak_tree_bytes": 156008448
+      },
+      {
+        "name": "queue",
+        "result": "PASS",
+        "error": null,
+        "seconds": 17.45,
+        "peak_tree_bytes": 155906048
+      },
+      {
+        "name": "mentions",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.66,
+        "peak_tree_bytes": 155889664
+      },
+      {
+        "name": "review",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.25,
+        "peak_tree_bytes": 157528064
+      },
+      {
+        "name": "shell",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.26,
+        "peak_tree_bytes": 156884992
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.47,
+        "peak_tree_bytes": 157745152
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.69,
+        "peak_tree_bytes": 158355456
+      },
+      {
+        "name": "delete",
+        "result": "PASS",
+        "error": null,
+        "seconds": 43.12,
+        "peak_tree_bytes": 158203904
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.24,
+        "peak_tree_bytes": 158552064
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.27,
+        "peak_tree_bytes": 123547648
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 29.68,
+        "peak_tree_bytes": 141385728
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.05,
+        "peak_tree_bytes": 158232576
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 18.46,
+        "peak_tree_bytes": 157638656
+      }
+    ]
+  },
+  "final_ui": {
+    "projects": {
+      "result": "PASS",
+      "binary_sha256": "3284f028eb47250efe5ed17fe47556a61c1d3ae3f6813170f3f547ec593ca009",
+      "peak_process_bytes": 91078656,
+      "native_project_editor": true,
+      "invalid_reference_preserves_input": true,
+      "saved_default_and_override": true,
+      "restart_persistence": true,
+      "draft_preserved": true,
+      "source_unchanged": true,
+      "no_provider_dispatch": true
+    },
+    "commands": {
+      "result": "PASS",
+      "binary_sha256": "3284f028eb47250efe5ed17fe47556a61c1d3ae3f6813170f3f547ec593ca009",
+      "peak_process_bytes": 153632768,
+      "goose_options_and_capabilities": true,
+      "unsupported_draft_preserved": true,
+      "native_diff": true,
+      "new_chat_isolated": true,
+      "terminal_list_no_spawn": true,
+      "no_unintended_model_calls": true
+    },
+    "selection": {
+      "result": "PASS",
+      "binary_sha256": "3284f028eb47250efe5ed17fe47556a61c1d3ae3f6813170f3f547ec593ca009",
+      "backend": "embedded-goose",
+      "peak_process_bytes": 200413184,
+      "scale": 2.0,
+      "clipboard_cases": [
+        "rich-gutter",
+        "rich-reverse",
+        "rich-keyboard",
+        "rich-menu",
+        "rich-unicode",
+        "link-drag",
+        "user-gutter",
+        "user-glyph",
+        "user-keyboard",
+        "user-menu",
+        "code-gutter",
+        "code-second-line",
+        "code-glyph",
+        "tool-arguments",
+        "tool-result",
+        "tool-menu",
+        "tool-cross-chunk"
+      ],
+      "native_menus": [
+        [
+          "Copy",
+          "Select All",
+          "Copy Message as Markdown",
+          "Copy Paragraph",
+          "View Message as Text",
+          "",
+          "Quote in Reply",
+          "Send to Tab\u2026"
+        ],
+        [
+          "Copy",
+          "Select All",
+          "",
+          "Copy Message",
+          "View Message as Text",
+          "Quote in Reply",
+          "Send to Tab\u2026"
+        ],
+        [
+          "Copy",
+          "Select All",
+          "Copy All",
+          "View as Text"
+        ]
+      ],
+      "complete_tool_copy": true,
+      "cross_virtual_row_selection": true
+    }
+  },
+  "history": {
+    "result": "PASS",
+    "binary_sha256": "fa140c1b0f753f13411844c423f0e91b56efcb9318e3795c0b2000012986eddf",
+    "peak_process_bytes": 151810048,
+    "legacy_tools_preserved": true,
+    "historical_pages": true,
+    "bounded_rows": true,
+    "stream_preserves_page": true,
+    "send_returns_to_live": true,
+    "latest_catches_up": true,
+    "complete_export_messages": 402,
+    "fetch_ms": {
+      "first": 5.2236,
+      "middle": 6.2506,
+      "earlier": 4.9156,
+      "later": 5.6674999999999995
+    }
+  },
+  "catalog": {
+    "result": "PASS",
+    "binary_sha256": "deba04fb4fd03d2e6204385a2617849481bb235079149f0cb0402347be390eb2",
+    "peak_process_bytes": 62668800,
+    "stored_conversations": 100,
+    "first_page": 50,
+    "pinned_outside_first_page": "goose:benchmark-0000",
+    "provider_activation": false
+  },
+  "notes": [
+    "Native matrix preceded the final branch-label and background-browser polish; focused native checks and full scale benchmark ran on the final local executable. CI must repeat the complete matrix on the exact signed executable before publication.",
+    "Fixtures use local providers and Rally. Live AWS profiles remain final-release acceptance.",
+    "B142 historical summary timeout has not recurred in candidate profile/summary/recovery cases; original cause remains unproven and diagnostics remain enabled."
+  ]
+}
