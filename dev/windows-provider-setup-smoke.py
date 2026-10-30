@@ -3,6 +3,8 @@
 import argparse
 import hashlib
 import json
+import re
+import sqlite3
 from pathlib import Path
 import subprocess
 import sys
@@ -65,21 +67,53 @@ try:
     assert secrets.read_bytes() == original_secrets, 'Setup changed credentials'
     assert 'preserve me' in config.read_text(encoding='utf-8'), 'Setup lost unrelated configuration'
     peak = max(peak, run([{'wait_ready': 30000}, {'new_thread': str(out / 'project')},
-                {'wait_idle': 30000}, {'send': 'Verify saved provider defaults'},
+                {'wait_idle': 30000}, control('choose', 'provider', 'codex'), {'wait': 700}, *dump('blocked-provider'),
+                {'send': 'Verify saved provider defaults'},
                 {'wait_idle': 30000}, {'wait': 1200},
                 {'transcript': 'export-complete:' + str(out / 'conversation.md')}, {'wait': 500},
                 {'open_settings': 'goose'}, {'wait': 1000}, *dump('restored'), {'quit': True}], 'restart'))
     restored = json.loads((out / 'restored.json').read_text(encoding='utf-8'))
+    blocked = json.loads((out / 'blocked-provider.json').read_text(encoding='utf-8'))
+    assert 'External agent backends' in blocked['sessionError'], blocked
+    offered = next(o['values'] for o in blocked['sessionOptions'] if o['id'] == 'provider')
+    assert offered and set(offered) <= {'goose', 'aws_bedrock', 'openai', 'anthropic'}, offered
     assert restored['model'] == 'openai.gpt-6-luna', restored
     assert restored['fields']['AWS_REGION'] == 'us-west-2', restored
     assert provider.requests and all('/model/openai.gpt-6-luna/' in r['path'] for r in provider.requests), provider.requests
     assert not provider.errors, provider.errors
     assert secrets.read_bytes() == original_secrets
     assert (out / 'provider-defaults.png').stat().st_size > 1000
+    # Unsupported persisted/default provider names must be rejected before
+    # Goose constructs an agent. Use a nonexistent fixture name, never a CLI.
+    database_path, = (out / 'goose').rglob('sessions.db')
+    with sqlite3.connect(database_path) as database:
+        conversation_id, = database.execute('SELECT id FROM sessions WHERE provider_name = ?', ('aws_bedrock',)).fetchone()
+        database.execute('UPDATE sessions SET provider_name = ? WHERE id = ?', ('fastrock_fixture_disallowed', conversation_id))
+        preserved = database.execute('SELECT * FROM sessions WHERE id = ?', (conversation_id,)).fetchone()
+        count, = database.execute('SELECT count(*) FROM sessions').fetchone()
+    peak = max(peak, run([{'wait_ready': 30000}, {'resume': 'goose:' + conversation_id}, {'wait': 1200},
+                *dump('blocked-restore'), {'quit': True}], 'blocked-restore'))
+    blocked_restore = json.loads((out / 'blocked-restore.json').read_text(encoding='utf-8'))
+    assert 'External agent backends' in (blocked_restore['threadError'] or ''), blocked_restore
+    with sqlite3.connect(database_path) as database:
+        assert database.execute('SELECT * FROM sessions WHERE id = ?', (conversation_id,)).fetchone() == preserved
+    value, replacements = re.subn(r'(?m)^active_provider:.*$', 'active_provider: fastrock_fixture_disallowed',
+                                  config.read_text(encoding='utf-8'))
+    assert replacements == 1, 'Fixture did not find the saved Goose provider'
+    config.write_text(value, encoding='utf-8')
+    peak = max(peak, run([{'wait_ready': 30000}, {'new_thread': str(out / 'project')}, {'wait': 1200},
+                *dump('blocked-default'), {'quit': True}], 'blocked-default'))
+    blocked_default = json.loads((out / 'blocked-default.json').read_text(encoding='utf-8'))
+    assert 'External agent backends' in (blocked_default['threadError'] or ''), blocked_default
+    with sqlite3.connect(database_path) as database:
+        assert database.execute('SELECT count(*) FROM sessions').fetchone() == (count,)
+    assert secrets.read_bytes() == original_secrets
     (out / 'acceptance.json').write_text(json.dumps(dict(result='PASS',
         binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(), peak_process_bytes=peak,
         native_provider_setup=True, invalid_url_rejected=True, credentials_preserved=True,
-        restart_uses_saved_model=True), indent=2), encoding='utf-8')
+        restart_uses_saved_model=True, external_provider_refused_before_dispatch=True,
+        native_provider_choices_scoped=True, unsupported_restore_preserves_history=True,
+        unsupported_default_cannot_create_session=True), indent=2), encoding='utf-8')
     print('PASS: native provider defaults, URL validation, credentials preserved, restart uses saved model')
 finally:
     provider.close()

@@ -1195,3 +1195,31 @@ passed on the same executable. Mac compilation, formatting and build-policy
 checks passed; no Mac execution. Binary SHA-256:
 `d1b79365b40c93ab7414efbe9ec901920bb202b420b85d61b20af8ead16084b9`.
 Webhook scheduling, remaining UI and provider work remain open. No release/tag.
+
+## 0.4.0 provider selection boundaries — 2026-10-30
+
+Goose's ACP factory is not used by every internal agent path. Fastrock now
+validates its supported provider scope before creating/restoring a conversation
+or changing its provider, including resolving the current default alias. Native
+provider choices are filtered on notifications, reads and mutation replies.
+Model and effort choices remain upstream-owned. The default alias preserves the
+saved model instead of selecting the provider registry's default model.
+
+The native provider fixture passed excluded-provider refusal, filtered choices,
+continued use of the saved Luna Runtime route, unchanged credentials, rejected
+restoration with an unchanged stored session, and rejected default selection
+without creating a session. Receipt:
+`docs/benchmarks/provider-scope-games-2026-10-30.json`; full evidence:
+`C:\Users\SeanMcNamara\fastrock-040-policy\provider-scope-native-3`.
+Executable SHA-256:
+`285b7353def4cd4babea5131a730a33cd40dd5cd7753386cb784dceca8b95ee6`.
+
+Windows passed 717 application tests, one native renderer test, 17 workspace
+tests and standalone embedded Goose verification. Native scheduling/crash,
+delegation, concurrent streaming/cancellation, vwork/manual-fork/restart and
+draft-recovery fixtures passed on the final executable. macOS compilation and
+static policy/formatting checks passed; no Mac tests or GUI execution.
+
+Named independent profiles, vault-only credential setup and live model-account
+acceptance remain open. This is source development, not RC readiness or release
+publication.

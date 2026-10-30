@@ -136,6 +136,8 @@ V55: App delegation ! fresh task context, inherited Goose permission/provider co
 
 V56: Schedules ! in-process timer, durable occurrence claim before isolated fresh-context dispatch, one active run per task, stale-edit guards, bounded input. Restart ! all schedules paused; unresolved occurrence ! review-only, no automatic replay or catch-up burst. Pause ! future runs only; Stop ! cancel current descendants; Quit ! exclude new dispatch before closing sessions. Invalid/unwritable state ! preserve evidence and disable dispatch. Local daily time ! once per day across repeated clock times; nonexistent times skipped. Verify: v56 date/state/recovery tests and native scheduled-run/pause/edit/crash fixture.
 
+V57: Embedded session creation/restoration/provider switching ! validate Bedrock/OpenAI/Anthropic scope before Goose agent construction; current default alias ! revalidated; excluded choices ! absent from native provider picker. Rejected selection ! preserve existing configuration/history. Verify: v57 provider policy tests and native provider-selection refusal/continued-stream fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -184,7 +186,7 @@ T33|x|Shared localhost vwork MCP, database-level compaction, actual Goose/games 
 T34|x|Widen text selection hit areas, selectable tool/command details, Windows interaction/scroll checks, Mac compile and signed Fastrock 0.3.4; no vwork changes|V9,V15,V23,V32,V37,I.distribution
 T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only release policy; policy audit passed, games ReleasePolicy 3 passed/1 Apple-only skipped|V46,I.distribution
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
-T37|~|Embedded Goose; remove Codex UI/connection; graphical non-secret provider defaults, preserve configuration; vault-only credential setup blocked by R8|V38,V39,V52,I.goose
+T37|~|Embedded Goose; remove Codex UI/connection; native provider defaults and creation/restore/switch scope guards; preserve configuration; vault-only credential setup blocked by R8|V38,V39,V52,V57,I.goose
 T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
 T39|~|Port T3 V2 orchestration; isolated forks/delegation and native timed schedules verified; webhook scheduling and remaining coordination acceptance open; no quotas|V41,V50,V55,V56,I.orchestration
 T40|~|Native T3 main UI/sidebar/panels, registered repository projects and permanent independent Rally project|V42,V51,I.questions,I.links
@@ -429,3 +431,6 @@ B130|2026-10-30|Schedule UI fixture changed fields before deferred New/Edit call
 B131|2026-10-30|Queue persistence test counted scheduler state as another conversation queue|Exclude scheduler metadata while retaining pending-input assertion; V41,V56
 B132|2026-10-30|Weekly schedule lookup stopped after seven days, losing the next occurrence after a DST gap|Look through following week; v56 missing-Sunday date fixture; V56
 B133|2026-10-30|Restored schedule source absent from session cache could leave editor pointing at another conversation|Include retained schedule sources in native selector; V56
+B134|2026-10-30|Goose ACP session paths use internal provider registry instead of host factory, bypassing factory-only provider restrictions|Validate before new/load/switch and filter native choices; V38,V57
+B135|2026-10-30|Passing validated default provider explicitly makes Goose choose registry model instead of saved default|Validate default without changing ACP selection semantics; native saved-Luna route fixture; V52,V57
+B136|2026-10-30|New provider tests edited legacy GOOSE_PROVIDER after Goose migrated it to active_provider|Use public provider setter and current fixture schema; V52,V57

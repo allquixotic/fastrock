@@ -3,6 +3,19 @@ use base64::Engine;
 
 impl Adapter {
     pub(super) async fn new_session(self: &Arc<Self>, params: &Value) -> Reply {
+        let provider = if self.embedded_runtime {
+            let requested = params["modelProvider"]
+                .as_str()
+                .filter(|name| !name.is_empty() && *name != "goose");
+            super::provider_policy::selected(requested.map(str::to_owned))
+                .await
+                .map_err(|e| error(e.to_string()))?;
+            // Omit the default alias: an explicit provider makes Goose choose
+            // its registry model instead of the user's saved default model.
+            requested.map(str::to_owned)
+        } else {
+            None
+        };
         let workspace = self.selected_workspace(params).await?;
         let workspace_cwd = workspace
             .as_ref()
@@ -61,10 +74,11 @@ impl Adapter {
                     .collect::<Vec<_>>()
             );
         }
-        if let Some(provider) = params["modelProvider"]
-            .as_str()
-            .filter(|p| !matches!(*p, "goose" | "openai"))
-        {
+        if let Some(provider) = provider.as_deref().or_else(|| {
+            params["modelProvider"]
+                .as_str()
+                .filter(|p| !matches!(*p, "goose" | "openai"))
+        }) {
             args["_meta"]["provider"] = json!(provider);
         }
         let reply = self.rpc.call("session/new", args).await;
@@ -221,6 +235,11 @@ impl Adapter {
             .get(id)
             .is_some_and(|s| !s.loaded);
         if needs_load {
+            if self.embedded_runtime {
+                super::provider_policy::restored(id)
+                    .await
+                    .map_err(|e| error(e.to_string()))?;
+            }
             if self.capabilities.lock().await["loadSession"] != true {
                 return Err(unsupported("session/load"));
             }
@@ -386,6 +405,12 @@ impl Adapter {
     }
 
     pub(super) async fn set_config(&self, id: &str, config_id: &str, value: &Value) -> Reply {
+        if self.embedded_runtime && config_id == "provider" {
+            let requested = value.as_str().ok_or_else(|| error("Choose a provider"))?;
+            super::provider_policy::selected(Some(requested.to_owned()))
+                .await
+                .map_err(|e| error(e.to_string()))?;
+        }
         {
             let sessions = self.sessions.lock().await;
             let s = sessions
@@ -402,7 +427,7 @@ impl Adapter {
                 )));
             }
         }
-        let result = self
+        let mut result = self
             .rpc
             .call(
                 "session/set_config_option",
@@ -412,6 +437,11 @@ impl Adapter {
         if let Some(s) = self.sessions.lock().await.get_mut(id) {
             s.config = config_options(&result);
             self.config_event(id, s.config.clone())?;
+        }
+        if self.embedded_runtime {
+            result["configOptions"] = json!(super::provider_policy::visible_options(
+                config_options(&result)
+            ));
         }
         Ok(result)
     }

@@ -1,0 +1,18 @@
+{
+  "result": "PASS",
+  "binary_sha256": "285b7353def4cd4babea5131a730a33cd40dd5cd7753386cb784dceca8b95ee6",
+  "peak_process_bytes": 133189632,
+  "native_provider_setup": true,
+  "invalid_url_rejected": true,
+  "credentials_preserved": true,
+  "restart_uses_saved_model": true,
+  "external_provider_refused_before_dispatch": true,
+  "native_provider_choices_scoped": true,
+  "unsupported_restore_preserves_history": true,
+  "unsupported_default_cannot_create_session": true,
+  "date": "2026-10-30",
+  "host": "games",
+  "test": "dev/windows-provider-setup-smoke.py",
+  "evidence": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\provider-scope-native-3",
+  "distribution": "local development fixture only; no release publication"
+}

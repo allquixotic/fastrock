@@ -22,6 +22,7 @@ pub(crate) fn summaries_idle() -> bool {
 mod fork;
 mod fork_storage;
 mod projects;
+mod provider_policy;
 pub(crate) mod setup;
 mod setup_controls;
 mod summary_worker;
@@ -332,6 +333,11 @@ where
 
 impl Adapter {
     fn config_event(&self, id: &str, options: Vec<Value>) -> Result<(), JSONRPCErrorError> {
+        let options = if self.embedded_runtime {
+            provider_policy::visible_options(options)
+        } else {
+            options
+        };
         self.events
             .try_send(AppServerEvent::GooseConfig {
                 thread_id: ui_id(id),
@@ -553,7 +559,12 @@ impl Adapter {
                 let s = sessions
                     .get(id)
                     .ok_or_else(|| error("Open a Goose conversation first"))?;
-                Ok(json!({"configOptions":s.config,"busy":s.active.is_some()}))
+                let options = if self.embedded_runtime {
+                    provider_policy::visible_options(s.config.clone())
+                } else {
+                    s.config.clone()
+                };
+                Ok(json!({"configOptions":options,"busy":s.active.is_some()}))
             }
             "fastrock/goose/setConfig" => {
                 let id = session_id(text(params, "threadId"))?;

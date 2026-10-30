@@ -15,8 +15,13 @@ without executing login-shell scripts. Configure extension executable paths when
 they are outside that inherited PATH. Renderer failures report an error in the
 current process instead of launching a replacement Fastrock instance.
 
-The provider factory permits `aws_bedrock`, `openai` and `anthropic`. Existing
-Goose configuration and credential entries remain authoritative. Codex and remote
+Fastrock permits `aws_bedrock`, `openai` and `anthropic`. It checks creation,
+restoration and switching before dispatch because Goose's ACP provider factory
+does not cover every internal session path. Native provider choices follow the
+same scope; model and reasoning choices still come from Goose. Rejected provider
+selections preserve existing settings and history. The default alias retains the
+user's saved model, rather than substituting the provider registry's default.
+Existing Goose configuration and credential entries remain authoritative. Codex and remote
 agent transports are removed; legacy Codex files are not migrated or deleted.
 Account quota panels, snapshot storage and polling are removed. Conversation
 context and token-use information remain available independently of account limits.
