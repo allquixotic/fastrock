@@ -1,4 +1,4 @@
-Fastrock 0.4.0-rc.1 embeds unmodified Goose 1.57.0 and vwork 0.3.4 in one process. Neither needs a separate installation. Core services use in-process Rust APIs; configured extensions, hooks, credential helpers and user/agent tools retain their ability to launch programs. Codex connections are removed, while their conversation files stay untouched.
+Fastrock 0.4.0-rc.2 embeds unmodified Goose 1.57.0 and vwork 0.3.4 in one process. Neither needs a separate installation. Core services use in-process Rust APIs; configured extensions, hooks, credential helpers and user/agent tools retain their ability to launch programs. Codex connections are removed, while their conversation files stay untouched.
 
 The native Slint interface follows T3 Code 0.1.5, with repository projects, conversation groups, pinning, snoozing, settling, drag ordering, batch actions, local search and a command palette. Project settings save a default Git reference; new conversations receive isolated compressed workspaces. Native files, Changes, Review, terminals and checkpoints support the coding workflow. Web previews open in the system browser. Quota features and external agent servers are excluded.
 
@@ -13,3 +13,5 @@ Search matches titles and current summaries locally, then uses bounded parallel 
 This release candidate uses local provider and Rally fixtures for automated acceptance. Required Bedrock Runtime OpenAI and US cross-region Anthropic routes still need validation with the user's working profiles before the final 0.4.0 release. Fixture coverage does not establish AWS model availability or account access. [Verification evidence and benchmark methodology](https://github.com/allquixotic/fastrock/blob/main/docs/PORT-VERIFICATION.md) distinguish automated coverage from live acceptance.
 
 Distribution is a Windows x64 ZIP built, signed, timestamped, verified and attested through CI. macOS is compiled for compatibility only. Application/dependencies use opt-level 2, no LTO or debug information, 256 codegen units, incremental compilation and no stripping. No tests contact live providers or perform production Rally writes.
+
+RC1 stopped before signing because a checkpoint fixture inherited the CI host’s Git line-ending conversion. RC2 makes that fixture deterministic; application behavior and the recorded full-scale benchmark are unchanged. No RC1 binary was published.

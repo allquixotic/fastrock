@@ -16,10 +16,34 @@ impl Fixture {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("repo");
         let repo = git2::Repository::init(&root).unwrap();
+        // Model the CI host's global policy without reading/changing the user's
+        // Git files or process-wide libgit2 search paths (tests run in parallel).
+        let global_path = temp.path().join("global.gitconfig");
+        std::fs::write(&global_path, "[core]\n    autocrlf = true\n").unwrap();
+        let mut config = git2::Config::new().unwrap();
+        config
+            .add_file(&global_path, git2::ConfigLevel::Global, false)
+            .unwrap();
+        config
+            .add_file(&repo.path().join("config"), git2::ConfigLevel::Local, false)
+            .unwrap();
+        repo.set_config(&config).unwrap();
+        assert!(repo.config().unwrap().get_bool("core.autocrlf").unwrap());
+        // Preserve the fixture's exact CRLF bytes even when the host's global
+        // Git configuration enables autocrlf (as on GitHub's Windows runners).
+        repo.config()
+            .unwrap()
+            .set_bool("core.autocrlf", false)
+            .unwrap();
         std::fs::write(root.join("file.txt"), b"original\r\n").unwrap();
         let mut index = repo.index().unwrap();
         index.add_path(std::path::Path::new("file.txt")).unwrap();
         let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
+        let original = tree.get_name("file.txt").unwrap();
+        assert_eq!(
+            repo.find_blob(original.id()).unwrap().content(),
+            b"original\r\n"
+        );
         let sig = git2::Signature::now("Fixture", "fixture@example.invalid").unwrap();
         repo.commit(Some("HEAD"), &sig, &sig, "Fixture", &tree, &[])
             .unwrap();

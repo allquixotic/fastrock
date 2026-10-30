@@ -1839,3 +1839,17 @@ recovery cases; phase/count diagnostics remain in place. Current acceptance is
 based on those passing runs, not on claiming a proven fix for that old timeout.
 Live Bedrock model/account access still needs the user's working profiles before
 the final 0.4.0 release; fixtures establish routes and integration behavior only.
+
+### RC2 fixture portability correction
+
+[RC1 CI](https://github.com/allquixotic/fastrock/actions/runs/41096833939) compiled
+both platforms but stopped before signing or publication. Its checkpoint recovery
+fixture inherited `core.autocrlf=true` on the hosted Windows runner: Git stored LF
+while the test expected its original CRLF bytes. RC2 pins the fixture repository's
+Git setting and asserts the seed blob before exercising recovery. No application
+behavior changed after the benchmark above; RC2 also updates the packaged guide
+to describe the completed scope. The unpublished RC1 tag remains intact.
+
+All seven checkpoint tests passed on games with an isolated synthetic global
+`autocrlf=true` configuration and exact CRLF seed-blob validation. The regression
+uses per-repository config objects, leaving user Git configuration unchanged.

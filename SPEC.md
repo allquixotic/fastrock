@@ -696,3 +696,5 @@ B231|2026-10-30|Legacy Goose sessions inherited tools for listing, but public re
 B232|2026-10-30|Slint ComboBox model initialization replaced current-index binding; typed/saved reference changed while branch label stayed HEAD|Explicit index synchronization plus native rendered-label selection regression; V79
 
 B233|2026-10-30|Active help/transcript/settings browser launchers could block Slint; restart toast still named Codex|Shared background launcher, preserved native-link fixture routing and Goose restart text; V38,V42,V78
+
+B234|2026-10-30|RC1 Windows CI inherited Git core.autocrlf=true; checkpoint fixture committed LF but expected original CRLF|Pin repository-local autocrlf=false against synthetic global true; verify seed blob bytes; seven games tests passed; no application change; RC1 signing/publication skipped; V23,V62,V63

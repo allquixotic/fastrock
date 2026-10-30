@@ -6,7 +6,7 @@ rebuilt using Slint buttons, editors, lists, layouts and dialogs. Rally document
 occupy their own horizontal tabs under the permanent Rally sidebar project.
 Conversations use the sidebar and a separate title/action header.
 
-The 0.4.0 development branch embeds unmodified Goose **1.57.0** and vwork
+Fastrock 0.4.0 embeds unmodified Goose **1.57.0** and vwork
 **0.3.4**. No separate Goose or vwork installation is required. Goose runs on
 Fastrock's Tokio runtime through bounded memory streams. Existing Goose
 configuration, credentials, extensions and sessions remain separate from Fastrock
@@ -17,11 +17,11 @@ Only Goose's Bedrock, direct OpenAI and direct Anthropic providers are enabled.
 Expand **Goose options** above Send for the session's model, mode and supported
 reasoning choices. External Codex and remote agent connections are removed;
 Codex files remain untouched. [Embedded runtime status and limitations](docs/goose-acp.md)
-describe the verified foundation and outstanding 0.4.0 work. The T3 sidebar/header,
-registered repository projects, workspace-bound chats and isolated forks are present.
+describe supported configuration and upstream constraints. The native T3 sidebar,
+repository projects, isolated workspaces and forks, delegation, durable queues,
+timed/webhook scheduling, review, terminals and checkpoints are implemented.
 The **History** control opens bounded pages with Oldest, Earlier, Later and direct
-position navigation; Latest returns to the live conversation. Auxiliary panels
-and full orchestration remain in progress.
+position navigation; Latest returns to the live conversation.
 The 1,000-conversation/eight-stream/10,000-message benchmark has passed on games;
 [verification evidence](docs/PORT-VERIFICATION.md) records the 0.3.4 comparison.
 
@@ -43,11 +43,11 @@ authorized opt-level 2 settings below.
 
 ## Test builds
 
-[Fastrock 0.4.0-alpha.3](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-alpha.3)
-is available as a signed Windows x64 ZIP with embedded Goose and vwork. Extract
-it and run `fastrock.exe`. This prerelease adds bounded history navigation and
-native Goose provider defaults to repository projects, isolated forks and reviewed integration;
-the outstanding 0.4.0 features and live-profile acceptance remain open.
+The feature-complete [Fastrock 0.4.0-rc.2](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.2)
+is published as a signed Windows x64 ZIP after CI acceptance. Extract it and run
+`fastrock.exe`; no separate Goose or vwork installation is needed. Live Bedrock
+profile validation remains required before the final 0.4.0 release. See
+[verification evidence](docs/PORT-VERIFICATION.md) for fixture coverage and limits.
 All release assets are built and published by CI. Current releases compile
 macOS for compatibility; historical Mac releases include signed, notarized DMGs.
 The 0.4.0 branch uses optimization level 2 for application code and dependencies,

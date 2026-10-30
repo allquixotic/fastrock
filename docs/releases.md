@@ -1,6 +1,6 @@
 # Stable releases and rapid signed prereleases
 
-## 0.4.0 development
+## 0.4.0 release candidate
 
 Application code and dependencies use opt-level 2, no LTO or debug information,
 256 codegen units, incremental compilation and no stripping. Build scripts remain
@@ -8,8 +8,8 @@ at opt-level 0. Goose and vwork are pinned, unmodified Rust dependencies;
 release archives include their licenses. Existing 0.3.x binaries retain the
 historical settings documented below.
 
-Further binary publication is gated on feature-complete, verified release-candidate
-readiness. Development source is committed and pushed to main; local fixture builds
+Binary publication is gated on feature-complete, verified release-candidate
+readiness. RC2 contains the completed implementation; CI must verify its signed artifact. Development source is committed and pushed to main; local fixture builds
 are not releases. RC assets must pass signed CI acceptance. Mac builds check
 compatibility without publishing Mac assets. Final 0.4.0 also requires the user's
 live Bedrock profile validation; fixture acceptance does not establish live access.
