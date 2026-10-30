@@ -1,0 +1,179 @@
+{
+  "date": "2026-10-29",
+  "baseline_tag": "v0.3.4",
+  "development_application_commit": "8461250",
+  "methodology": {
+    "renderer": "winit-software",
+    "window_pixels": [
+      1440,
+      1000
+    ],
+    "frames": 360,
+    "provider": "Same loopback Bedrock stream fixture; unmodified Goose 1.57.0 in both runs",
+    "histories": "Seeded with public Goose SessionManager APIs; 1000 current summaries in embedded vwork redb",
+    "measurement": "One sequential run per version; no statistical speedup claim. App peak is max working-set/private peak; tree peak is committed job memory. History opening sampled by native automation; switch timing covers synchronous dispatch, not input-to-photon latency.",
+    "memory_guard": "32 GB maximum, reduced to measured host/guest headroom; 4 GB host/guest reserves, kernel process-tree cap, 100 ms sampling, stale host heartbeat stops test",
+    "coverage": "Open recent viewport of 10000-message history, scroll while eight agents stream, switch tabs, export complete unchanged history. Arbitrary oldest-page jumps are not measured."
+  },
+  "baseline": {
+    "binary_sha256": "dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9",
+    "seed_sha256": "3f29b0adc54c1b3722c8f40c65fa9a538d2b87085efba1c694a5ce3b19ea4caf",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "external Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1763194880,
+            "peak_app_bytes": 106250240,
+            "peak_tree_commit_bytes": 101711872
+          },
+          "app": {
+            "cap_bytes": 1759463424,
+            "peak_app_bytes": 193724416,
+            "peak_tree_commit_bytes": 225206272
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 1102.8,
+        "switch_dispatch_ms": [
+          1.0,
+          1.1,
+          0.9,
+          0.7,
+          1.0
+        ],
+        "frame": {
+          "p50_ms": 6.561,
+          "p95_ms": 8.487,
+          "p99_ms": 15.377
+        },
+        "render": {
+          "p50_ms": 5.603,
+          "p95_ms": 6.976,
+          "p99_ms": 14.268
+        },
+        "event_loop": {
+          "p50_ms": 16.616,
+          "p95_ms": 26.232,
+          "p99_ms": 36.142
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ],
+    "goose_sha256": "89d5849587586765fa335f664fac0a9ed0e466d0f3717dd609ca04ebdffa64e2"
+  },
+  "development": {
+    "binary_sha256": "c66a72c9660ababbe0adb2a9b7451446e2ed97c632c0c8d6e017c2c8c0c5830c",
+    "seed_sha256": "3f29b0adc54c1b3722c8f40c65fa9a538d2b87085efba1c694a5ce3b19ea4caf",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1827420160,
+            "peak_app_bytes": 106160128,
+            "peak_tree_commit_bytes": 101593088
+          },
+          "app": {
+            "cap_bytes": 1765689344,
+            "peak_app_bytes": 227655680,
+            "peak_tree_commit_bytes": 175316992
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 402.8,
+        "switch_dispatch_ms": [
+          0.4,
+          0.4,
+          0.6,
+          0.5,
+          0.5
+        ],
+        "frame": {
+          "p50_ms": 5.153,
+          "p95_ms": 8.687,
+          "p99_ms": 10.946
+        },
+        "render": {
+          "p50_ms": 4.272,
+          "p95_ms": 7.936,
+          "p99_ms": 10.115
+        },
+        "event_loop": {
+          "p50_ms": 16.405,
+          "p95_ms": 18.103,
+          "p99_ms": 23.14
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ]
+  },
+  "stale_monitor_negative_fixture": {
+    "binary_sha256": "c66a72c9660ababbe0adb2a9b7451446e2ed97c632c0c8d6e017c2c8c0c5830c",
+    "seed_sha256": "3f29b0adc54c1b3722c8f40c65fa9a538d2b87085efba1c694a5ce3b19ea4caf",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {},
+        "result": "ABORTED",
+        "reason": "Hypervisor memory heartbeat unavailable or stale",
+        "next_divisor": 10
+      },
+      {
+        "divisor": 10,
+        "stored_conversations": 100,
+        "history_messages": 1000,
+        "concurrent_streams": 1,
+        "phases": {},
+        "result": "ABORTED",
+        "reason": "Hypervisor memory heartbeat unavailable or stale",
+        "next_divisor": 100
+      },
+      {
+        "divisor": 100,
+        "stored_conversations": 10,
+        "history_messages": 100,
+        "concurrent_streams": 1,
+        "phases": {},
+        "result": "ABORTED",
+        "reason": "Hypervisor memory heartbeat unavailable or stale",
+        "next_divisor": 1000
+      },
+      {
+        "divisor": 1000,
+        "stored_conversations": 1,
+        "history_messages": 10,
+        "concurrent_streams": 1,
+        "phases": {},
+        "result": "ABORTED",
+        "reason": "Hypervisor memory heartbeat unavailable or stale",
+        "next_divisor": 10000
+      }
+    ]
+  }
+}

@@ -875,3 +875,51 @@ No Rust/application change in this milestone; prior 706 application tests,
 16 workspace fixtures and Mac compatibility compile remain applicable. Full
 performance comparison, remaining 0.4.0 features and live-profile acceptance
 remain open; no release tag.
+
+## 0.4.0 development: full-scale games comparison
+
+On 2026-10-29, both versions passed the requested 1,000 stored conversations,
+eight concurrently streaming agents and 10,000-message conversation. Each used
+unchanged Goose 1.57.0, the same loopback Bedrock streaming fixture, histories
+seeded through public SessionManager APIs, 1,000 current compressed summaries,
+1440×1000 software rendering and 360 native scrolling frames. Both exported all
+10,000 messages, including the first/last sentinels and Unicode, intact.
+
+| Measurement | Published 0.3.4 | 0.4.0 development |
+|---|---:|---:|
+| Peak Fastrock process memory | 193,724,416 B | 227,655,680 B |
+| Peak process-tree committed memory | 225,206,272 B | 175,316,992 B |
+| Observed history open | 1,102.8 ms | 402.8 ms |
+| Scroll frame p50 / p95 / p99 | 6.561 / 8.487 / 15.377 ms | 5.153 / 8.687 / 10.946 ms |
+| Event-loop p95 / p99 | 26.232 / 36.142 ms | 18.103 / 23.140 ms |
+| Synchronous tab-switch dispatch range | 0.7–1.1 ms | 0.4–0.6 ms |
+
+These are single-run observations, not statistical speedup claims. Goose is a
+child process only for the 0.3.4 baseline; the tree measurement includes it.
+Embedding increases Fastrock's own footprint while the measured total commit
+falls. Frame p95 is similar; opening and event-loop tail latency improved in
+these runs. Scroll measurement covers the recent resident viewport of the large
+history; arbitrary oldest-page jumps remain separate T42 acceptance. Switch
+timing excludes asynchronous rendering/input-to-photon latency.
+
+The host monitor observed roughly 5.7–5.8 GB available. Each run therefore used
+a conservative 1.7–1.8 GB kernel limit for its owned process tree, below the
+32,000,000,000-byte hard ceiling. Native memory sampling ran every 100 ms; a
+missing/stale host heartbeat or less than 4 GB host/guest reserve stops the test.
+Four Windows guard tests passed, including a real refused oversized allocation
+and termination isolation. Neither full-scale run needed a smaller workload.
+No VM, hypervisor, networking or unrelated process was modified.
+
+Baseline binary SHA-256 is the published verified
+`dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9`;
+Authenticode was checked again and remained Valid. Development binary SHA-256:
+`c66a72c9660ababbe0adb2a9b7451446e2ed97c632c0c8d6e017c2c8c0c5830c`.
+Raw aggregate receipts: `docs/benchmarks/scale-games-2026-10-29.json`.
+Native scripts, frames, snapshots, histories and logs remain on games under
+`C:\Users\SeanMcNamara\fastrock-040-policy\scale-034-1` and `scale-040-1`.
+The new seed mode also passed the original embedded-Goose fixture; Windows
+compilation, Mac compatibility check and static checks passed. No Mac execution.
+
+A negative heartbeat-loss run (`scale-stale-guard-1`) rejected scales 1, 10, 100
+and 1,000 before launching any seed/app process. Its expected nonzero outcome
+and empty phase records verify fail-closed monitoring and tenfold reduction.

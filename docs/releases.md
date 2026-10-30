@@ -11,7 +11,10 @@ historical settings documented below.
 Windows x64 ZIP publication is authorized at usable verified prerelease milestones.
 Mac builds check compatibility without publishing Mac assets. Final 0.4.0 awaits
 all `SPEC.md` acceptance, including the user's live Bedrock profile validation.
-No release has been produced from the embedded foundation yet.
+The first candidate is 0.4.0-alpha.1: embedded runtime/storage, native navigation,
+summary search, tray/recovery and preserved Rally workflows. Its full-scale games
+benchmark passed against 0.3.4. Full T3 parity remains incomplete; see the
+[prerelease scope](prerelease-notes.md). Publication requires signed CI acceptance.
 
 ## Stable 0.3.4
 
@@ -100,67 +103,57 @@ addresses using its image load address and the matching dSYM DWARF file.
 Optimization can inline functions or eliminate local variables even with full
 debug information. No stripped/optimized symbol substitute is generated.
 
-## Rapid prereleases
+## Current prerelease workflow
 
+Commit and push main, then push the matching prerelease tag. Do not create PRs
+or publish locally built assets. For 0.4.0, `.github/workflows/release.yml` builds
+both platforms, tests/signs/verifies/attests the Windows x64 ZIP and publishes it.
+Mac is compile-only. Tags match Cargo.toml/Cargo.lock; no force pushes or asset
+replacement. Existing releases retain their own compiler/distribution policy.
 
-Commit, push directly to main, then push the matching prerelease tag. Do not create
-PRs or publish locally built release assets. `.github/workflows/release.yml`
-builds, signs, verifies, attests and publishes the Windows x64 ZIP through CI; it
-then adds the signed/notarized Apple Silicon Mac DMG to the same prerelease.
-Tags must match Cargo.toml/Cargo.lock, for example `v0.2.0-alpha.4`. No force pushes.
+Use `python3 dev/check-build-policy.py` and `cargo build --locked --bin fastrock`.
+Mac-to-Windows compilation uses `cargo xwin build --locked --target
+x86_64-pc-windows-msvc --bin fastrock`. The software renderer avoids a second GPU
+stack. Goose/vwork are embedded pinned dependencies; no installed backend is
+required. Application/dependency opt-level is 2, build-script opt-level is 0,
+LTO is off, debug info is off, codegen units are 256, incremental is enabled and
+stripping is disabled. Environment overrides cannot alter the declared policy.
 
-Default dev/release/test profiles favor compile speed: opt-level 0, debug 0, split-debuginfo off,
-LTO off, codegen-units 256, incremental true, strip none. Build dependencies also
-use opt-level 0 and 256 codegen units. Environment overrides may not alter these declared settings. `dev/check-build-policy.py` verifies the policy
-before supported scripts and CI. Sean must explicitly authorize any exception.
-
-Build with `cargo build --locked --bin fastrock`; use only the authorized Cargo dependency overrides.
-Mac-to-Windows builds use `cargo xwin build --locked --target
-x86_64-pc-windows-msvc --bin fastrock`. Both use the development profile with the authorized rendering/text overrides. The
-software renderer avoids building a second GPU stack. Goose CLI 1.56.0 or newer
-is the default external prerequisite; Codex CLI 0.162.0 or newer is optional. Neither is bundled or silently installed.
-
-The CI build job runs on this Mac with its persistent Cargo target cache. It
-compiles each platform and the Windows Rust test executable, and uploads binaries
-and build receipts with compression disabled. It does not archive the multi-GB
-incremental cache on every commit/tag, and Windows CI does not compile again.
-This avoids the previous repeated compile and cache-upload delays. Initial cache
-warming or dependency changes can still take longer.
-
-Start these temporary runners after pushing the tag (two terminals):
+The temporary Mac build runner uses the persistent target cache, compiles each
+platform and Windows test executables, and uploads binaries/receipts without
+compressing the multi-GB incremental cache. It runs no tests or GUI. Start only
+the build runner for 0.4.0 after pushing its trusted tag:
 
 ```sh
 python3 scripts/start-release-runner.py build
-python3 scripts/start-release-runner.py signing
 ```
 
-They run one trusted release job each and remove their GitHub registrations.
-Only release-tag workflows can use them; the build verifies its source is on
-main. No pull request jobs, tests or GUI run on the Mac. Windows runs the Rust suite and release-policy tests. The normal login keychain holds
-the pinned Developer ID identity and AC_NOTARY; no Apple private keys are exported.
-Apple Silicon is the rapid Mac prerelease architecture; imported universal-build
-records under docs/upstream are historical.
+It accepts one trusted release job and removes its registration afterward.
+The separate signing runner is only needed for historical Mac-publishing releases;
+0.4.0 must not start it. Release source must be on main; PR jobs cannot use these
+runners. Preserve active incremental caches and release evidence.
 
-Windows CI verifies input hashes/source/run, obtains Azure signing authorization
-through OIDC, and signs fastrock.exe with SHA-256 and an RFC 3161 timestamp. It
-requires the configured Sean McNamara publisher, runs Goose and Codex fixture-only Rally UI checks
-on that exact signed executable, then creates a stored ZIP with BUILD.json,
-licenses, source pins and signing evidence. No unsigned fallback is published.
-Hosted UI checks use `--ci` for deterministic board callbacks. The default suite
-on `games` provides physical mouse drag coverage; both record their scope.
+Windows verifies input hashes/source/run, executes Rust and policy/watchdog tests,
+uses Azure OIDC signing with SHA-256 and an RFC 3161 timestamp, and verifies the
+configured publisher. Embedded Goose/vwork, Rally, selection, scrolling, search,
+multiwindow navigation and recovery fixtures run on the exact signed executable.
+All provider/Rally calls are loopback fixtures with isolated configuration.
+Hosted `--ci` Rally moves use deterministic callbacks; games also supports the
+physical mouse-drag fixture. Receipts record each fixture's scope.
 
-Mac CI verifies the arm64 binary and Apple-only dynamic dependencies, signs with
-Developer ID Application SHA-1 `9A3CFFC04D3472208A62C48E707EA6D4261998A1`,
-requires Accepted app and DMG notarization logs, staples the app before building
-an uncompressed DMG, and validates stapling/Gatekeeper on both the DMG and its
-mounted app. No JIT entitlements or embedded Codex runtime are needed.
+Packaging includes BUILD.json, licenses, source pins, signing evidence, checksums
+and GitHub attestations bound to the exact source/tag/workflow. No unsigned
+fallback or replacement of published asset bytes is permitted.
 
-Both packages have SHA-256 sidecars and GitHub build attestations checked against
-the exact tag/source/workflow before upload. Windows publishes immediately after
-its checks; Mac signing/notarization does not hold up Windows testing. Existing
-asset names are never overwritten. Prior alpha.1–alpha.3 assets remain unsigned;
-alpha.4 and later use this signed CI pipeline.
+Before release, run the full-scale comparison on games using
+`dev/windows-scale-benchmark.py` and the standalone embedded-Goose seed fixture.
+`dev/games-benchmark-monitor.py` supplies a live read-only hypervisor-memory
+heartbeat. Native job limits cover only the fixture-owned process tree and stay
+below both 32 GB and observed host/guest headroom. Missing/stale monitoring stops
+the benchmark; aborts reduce the next workload tenfold. Preserve receipts and
+state which workload completed. This benchmark controller does not run Fastrock
+or tests on the Mac.
 
-Check `df -h` on the Mac and `Get-PSDrive C` on games before larger builds. If free
-space becomes low, remove identified inactive build outputs first; retain current
-incremental caches and release evidence. Never stop VMs or unrelated compilers.
+Check `df -h` on the Mac and `Get-PSDrive C` on games before larger builds. Clean
+only identified inactive regenerable outputs when needed. Never stop VMs or
+unrelated compilers.

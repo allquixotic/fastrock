@@ -80,8 +80,17 @@ attachment references, and Dismiss removes only the records reviewed in that
 dialog. Existing legacy queue files migrate on the next successful write; old
 dispatch evidence is retained on disk. Invalid records are not overwritten.
 
+Persistent open chats and drafts are saved separately from Goose history in
+`fastrock-open-chats.json` under the existing UI settings home. On restart they
+reopen in the main window with sending paused until Resume. Local submissions
+whose delivery cannot be established appear in the recovery review, never in an
+automatic replay queue. Explicit Quit flushes the coalesced snapshot writer;
+malformed or newer-format snapshots remain untouched. Image paths are retained
+with drafts; their files are no longer deleted on a fixed age limit. Temporary
+side sessions and the original multiwindow arrangement are not yet restored.
+
 Graphical provider/credential setup, repository/workspace binding, full T3 orchestration/UI,
-large-history UI/performance acceptance and complete unsent-draft/process recovery
+arbitrary old-history navigation and original window/temporary-session recovery
 remain tracked in `SPEC.md`. This development foundation is not a completed 0.4.0
 release. Historical 0.3.x transport details follow for old releases only.
 
@@ -182,13 +191,3 @@ or production Rally writes. Signed CI packages run both Goose and Codex Rally
 fixtures on the exact Windows release executable. macOS only compiles and signs.
 These fixtures do not validate a live provider account or make claims about its
 availability, speed or model output quality.
-
-
-Persistent open chats and drafts are saved separately from Goose history in
-`fastrock-open-chats.json` under the existing UI settings home. On restart they
-reopen in the main window with sending paused until Resume. Local submissions
-whose delivery cannot be established appear in the recovery review, never in an
-automatic replay queue. Explicit Quit flushes the coalesced snapshot writer;
-malformed or newer-format snapshots remain untouched. Image paths are retained
-with drafts; their files are no longer deleted on a fixed age limit. Temporary
-side sessions and the original multiwindow arrangement are not yet restored.

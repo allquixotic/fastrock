@@ -18,7 +18,9 @@ Expand **Goose options** above Send for the session's model, mode and supported
 reasoning choices. External Codex and remote agent connections are removed;
 Codex files remain untouched. [Embedded runtime status and limitations](docs/goose-acp.md)
 describe the verified foundation and outstanding 0.4.0 work. The T3 sidebar/header foundation is present; full repository/workspace binding,
-auxiliary panels, orchestration and large-history acceptance remain in progress.
+auxiliary panels, orchestration and arbitrary old-history navigation remain in progress.
+The 1,000-conversation/eight-stream/10,000-message benchmark has passed on games;
+[verification evidence](docs/PORT-VERIFICATION.md) records the 0.3.4 comparison.
 
 Search matches titles and current summaries locally, followed by bounded parallel
 fuzzy matching. After a completed turn, a background worker uses Goose's compaction
@@ -33,7 +35,8 @@ available, without selecting a more expensive model.
 [Official **0.2.0**](https://github.com/allquixotic/fastrock/releases/tag/v0.2.0%2Bbuild.1) uses basic optimization (`opt-level=1`), full debugging
 symbols (`debug=2`) and `lto="off"`. Matching Windows PDB and Mac dSYM symbol
 archives are published separately for crash debugging. Development and
-prerelease builds retain the fast settings below.
+0.3.x prerelease builds retain their historical fast settings; 0.4.0 uses the
+authorized opt-level 2 settings below.
 
 ## Test builds
 

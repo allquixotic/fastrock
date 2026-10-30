@@ -28,8 +28,11 @@ def event_frame(kind, payload):
 
 
 class ProviderFixture:
-    def __init__(self, artifact=None, tools=False, workspace_repo=None):
+    def __init__(self, artifact=None, tools=False, workspace_repo=None, stream_chunks=1000):
         self.artifact, self.tools = artifact, tools
+        self.stream_chunks = stream_chunks
+        self.stream_lock = threading.Lock()
+        self.active_streams = self.peak_streams = 0
         self.workspace_repo = workspace_repo
         self.workspace_steps, self.workspace_results = {}, []
         self.requests, self.tool_calls, self.errors = [], [], []
@@ -48,6 +51,7 @@ class ProviderFixture:
                 self.end_headers()
 
             def do_POST(self):
+                self.tracked_stream = False
                 try:
                     length = int(self.headers['Content-Length'])
                     assert length < 64 * 1024 * 1024, 'Oversized fixture request'
@@ -61,6 +65,10 @@ class ProviderFixture:
                 except Exception as error:
                     owner.errors.append(repr(error))
                     self.send_error(500, 'Fixture rejected request')
+                finally:
+                    if self.tracked_stream:
+                        with owner.stream_lock:
+                            owner.active_streams -= 1
 
         self.server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
         self.endpoint = f'http://127.0.0.1:{self.server.server_port}'
@@ -210,7 +218,11 @@ class ProviderFixture:
 
         event('messageStart', {'role': 'assistant'})
         if not summary and (prompt == 'benchmark-stream' or prompt.startswith('hold')):
-            for index in range(1000):
+            with self.stream_lock:
+                self.active_streams += 1
+                self.peak_streams = max(self.peak_streams, self.active_streams)
+                handler.tracked_stream = True
+            for index in range(self.stream_chunks):
                 if self.stop.wait(.02):
                     return
                 text = (f'Streamed sentence {index} with **formatted** text.\n\n' if prompt == 'benchmark-stream'
@@ -237,7 +249,7 @@ class ProviderFixture:
 
     def write_evidence(self, directory):
         Path(directory, 'provider.json').write_text(json.dumps(dict(requests=self.requests,
-            tool_calls=self.tool_calls, workspace_results=self.workspace_results, errors=self.errors), ensure_ascii=False, indent=2), encoding='utf-8')
+            tool_calls=self.tool_calls, peak_streams=self.peak_streams, workspace_results=self.workspace_results, errors=self.errors), ensure_ascii=False, indent=2), encoding='utf-8')
         assert not self.errors, self.errors
 
 

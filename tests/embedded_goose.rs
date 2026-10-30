@@ -1,4 +1,6 @@
 //! Standalone fixture process: environment isolation precedes any runtime threads.
+#[path = "fixtures/benchmark_seed.rs"]
+mod benchmark_seed;
 #[path = "../src/goose/cheap_profile.rs"]
 mod cheap_profile;
 #[path = "../src/goose/embedded.rs"]
@@ -20,6 +22,9 @@ use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 fn main() -> Result<()> {
+    if std::env::args().nth(1).as_deref() == Some("--seed-benchmark") {
+        return benchmark_seed::run();
+    }
     // The CI runner separately invokes window-only tests on every executable.
     if std::env::args().nth(1).as_deref() == Some("window_runtime::tests") {
         return Ok(());

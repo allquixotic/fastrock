@@ -9,8 +9,8 @@ is required. Fresh installations receive a default local store.
 
 Current search summaries have a separate compressed table inside that same redb.
 Replacement is atomic and checks the requested turn revision; stale background
-results cannot overwrite a newer request. Summary generation and search wiring
-are still in progress. The hook helper uses the original vwork policy.
+results cannot overwrite a newer request. Background generation and deterministic
+search are integrated. The hook helper uses the original vwork policy.
 
 Existing enabled `vwork mcp --home <absolute-path> --workspace <id>` entries map
 to embedded MCP handlers. Unsupported environment overrides, custom working
