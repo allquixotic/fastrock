@@ -1028,3 +1028,24 @@ Tested development executable SHA-256:
 `19e309001d0e492e9bc0c04240253128cf0b24398b1a922182035cc838f916b5`.
 Evidence on games: `fastrock-040-policy\project-native-1`,
 `project-sidebar-capture\sidebar.png`, and `project-*.log`.
+
+
+## Alpha.2 implementation candidate: full-scale repeat
+
+Source `434efe6`, executable `19e309001d0e492e9bc0c04240253128cf0b24398b1a922182035cc838f916b5`,
+passed the same 1,000-conversation/eight-stream/10,000-message workload on games.
+The existing signed 0.3.4 baseline remains recorded above. This candidate
+observed 401.5 ms history opening, 0.3–0.5 ms synchronous switch dispatch,
+5.175/10.725/11.245 ms frame p50/p95/p99, and 18.381/19.815 ms event-loop p95/p99.
+Frame p95 was higher than the earlier 8.487 ms baseline; these single runs do
+not establish a scrolling speedup. All 10,000 messages exported intact and
+current summaries were preserved.
+
+Peak Fastrock process memory was 230,088,704 bytes; tree committed memory was
+177,528,832 bytes. The app's headroom-derived kernel cap was 1,641,232,384 bytes,
+below the 32 GB ceiling. The fresh hypervisor heartbeat remained healthy; no
+scale reduction was needed. Monitoring was stopped afterward. No host/VM state
+was changed. Raw receipt: `docs/benchmarks/scale-projects-games-2026-10-29.json`;
+full evidence: `fastrock-040-policy\scale-project-1` on games. The following
+alpha.2 version/notes update changes no application behavior; CI rebuilds and
+verifies the exact release assets.

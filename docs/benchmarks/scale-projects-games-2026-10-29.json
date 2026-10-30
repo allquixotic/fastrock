@@ -1,0 +1,58 @@
+{
+  "binary_sha256": "19e309001d0e492e9bc0c04240253128cf0b24398b1a922182035cc838f916b5",
+  "seed_sha256": "7597ecdea324862d3392cb973ea6d95fb222fa5e4dcdba63c24c9446fbc99a1a",
+  "host": "GAMES",
+  "os": "Windows-11-10.0.26100-SP0",
+  "backend": "embedded Goose 1.57.0",
+  "hard_cap_bytes": 32000000000,
+  "attempts": [
+    {
+      "divisor": 1,
+      "stored_conversations": 1000,
+      "history_messages": 10000,
+      "concurrent_streams": 8,
+      "phases": {
+        "seed": {
+          "cap_bytes": 1666881536,
+          "peak_app_bytes": 106659840,
+          "peak_tree_commit_bytes": 102248448
+        },
+        "app": {
+          "cap_bytes": 1641232384,
+          "peak_app_bytes": 230088704,
+          "peak_tree_commit_bytes": 177528832
+        }
+      },
+      "result": "PASS",
+      "peak_concurrent_streams": 8,
+      "history_open_observed_ms": 401.5,
+      "switch_dispatch_ms": [
+        0.5,
+        0.4,
+        0.5,
+        0.4,
+        0.3
+      ],
+      "frame": {
+        "p50_ms": 5.175,
+        "p95_ms": 10.725,
+        "p99_ms": 11.245
+      },
+      "render": {
+        "p50_ms": 4.232,
+        "p95_ms": 9.805,
+        "p99_ms": 10.173
+      },
+      "event_loop": {
+        "p50_ms": 16.482,
+        "p95_ms": 18.381,
+        "p99_ms": 19.815
+      },
+      "history_export_messages": 10000,
+      "current_summaries_preserved": true
+    }
+  ],
+  "source_commit": "434efe6",
+  "comparison_baseline": "scale-games-2026-10-29.json",
+  "note": "Same full workload after repository/workspace integration, before version-only alpha.2 preparation; earlier signed 0.3.4 baseline retained. Single-run observations."
+}
