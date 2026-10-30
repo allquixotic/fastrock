@@ -410,6 +410,66 @@ impl AppController {
                                 eprintln!("sidebar hover target not found");
                             }
                         }
+                        Some("pointer") => {
+                            use slint::Model;
+                            // Dispatch native pointer input at layout-derived sidebar bounds.
+                            // This deliberately does not invoke the drag callbacks directly.
+                            if let (Some(kind), Some(target)) = (args.get(1), args.get(2)) {
+                                let position = if let Some(section) = target.strip_prefix("drop:") {
+                                    ["pinned", "active", "settled"]
+                                        .iter()
+                                        .position(|s| *s == section)
+                                        .map(|i| {
+                                            slint::LogicalPosition::new(
+                                                12.0 + (i as f32 + 0.5)
+                                                    * (self.prefs.sidebar_width - 24.0)
+                                                    / 3.0,
+                                                state.get_drop_zone_top() + 15.0,
+                                            )
+                                        })
+                                } else {
+                                    let mut y = state.get_list_top() - state.get_viewport_offset();
+                                    state.get_rows().iter().find_map(|row| {
+                                        let height = match row.kind {
+                                            crate::ui::SidebarRowKind::Folder => 30.0,
+                                            crate::ui::SidebarRowKind::Thread => 28.0,
+                                            _ => 32.0,
+                                        };
+                                        let point = (row.id.as_str() == target).then(|| {
+                                            slint::LogicalPosition::new(120.0, y + height / 2.0)
+                                        });
+                                        y += height;
+                                        point
+                                    })
+                                };
+                                if let Some(position) = position {
+                                    let button = slint::platform::PointerEventButton::Left;
+                                    let event = match kind.as_str() {
+                                        "press" => {
+                                            Some(slint::platform::WindowEvent::PointerPressed {
+                                                position,
+                                                button,
+                                            })
+                                        }
+                                        "move" => {
+                                            Some(slint::platform::WindowEvent::PointerMoved {
+                                                position,
+                                            })
+                                        }
+                                        "release" => {
+                                            Some(slint::platform::WindowEvent::PointerReleased {
+                                                position,
+                                                button,
+                                            })
+                                        }
+                                        _ => None,
+                                    };
+                                    if let Some(event) = event {
+                                        self.automation_dispatch(vec![event]);
+                                    }
+                                }
+                            }
+                        }
                         Some("dump") => {
                             if let Some(path) = args.get(1) {
                                 use slint::Model;
@@ -432,7 +492,7 @@ impl AppController {
                                 });
                                 let project_folders = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Folder).map(|row| serde_json::json!({"path":row.folder.as_str(),"count":row.count})).collect::<Vec<_>>();
                                 let sections = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Section).map(|row| serde_json::json!({"id":row.id.as_str(),"count":row.count,"collapsed":row.collapsed})).collect::<Vec<_>>();
-                                let data = serde_json::json!({"rows":rows,"sections":sections,"organizationReady":state.get_organization_ready(),"organizationError":state.get_organization_error().as_str(),"projectChoices":state.get_project_choices().iter().map(|s|s.to_string()).collect::<Vec<_>>(),"selectionCount":state.get_selection_count(),"projectFolders":project_folders,"navigation":navigation,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string();
+                                let data = serde_json::json!({"rows":rows,"sections":sections,"dragging":state.get_dragging(),"dropTarget":state.get_drop_target().as_str(),"organizationReady":state.get_organization_ready(),"organizationError":state.get_organization_error().as_str(),"projectChoices":state.get_project_choices().iter().map(|s|s.to_string()).collect::<Vec<_>>(),"selectionCount":state.get_selection_count(),"projectFolders":project_folders,"navigation":navigation,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string();
                                 let path = path.clone();
                                 self.backend.spawn(async move {
                                     let _ = tokio::fs::write(path, data).await;

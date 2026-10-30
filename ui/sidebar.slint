@@ -36,6 +36,15 @@ export struct SidebarRow {
 }
 
 export global SidebarState {
+    in property <bool> dragging;
+    in property <string> drop-target;
+    in-out property <float> drop-zone-top;
+    in-out property <float> list-top;
+    in-out property <float> drag-x;
+    in-out property <float> drag-y;
+    callback drag-begin(string);
+    callback drag-move(float, float);
+    callback drag-end(float, float, bool);
     in property <[string]> project-choices;
     in property <int> project-index;
     in property <bool> organization-ready;
@@ -253,6 +262,8 @@ component FolderRowView inherits Rectangle {
 }
 
 component ThreadRowView inherits Rectangle {
+    property <bool> drag-started;
+    property <bool> drag-released;
     in property <SidebarRow> item;
 
     height: 28px;
@@ -330,14 +341,39 @@ component ThreadRowView inherits Rectangle {
         }
 
         touch := TouchArea {
-            mouse-cursor: pointer;
+            mouse-cursor: root.drag-started && SidebarState.dragging ? grabbing : pointer;
             clicked => {
-                if SidebarState.selecting { SidebarState.thread-action(item.id, "select"); }
+                if root.drag-released { root.drag-released = false; }
+                else if SidebarState.selecting { SidebarState.thread-action(item.id, "select"); }
                 else { SidebarState.open-thread(item.id, item.folder); }
             }
+            moved => {
+                if self.pressed && !root.drag-started && !root.drag-released
+                    && abs(self.mouse-y - self.pressed-y) + abs(self.mouse-x - self.pressed-x) > 6px {
+                    SidebarState.drag-begin(item.id);
+                    root.drag-started = SidebarState.dragging;
+                }
+                if root.drag-started {
+                    SidebarState.drag-x = (self.absolute-position.x + self.mouse-x) / 1px;
+                    SidebarState.drag-y = (self.absolute-position.y + self.mouse-y) / 1px;
+                    SidebarState.drag-move(SidebarState.drag-x, SidebarState.drag-y);
+                }
+            }
             pointer-event(event) => {
+                if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+                    root.drag-released = false;
+                    root.drag-started = false;
+                }
                 if event.button == PointerEventButton.right && event.kind == PointerEventKind.down {
                     thread-menu.show({ x: self.mouse-x, y: self.mouse-y });
+                }
+                if root.drag-started && (event.kind == PointerEventKind.cancel
+                    || (event.button == PointerEventButton.left && event.kind == PointerEventKind.up)) {
+                    root.drag-started = false;
+                    root.drag-released = true;
+                    SidebarState.drag-end((self.absolute-position.x + self.mouse-x) / 1px,
+                        (self.absolute-position.y + self.mouse-y) / 1px,
+                        event.kind == PointerEventKind.up && SidebarState.dragging);
                 }
             }
         }
@@ -381,11 +417,13 @@ component ThreadRowView inherits Rectangle {
     }
 
     SidebarHint {
-        hovered: touch.has-hover;
+        hovered: touch.has-hover && !SidebarState.dragging;
         hint-key: "thread:" + item.id;
         text: root.status-hint + (item.tooltip == "" ? "" : "\n\n" + item.tooltip);
         anchor-y: root.absolute-position.y;
     }
+    Rectangle { x: 12px; width: parent.width - 24px; height: 2px;
+        visible: SidebarState.dragging && SidebarState.drop-target == item.id; background: Theme.accent; }
 }
 
 component MoreRowView inherits Rectangle {
@@ -409,6 +447,7 @@ component MoreRowView inherits Rectangle {
 component SectionRowView inherits Rectangle {
     in property <SidebarRow> item;
     height: 32px;
+    background: SidebarState.dragging && SidebarState.drop-target == item.id ? Theme.selected : transparent;
     HorizontalLayout {
         padding-left: 12px; padding-right: 12px; spacing: 6px;
         Text { text: item.collapsed ? "▸" : "▾"; color: Theme.text-faint; width: 12px; vertical-alignment: center; }
@@ -423,6 +462,21 @@ component SectionRowView inherits Rectangle {
 
 export component Sidebar inherits Rectangle {
     background: Theme.sidebar-bg;
+    property <float> drop-top: drop-bar.absolute-position.y / 1px;
+    property <float> rows-top: list.absolute-position.y / 1px;
+    changed drop-top => { SidebarState.drop-zone-top = drop-top; }
+    changed rows-top => { SidebarState.list-top = rows-top; }
+    Timer {
+        interval: 40ms;
+        running: SidebarState.dragging && SidebarState.drag-x >= 0 && SidebarState.drag-x < root.width / 1px
+            && SidebarState.drag-y >= root.rows-top && SidebarState.drag-y <= root.rows-top + SidebarState.viewport-height
+            && (SidebarState.drag-y < root.rows-top + 28 || SidebarState.drag-y > root.rows-top + SidebarState.viewport-height - 28);
+        triggered => {
+            list.content-y = clamp(list.content-y + (SidebarState.drag-y < root.rows-top + 28 ? 14px : -14px),
+                min(0px, list.visible-height - list.content-height), 0px);
+            SidebarState.drag-move(SidebarState.drag-x, SidebarState.drag-y);
+        }
+    }
     // Representative prose estimates capacity; each final title is also measured.
     probe := Text { visible: false; text: "Updating project dependencies and fixing tests"; font-size: Theme.font-size; }
     property <length> glyph-width: probe.preferred-width / 46;
@@ -437,6 +491,8 @@ export component Sidebar inherits Rectangle {
         }
     }
     init => {
+        SidebarState.drop-zone-top = drop-top;
+        SidebarState.list-top = rows-top;
         SidebarState.title-available-width = max(1px, self.width - 112px) / 1px;
         SidebarState.title-character-width = glyph-width / 1px;
         if SidebarState.focus-search-requested {
@@ -556,6 +612,21 @@ export component Sidebar inherits Rectangle {
             text: SidebarState.error;
             color: Theme.danger;
             wrap: word-wrap;
+        }
+        drop-bar := Rectangle {
+            height: SidebarState.dragging ? 30px : 0px;
+            visible: SidebarState.dragging;
+            clip: true;
+            HorizontalLayout {
+                padding-left: 12px; padding-right: 12px;
+                for target in [{ id: "pinned", label: "Pin" }, { id: "active", label: "Active" }, { id: "settled", label: "Settle" }]: Rectangle {
+                    background: SidebarState.drop-target == target.id ? Theme.selected : Theme.surface;
+                    border-color: SidebarState.drop-target == target.id ? Theme.accent : Theme.border;
+                    border-width: 1px;
+                    Text { text: target.label; color: Theme.text; font-size: Theme.font-size-small;
+                        horizontal-alignment: center; vertical-alignment: center; }
+                }
+            }
         }
         Rectangle {
             vertical-stretch: 1;

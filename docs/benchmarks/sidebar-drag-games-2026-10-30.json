@@ -1,0 +1,12 @@
+{
+  "result": "PASS",
+  "binary_sha256": "101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf",
+  "peak_process_bytes": 151629824,
+  "native_pointer_drag": true,
+  "group_drop": true,
+  "reorder": true,
+  "wake": true,
+  "escape_without_agent_interruption": true,
+  "outside_cancel": true,
+  "restart": true
+}

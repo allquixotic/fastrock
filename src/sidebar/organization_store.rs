@@ -121,6 +121,29 @@ impl State {
                     .filter(|id| seen.insert(id.clone()))
                     .collect();
             }
+            Mutation::Place { id, section, order } => {
+                if !["pinned", "active", "settled"].contains(&section.as_str())
+                    || !id.starts_with("goose:")
+                    || id.len() > 512
+                    || order.len() > 10_000
+                    || !order.contains(&id)
+                    || order
+                        .iter()
+                        .any(|id| !id.starts_with("goose:") || id.len() > 512)
+                {
+                    return Err("Invalid sidebar drop".into());
+                }
+                let entry = self.entries.entry(id).or_default();
+                entry.pinned = section == "pinned";
+                entry.settled_at = (section == "settled").then_some(now);
+                entry.snoozed_until = None;
+                let mut seen = BTreeSet::new();
+                self.order = order
+                    .into_iter()
+                    .chain(std::mem::take(&mut self.order))
+                    .filter(|id| seen.insert(id.clone()))
+                    .collect();
+            }
             Mutation::Collapse { section, collapsed } => {
                 if !["pinned", "active", "working", "snoozed", "settled"]
                     .contains(&section.as_str())
@@ -168,10 +191,24 @@ pub(crate) enum Action {
 }
 #[derive(Clone, Debug)]
 pub(crate) enum Mutation {
-    Threads { ids: Vec<String>, action: Action },
+    Threads {
+        ids: Vec<String>,
+        action: Action,
+    },
     Order(Vec<String>),
-    Collapse { section: String, collapsed: bool },
-    ProjectName { id: String, name: String },
+    Place {
+        id: String,
+        section: String,
+        order: Vec<String>,
+    },
+    Collapse {
+        section: String,
+        collapsed: bool,
+    },
+    ProjectName {
+        id: String,
+        name: String,
+    },
 }
 fn read(home: &Path) -> Result<State, String> {
     let file = match std::fs::File::open(home.join(FILE)) {
@@ -283,6 +320,72 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn v68_drop_updates_group_and_order_atomically() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().to_path_buf();
+        let store = Store::new(&tokio::runtime::Handle::current());
+        let now = chrono::Utc::now().timestamp();
+        store
+            .request(
+                home.clone(),
+                Some(action(&["goose:a"], Action::Snooze(now + 3600))),
+            )
+            .await
+            .unwrap();
+        for section in ["pinned", "settled", "active"] {
+            let state = store
+                .request(
+                    home.clone(),
+                    Some(Mutation::Place {
+                        id: "goose:a".into(),
+                        section: section.into(),
+                        order: vec!["goose:b".into(), "goose:a".into(), "goose:b".into()],
+                    }),
+                )
+                .await
+                .unwrap();
+            assert_eq!(state.section("goose:a", false, now), section);
+            assert_eq!(state.entries["goose:a"].snoozed_until, None);
+            assert_eq!(state.entries["goose:a"].pinned, section == "pinned");
+            assert_eq!(state.order, ["goose:b", "goose:a"]);
+            assert_eq!(read(&home).unwrap(), *state);
+        }
+        let before = std::fs::read(home.join(FILE)).unwrap();
+        assert!(
+            store
+                .request(
+                    home.clone(),
+                    Some(Mutation::Place {
+                        id: "goose:a".into(),
+                        section: "snoozed".into(),
+                        order: vec!["goose:a".into()],
+                    })
+                )
+                .await
+                .is_err()
+        );
+        assert_eq!(std::fs::read(home.join(FILE)).unwrap(), before);
+        // External edits must survive a rejected drop, even with a cached snapshot.
+        std::fs::write(home.join(FILE), b"external invalid edit").unwrap();
+        assert!(
+            store
+                .request(
+                    home.clone(),
+                    Some(Mutation::Place {
+                        id: "goose:a".into(),
+                        section: "pinned".into(),
+                        order: vec!["goose:a".into()],
+                    })
+                )
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            std::fs::read(home.join(FILE)).unwrap(),
+            b"external invalid edit"
+        );
+    }
     fn action(ids: &[&str], action: Action) -> Mutation {
         Mutation::Threads {
             ids: ids.iter().map(|s| s.to_string()).collect(),

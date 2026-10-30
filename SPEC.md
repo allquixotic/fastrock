@@ -159,7 +159,7 @@ V66: Native recipes ! unchanged Goose validation/render/storage APIs, bounded do
 
 V67: Native repository identity ! stable across display labels; generated IDs ! absent from project selectors/header. New ordinary chats ! immediately visible before first completed turn, retain project grouping through list refresh, never enter archived view; ephemeral/delegate chats ! remain excluded. IO ! off UI thread. Verify: dev/windows-sidebar-smoke.py first-stream/project/header/search/archive/age/title fixture.
 
-V68: Sidebar pin/settle/snooze/order ! durable GUI metadata, separate from Goose history; shared-window edits ! serialized, acknowledged after atomic save, invalid existing file ! preserved. Snooze deadline ! one wake timer, no agent dispatch; explicit new input, new request/failure ! wake/unsettle. Pinned metadata beyond catalog page one ! visible without loading agent/history. Project filters and batch selection ! stable IDs; selection ! visible rows only. Status changes ! incremental row/group updates, no provider reload per stream chunk. Verify: v68 state/store/order/reopen/malformed/metadata tests, dev/windows-organization-smoke.py and dev/windows-organization-catalog-smoke.py.
+V68: Sidebar pin/settle/snooze/order ! durable GUI metadata, separate from Goose history; shared-window edits ! serialized, acknowledged after atomic save, invalid existing file ! preserved. Snooze deadline ! one wake timer, no agent dispatch; explicit new input, new request/failure ! wake/unsettle. Pinned metadata beyond catalog page one ! visible without loading agent/history. Project filters and batch selection ! stable IDs; selection ! visible rows only. Status changes ! incremental row/group updates, no provider reload per stream chunk. Native pointer drop ! atomic group/order update; Escape/outside release ! no metadata mutation or agent interruption. Verify: v68 state/store/order/reopen/malformed/metadata/drop tests, dev/windows-organization-smoke.py, dev/windows-organization-catalog-smoke.py and dev/windows-sidebar-drag-smoke.py.
 
 ## §T TASKS
 id|status|task|cites
@@ -227,6 +227,8 @@ T51|~|Resolve summary timeout evidence and complete T3 interaction/visual accept
 T52|~|Native pinned/active/working/snoozed/settled groups, project scope, batch controls and persisted ordering|V42,V67,V68
 T53|.|Restore original native windows and temporary-session state without automatic dispatch|V41,V47,V48
 T54|.|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63
+
+Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
 V53 verification, 2026-10-29: games 708 application + one renderer + 17 workspace tests and standalone embedded Goose fixture passed; native history navigation/selection/stream/export passed. Full 1,000/eight/10,000 workload passed, 217,894,912 peak process bytes; arbitrary 100-entry pages restored in 4–6 ms. Recent-frame p95 10.380 ms exceeds earlier 0.3.4 baseline 8.487 ms; no general scrolling-speedup claim. Mac compile only passed. Evidence: docs/PORT-VERIFICATION.md and docs/benchmarks/scale-history-games-2026-10-29.json. T42/T44 remain open for remaining acceptance.
 
@@ -552,3 +554,5 @@ B182|2026-10-30|Audit found native Delete exposed ThreadDelete while embedded ad
 B183|2026-10-30|Goose failed turns return runtime to Idle, bypassing SystemError-only snooze wake and failure dot|Wake on failed TurnCompleted and show retained last_error while idle; native delayed HTTP failure fixture; V13,V68
 
 B184|2026-10-30|Delayed HTTP-500 fixture assumed one request but unmodified AWS SDK retried three times|Allow bounded upstream HTTP retries; assert resulting native failure/wake and no timer/restart dispatch instead; V68
+
+B185|2026-10-30|Native drag fixture helper lacked Slint Model trait import and initially matched Pending dump instead of Sidebar|Scope automation edits to explicit Step::Sidebar, import Model, compile before native acceptance; V68

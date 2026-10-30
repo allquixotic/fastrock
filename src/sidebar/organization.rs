@@ -18,6 +18,7 @@ pub(super) struct Controller {
     retained: Vec<ThreadSummary>,
     requested: HashSet<String>,
     removed: HashSet<String>,
+    dragged: Option<String>,
 }
 pub(super) fn working(status: SidebarThreadStatus) -> bool {
     matches!(
@@ -54,6 +55,16 @@ impl AppController {
     pub(super) fn organization_bind(&mut self) {
         let ui = self.window.global::<SidebarState>();
         ui.set_project_choices(ModelRc::from(self.sidebar.organization.labels.clone()));
+        ui.on_drag_begin(crate::ui_thread::scoped_callback!(|id| {
+            let id = id.to_string();
+            crate::ui_thread::with_app(move |app| app.organization_drag_begin(id));
+        }));
+        ui.on_drag_move(crate::ui_thread::scoped_callback!(|x, y| {
+            crate::ui_thread::with_app(move |app| app.organization_drag_move(x, y));
+        }));
+        ui.on_drag_end(crate::ui_thread::scoped_callback!(|x, y, commit| {
+            crate::ui_thread::with_app(move |app| app.organization_drag_end(x, y, commit));
+        }));
         ui.on_organization_action(crate::ui_thread::scoped_callback!(|action| {
             let action = action.to_string();
             crate::ui_thread::with_app(move |app| app.organization_action(&action));
@@ -484,6 +495,120 @@ impl AppController {
                 self.organization_apply(ids, action);
             }
         }
+    }
+
+    fn organization_drag_begin(&mut self, id: String) {
+        if self.sidebar.archived
+            || !self.sidebar.organization.loaded
+            || self.sidebar.organization.busy > 0
+            || !self.sidebar.row_index.contains_key(&id)
+        {
+            return;
+        }
+        self.sidebar.organization.dragged = Some(id);
+        let ui = self.window.global::<SidebarState>();
+        ui.set_dragging(true);
+        ui.set_drop_target("".into());
+        ui.set_tooltip_text("".into());
+    }
+    pub(crate) fn organization_cancel_drag(&mut self) -> bool {
+        let cancelled = self.sidebar.organization.dragged.take().is_some();
+        let ui = self.window.global::<SidebarState>();
+        ui.set_dragging(false);
+        ui.set_drop_target("".into());
+        cancelled
+    }
+    fn organization_drop_target(&self, x: f32, y: f32) -> Option<(String, Option<String>)> {
+        let ui = self.window.global::<SidebarState>();
+        if !(0.0..self.prefs.sidebar_width).contains(&x) {
+            return None;
+        }
+        let zone = ui.get_drop_zone_top();
+        if y >= zone && y < zone + 30.0 {
+            let index = ((x.max(12.0) - 12.0) / ((self.prefs.sidebar_width - 24.0) / 3.0))
+                .floor()
+                .clamp(0.0, 2.0) as usize;
+            return Some((["pinned", "active", "settled"][index].into(), None));
+        }
+        let top = ui.get_list_top();
+        if y < top || y > top + ui.get_viewport_height() {
+            return None;
+        }
+        let offset = y - top + ui.get_viewport_offset();
+        let mut cursor = 0.0;
+        let mut section = String::new();
+        for row in self.sidebar.rows.iter() {
+            if row.kind == SidebarRowKind::Section {
+                section = row.id.to_string();
+            }
+            let height = match row.kind {
+                SidebarRowKind::Folder => 30.0,
+                SidebarRowKind::Thread => 28.0,
+                _ => 32.0,
+            };
+            if offset >= cursor && offset < cursor + height {
+                if !["pinned", "active", "settled"].contains(&section.as_str()) {
+                    return None;
+                }
+                return Some((
+                    section,
+                    (row.kind == SidebarRowKind::Thread).then(|| row.id.to_string()),
+                ));
+            }
+            cursor += height;
+        }
+        None
+    }
+    fn organization_drag_move(&mut self, x: f32, y: f32) {
+        if self.sidebar.organization.dragged.is_none() {
+            return;
+        }
+        let target = self
+            .organization_drop_target(x, y)
+            .map(|(section, before)| before.unwrap_or(section))
+            .unwrap_or_default();
+        self.window
+            .global::<SidebarState>()
+            .set_drop_target(target.into());
+    }
+    fn organization_drag_end(&mut self, x: f32, y: f32, commit: bool) {
+        let target = commit
+            .then(|| self.organization_drop_target(x, y))
+            .flatten();
+        let dragged = self.sidebar.organization.dragged.clone();
+        self.organization_cancel_drag();
+        let (Some(id), Some((section, before))) = (dragged, target) else {
+            return;
+        };
+        let Some(source) = self
+            .sidebar
+            .row_index
+            .get(&id)
+            .and_then(|i| self.sidebar.rows.row_data(*i))
+        else {
+            return;
+        };
+        if before.as_deref() == Some(id.as_str()) && source.section.as_str() == section {
+            return;
+        }
+        let mut order: Vec<_> = self
+            .sidebar
+            .rows
+            .iter()
+            .filter(|r| {
+                r.kind == SidebarRowKind::Thread
+                    && r.section.as_str() == section
+                    && r.project == source.project
+                    && r.id.as_str() != id
+            })
+            .map(|r| r.id.to_string())
+            .collect();
+        let index = before
+            .as_ref()
+            .and_then(|before| order.iter().position(|id| id == before))
+            .unwrap_or(order.len());
+        order.insert(index, id.clone());
+        self.organization_request(Some(Mutation::Place { id, section, order }));
     }
     fn organization_apply(&mut self, ids: Vec<String>, action: &str) {
         if ids.is_empty() {

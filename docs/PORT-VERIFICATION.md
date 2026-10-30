@@ -1556,3 +1556,25 @@ checks and formatting passed. No Mac execution or published binaries.
 T52 remains open for drag interaction and the remaining T3 organization audit.
 T53 tracks original-window/temporary-session recovery; T54 tracks the discovered
 missing embedded Delete route and its guarded individual/batch workflow.
+
+### Native sidebar drag verification — 2026-10-30
+
+The native sidebar now accepts pointer drops into Pinned, Active and Settled,
+with ordered placement within each repository. A drop atomically saves its
+group and order, clears snooze, and keeps repository/workspace identity. Empty
+groups have targets during drag; edge scrolling runs only while dragging.
+Escape or release outside the sidebar cancels without interrupting an agent.
+Existing keyboard/context-menu Move up/down remains available.
+
+On games, 752 application tests and the isolated renderer passed.
+`dev/windows-sidebar-drag-smoke.py` drove actual native pointer events and
+verified group changes, ordering, wake from snooze, Escape during a streaming
+turn, outside cancellation, and persistence without restart dispatch. Peak
+process memory was 151,629,824 bytes. Mac compile and build/release policy
+checks passed; no Mac application tests or GUI ran. SHA-256
+`101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`
+
+Receipt: `docs/benchmarks/sidebar-drag-games-2026-10-30.json`.
+The existing native organization fixture also passed on this binary, including
+batch controls, project scope, timed wake and delayed failure wake.
+T52 remains open for the rest of the T3 organization audit. No release tag.

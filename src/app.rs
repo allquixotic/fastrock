@@ -1518,6 +1518,11 @@ impl AppController {
 
     /// Action bound to `press`, if the app should consume it now.
     fn shortcut_for(&self, press: &crate::shortcuts::KeyPress) -> Option<String> {
+        if self.window.global::<SidebarState>().get_dragging()
+            && press.text == slint::SharedString::from(slint::platform::Key::Escape).as_str()
+        {
+            return Some("escape".into());
+        }
         // The Keyboard settings page is capturing a new binding.
         if self.settings_is_recording_shortcut() {
             return None;
@@ -1603,6 +1608,9 @@ impl AppController {
             "toggle-sidebar" => self.toggle_sidebar(),
             "toggle-info" => self.toggle_info(),
             "escape" => {
+                if self.organization_cancel_drag() {
+                    return;
+                }
                 if self.approvals_on_escape() {
                     return;
                 }
