@@ -42,9 +42,10 @@ impl Snapshot {
         let messages = conversation.messages_mut();
         messages.retain(Message::is_user_visible);
         let assistant_role = Message::assistant().role;
-        // A crash may have left an unanswered user prompt or a pending tool.
-        // Backfill only through the last textual assistant answer.
-        let Some(last) = messages.iter().rposition(|m| {
+        // If a turn ends in a tool call/result or an unanswered prompt, discard
+        // that whole unfinished turn. Intermediate assistant commentary before
+        // a tool is not a completed user-facing answer.
+        let final_answer = |m: &Message| {
             m.role == assistant_role
                 && m.content
                     .iter()
@@ -53,7 +54,23 @@ impl Snapshot {
                     .content
                     .iter()
                     .any(|c| matches!(c, MessageContent::ToolRequest(_)))
-        }) else {
+        };
+        if messages.last().is_some_and(|m| !final_answer(m)) {
+            let start = messages
+                .iter()
+                .rposition(|m| {
+                    m.role == Message::user().role
+                        && !m
+                            .content
+                            .iter()
+                            .any(|c| matches!(c, MessageContent::ToolResponse(_)))
+                })
+                .unwrap_or(0);
+            messages.truncate(start);
+        }
+        // Goose's legacy history has no persisted stop reason. For the retained
+        // prefix, use its final textual answer; live work is gated by Service.
+        let Some(last) = messages.iter().rposition(|m| final_answer(m)) else {
             return Ok(None);
         };
         messages.truncate(last + 1);
@@ -321,6 +338,30 @@ mod tests {
                     .len(),
                 3
             );
+            // A mid-turn textual update before an outstanding tool is not an
+            // answer. Previously backfill included this partial second turn.
+            manager
+                .add_message(
+                    &session.id,
+                    &Message::assistant().with_text("unfinished commentary"),
+                )
+                .await
+                .unwrap();
+            let request: Message = serde_json::from_value(serde_json::json!({
+                "role":"assistant", "created":0, "content":[{
+                    "type":"toolRequest", "id":"pending-tool", "toolCall":{
+                        "status":"success", "value":{"name":"fixture", "arguments":{}}
+                    }
+                }], "metadata":{"userVisible":true,"agentVisible":true}
+            }))
+            .unwrap();
+            manager.add_message(&session.id, &request).await.unwrap();
+            let loaded = snapshot(&manager, &session.id).await.unwrap();
+            if kind == SessionType::Hidden {
+                assert!(loaded.is_none());
+            } else {
+                assert_eq!(loaded.unwrap().messages.len(), 2);
+            }
             manager.delete_session(&session.id).await.unwrap();
             assert!(snapshot(&manager, &session.id).await.unwrap().is_none());
         }

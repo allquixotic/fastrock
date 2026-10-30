@@ -32,7 +32,18 @@ config = out / 'goose/config/config.yaml'
 value = json.loads(config.read_text(encoding='utf-8'))
 value['extensions'] = {'vwork': dict(enabled=True, name='vwork', type='stdio', cmd=str(missing_vwork),
                                     args=['--home', str(state), 'mcp'], timeout=30)}
-config.write_text(json.dumps(value), encoding='utf-8')
+comments = ''.join(f'# user configuration explanation {i:02d}\n' for i in range(31))
+config.write_text(comments + json.dumps(value), encoding='utf-8')
+# Reproduce RC2's two installed policy plugins and retain user-specific policy.
+plugins = out / 'goose/.agents/plugins'
+legacy = plugins / 'vwork-policy/hooks/hooks.json'
+managed = plugins / 'fastrock-vwork-policy/hooks/hooks.json'
+for path, command in [(legacy, "'C:/Old Tools/vwork.exe' hook"),
+                      (managed, "'C:/Old RC/fastrock.exe' --vwork-hook")]:
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({'hooks': {'PreToolUse': [{'matcher': '.*shell.*', 'hooks': [
+        {'type': 'command', 'command': command, 'timeout': 7, 'on_failure': 'block'}]}]}}))
+legacy_original = legacy.read_bytes()
 (repo / 'src').mkdir()
 original = b'\xef\xbb\xbffn main() {}\r\n'
 (repo / 'src/main.rs').write_bytes(original)
@@ -153,6 +164,14 @@ try:
     groups = load('project-groups')['projectFolders']
     assert any(row['count'] >= 2 and Path(row['path']).name == 'project' for row in groups), groups
     assert not any('fastrock-agent-workdirs' in row['path'] for row in groups), groups
+    assert config.read_text(encoding='utf-8').startswith(comments), 'Startup discarded user comments'
+    legacy_actions = json.loads(legacy.read_text())['hooks']['PreToolUse'][0]['hooks']
+    assert len(legacy_actions) == 1 and '--vwork-hook' in legacy_actions[0]['command']
+    assert legacy_actions[0]['on_failure'] == 'block' and legacy_actions[0]['timeout'] == 7
+    assert str(binary).replace('\\', '/') in legacy_actions[0]['command']
+    assert legacy.with_suffix('.json.pre-fastrock-040').read_bytes() == legacy_original
+    assert not any('--vwork-hook' in action.get('command', '')
+                   for rule in json.loads(managed.read_text())['hooks']['PreToolUse'] for action in rule['hooks']), 'Duplicate managed policy remains'
     # Vwork is always available in 0.4.0, including without legacy configuration.
     default_env = provider.environment(out / 'default')
     peak = max(peak, run([{'wait_ready': 30000}, {'wait': 1000}, virtual('open'),
@@ -167,6 +186,7 @@ try:
         native_window=True, compaction_preserves_draft=True, conflict_preserves_draft=True,
         revision_checked_save=True, source_checkout_preserved=True, no_backend_installed=True,
         default_embedded_database=True, reviewed_child_merge=True, bound_conversation=True,
+        unbound_legacy_vwork=True, config_comments_preserved=31, duplicate_policy_removed=True,
         isolated_conversation_fork=True, copied_history=True, binding_survives_restart=True,
         repository_project_groups=True, native_repository_registration=True), indent=2), encoding='utf-8')
     print('PASS: embedded vwork, native edits/compaction/conflicts, source preservation, no installed backends')

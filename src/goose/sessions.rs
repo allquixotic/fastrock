@@ -3,6 +3,7 @@ use base64::Engine;
 
 impl Adapter {
     pub(super) async fn new_session(self: &Arc<Self>, params: &Value) -> Reply {
+        let _foreground = self.summaries.as_ref().map(|s| s.foreground());
         let provider = if self.embedded_runtime {
             let requested = params["modelProvider"]
                 .as_str()
@@ -293,6 +294,7 @@ impl Adapter {
     }
 
     pub(super) async fn load_session(self: &Arc<Self>, params: &Value, resume: bool) -> Reply {
+        let _foreground = self.summaries.as_ref().map(|s| s.foreground());
         let id = session_id(text(params, "threadId"))?;
         let gate = self.gate(id).await;
         let _lock = gate.lock().await;
@@ -556,6 +558,8 @@ impl Adapter {
         self.start_turn_locked(params).await
     }
     pub(super) async fn start_turn_locked(self: &Arc<Self>, params: &Value) -> Reply {
+        let requested_at = std::time::Instant::now();
+        let foreground = self.summaries.as_ref().map(|s| s.foreground());
         self.deletion_ready(session_id(text(params, "threadId"))?)
             .await?;
         if !params["outputSchema"].is_null() {
@@ -625,6 +629,7 @@ impl Adapter {
             s.active = Some(tid.clone());
             s.run_id = None;
             s.cancel_requested = false;
+            s.first_response_since = Some(requested_at);
             s.last_chunk.clear();
             s.echo_user = Some(
                 prompt
@@ -642,6 +647,7 @@ impl Adapter {
         self.changed.notify_waiters();
         self.emit(json!({"method":"item/completed","params":{"threadId":ui_id(&id),"turnId":tid,"item":user}}))?;
         // Enqueue the prompt before acknowledging it; a subsequent Stop cannot overtake it.
+        latency::record(latency::Phase::TurnSetup, requested_at);
         let call = match self
             .rpc
             .begin("session/prompt", json!({"sessionId":id,"prompt":prompt}))
@@ -657,6 +663,7 @@ impl Adapter {
         let response_turn = started.clone();
         self.jobs
             .send(Box::pin(async move {
+                let _foreground = foreground;
                 let reply = call.wait().await;
                 adapter.finish_turn(&id, &tid, reply).await;
             }))
@@ -750,6 +757,7 @@ impl Adapter {
                 return;
             };
             s.active = None;
+            s.first_response_since = None;
             s.run_id = None;
             s.cancel_requested = false;
             s.echo_user = None;

@@ -18,6 +18,7 @@ use std::{
     time::Duration,
 };
 use tokio::sync::{Mutex as AsyncMutex, Notify};
+use tokio_util::sync::CancellationToken;
 
 static SERVICE: OnceLock<Mutex<Weak<Service>>> = OnceLock::new();
 static FAILED: AtomicBool = AtomicBool::new(false);
@@ -26,7 +27,8 @@ static FAILED: AtomicBool = AtomicBool::new(false);
 struct Pending {
     ids: VecDeque<String>,
     queued: HashSet<String>,
-    active: Option<(String, Arc<AtomicBool>)>,
+    active: Option<(String, CancellationToken)>,
+    foreground: usize,
 }
 impl Pending {
     fn contains(&self, id: &str) -> bool {
@@ -38,7 +40,7 @@ impl Pending {
                 if !completed_turn {
                     return;
                 }
-                cancel.store(true, Ordering::Relaxed);
+                cancel.cancel();
             }
         }
         if self.queued.insert(id.clone()) {
@@ -49,10 +51,26 @@ impl Pending {
             }
         }
     }
-    fn pop(&mut self) -> Option<(String, Arc<AtomicBool>)> {
+    fn pause(&mut self) {
+        self.foreground += 1;
+        if let Some((id, cancel)) = &self.active {
+            if cancel.is_cancelled() {
+                return;
+            }
+            cancel.cancel();
+            let id = id.clone();
+            if self.queued.insert(id.clone()) {
+                self.ids.push_front(id);
+            }
+        }
+    }
+    fn pop(&mut self) -> Option<(String, CancellationToken)> {
+        if self.foreground > 0 {
+            return None;
+        }
         let id = self.ids.pop_front()?;
         self.queued.remove(&id);
-        let cancel = Arc::new(AtomicBool::new(false));
+        let cancel = CancellationToken::new();
         self.active = Some((id.clone(), cancel.clone()));
         Some((id, cancel))
     }
@@ -73,12 +91,28 @@ pub(super) struct Service {
     task: tokio::task::JoinHandle<()>,
     home: PathBuf,
 }
+
+/// Held from session setup/Send through the final idle notification. All windows
+/// share this counter: background requests yield to any foreground conversation.
+pub(super) struct Foreground(Arc<Service>);
+impl Drop for Foreground {
+    fn drop(&mut self) {
+        let mut pending = self.0.queue.pending.lock().unwrap();
+        pending.foreground -= 1;
+        self.0.queue.notify.notify_one();
+    }
+}
 impl Drop for Service {
     fn drop(&mut self) {
         self.task.abort();
     }
 }
 impl Service {
+    pub fn foreground(self: &Arc<Self>) -> Foreground {
+        self.queue.pending.lock().unwrap().pause();
+        self.queue.notify.notify_one();
+        Foreground(self.clone())
+    }
     pub fn start(home: PathBuf) -> Arc<Self> {
         let mut singleton = SERVICE.get_or_init(Default::default).lock().unwrap();
         if let Some(service) = singleton.upgrade() {
@@ -114,7 +148,7 @@ impl Service {
             pending.queued.remove(id);
             if let Some((active, cancel)) = &pending.active {
                 if active == id {
-                    cancel.store(true, Ordering::Relaxed);
+                    cancel.cancel();
                 }
             }
         }
@@ -180,10 +214,11 @@ pub(super) fn diagnostic() -> String {
         "commit",
     ];
     format!(
-        "ready={}, active={}, pending={}, retry={}, stage={}, storage={}",
+        "ready={}, active={}, pending={}, foreground={}, retry={}, stage={}, storage={}",
         service.queue.ready.load(Ordering::Relaxed),
         pending.active.is_some(),
         pending.ids.len(),
+        pending.foreground,
         FAILED.load(Ordering::Relaxed),
         stages
             .get(service.queue.stage.load(Ordering::Relaxed) as usize)
@@ -234,8 +269,14 @@ async fn run(queue: Arc<Queue>, summaries: &Summaries, manager: &SessionManager)
         let notified = queue.notify.notified();
         let job = queue.pending.lock().unwrap().pop();
         if let Some((id, cancelled)) = job {
-            let result = process(manager, summaries, &queue, &id, &cancelled).await;
-            let failed = result.is_err() && !cancelled.load(Ordering::Relaxed);
+            // Drop the HTTP/provider future immediately. An atomic flag checked
+            // between chunks alone leaves a request running for up to 120s.
+            let result = tokio::select! {
+                biased;
+                _ = cancelled.cancelled() => Ok(()),
+                result = process(manager, summaries, &queue, &id, &cancelled) => result,
+            };
+            let failed = result.is_err() && !cancelled.is_cancelled();
             {
                 let mut pending = queue.pending.lock().unwrap();
                 pending.active = None;
@@ -262,7 +303,7 @@ async fn process(
     summaries: &Summaries,
     queue: &Queue,
     id: &str,
-    cancelled: &AtomicBool,
+    cancelled: &CancellationToken,
 ) -> Result<()> {
     queue.stage.store(1, Ordering::Relaxed);
     let Some(source) = summary_worker::snapshot(manager, id).await? else {
@@ -279,7 +320,7 @@ async fn process(
     if previous.as_ref().is_some_and(|old| source.current(old)) {
         return Ok(());
     }
-    if cancelled.load(Ordering::Relaxed) {
+    if cancelled.is_cancelled() {
         return Ok(());
     }
     queue.stage.store(3, Ordering::Relaxed);
@@ -302,7 +343,7 @@ async fn process(
             profile.name, profile.provider, profile.model
         ),
         revision,
-        || cancelled.load(Ordering::Relaxed),
+        || cancelled.is_cancelled(),
     )
     .await?
     else {
@@ -314,7 +355,7 @@ async fn process(
         return Ok(());
     };
     let _guard = queue.commit.lock().await;
-    if !cancelled.load(Ordering::Relaxed) && latest.current(&result) {
+    if !cancelled.is_cancelled() && latest.current(&result) {
         queue.stage.store(8, Ordering::Relaxed);
         summaries.replace(key, result).await?;
     }
@@ -335,15 +376,34 @@ mod tests {
         assert_eq!(id, "live");
         assert!(queue.contains("live"));
         queue.push(id.clone(), false);
-        assert!(!cancelled.load(Ordering::Relaxed));
+        assert!(!cancelled.is_cancelled());
         queue.push(id.clone(), true);
         queue.push(id.clone(), true);
-        assert!(cancelled.load(Ordering::Relaxed));
+        assert!(cancelled.is_cancelled());
         assert_eq!(queue.pop().unwrap().0, "live");
         assert_eq!(queue.pop().unwrap().0, "old");
         assert!(queue.pop().is_none());
         queue.active = None;
         assert!(!queue.contains("live"));
         assert!(!queue.contains("old"));
+    }
+
+    #[test]
+    fn v82_foreground_pauses_all_summaries_and_resumes_only_after_last_turn() {
+        let mut queue = Pending::default();
+        queue.push("backfill".into(), false);
+        let (_, cancel) = queue.pop().unwrap();
+        queue.pause();
+        queue.pause();
+        assert!(cancel.is_cancelled());
+        queue.active = None;
+        queue.push("completed".into(), true);
+        assert!(queue.pop().is_none());
+        queue.foreground -= 1;
+        assert!(queue.pop().is_none());
+        queue.foreground -= 1;
+        assert_eq!(queue.pop().unwrap().0, "completed");
+        assert_eq!(queue.pop().unwrap().0, "backfill");
+        assert!(queue.pop().is_none());
     }
 }

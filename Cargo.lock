@@ -4965,7 +4965,7 @@ dependencies = [
 
 [[package]]
 name = "fastrock"
-version = "0.4.0-rc.2"
+version = "0.4.0-rc.3"
 dependencies = [
  "anyhow",
  "arboard",
@@ -5042,6 +5042,7 @@ dependencies = [
  "webbrowser",
  "windows-sys 0.61.2",
  "wiremock",
+ "yaml-edit",
 ]
 
 [[package]]
@@ -7572,7 +7573,7 @@ dependencies = [
  "num_enum",
  "proc-macro2",
  "quote",
- "rowan",
+ "rowan 0.17.0",
  "rspolib",
  "smol_str 0.3.7",
  "strum 0.28.0",
@@ -12494,6 +12495,18 @@ dependencies = [
 
 [[package]]
 name = "rowan"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "417a3a9f582e349834051b8a10c8d71ca88da4211e4093528e36b9845f6b5f21"
+dependencies = [
+ "countme",
+ "hashbrown 0.14.5",
+ "rustc-hash 1.1.0",
+ "text-size",
+]
+
+[[package]]
+name = "rowan"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14b574c58582fa59fa43a2feb6608b8744184659f08a2e0117e4b8224d95ed61"
@@ -17129,6 +17142,16 @@ name = "xmlwriter"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
+
+[[package]]
+name = "yaml-edit"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79e531de3d80075e0a2dc8246ca46c9167211297f8b9d513130880c2ef98d0b8"
+dependencies = [
+ "base64 0.22.1",
+ "rowan 0.16.1",
+]
 
 [[package]]
 name = "yansi"

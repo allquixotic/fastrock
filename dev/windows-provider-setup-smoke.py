@@ -97,8 +97,15 @@ try:
     assert 'External agent backends' in (blocked_restore['threadError'] or ''), blocked_restore
     with sqlite3.connect(database_path) as database:
         assert database.execute('SELECT * FROM sessions WHERE id = ?', (conversation_id,)).fetchone() == preserved
-    value, replacements = re.subn(r'(?m)^active_provider:.*$', 'active_provider: fastrock_fixture_disallowed',
-                                  config.read_text(encoding='utf-8'))
+    # Lossless edits retain both flow style and the legacy provider key. Change
+    # whichever key Goose uses, without requiring an unrelated migration.
+    value = config.read_text(encoding='utf-8')
+    for key in ('active_provider', 'GOOSE_PROVIDER'):
+        value, replacements = re.subn(
+            r'''(["']?''' + key + r'''["']?\s*:\s*)(?:"[^"]*"|'[^']*'|[^,\s}]+)''',
+            lambda match: match[1] + '"fastrock_fixture_disallowed"', value)
+        if replacements:
+            break
     assert replacements == 1, 'Fixture did not find the saved Goose provider'
     config.write_text(value, encoding='utf-8')
     peak = max(peak, run([{'wait_ready': 30000}, {'new_thread': str(out / 'project')}, {'wait': 1200},

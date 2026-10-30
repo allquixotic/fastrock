@@ -310,6 +310,9 @@ impl AppController {
             (None, false) => "Starting".to_string(),
         };
         facts.push(kv("Goose runtime", server));
+        for (phase, timing) in crate::goose::latency::facts() {
+            facts.push(kv(phase, timing));
+        }
         if !self.connection_label.is_empty() {
             facts.push(kv("Connection", self.connection_label.as_str()));
         }

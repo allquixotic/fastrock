@@ -37,3 +37,9 @@ Copyright (c) 2026 T3 Tools Inc.
 Native sidebar and workspace chrome adapted from commit 6d450a4284852af137b2f3407fddd89eb76e7644.
 Licensed under the MIT License. License included in licenses/t3code/LICENSE.
 https://github.com/pingdotgg/t3code
+
+yaml-edit 0.3.2
+Jelmer Vernooĳ and contributors
+Licensed under Apache-2.0; license included in licenses/yaml-edit/LICENSE.
+Unmodified lossless YAML editor pinned in Cargo.lock.
+https://github.com/jelmer/yaml-edit

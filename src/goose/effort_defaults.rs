@@ -41,8 +41,7 @@ fn write(config: &Config, provider: &str, model: &str, value: Option<&str>) -> R
         defaults.values().map(BTreeMap::len).sum::<usize>() <= 4096,
         "Too many saved reasoning defaults"
     );
-    config
-        .set_param(KEY, defaults)
+    super::config_guard::edit(config, |config| Ok(config.set_param(KEY, defaults)?))
         .map_err(|_| anyhow::anyhow!("Could not save reasoning defaults in Goose configuration"))?;
     Ok(())
 }

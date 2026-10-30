@@ -43,6 +43,7 @@ pub(super) struct Session {
     pub ephemeral: bool,
     pub last_chunk: String,
     pub echo_user: Option<String>,
+    pub first_response_since: Option<std::time::Instant>,
     pub user_clients: std::collections::HashMap<String, Value>,
 }
 

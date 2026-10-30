@@ -99,8 +99,13 @@ Unchanged Goose currently has these integration limits:
   No Goose source is patched.
 - Goose hooks are command actions; its agent hook manager is private. Fastrock's
   `--vwork-hook` helper evaluates the original vwork policy without opening a UI
-  or database. Setup installs a Goose plugin and migrates recognized vwork hook
-  commands, preserving custom actions and a first-migration backup. Goose chooses
+  or database. Setup reuses an enabled user-wide vwork policy when present and
+  migrates recognized commands, preserving custom actions, matchers, failure
+  policy and a first-migration backup. An RC2-installed duplicate managed action
+  is removed. Without an existing policy, Fastrock installs its managed plugin.
+  Plugin registration and native parameter edits preserve YAML comments and
+  unchanged formatting; changes are computed with public Goose APIs on a private
+  draft, verified, then committed atomically. Goose chooses
   its hook discovery directory at construction from process-level state; its
   public API does not support an independent hook root for each live conversation.
   The catalog can inspect project plugins, but does not remove that upstream limit.
@@ -115,6 +120,24 @@ Hidden temporary sessions are excluded, and source conversations are never
 rewritten by search. Settings → Goose selects the cheap provider/model using
 Goose's existing credentials. Missing configuration or a provider failure preserves
 local search and never triggers an expensive fallback.
+
+Summary requests are queued only after ACP reports `end_turn`, never by tool
+notifications. A shared foreground guard pauses this worker across all windows
+from session setup/Send through the final idle notification. Starting foreground
+work cancels an in-flight summary future and requeues its conversation; backfill
+resumes after the last active turn ends. Large histories can require multiple
+bounded compaction chunks, all during background time. A legacy history ending
+in a tool call/result excludes that unfinished turn from backfill.
+
+Goose's opt-in tool title/chain enrichment is explicitly disabled in Fastrock's
+client capabilities. Goose's independent session naming and necessary context
+compaction remain separate from search summaries and retain Goose configuration.
+Settings → Diagnostics shows last and peak elapsed milliseconds this run for
+session creation/loading, turn setup and first response, without prompt bodies,
+provider errors, credential values or endpoint URLs. The bounded in-memory counters
+need no tracing subscriber or file I/O. These distinguish local setup
+from the wait after a prompt reaches embedded Goose; they do not establish a live
+provider's rate limits or response latency.
 
 The transcript adapter stores older items in lossless LZ4 pages and retains at
 most 16 decoded pages within an 8 MiB estimated allocation budget. Oversized items

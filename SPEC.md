@@ -190,6 +190,12 @@ V80: Visible commands ! supported embedded routes; Goose model/permission contro
 
 V81: Restore legacy Goose session with absent tool selection ! materialize inherited defaults through public storage before activation/mutation; explicit empty/restricted selection ! unchanged; malformed state ! fail without widening tools; unrelated extension state ! preserved. Verify: v81 persistence regression and seeded native history restore.
 
+V82: Search summaries/backfill ! yield immediately to any foreground session setup or user turn across windows; canceled request ! requeue once, resume only after last foreground guard drops; tool notifications ! never enqueue summaries; incomplete tool turns ! excluded from backfill. Diagnostics ! bounded last/peak phase timings available without logging subscriber, no provider payloads. Verify: queue, stalled HTTP, multi-tool native fixtures.
+
+V83: Goose parameter edits/plugin registration ! preserve YAML comments, quoting, unchanged fields and disabled entries. Compute changes through public Goose APIs in private draft; verify semantic equivalence before atomic commit; rejected/stale edits ! original bytes untouched; credentials ! real OS vault only. Verify: commented/flow/anchor/malformed config fixtures.
+
+V84: Existing enabled user-wide vwork policy ! reused; RC2-owned duplicate action ! removed, custom hooks/matchers/failure policy ! preserved; migrated helper ! follows installed executable; first hook backup ! retained. Verify: hook migration, duplicate cleanup and native first-start fixtures.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -258,6 +264,7 @@ T53|x|Restore original native windows and temporary-session state without automa
 T54|x|Connect native individual/batch deletion to Goose public delete API with active-run, queue, schedule and retained-state guards|V38,V41,V42,V63,V74,V77
 T55|x|Honor temporary side-fork semantics and boundary insertion through public Goose APIs; preserve restart state without replay|V38,V41,V42,V63,V74,V75
 T56|x|Native queue start/reorder, compressed-source mentions, Review, explicit shell, Goose slash commands and local Changes verified|V38,V40,V41,V42,V70,V71,V72,V73,V80
+T57|x|RC2 summary priority/config/hook fixes; 781 tests, eight native cases and guarded full-scale games workload passed; provider routes fixture-verified|V38,V39,V44,V65,V82,V83,V84
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -700,3 +707,25 @@ B232|2026-10-30|Slint ComboBox model initialization replaced current-index bindi
 B233|2026-10-30|Active help/transcript/settings browser launchers could block Slint; restart toast still named Codex|Shared background launcher, preserved native-link fixture routing and Goose restart text; V38,V42,V78
 
 B234|2026-10-30|RC1 Windows CI inherited Git core.autocrlf=true; checkpoint fixture committed LF but expected original CRLF|Pin repository-local autocrlf=false against synthetic global true; verify seed blob bytes; seven games tests passed; no application change; RC1 signing/publication skipped; V23,V62,V63
+
+B235|2026-10-30|Startup backfill ran provider requests during foreground turns; atomic cancellation flag only checked between potentially 120s requests; reported three-minute live delay not yet attributed|Shared foreground guards, cancel in-flight future, requeue after whole turn; V82
+
+B236|2026-10-30|Goose plugin discovery registers missing entries by serializing entire YAML; startup discarded user comments|Register directories losslessly before public discovery; staged public setters preserve native settings comments too; V83
+
+B237|2026-10-30|Hook setup always installed managed policy then migrated existing user policy to same executable; each shell call ran both|Reuse existing user policy and remove owned duplicate action; preserve custom actions and original backup; V84
+
+B238|2026-10-30|Lossless YAML integration inserted document CST nodes into mapping values; semantic guard rejected edits and preserved source|Insert typed flow value nodes from wrapper mapping; existing and new settings regressions; V83
+
+B239|2026-10-30|Goose parameter setters also migrate/remove legacy provider keys; syntax-node copying ignored destination flow style|Diff normalized private drafts to exclude incidental migrations; insert flow CST values and verify effective config through Goose before commit; V83
+
+B240|2026-10-30|YAML data-map builder ignored flow context, producing invalid nested values despite semantic conversion|Use JSON-compatible flow CST nodes for changed Goose parameters; retain semantic equivalence guard; V83
+
+B241|2026-10-30|Tracing-only latency records had no installed subscriber in GUI process|Expose bounded atomic last/peak timings in native Diagnostics independently of tracing; V82
+
+B242|2026-10-30|Review found top-level draft replacement could lose fields absent from Goose normalization; later fixture failure had separate numeric serialization cause|Apply requested deltas recursively to original YAML; unknown nested plugin fields regression; V83
+
+B243|2026-10-30|Mutable JSON indexing could panic on malformed user hook shapes during migration|Use checked shape access; reject malformed managed hooks without rewriting original; V65,V84
+
+B244|2026-10-30|Unified serde_json arbitrary_precision serializes numbers as private marker objects through Goose generic YAML setters|Convert JSON-valued parameters via JSON text to YAML values before public setters; preserve numeric unknown fields; V83
+
+B245|2026-10-30|Native provider fixture assumed block YAML and migrated active_provider key; lossless preservation broke test-only scalar replacement|Accept current/legacy provider scalar in both YAML styles; V52,V83

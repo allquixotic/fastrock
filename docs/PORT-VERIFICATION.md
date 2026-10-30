@@ -1893,3 +1893,54 @@ results, supplementary measurements, artifact identity and independent signature
 verification. This completes release-candidate acceptance. Live Bedrock profiles
 remain the final 0.4.0 acceptance gate. The documented limitations of unchanged
 Goose's public APIs continue to apply.
+
+
+### RC3 first-response and configuration corrections
+
+The RC2 feedback exposed foreground contention with startup summary backfill,
+lossy Goose configuration registration and duplicate vwork policy hooks. Search
+summaries already followed whole ACP `end_turn` completion; tool notifications
+did not enqueue them. RC3 cancels/requeues background summary work while any
+foreground session or turn is active, including between tool calls. Backfill
+excludes a known unfinished tool turn. Goose's independent session naming and
+context management retain their upstream behavior.
+
+On games, 781 application tests and the standalone embedded Goose fixture passed.
+macOS compiled without running the application or tests. Eight targeted native
+cases passed on executable `ab7f5c14991138a4efd0607c2f575332e5516843a95a3dfe95576771736392d9`:
+vwork migration, provider defaults, named profiles/credentials, reasoning effort,
+capabilities/hooks, titles, summaries/windows/tray, and summary priority. The new
+priority fixture stalls a summary, starts another conversation and runs three
+tool calls before the final answer. No summary starts between those calls; the
+canceled work retries after control returns. Goose naming remains enabled in
+that fixture, distinguishing its title requests from search summaries. The
+published RC2 failed the preemption assertion.
+
+The migration fixture preserves 31 comments and the unbound vwork extension,
+reuses the user's hook policy and removes RC2's managed duplicate. Unit coverage
+also preserves quoting, inline comments, numeric unknown fields, disabled
+plugins, aliases and original files after rejected changes. Provider/profile
+fixtures retain custom OpenAI/Anthropic configurations and credential commands.
+A test-only provider replacement was corrected to accept preserved legacy keys
+and flow YAML; its final run passed without changing the application binary.
+[Targeted acceptance receipt](benchmarks/rc3-feedback-games-2026-10-30.json).
+
+The guarded full-scale games workload passed at 1,000 stored conversations,
+eight concurrent streams and 10,000 history messages. Peak Fastrock memory was
+220,983,296 bytes (210.7 MiB); no scale reduction was needed. Host and guest
+headroom checks remained active, with the 32 GB ceiling and a stricter cap based
+on available memory. Against the existing same-day 0.3.4 baseline, observed
+history opening was 601.5 vs 1,102 ms and switch dispatch was 0.2–0.4 vs
+0.7–1.0 ms. Scroll frame median was 4.601 vs 6.481 ms; p95 was 9.557 vs 8.422 ms,
+so this is not a uniform scrolling speedup. Direct first/middle/last history
+navigation retained 100-entry bounded pages and restored them in 3.871–8.141 ms.
+All 10,000 messages exported and current summaries were reused.
+[RC3 scale receipt](benchmarks/rc3-scale-games-2026-10-30.json),
+[0.3.4 baseline](benchmarks/rc1-scale-baseline-games-2026-10-30.json).
+
+Settings → Diagnostics displays bounded last/peak session, setup and first-response
+timings without provider payloads or a logging subscriber. The reported live
+three-minute delay is not yet attributed to one cause; these fixtures prove
+contention/migration fixes and turn boundaries, not AWS latency or account access.
+Previously discarded config comments cannot be reconstructed automatically.
+Full acceptance on the signed executable remains part of release CI.

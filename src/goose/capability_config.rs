@@ -89,7 +89,7 @@ pub(super) fn snapshot(cwd: &Path) -> Result<Value> {
     );
     // Discovery respects project/user precedence and registers new plugins with
     // Goose's public config. Disabled plugins remain visible in that config.
-    let active = goose_runtime::plugins::discovery::discover_enabled_plugins(Some(cwd));
+    let active = super::hooks::discover(cwd)?;
     let plugins = read(config, "plugins")?;
     ensure!(
         plugins.as_object().unwrap().len() <= LIMIT,
@@ -130,20 +130,31 @@ fn mutate(
     );
     // Value preserves unfamiliar fields and malformed entries instead of
     // round-tripping the whole mapping through ExtensionEntry.
-    let mut outcome = Ok(());
-    config.update_param::<Value, Value, _>(key, |raw| {
-        let original = if raw.is_null() { json!({}) } else { raw };
-        let mut next = original.clone();
-        outcome = (|| {
-            ensure!(
-                next.is_object() && revision(&next) == expected,
-                "Goose settings changed; reload before saving"
-            );
-            edit(&mut next)
-        })();
-        if outcome.is_ok() { next } else { original }
-    })?;
-    outcome
+    super::config_guard::edit(config, |config| {
+        let mut outcome = Ok(());
+        config.update_param::<Value, serde_yaml::Value, _>(key, |raw| {
+            let original = if raw.is_null() { json!({}) } else { raw };
+            let mut next = original.clone();
+            let updated = (|| {
+                ensure!(
+                    next.is_object() && revision(&next) == expected,
+                    "Goose settings changed; reload before saving"
+                );
+                edit(&mut next)?;
+                super::config_guard::parameter(&next)
+            })();
+            match updated {
+                Ok(value) => value,
+                Err(error) => {
+                    outcome = Err(error);
+                    // Only the private draft changes; edit() discards it when
+                    // the closure returns this error.
+                    serde_yaml::Value::Null
+                }
+            }
+        })?;
+        outcome
+    })
 }
 pub(super) fn toggle(
     config: &Config,

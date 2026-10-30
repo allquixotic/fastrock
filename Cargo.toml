@@ -1,6 +1,6 @@
 [package]
 name = "fastrock"
-version = "0.4.0-rc.2"
+version = "0.4.0-rc.3"
 edition = "2024"
 rust-version = "1.94.1"
 license = "Apache-2.0"
@@ -63,6 +63,8 @@ goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "30b
 sha2 = "0.10"
 regex = "1"
 serde_yaml = { version = "0.9.32", default-features = false }
+yaml-edit = "=0.3.2"
+tempfile = { workspace = true }
 hmac = "0.12.1"
 tokio-util = { version = "0.7", features = ["compat"] }
 image = { workspace = true, features = ["png", "jpeg", "gif", "webp"] }
@@ -148,7 +150,6 @@ async-trait = "0.1"
 wiremock = "0.6"
 codex-model-provider-info = { workspace = true }
 pretty_assertions = { workspace = true }
-tempfile = { workspace = true }
 
 [workspace]
 members = ["crates/fastrock-workspaces"]

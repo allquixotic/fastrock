@@ -14,6 +14,7 @@ mod embedded;
 mod history;
 mod hooks;
 mod id_reservation;
+pub(crate) mod latency;
 mod mcp;
 mod model;
 mod profile_controls;
@@ -314,7 +315,7 @@ where
         "clientInfo":{"name":"fastrock","version":env!("CARGO_PKG_VERSION")},
         // Goose executes file/terminal tools itself. Never advertise unimplemented client tools.
         "clientCapabilities":{"fs":{"readTextFile":false,"writeTextFile":false},"terminal":false,
-            "_meta":{"goose":{"customNotifications":true}}}}),
+            "_meta":{"goose":{"customNotifications":true,"toolCallLabelEnrichment":false}}}}),
         )
         .await
         .map_err(|e| anyhow::anyhow!("Goose ACP initialization: {}", e.message))?;
@@ -413,6 +414,14 @@ impl Adapter {
                 let session = sessions
                     .entry(id.into())
                     .or_insert_with(|| Session::new(id, &self.cwd));
+                if matches!(
+                    params["update"]["sessionUpdate"].as_str(),
+                    Some("agent_message_chunk" | "agent_thought_chunk" | "tool_call")
+                ) {
+                    if let Some(start) = session.first_response_since.take() {
+                        latency::record(latency::Phase::FirstResponse, start);
+                    }
+                }
                 for event in session.update(&params["update"]) {
                     self.emit(event)?;
                 }

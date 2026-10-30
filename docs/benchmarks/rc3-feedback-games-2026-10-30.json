@@ -1,0 +1,166 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.3",
+  "binary_sha256": "ab7f5c14991138a4efd0607c2f575332e5516843a95a3dfe95576771736392d9",
+  "windows_unit_tests": {
+    "passed": 781,
+    "failed": 0,
+    "renderer_deferred_to_ci": 1,
+    "peak_process_bytes": 118607872
+  },
+  "standalone_embedded_goose": {
+    "result": "PASS",
+    "peak_process_bytes": 88977408
+  },
+  "macos": "Compile check only; no Mac application or tests executed",
+  "targeted_native_cases": [
+    {
+      "name": "vwork",
+      "result": "PASS",
+      "error": null,
+      "seconds": 31.09,
+      "peak_tree_bytes": 160845824
+    },
+    {
+      "name": "profiles",
+      "result": "PASS",
+      "error": null,
+      "seconds": 27.68,
+      "peak_tree_bytes": 157601792
+    },
+    {
+      "name": "effort",
+      "result": "PASS",
+      "error": null,
+      "seconds": 17.04,
+      "peak_tree_bytes": 156405760
+    },
+    {
+      "name": "capabilities",
+      "result": "PASS",
+      "error": null,
+      "seconds": 31.09,
+      "peak_tree_bytes": 156286976
+    },
+    {
+      "name": "titles",
+      "result": "PASS",
+      "error": null,
+      "seconds": 38.5,
+      "peak_tree_bytes": 157003776
+    },
+    {
+      "name": "summary",
+      "result": "PASS",
+      "error": null,
+      "seconds": 29.28,
+      "peak_tree_bytes": 142196736
+    },
+    {
+      "name": "summary-priority",
+      "result": "PASS",
+      "error": null,
+      "seconds": 8.23,
+      "peak_tree_bytes": 155824128
+    },
+    {
+      "name": "provider-setup",
+      "result": "PASS",
+      "error": null,
+      "seconds": 14.84,
+      "peak_tree_bytes": 156684288
+    }
+  ],
+  "summary_priority": {
+    "result": "PASS",
+    "binary_sha256": "ab7f5c14991138a4efd0607c2f575332e5516843a95a3dfe95576771736392d9",
+    "peak_process_bytes": 148287488,
+    "three_tool_calls_one_completed_turn": true,
+    "foreground_preempts_stalled_summary": true,
+    "original_comments_preserved": true,
+    "requests": [
+      {
+        "kind": "naming",
+        "at": 110316.907368,
+        "in_turn": false
+      },
+      {
+        "kind": "foreground",
+        "at": 110317.0689477,
+        "in_turn": false
+      },
+      {
+        "kind": "summary",
+        "at": 110317.1199852,
+        "in_turn": false
+      },
+      {
+        "kind": "naming",
+        "at": 110321.3183188,
+        "in_turn": false
+      },
+      {
+        "kind": "foreground",
+        "at": 110321.3325228,
+        "in_turn": false
+      },
+      {
+        "kind": "foreground",
+        "at": 110321.6757614,
+        "in_turn": true
+      },
+      {
+        "kind": "foreground",
+        "at": 110322.0153688,
+        "in_turn": true
+      },
+      {
+        "kind": "foreground",
+        "at": 110322.3400275,
+        "in_turn": true
+      },
+      {
+        "kind": "summary",
+        "at": 110322.6915449,
+        "in_turn": false
+      },
+      {
+        "kind": "summary",
+        "at": 110322.7035196,
+        "in_turn": false
+      }
+    ]
+  },
+  "vwork_migration": {
+    "result": "PASS",
+    "backend": "embedded-goose-vwork",
+    "binary_sha256": "ab7f5c14991138a4efd0607c2f575332e5516843a95a3dfe95576771736392d9",
+    "peak_process_bytes": 159870976,
+    "native_window": true,
+    "compaction_preserves_draft": true,
+    "conflict_preserves_draft": true,
+    "revision_checked_save": true,
+    "source_checkout_preserved": true,
+    "no_backend_installed": true,
+    "default_embedded_database": true,
+    "reviewed_child_merge": true,
+    "bound_conversation": true,
+    "unbound_legacy_vwork": true,
+    "config_comments_preserved": 31,
+    "duplicate_policy_removed": true,
+    "isolated_conversation_fork": true,
+    "copied_history": true,
+    "binding_survives_restart": true,
+    "repository_project_groups": true,
+    "native_repository_registration": true
+  },
+  "diagnostics_visual_check": "PASS; native Settings displays last and peak session/turn/first-response times",
+  "fixture_corrections": [
+    "Provider-default fixture originally assumed block YAML and migrated active_provider key; updated to preserve flow and legacy GOOSE_PROVIDER. Final case passed on unchanged application binary."
+  ],
+  "limitations": [
+    "Local provider fixtures only; live three-minute first-response delay not yet attributed.",
+    "Automatic Goose naming/context management remains separate from search summaries.",
+    "Full signed-executable acceptance belongs to release CI."
+  ]
+}

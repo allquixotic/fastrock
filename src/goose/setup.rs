@@ -123,9 +123,12 @@ fn write(config: &Config, expected: &Setup, desired: &Setup) -> Result<Setup> {
         read(config)? == *expected,
         "Provider settings changed in another window. Reload before saving"
     );
-    // Each operation preserves unrelated settings via Goose. Its public API
-    // offers no transaction spanning provider selection and deleted fields.
-    let result = (|| -> Result<()> {
+    // Compute all changes with Goose, then commit one lossless YAML edit.
+    let result = super::config_guard::edit(config, |config| {
+        ensure!(
+            read(config)? == *expected,
+            "Provider settings changed; reload before saving"
+        );
         let updates = desired
             .fields
             .iter()
@@ -142,7 +145,7 @@ fn write(config: &Config, expected: &Setup, desired: &Setup) -> Result<Setup> {
             providers::set_active_provider(config, &desired.provider, &desired.model)?;
         }
         Ok(())
-    })();
+    });
     if result.is_err() {
         bail!(
             "Provider settings could not be fully saved. Reload to review any changes before retrying"
