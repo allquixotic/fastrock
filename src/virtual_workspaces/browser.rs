@@ -159,6 +159,9 @@ pub struct Browser {
     merge_review: Option<MergeReview>,
 }
 impl Browser {
+    pub fn accepts_completion(&self, epoch: u64) -> bool {
+        self.busy && self.epoch == epoch
+    }
     pub fn snapshot(&self) -> BrowserSnapshot {
         let active = self
             .selected
@@ -373,6 +376,13 @@ impl Browser {
             self.status = "Save or Discard unsaved edits before changing files/workspaces".into();
             return vec![];
         }
+        if action == "virtual-chat"
+            && let Some(selection) = &self.selected
+        {
+            return self.begin(Request::OpenConversation {
+                workspace: selection.workspace.clone(),
+            });
+        }
         if let Some(source) = action.strip_prefix("virtual-merge-source:") {
             self.merge_source = source.into();
             self.merge_review = None;
@@ -519,7 +529,7 @@ impl Browser {
                 }
             }
             Event::Complete { epoch, result } => {
-                if epoch != self.epoch {
+                if !self.accepts_completion(epoch) {
                     return vec![];
                 }
                 self.busy = false;
@@ -558,6 +568,9 @@ impl Browser {
                         }.into();
                         self.report = review.report.clone();
                         self.merge_review = Some(review);
+                    }
+                    Ok(Reply::Conversation(_)) => {
+                        self.status = "Opening a conversation bound to this workspace".into();
                     }
                     Ok(Reply::MergeResult(MergeResult::Merged { revision })) => {
                         self.status = format!(

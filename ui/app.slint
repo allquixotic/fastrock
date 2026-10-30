@@ -180,7 +180,7 @@ component TabButton inherits Rectangle {
                 activated => { root.action("side"); }
             }
             if info.kind == TabKindCode.thread: MenuItem {
-                title: "Continue in worktree";
+                title: "Fork virtual workspace";
                 activated => { root.action("worktree"); }
             }
             if info.kind == TabKindCode.thread: MenuItem {
@@ -642,7 +642,7 @@ component WorkspaceHeader inherits Rectangle {
                 activated => { AppState.tab-action(AppState.active-tab, "side"); }
             }
             if AppState.active-info.kind == TabKindCode.thread: MenuItem {
-                title: "Continue in worktree";
+                title: "Fork virtual workspace";
                 activated => { AppState.tab-action(AppState.active-tab, "worktree"); }
             }
             if AppState.active-info.kind == TabKindCode.thread: MenuItem {

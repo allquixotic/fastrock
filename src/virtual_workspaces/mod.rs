@@ -1,4 +1,4 @@
-//! Optional virtual files. The daemon owns storage; the UI never opens redb.
+//! Native virtual files. The embedded owner performs storage work off the UI thread.
 mod browser;
 #[cfg(test)]
 mod browser_tests;
@@ -142,9 +142,19 @@ impl AppController {
     }
 
     fn virtual_workspaces_event(&mut self, event: Event) {
+        let conversation = match &event {
+            Event::Complete {
+                epoch,
+                result: Ok(fastrock_workspaces::Reply::Conversation(value)),
+            } if self.virtual_workspaces.browser.accepts_completion(*epoch) => Some(value.clone()),
+            _ => None,
+        };
         let work = self.virtual_workspaces.browser.apply(event);
         self.virtual_workspaces_render();
         self.virtual_workspaces_enqueue(work);
+        if let Some(workspace) = conversation {
+            self.start_thread_in_workspace(workspace);
+        }
     }
 
     fn virtual_workspaces_enqueue(&self, work: Vec<Work>) {

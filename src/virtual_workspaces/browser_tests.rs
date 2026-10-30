@@ -430,3 +430,23 @@ fn v49_edit_source_change_and_report_change_invalidate_review() {
     assert!(browser.action("virtual-merge-apply").is_empty());
     assert_eq!(browser.snapshot().text, "unsaved");
 }
+
+#[test]
+fn v50_workspace_chat_requires_clean_draft_and_current_completion() {
+    let mut browser = opened();
+    browser.action("virtual-edit:unsaved");
+    assert!(browser.action("virtual-chat").is_empty());
+    browser.action("virtual-discard");
+    let work = browser.action("virtual-chat");
+    assert!(
+        matches!(&work[0], Work::Call {request:Request::OpenConversation {workspace}, ..} if workspace == "task-000000")
+    );
+    let current = epoch(&work);
+    assert!(browser.accepts_completion(current));
+    assert!(!browser.accepts_completion(current + 1));
+    browser.apply(Event::Complete {
+        epoch: current,
+        result: Err("fixture".into()),
+    });
+    assert!(!browser.accepts_completion(current));
+}

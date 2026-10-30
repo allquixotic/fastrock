@@ -84,13 +84,12 @@ const INTERRUPT_RETRY_DELAY: Duration = Duration::from_millis(150);
 /// lifecycle requests.
 #[derive(Debug, Default)]
 pub(crate) struct ThreadExtras {
+    pub(crate) workspace: Option<fastrock_workspaces::session::Selection>,
     /// Set when the tab is a side chat: the thread it branched from.
     pub(crate) side_parent: Option<SideParent>,
     pub(crate) editing_pending: Option<pending::EditingPending>,
     /// Recap being generated for this tab.
     pub(crate) recap: Option<recap::RecapRun>,
-    /// A managed worktree is being created from this tab.
-    pub(crate) worktree_pending: bool,
     /// Bumped by every `thread/start` and `thread/resume` sent for the tab;
     /// the answer to an older one is dropped.
     pub(crate) open_generation: u64,
@@ -144,6 +143,19 @@ pub(crate) fn user_input_preview(content: &[UserInput]) -> String {
 }
 
 impl AppController {
+    pub(crate) fn start_thread_in_workspace(
+        &mut self,
+        workspace: fastrock_workspaces::session::WorkspaceSession,
+    ) {
+        let mut thread = ThreadTab::new(workspace.cwd);
+        thread.extras.workspace = Some(workspace.selection);
+        thread.name = Some(format!("{} workspace", workspace.repo));
+        thread.xtab_enabled = self.prefs.cross_tab_tools;
+        let index = self.replace_new_tab_page_or_push(TabKind::Thread(Box::new(thread)));
+        self.start_thread_in_tab(index);
+        self.refresh_tabs();
+    }
+
     /// Opens a tab with a brand-new thread rooted at `cwd`.
     pub(crate) fn start_thread_in_folder(&mut self, cwd: PathBuf) {
         self.prefs.remember_folder(&cwd);
@@ -171,8 +183,10 @@ impl AppController {
         thread.extras.open_generation += 1;
         let generation = thread.extras.open_generation;
         let cwd = thread.cwd.clone();
+        let workspace = thread.extras.workspace.clone();
         let xtab_enabled = thread.xtab_enabled;
         let options = session::NewThreadOptions {
+            workspace,
             dynamic_tools: if xtab_enabled {
                 self.xtab_dynamic_tools()
             } else {

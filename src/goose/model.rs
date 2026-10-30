@@ -29,6 +29,7 @@ fn timestamp(value: &Value) -> i64 {
 
 #[derive(Default)]
 pub(super) struct Session {
+    pub binding: super::workspace::BindingRecord,
     pub info: Value,
     pub config: Vec<Value>,
     pub turns: fastrock_workspaces::scrollback::History,
@@ -73,6 +74,7 @@ impl Session {
             provider
         };
         json!({"id":id,"sessionId":id,"name":self.info["title"],"preview":meta["lastMessageSnippet"].as_str().unwrap_or(""),
+            "forkedFromId":self.binding.forked_from.as_deref().map(ui_id),
             "ephemeral":self.ephemeral,"modelProvider":if provider.is_empty(){"goose"}else{provider},"model":model,
             "createdAt":timestamp(&meta["createdAt"]),"updatedAt":timestamp(&self.info["updatedAt"]),
             "recencyAt":timestamp(&meta["lastMessageAt"]),"cwd":self.info["cwd"],"cliVersion":"Goose ACP",
@@ -148,6 +150,9 @@ impl Session {
                 let content = &update["content"];
                 if user && !self.replaying && self.echo_user.as_deref() == content["text"].as_str()
                 {
+                    if let Some(id) = supplied_id {
+                        self.turn_mut()["gooseMessageId"] = json!(id);
+                    }
                     self.echo_user = None;
                     return events;
                 }
@@ -159,6 +164,13 @@ impl Session {
                 if user && self.replaying && !exists && update["_meta"]["goose"]["steer"] != true {
                     self.turns
                         .push(turn(&format!("history-{message_id}"), "completed"));
+                }
+                if user
+                    && supplied_id.is_some()
+                    && update["_meta"]["goose"]["steer"] != true
+                    && self.turn_mut()["gooseMessageId"].is_null()
+                {
+                    self.turn_mut()["gooseMessageId"] = json!(message_id);
                 }
                 let client_id = self
                     .user_clients

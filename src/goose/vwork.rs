@@ -6,15 +6,36 @@ impl Adapter {
     pub(super) async fn new_vwork_servers(
         &self,
         cwd: &str,
+        workspace: Option<&fastrock_workspaces::session::WorkspaceSession>,
     ) -> Result<(Vec<Value>, Vec<McpBinding>), JSONRPCErrorError> {
         if self.capabilities.lock().await["mcpCapabilities"]["http"] != true {
             return Ok((vec![], vec![]));
         }
-        let bindings = self.configured_vwork(cwd).await?;
+        let config_cwd = workspace.map(|w| w.source_root.to_string_lossy().into_owned());
+        let mut bindings = self
+            .configured_vwork(config_cwd.as_deref().unwrap_or(cwd))
+            .await?;
+        if let Some(workspace) = workspace {
+            let mut matched = false;
+            for binding in &mut bindings {
+                if tokio::fs::canonicalize(&binding.home).await.ok().as_ref()
+                    == Some(&workspace.selection.home)
+                {
+                    binding.workspace = Some(workspace.selection.workspace.clone());
+                    matched = true;
+                }
+            }
+            if !matched {
+                return Err(error("Selected workspace extension is no longer enabled"));
+            }
+        }
         self.vwork_servers(bindings).await
     }
 
-    async fn configured_vwork(&self, cwd: &str) -> Result<Vec<McpBinding>, JSONRPCErrorError> {
+    pub(super) async fn configured_vwork(
+        &self,
+        cwd: &str,
+    ) -> Result<Vec<McpBinding>, JSONRPCErrorError> {
         if !self.embedded_runtime {
             return discover_mcp(&self.vwork_paths)
                 .await

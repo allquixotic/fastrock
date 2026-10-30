@@ -359,6 +359,7 @@ async fn limited_file(path: &Path, limit: usize) -> Result<Vec<u8>, WorkspaceErr
 
 pub struct VworkProvider {
     embedded: crate::embedded::Connection,
+    store_home: PathBuf,
     #[cfg(feature = "http-fixtures")]
     fixture: bool,
     #[cfg(feature = "http-fixtures")]
@@ -377,6 +378,7 @@ impl VworkProvider {
             .map_err(|_| WorkspaceError::Transport)?;
         Ok(Self {
             embedded: crate::embedded::Connection::new(installation.home.clone()),
+            store_home: installation.home.clone(),
             #[cfg(feature = "http-fixtures")]
             fixture: false,
             #[cfg(feature = "http-fixtures")]
@@ -504,6 +506,14 @@ impl VworkProvider {
     }
     async fn run(&self, request: Request) -> Result<Reply, WorkspaceError> {
         match request {
+            Request::OpenConversation { workspace } => crate::session::Selection {
+                home: self.store_home.clone(),
+                workspace,
+            }
+            .resolve()
+            .await
+            .map(Reply::Conversation)
+            .map_err(|error| WorkspaceError::Message(format!("{error:#}"))),
             Request::Compact => {
                 let value = self.call("database_compact", json!({})).await?;
                 let reason = string(&value, "reason")?;

@@ -16,10 +16,13 @@ pub(crate) fn summaries_idle() -> bool {
     summary_service::idle()
 }
 
+mod fork;
+mod fork_storage;
 mod summary_worker;
 #[cfg(test)]
 mod tests;
 mod vwork;
+mod workspace;
 
 use crate::transport::{AppServerClient, AppServerEvent, Pending, Reply};
 use codex_app_server_protocol::JSONRPCErrorError;
@@ -490,6 +493,7 @@ impl Adapter {
                 )
             }
             "thread/start" => self.new_session(params).await,
+            "thread/fork" => self.fork_session(params).await,
             "thread/list" => self.list_sessions(params).await,
             "thread/loaded/list" => Ok(
                 json!({"data":self.sessions.lock().await.iter().filter(|(_,s)|s.loaded).map(|(id,_)|ui_id(id)).collect::<Vec<_>>(),"nextCursor":null}),

@@ -3,7 +3,13 @@ use base64::Engine;
 
 impl Adapter {
     pub(super) async fn new_session(self: &Arc<Self>, params: &Value) -> Reply {
-        let cwd = params["cwd"].as_str().unwrap_or(&self.cwd);
+        let workspace = self.selected_workspace(params).await?;
+        let workspace_cwd = workspace
+            .as_ref()
+            .map(|w| w.cwd.to_string_lossy().into_owned());
+        let cwd = workspace_cwd
+            .as_deref()
+            .unwrap_or_else(|| params["cwd"].as_str().unwrap_or(&self.cwd));
         let tools = params["dynamicTools"]
             .as_array()
             .cloned()
@@ -27,7 +33,16 @@ impl Adapter {
         let bindings = if restricted {
             vec![]
         } else {
-            let (vwork, bindings) = self.new_vwork_servers(cwd).await?;
+            let result = self.new_vwork_servers(cwd, workspace.as_ref()).await;
+            let (vwork, bindings) = match result {
+                Ok(value) => value,
+                Err(error) => {
+                    if let Some(registration) = &registration {
+                        self.mcp.remove(&registration.key).await;
+                    }
+                    return Err(error);
+                }
+            };
             servers.extend(vwork);
             bindings
         };
@@ -68,6 +83,9 @@ impl Adapter {
         }
         let setup = async {
             if params["ephemeral"] != true { self.save_vwork_bindings(id, &bindings)?; }
+            if workspace.is_some() {
+                self.save_binding_record(id, &super::workspace::BindingRecord { workspace: workspace.clone(), forked_from: None })?;
+            }
             if !tools.is_empty() && params["ephemeral"] != true {
                 std::fs::create_dir_all(&self.queue_root).map_err(|e|error(format!("Save session tool definitions: {e}")))?;
                 let bytes=serde_json::to_vec(&tools).map_err(|e|error(e.to_string()))?;
@@ -83,6 +101,9 @@ impl Adapter {
             let instructions=[params["baseInstructions"].as_str(),params["developerInstructions"].as_str()].into_iter().flatten().collect::<Vec<_>>().join("\n\n");
             if !instructions.is_empty() {
                 self.rpc.call("_goose/unstable/session/system-prompt/set",json!({"sessionId":id,"mode":"append","key":"fastrock","text":instructions})).await?;
+            }
+            if let Some(workspace) = &workspace {
+                self.rpc.call("_goose/unstable/session/system-prompt/set", json!({"sessionId":id,"mode":"append","key":"fastrock-workspace","text":super::workspace::instructions(workspace)})).await?;
             }
             Ok::<_,JSONRPCErrorError>(())
         }.await;
@@ -104,6 +125,7 @@ impl Adapter {
             session.config = config_options(&response);
             session.loaded = true;
             session.ephemeral = params["ephemeral"] == true;
+            session.binding.workspace = workspace;
             self.config_event(id, session.config.clone())?;
         }
         if let Some(model) = params["model"]
@@ -149,14 +171,16 @@ impl Adapter {
             args["_meta"]["query"] = json!(search);
         }
         let reply = self.rpc.call("session/list", args).await?;
-        let mut sessions = self.sessions.lock().await;
         let mut data = Vec::new();
         for info in reply["sessions"].as_array().into_iter().flatten() {
             let id = text(info, "sessionId");
             if id.is_empty() {
                 continue;
             }
+            let binding = self.binding_record(id).await?;
+            let mut sessions = self.sessions.lock().await;
             let session = sessions.entry(id.to_string()).or_default();
+            session.binding = binding;
             session.info = info.clone();
             let archived = !info["_meta"]["archivedAt"].is_null();
             if !session.ephemeral && archived == params["archived"].as_bool().unwrap_or(false) {
@@ -178,6 +202,7 @@ impl Adapter {
                 .await?;
             let mut s = Session::new(id, &self.cwd);
             s.info = info["session"].clone();
+            s.binding = self.binding_record(id).await?;
             self.sessions.lock().await.insert(id.to_string(), s);
         }
         let needs_load = self
@@ -190,13 +215,29 @@ impl Adapter {
             if self.capabilities.lock().await["loadSession"] != true {
                 return Err(unsupported("session/load"));
             }
-            let cwd = {
+            let (cwd, workspace) = {
                 let mut sessions = self.sessions.lock().await;
                 let s = sessions
                     .get_mut(id)
                     .ok_or_else(|| error("Session unavailable"))?;
-                text(&s.info, "cwd").to_string()
+                (
+                    text(&s.info, "cwd").to_string(),
+                    s.binding.workspace.clone(),
+                )
             };
+            if let Some(workspace) = &workspace {
+                let resolved = workspace
+                    .selection
+                    .clone()
+                    .resolve()
+                    .await
+                    .map_err(|e| error(format!("Restore bound workspace: {e:#}")))?;
+                if tokio::fs::canonicalize(&cwd).await.ok().as_ref() != Some(&resolved.cwd) {
+                    return Err(error(
+                        "The saved conversation directory differs from its workspace; preserve the binding for recovery",
+                    ));
+                }
+            }
             let mut servers = self.mcp.servers(id).await;
             if servers.is_empty() {
                 let path = self.queue_path(id).with_extension("tools.json");

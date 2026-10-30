@@ -27,8 +27,28 @@ unchanged. The source workspace and original filesystem checkout are preserved.
 Draft edits invalidate review. Incomplete previews disable Apply; the current
 view bounds patches to 128 KiB and fewer than 200 changed paths per side.
 
-Conversation-to-workspace binding and automatic isolated delegation are still
-in development. The reviewed merge UI is newer than the alpha.1 release.
+Select a workspace and choose **Open conversation in workspace** to bind a
+Goose chat to it. Its vwork tools use that workspace by default, and ordinary
+shell tools start in a separate scratch directory under the store. Repository
+content stays compressed; use vwork tools and its temporary checkout/build
+operations for source work. The workspace default is not an OS sandbox: vwork
+still accepts explicit workspace IDs, preserving upstream behavior.
+
+**Fork virtual workspace** (also `/worktree` and the conversation Fork action)
+copies the conversation through Goose's public storage API and forks the vwork
+revision. The child gets a separate scratch directory, inherited tools and a
+persisted parent reference. It starts no turn automatically and inherits no
+schedule. A partial conversation fork remains hidden until its bindings are
+saved. Rewind uses a stored message ID, preserving earlier messages even when
+timestamps match. Workspace forks currently require a bound conversation and
+explicit workspace defaults for every vwork extension. Ordinary unbound chats
+must first be opened from the Virtual window to use this action.
+
+Bindings survive restart; reopening uses their saved tools and workspace instead
+of new-chat defaults. Global Goose plugins and Fastrock's vwork policy remain in
+use. Project-local plugin discovery from compressed source and automatic isolated
+agent delegation remain in development. These changes and the reviewed merge UI
+are newer than the alpha.1 release.
 
 The sections below document historical 0.3.x behavior only.
 

@@ -105,6 +105,11 @@ export component VirtualWorkspaceWindow inherits Window {
                     enabled: root.workspace-selected && !root.workspace-busy && !root.workspace-dirty && name.text != "";
                     clicked => {root.action("virtual-fork:" + name.text);}
                 }
+                Button {
+                    text: "Open conversation in workspace";
+                    enabled: root.workspace-selected && !root.workspace-busy && !root.workspace-dirty;
+                    clicked => {root.action("virtual-chat");}
+                }
                 Text {text: "Merge into selected workspace"; color: Theme.text; wrap: word-wrap;}
                 LineEdit {
                     text: root.merge-source;

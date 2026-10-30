@@ -121,6 +121,8 @@ V48: Native windows ! one embedded backend/store owner; callbacks, timers, async
 
 V49: Explicit workspace integration ! review source/target changes, preserve source and checkout, guard both reviewed heads under exclusive owner lock; stale review/conflicts ! no merge writes. Incomplete review ! Apply disabled; successful dispatch consumes review. Verify: v49 integration/browser tests and native vwork merge fixture.
 
+V50: Bound conversation ! persisted workspace default and separate scratch cwd; native open ! clean draft/current response. Fork ! unchanged Goose public storage, isolated vwork revision, exact message boundary, preserved parent/history/tools, no inherited schedule or automatic run. Partial fork ! hidden until bindings saved; restart ! original bindings. Verify: v50 workspace/browser/fork-storage tests and native fork/restart fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -170,8 +172,8 @@ T34|x|Widen text selection hit areas, selectable tool/command details, Windows i
 T35|x|Record accepted 0.4.0 contract, optimized profiles and Windows-only release policy; policy audit passed, games ReleasePolicy 3 passed/1 Apple-only skipped|V46,I.distribution
 T36|~|Embedded session/prompt/close and three Runtime routes verified on games fixtures; live profiles require user validation|V38,V39,I.goose
 T37|~|Replace external backend/core bridges with embedded Goose; remove Codex UI/connection, preserve Goose configuration|V38,V39,I.goose
-T38|~|Embed vwork Engine/tools/browser/compaction; reviewed explicit integration; compressed current-summary table in same redb|V40,V49,I.vwork
-T39|~|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; no quotas|V41,I.orchestration
+T38|~|Embed vwork Engine/tools/browser/compaction; bound conversations and reviewed explicit integration; compressed current-summary table in same redb|V40,V49,V50,I.vwork
+T39|~|Port applicable T3 V2 orchestration, delegation/workspaces/scheduling/durable recovery; isolated conversation forks; no quotas|V41,V50,I.orchestration
 T40|~|Native T3 main UI/sidebar/panels, repository projects and permanent independent Rally project|V42,I.questions,I.links
 T41|x|Background per-turn summary replacement/backfill and immediate bounded deterministic search|V40,V44,I.search,I.summaries
 T42|~|Lossless compressed transcript cache, incremental rendering and efficient arbitrary scrolling|V1,V9,V32,V37,V43,I.scroll

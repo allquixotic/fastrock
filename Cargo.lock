@@ -3459,21 +3459,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "codex-worktree"
-version = "0.162.0"
-source = "git+https://github.com/openai/codex?rev=c1382380de69521303b416720a52f42d51af6248#c1382380de69521303b416720a52f42d51af6248"
-dependencies = [
- "anyhow",
- "codex-git-utils",
- "codex-protocol",
- "dunce",
- "serde",
- "serde_json",
- "tempfile",
- "uuid",
-]
-
-[[package]]
 name = "color_quant"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5007,7 +4992,6 @@ dependencies = [
  "codex-utils-cli",
  "codex-utils-home-dir",
  "codex-utils-path-uri",
- "codex-worktree",
  "csv",
  "dirs 6.0.0",
  "dunce",

@@ -186,6 +186,17 @@ class ProviderFixture:
                     operation = ('files_read', dict(workspace='task', path='src/main.rs', binary=True))
                 elif step == 1:
                     operation = ('files_stat', dict(workspace='task', paths=['src/main.rs']))
+            elif prompt in ('vwork-bound-parent', 'vwork-parent-restored', 'vwork-child-restored'):
+                if step == 0:
+                    operation = ('files_read', dict(path='src/main.rs', binary=True))
+            elif prompt == 'vwork-child-edit':
+                if step == 0:
+                    operation = ('files_read', dict(path='src/main.rs'))
+                elif step == 1:
+                    operation = ('files_write', dict(path='src/main.rs', expected_revision=result['revision'],
+                        content='fork isolated λ\r\n', mode='100755'))
+                elif step == 2:
+                    operation = ('files_read', dict(path='src/main.rs', binary=True))
             if operation:
                 content.append(tool(*operation))
         elif not summary and not tool_result:

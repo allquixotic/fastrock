@@ -237,3 +237,26 @@ async fn v49_review_excludes_active_operations_and_rejects_unrelated_workspaces(
         })
         .unwrap();
 }
+
+#[tokio::test]
+async fn v50_workspace_workdirs_are_stable_separate_and_preserve_checkout() {
+    use fastrock_workspaces::session::Selection;
+    let f = Fixture::new().await;
+    let selected = |name: &str| Selection {
+        home: f._temp.path().join("state"),
+        workspace: name.into(),
+    };
+    let parent = selected("parent").resolve().await.unwrap();
+    let child = selected("child").resolve().await.unwrap();
+    assert_eq!(parent, selected("parent").resolve().await.unwrap());
+    assert_ne!(parent.cwd, child.cwd);
+    assert!(parent.cwd.starts_with(&parent.selection.home));
+    assert!(!parent.cwd.starts_with(&f.root));
+    std::fs::write(child.cwd.join("scratch.txt"), "child only").unwrap();
+    assert!(!parent.cwd.join("scratch.txt").exists());
+    assert_eq!(
+        std::fs::read_to_string(f.root.join("file.txt")).unwrap(),
+        "original\n"
+    );
+    assert!(selected("missing").resolve().await.is_err());
+}

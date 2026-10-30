@@ -976,3 +976,30 @@ Development executable SHA-256:
 `6d497f4e0998bc7ff00bcac8c83d370ea504a99305f579be08b54b2360774450`.
 This step is not part of the already published alpha.1 package; automatic
 conversation/delegation bindings remain open.
+
+
+## 0.4.0 workspace-bound chats and forks — 2026-10-29
+
+The development branch adds **Open conversation in workspace** and replaces the
+external Git worktree action with an in-process vwork fork plus unchanged Goose
+public session-storage calls. It removes the `codex-worktree` dependency. The
+source conversation, source vwork revision and filesystem checkout remain intact;
+child bindings and lineage survive restart. Partial forks remain hidden until
+bindings are saved. Same-second rewind uses message IDs, and manual forks do not
+inherit schedules or run automatically.
+
+Windows cross-compilation and Mac compatibility checking passed. On `games`,
+704 application tests, one isolated native rendering test, 15 workspace tests and
+the standalone embedded Goose provider/summary fixture passed. Six retired Git
+worktree tests were removed with that implementation; two application regressions
+and one workspace regression were added. The extended native vwork fixture
+passed merge, binding, copied history, child-only edits and restart checks with a
+167,325,696-byte peak under its 2 GB process guard. No live models or Rally writes
+were used. The native screenshot was inspected.
+
+Tested executable SHA-256:
+`b1cce23ecf3d9655e6bc1670f0dadff9227c3d70becafcf6938d04b6a4d4317f`.
+Evidence: `C:\Users\SeanMcNamara\fastrock-040-policy\binding-native-1` and
+`binding-*.log`. This development executable is not a release asset. Published
+alpha.1 remains the CI-built, signed milestone recorded above; final 0.4.0 still
+requires the remaining SPEC tasks and the user's live-profile validation.

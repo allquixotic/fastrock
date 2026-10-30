@@ -235,7 +235,7 @@ pub(crate) const COMMANDS: &[SlashSpec] = &[
         command: SlashCommand::Worktree,
         name: "worktree",
         aliases: &[],
-        description: "Continue this thread in a new Git worktree",
+        description: "Fork this thread into an isolated virtual workspace",
     },
     SlashSpec {
         command: SlashCommand::Logout,

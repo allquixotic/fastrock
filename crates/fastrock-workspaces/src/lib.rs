@@ -9,6 +9,7 @@ pub mod embedded;
 pub mod integration;
 pub mod scrollback;
 pub mod search;
+pub mod session;
 pub mod summaries;
 pub mod vwork;
 
@@ -82,6 +83,9 @@ pub enum Request {
         source: String,
     },
     Merge(integration::MergeReview),
+    OpenConversation {
+        workspace: String,
+    },
     Diff {
         workspace: String,
     },
@@ -103,6 +107,7 @@ pub enum Reply {
     Created(Workspace),
     MergeReview(integration::MergeReview),
     MergeResult(integration::MergeResult),
+    Conversation(session::WorkspaceSession),
     Report(String),
 }
 #[derive(Debug, Error)]

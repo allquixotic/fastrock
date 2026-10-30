@@ -40,6 +40,7 @@ pub(crate) const HISTORY_ITEM_PAGE_LIMIT: u32 = 100;
 /// Settings chosen when opening a new thread.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct NewThreadOptions {
+    pub(crate) workspace: Option<fastrock_workspaces::session::Selection>,
     pub(crate) model: Option<String>,
     pub(crate) model_provider: Option<String>,
     pub(crate) approval_policy: Option<AskForApproval>,
@@ -65,6 +66,9 @@ pub(crate) fn thread_start(
             history_mode: (!options.ephemeral).then_some(ThreadHistoryMode::Paginated),
             thread_source: Some(ThreadSource::User),
             dynamic_tools: options.dynamic_tools,
+            config: options.workspace.map(|workspace| {
+                [("fastrock.workspace".into(), serde_json::json!(workspace))].into()
+            }),
             ..ThreadStartParams::default()
         },
     }

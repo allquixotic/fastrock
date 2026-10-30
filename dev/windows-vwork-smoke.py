@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sqlite3
 import sys
 from embedded_provider_fixture import ProviderFixture, ProcessGuard
 
@@ -89,6 +90,9 @@ try:
                 virtual('action', 'virtual-discard'), virtual('action', 'virtual-merge-review'), {'wait': 500},
                 virtual('action', 'virtual-merge-apply'), {'wait': 500}, *dump('merged'),
                 virtual('file', '0'), {'wait': 500}, *dump('merged-file'),
+                virtual('action', 'virtual-chat'), {'wait': 800}, {'wait_idle': 30000},
+                *turn('vwork-bound-parent'), {'tab_action': 'worktree'}, {'wait': 800}, {'wait_idle': 30000},
+                *turn('vwork-child-edit'), {'transcript': 'export-complete:' + str(out / 'fork-history.md')}, {'wait': 300},
                 {'quit': True}], 'enabled', env)
     load = lambda name: json.loads((out / (name + '.json')).read_text(encoding='utf-8'))
     database = load('database-only')
@@ -114,6 +118,31 @@ try:
     assert not merged['canMerge'] and 'Merge applied' in merged['report'], merged
     assert load('merged-file')['text'] == 'child change λ\r\n', load('merged-file')
     assert (out / 'merge-review.png').stat().st_size > 1000
+    bindings = [json.loads(p.read_text(encoding='utf-8')) for p in out.rglob('*.binding.json')]
+    assert len(bindings) == 2, bindings
+    child_binding = next(b for b in bindings if b['forked_from'])
+    parent_binding = next(b for b in bindings if not b['forked_from'])
+    assert parent_binding['workspace']['selection']['workspace'] == 'task', bindings
+    assert child_binding['workspace']['selection']['workspace'].startswith('fork-'), bindings
+    assert parent_binding['workspace']['cwd'] != child_binding['workspace']['cwd'], bindings
+    parent_id = child_binding['forked_from']
+    database_path, = (out / 'goose').rglob('sessions.db')
+    with sqlite3.connect(database_path) as database:
+        rows = database.execute('SELECT id, working_dir FROM sessions').fetchall()
+        child_id, = [sid for sid, cwd in rows if cwd == child_binding['workspace']['cwd']]
+        parent_messages = database.execute('SELECT content_json FROM messages WHERE session_id = ? ORDER BY id', (parent_id,)).fetchall()
+        child_messages = database.execute('SELECT content_json FROM messages WHERE session_id = ? ORDER BY id', (child_id,)).fetchall()
+        assert child_messages[:len(parent_messages)] == parent_messages, 'Fork lost conversation history'
+    peak = max(peak, run([{'wait_ready': 30000}, {'resume': 'goose:' + parent_id}, {'wait': 800},
+        {'wait_idle': 30000}, {'click_text': 'Resume'}, {'wait': 500}, *turn('vwork-parent-restored'),
+        {'resume': 'goose:' + child_id}, {'wait': 800}, {'wait_idle': 30000},
+        {'click_text': 'Resume'}, {'wait': 500}, *turn('vwork-child-restored'), {'quit': True}], 'restored', env))
+    for prompt, expected in [('vwork-bound-parent', b'child change \xce\xbb\r\n'),
+                             ('vwork-parent-restored', b'child change \xce\xbb\r\n'),
+                             ('vwork-child-restored', b'fork isolated \xce\xbb\r\n')]:
+        result, = [r['result'] for r in provider.workspace_results if r['prompt'] == prompt]
+        assert base64.b64decode(result['base64']) == expected, (prompt, result)
+    assert (repo / 'src/main.rs').read_bytes() == original, 'Fork touched source checkout'
     # Vwork is always available in 0.4.0, including without legacy configuration.
     default_env = provider.environment(out / 'default')
     peak = max(peak, run([{'wait_ready': 30000}, {'wait': 1000}, virtual('open'),
@@ -123,7 +152,8 @@ try:
         binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(), peak_process_bytes=peak,
         native_window=True, compaction_preserves_draft=True, conflict_preserves_draft=True,
         revision_checked_save=True, source_checkout_preserved=True, no_backend_installed=True,
-        default_embedded_database=True, reviewed_child_merge=True), indent=2), encoding='utf-8')
+        default_embedded_database=True, reviewed_child_merge=True, bound_conversation=True,
+        isolated_conversation_fork=True, copied_history=True, binding_survives_restart=True), indent=2), encoding='utf-8')
     print('PASS: embedded vwork, native edits/compaction/conflicts, source preservation, no installed backends')
 finally:
     provider.close()
