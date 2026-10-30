@@ -1,0 +1,128 @@
+import { ComboBox, LineEdit, TextEdit, ListView, ScrollView } from "std-widgets.slint";
+import { Theme, FlatButton } from "theme.slint";
+export struct CapabilityRow { key: string, title: string, detail: string, enabled: bool, protected: bool, configured: bool }
+export global CapabilityState {
+    in property <[CapabilityRow]> rows;
+    in property <[CapabilityRow]> session-extensions;
+    in property <[string]> sessions;
+    in property <int> session-index: -1;
+    in property <int> section;
+    in property <string> selected;
+    in property <string> description;
+    in property <bool> selected-protected;
+    in property <bool> selected-enabled;
+    in property <bool> busy;
+    in property <string> status;
+    in property <bool> code-mode;
+    in property <bool> editing-hooks;
+    in-out property <bool> dirty;
+    in-out property <string> hook-text;
+    in-out property <bool> adding;
+    in-out property <string> name;
+    in-out property <int> transport;
+    in-out property <string> address;
+    in-out property <string> args: "[]";
+    in-out property <string> keys;
+    callback action(action: string);
+    callback choose-session(index: int);
+    callback choose-section(index: int);
+    callback select(key: string);
+    callback remove-extension(key: string);
+}
+component Entry inherits Rectangle {
+    in property <CapabilityRow> item;
+    height: 62px;
+    background: item.key == CapabilityState.selected ? Theme.selected : touch.has-hover ? Theme.hover : transparent;
+    border-radius: Theme.radius-small;
+    VerticalLayout {
+        padding: Theme.pad-m; spacing: 3px;
+        Text { text: item.title; color: Theme.text; font-weight: 600; overflow: elide; }
+        Text { text: item.detail; color: Theme.text-muted; overflow: elide; }
+    }
+    touch := TouchArea { enabled: !CapabilityState.busy && !CapabilityState.dirty; mouse-cursor: pointer; clicked => { CapabilityState.select(root.item.key); } }
+}
+export component CapabilitiesPage inherits Rectangle {
+    ScrollView {
+        content-height: content.preferred-height;
+        content := VerticalLayout {
+            padding: Theme.pad-xl; spacing: Theme.pad-m; alignment: start;
+            HorizontalLayout {
+                Text { text: "Goose capabilities"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; horizontal-stretch: 1; }
+                FlatButton { text: "Refresh"; enabled: !CapabilityState.busy && !CapabilityState.dirty; clicked => { CapabilityState.action("refresh"); } }
+            }
+            HorizontalLayout {
+                FlatButton { text: "Extensions"; checked: CapabilityState.section == 0; enabled: !CapabilityState.busy && !CapabilityState.dirty; clicked => { CapabilityState.choose-section(0); } }
+                FlatButton { text: "Conversation tools"; checked: CapabilityState.section == 1; enabled: !CapabilityState.busy && !CapabilityState.dirty; clicked => { CapabilityState.choose-section(1); } }
+                FlatButton { text: "Hooks"; checked: CapabilityState.section == 2; enabled: !CapabilityState.busy && !CapabilityState.dirty; clicked => { CapabilityState.choose-section(2); } }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            if CapabilityState.section != 0: ComboBox {
+                model: CapabilityState.sessions; current-index: CapabilityState.session-index;
+                enabled: !CapabilityState.busy && !CapabilityState.dirty;
+                selected(value) => { CapabilityState.choose-session(self.current-index); }
+            }
+            Text {
+                text: CapabilityState.section == 0 ? "Extension defaults apply to new conversations. Commands may start configured MCP extensions. Existing Goose credentials and environment references are preserved."
+                    : CapabilityState.section == 1 ? "Select an open conversation. Code mode and extension removal apply to that conversation while idle. Tool permission choices are shared by Goose across conversations."
+                    : "Goose discovers hooks from installed plugins. Changes take effect in newly activated sessions. Project settings can override a plugin’s enabled default. Fastrock’s vwork policy is managed automatically.";
+                color: Theme.text-muted; wrap: word-wrap;
+            }
+            if CapabilityState.section == 1: HorizontalLayout {
+                FlatButton { text: CapabilityState.code-mode ? "Disable code mode" : "Enable code mode"; enabled: !CapabilityState.busy && CapabilityState.session-index >= 0; clicked => { CapabilityState.action("code-mode"); } }
+                Text { text: "Runs JavaScript tool composition inside Goose."; color: Theme.text-muted; wrap: word-wrap; }
+            }
+            if CapabilityState.section == 1 && CapabilityState.session-extensions.length > 0: ListView {
+                height: 135px;
+                for row in CapabilityState.session-extensions: HorizontalLayout {
+                    height: 36px; spacing: Theme.pad-m;
+                    Text { text: row.title; color: Theme.text; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                    FlatButton { text: row.protected ? "Managed by Fastrock" : "Remove from chat"; enabled: !row.protected && !CapabilityState.busy; clicked => { CapabilityState.remove-extension(row.key); } }
+                }
+            }
+            ListView { height: CapabilityState.editing-hooks ? 160px : 280px; for row in CapabilityState.rows: Entry { item: row; } }
+            if CapabilityState.description != "": Text { text: CapabilityState.description; color: Theme.text-muted; wrap: word-wrap; }
+            if CapabilityState.selected != "" && CapabilityState.section != 1: HorizontalLayout {
+                FlatButton { text: CapabilityState.selected-enabled ? "Disable default" : "Enable default"; enabled: !CapabilityState.busy && !CapabilityState.selected-protected && !CapabilityState.dirty; clicked => { CapabilityState.action("toggle"); } }
+                if CapabilityState.section == 2: FlatButton { text: "Edit hooks"; enabled: !CapabilityState.busy && !CapabilityState.selected-protected && !CapabilityState.dirty; clicked => { CapabilityState.action("hooks-read"); } }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            if CapabilityState.selected != "" && CapabilityState.section == 1: HorizontalLayout {
+                FlatButton { text: "Always allow"; enabled: !CapabilityState.busy && !CapabilityState.selected-protected; clicked => { CapabilityState.action("always_allow"); } }
+                FlatButton { text: "Ask before"; enabled: !CapabilityState.busy && !CapabilityState.selected-protected; clicked => { CapabilityState.action("ask_before"); } }
+                FlatButton { text: "Never allow"; enabled: !CapabilityState.busy && !CapabilityState.selected-protected; clicked => { CapabilityState.action("never_allow"); } }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            if CapabilityState.section == 2 && !CapabilityState.editing-hooks: VerticalLayout {
+                spacing: Theme.pad-m;
+                HorizontalLayout {
+                    LineEdit { text <=> CapabilityState.name; placeholder-text: "New user hook plugin name"; enabled: !CapabilityState.busy; }
+                    FlatButton { text: "Create hook plugin"; enabled: !CapabilityState.busy; clicked => { CapabilityState.action("plugin-create"); } }
+                }
+                Text { text: "New plugins start disabled. Edit their hooks, then enable the default when ready."; color: Theme.text-faint; wrap: word-wrap; }
+            }
+            if CapabilityState.editing-hooks && CapabilityState.section == 2: VerticalLayout {
+                spacing: Theme.pad-m;
+                Text { text: "hooks.json · commands run only on their configured Goose events. Save retains the previous file as a backup."; color: Theme.text-muted; wrap: word-wrap; }
+                TextEdit { height: 240px; text <=> CapabilityState.hook-text; enabled: !CapabilityState.busy; edited => { CapabilityState.dirty = true; } }
+                HorizontalLayout {
+                    FlatButton { text: "Save hooks"; enabled: !CapabilityState.busy && CapabilityState.dirty; clicked => { CapabilityState.action("hooks-save"); } }
+                    FlatButton { text: "Discard hook edits"; enabled: !CapabilityState.busy; clicked => { CapabilityState.action("hooks-discard"); } }
+                    Rectangle { horizontal-stretch: 1; }
+                }
+            }
+            if CapabilityState.section == 0: FlatButton { text: CapabilityState.adding ? "Close new extension" : "Add MCP extension"; enabled: !CapabilityState.busy; clicked => { CapabilityState.adding = !CapabilityState.adding; } }
+            if CapabilityState.section == 0 && CapabilityState.adding: VerticalLayout {
+                spacing: Theme.pad-m;
+                LineEdit { text <=> CapabilityState.name; placeholder-text: "Extension name"; enabled: !CapabilityState.busy; }
+                ComboBox { model: ["Command (stdio)", "HTTP MCP"]; current-index <=> CapabilityState.transport; enabled: !CapabilityState.busy; }
+                LineEdit { text <=> CapabilityState.address; placeholder-text: CapabilityState.transport == 0 ? "Executable path or command" : "MCP URL without embedded credentials"; enabled: !CapabilityState.busy; }
+                if CapabilityState.transport == 0: LineEdit { text <=> CapabilityState.args; placeholder-text: "Non-secret arguments as a JSON array"; enabled: !CapabilityState.busy; }
+                LineEdit { text <=> CapabilityState.keys; placeholder-text: "Existing Goose credential / environment key names, comma separated"; enabled: !CapabilityState.busy; }
+                Text { text: "Use existing Goose credential keys for secrets. New extensions are saved disabled; enable their default when ready."; color: Theme.text-faint; wrap: word-wrap; }
+                FlatButton { text: "Save extension"; enabled: !CapabilityState.busy; clicked => { CapabilityState.action("add"); } }
+            }
+            if CapabilityState.status != "": Text { text: CapabilityState.status; color: Theme.text-muted; wrap: word-wrap; }
+            if CapabilityState.busy: Text { text: "Loading Goose capabilities…"; color: Theme.text-faint; }
+        }
+    }
+}

@@ -1450,3 +1450,30 @@ Executable SHA-256 `83c72f8add308112b3e7c32628c24f59f440bcbd09912703a6e2e3ca89a6
 checkpoint fixture peak 150,126,592 bytes under its 2 GB guard. Goose capability
 controls, final T3 audit and full RC acceptance remain open. No release tag or
 binary publication.
+
+## Native Goose capability controls — 2026-10-30
+
+Settings → Tools & hooks now manages extension defaults, new MCP definitions,
+per-chat code mode and extension removal, shared Goose tool permission choices,
+plugin enablement and native hook-file editing. New user hook plugins can be
+created in the app and start disabled. Config edits preserve unfamiliar entries
+and credential references; hook saves retain backups and reject stale/invalid
+content. Fastrock workspace bindings and bundled policy remain protected. Native
+startup/settings validation preserves malformed Goose configuration before its
+public write APIs can recover it as empty. Goose source remains unchanged.
+
+745 application tests and standalone embedded Goose passed on games. The native
+fixture executed JavaScript code mode through the real Goose platform extension
+and observed its MCP call, verified all three tool permission choices, extension
+default persistence, creation of a disabled hook plugin, actual Stop-hook
+execution, original hook backup, active-turn refusal, closed-chat selection
+recovery, credential preservation and no foreground replay after restart.
+Authorized background summary backfill was observed separately after a cancelled
+turn. Mac compilation passed; native screenshot inspection confirmed compact
+controls and bounded list views. No Mac application tests or GUI execution.
+
+Receipt: `docs/benchmarks/capabilities-games-2026-10-30.json`. Native evidence:
+`C:\Users\SeanMcNamara\fastrock-040-policy\capability-native-5`. SHA-256
+`4c2a33b212a944f5b83369a83f74f7f32336341a43efe3d06dca548243387c2c`;
+peak 143,155,200 bytes under the 2 GB fixture guard. Recipes, final T3 audit and
+full RC acceptance remain open. No released binary or tag.

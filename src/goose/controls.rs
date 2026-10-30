@@ -8,6 +8,7 @@ impl AppController {
         self.goose_setup_install();
         self.effort_controls_install();
         self.profiles_install();
+        self.capabilities_install();
         self.schedules_install();
         self.window
             .global::<GooseState>()

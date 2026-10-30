@@ -117,6 +117,7 @@ fn read(config: &Config) -> Result<Setup> {
 }
 
 fn write(config: &Config, expected: &Setup, desired: &Setup) -> Result<Setup> {
+    super::config_guard::validate(config)?;
     desired.validate()?;
     ensure!(
         read(config)? == *expected,

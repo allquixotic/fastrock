@@ -18,6 +18,7 @@ fn read(config: &Config) -> Result<Defaults> {
 }
 
 fn write(config: &Config, provider: &str, model: &str, value: Option<&str>) -> Result<()> {
+    super::config_guard::validate(config)?;
     for field in [provider, model].into_iter().chain(value) {
         ensure!(
             !field.is_empty() && field.len() <= 1024 && !field.chars().any(char::is_control),

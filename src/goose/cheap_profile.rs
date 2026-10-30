@@ -54,6 +54,7 @@ pub(super) async fn load() -> Result<CheapProfile> {
 pub(super) async fn save(profile: CheapProfile) -> Result<()> {
     profile.validate()?;
     tokio::task::spawn_blocking(move || {
+        super::config_guard::validate(Config::global())?;
         Config::global()
             .set_param(KEY, &profile)
             .context("Save cheap model profile")

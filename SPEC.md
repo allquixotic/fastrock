@@ -151,6 +151,10 @@ V62: Checkpoints ! immutable turn/manual metadata compressed in owning vwork red
 
 V63: Conversation rewind ! unchanged Goose public storage API, completed-message boundary, idle/isolated ownership and stale-content guard. Combined restore ! durable original conversation/revision before mutation; interruption ! review-only, queues paused, no automatic replay. Recoverable backup ! retained; unrelated profiles/settings/history ! preserved. Verify: v63 boundary/journal/failure/restart tests and native file/conversation restore/recovery fixture.
 
+V64: Native Goose capabilities ! public APIs, off-UI IO, bounded catalog, idle-session edits, immutable Fastrock tool bindings, including custom vwork aliases. Extension/plugin defaults ! atomic guarded edits preserving unknown fields/credentials; new definitions ! no inline secret fields. Hook edits ! explicit Save, bounded valid schema, stale guard and retained backup; bundled vwork policy ! protected. Code mode ! public in-process platform extension. Verify: v64 config preservation/validation/stale tests and native extension/tool/code-mode/hook fixture.
+
+V65: Native Goose startup/settings writes ! reject malformed or oversized writable config before public APIs can recover it as empty. Original bytes ! retained; parser diagnostics ! never expose credential-bearing lines. Verify: v65_malformed_goose_config_is_preserved_before_capability_edits.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -212,7 +216,7 @@ T46|x|Native command palette with bounded matching, keyboard/pointer navigation 
 T47|x|Native interactive terminal panels with isolated user-requested processes, bounded scrollback and lifecycle checks|V38,V42,V43,V47,V61
 T48|x|Conversation checkpoint/review/restore workflows over guarded vwork revisions|V40,V41,V42,V49,V62,V63,I.checkpoints
 T49|x|Saved profile effort defaults through supported Goose APIs and native selection|V39,V52,V59
-T50|.|Complete native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42
+T50|~|Complete native Goose tools/hooks/recipes/code-mode integration and acceptance|V38,V39,V42,V64,V65
 T51|.|Resolve summary timeout evidence and complete T3 interaction/visual acceptance audit|V42,V44
 
 V53 verification, 2026-10-29: games 708 application + one renderer + 17 workspace tests and standalone embedded Goose fixture passed; native history navigation/selection/stream/export passed. Full 1,000/eight/10,000 workload passed, 217,894,912 peak process bytes; arbitrary 100-entry pages restored in 4–6 ms. Recent-frame p95 10.380 ms exceeds earlier 0.3.4 baseline 8.487 ms; no general scrolling-speedup claim. Mac compile only passed. Evidence: docs/PORT-VERIFICATION.md and docs/benchmarks/scale-history-games-2026-10-29.json. T42/T44 remain open for remaining acceptance.
@@ -239,6 +243,8 @@ Tray lifecycle verification, 2026-10-29: native Slint tray, last-window close pr
 Terminal verification, 2026-10-30: 735 application tests, 18 workspace tests, renderer, standalone embedded Goose and full native terminal fixture passed on games. Guarded import/stale revision/recovery, VT/input bounds, final-output retention, closed-history scroll/resize, native copy/paste/Ctrl+C, Escape/palette focus during streaming, detached output anchoring, process ownership, chat/Quit cleanup and no restart replay verified. Native palette and three-turn/two-window/Rally/tray regressions passed. Mac compile/static audits passed, no Mac execution. Terminal peak 163,041,280 bytes; SHA-256 `890b9fd23e6ec191f0b19b3e96877b41519be4cc2509fc551bc019014c5708e2`; receipt `docs/benchmarks/terminal-games-2026-10-30.json`. T47 complete; checkpoints/capability/T3 acceptance remain open. No release tag.
 
 Checkpoint verification, 2026-10-30: 738 application tests, 24 workspace tests, renderer, standalone Goose and native checkpoint fixture passed on games. Exact boundary/config preservation, GC pins, concurrent capture, stale/incomplete review, leases, file/conversation restore, durable partial-restore recovery and approved uncertain-tool read-only loading verified. Terminal/palette/summary/two-window/Rally/tray regressions passed. Mac compile/static checks passed. SHA-256 `83c72f8add308112b3e7c32628c24f59f440bcbd09912703a6e2e3ca89a69989`, peak 150,126,592 bytes; receipt `docs/benchmarks/checkpoints-games-2026-10-30.json`. T48 complete; T50/T51/full acceptance open. No release tag.
+
+Capability controls verification, 2026-10-30: 745 application tests and standalone embedded Goose passed on games. Native extension defaults/add, permission persistence, actual in-process code-mode MCP call, idle mutation guard, new disabled hook plugin, validated/backup hook save, actual Stop hook execution, closed-selection recovery, credential preservation and restart without foreground replay passed. Background summary backfill remains authorized. Native layout screenshot inspected; Mac compile passed. SHA-256 `4c2a33b212a944f5b83369a83f74f7f32336341a43efe3d06dca548243387c2c`, peak 143,155,200 bytes. T50 remains open for recipes; T51/full acceptance open. No release tag.
 
 ## §B BUGS
 id|date|cause|fix
@@ -492,3 +498,22 @@ B159|2026-10-30|Upstream session/load activates pending or already-approved tool
 B160|2026-10-30|Recovery projection moved non-Copy Role; test used Value for JsonObject and Display for Vec|Borrow role, use object map and JSON serialization; compile oracle; V63
 B161|2026-10-30|Native recovery fault was compiled out because application profile disables debug assertions|Gate deliberate interruption on explicit UI automation plus fixture flag; rerun identical application bytes; V63
 B162|2026-10-30|Turn became idle before durable queue settlement and completion notification; restore could race the old completion event|Keep active until settled and emit completion under the state lock; deterministic queue-barrier test failed before fix; v63_turn_remains_busy_until_completion_is_durable_and_emitted; V41/V63
+
+B163|2026-10-30|Added direct regex dependency but metadata --no-deps did not refresh lockfile; locked build refused|Resolve offline once, then verify locked builds; V46
+
+B164|2026-10-30|Capability entry declared row, colliding with inherited Slint grid property|Use item property; native compile/fixture; V42
+
+B165|2026-10-30|Capability fixture hashed pre-migration input, but Goose adds platform defaults on read/write; first hash-order diagnosis was incomplete|Take revision from public loaded snapshot; canonicalize object order separately; v64 preservation/stale fixture; V64
+B166|2026-10-30|Capability fixture clicked conditional action in same event turn as row selection|Wait for native layout after selection; V42
+
+B167|2026-10-30|Goose public config read skips malformed YAML and write path can replace it as empty|Validate bounded writable config before startup/native edits; preserve bytes and redact parser details; V65
+
+B168|2026-10-30|Standalone Goose fixture imports shared settings modules by path and lacked new config guard dependency|Import guard in standalone harness; keep guard tests independent of app-only modules; V65
+
+B169|2026-10-30|New hook-plugin button was wired to a controller action absent from its dispatch match|Add explicit dispatch and native create/persist regression; V64
+
+B170|2026-10-30|Capability page ScrollView distributed spare height into oversized buttons and selector|Use preferred content height and top alignment; inspect native screenshot; V42
+
+B171|2026-10-30|Capability restart fixture counted authorized background summary backfill as foreground replay after cancellation|Assert no non-summary provider dispatch, retain all captured requests; V44,V47
+
+B172|2026-10-30|Capability protection used displayed names only; custom vwork alias could detach workspace tools|Protect configured vwork commands and persisted session binding aliases, exact tool prefix; V64

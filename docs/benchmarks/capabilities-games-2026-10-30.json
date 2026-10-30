@@ -1,0 +1,22 @@
+{
+  "result": "PASS",
+  "binary_sha256": "4c2a33b212a944f5b83369a83f74f7f32336341a43efe3d06dca548243387c2c",
+  "peak_process_bytes": 143155200,
+  "native_extensions": true,
+  "code_mode_tool_executed": true,
+  "tool_permissions_persisted": true,
+  "idle_mutation_guard": true,
+  "defaults_only_affect_new_chats": true,
+  "hook_validation_backup_execution": true,
+  "credentials_preserved": true,
+  "restart_no_replay": true,
+  "application_tests": 745,
+  "standalone_goose": "PASS",
+  "mac_library_compile": "PASS",
+  "native_evidence": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\capability-native-6",
+  "new_plugin_disabled_by_default": true,
+  "malformed_config_preserved": true,
+  "source_only": true,
+  "custom_workspace_alias_protected": true,
+  "regressions": "Profiles, effort, palette, summary/navigation/two windows/tray passed before alias-only correction; renderer passed."
+}

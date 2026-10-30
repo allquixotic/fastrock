@@ -205,6 +205,8 @@ class ProviderFixture:
                     dict(operation='update', kind='HierarchicalRequirement', ref=self.artifact, fields={'Name': 'AI reviewed title'})])))
             elif prompt == 'selection-tools':
                 content.append(tool('selection_tool', {'command': 'echo ' + 'argument-é ' * 25 + 'ARGUMENT_END'}))
+            elif prompt == 'capability-code-mode':
+                content.append(tool('execute_javascript', {'code': 'async function run() { return await tools.call("fixture__selection_tool", {command: "code-mode-fixture"}); }'}))
             elif prompt == 'benchmark-tools':
                 for index in range(6):
                     content.append(tool('benchmark_tool', {'fixture': index}))

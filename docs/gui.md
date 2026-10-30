@@ -112,3 +112,24 @@ Drafts, selections, proposals, unapplied filters and scroll positions travel wit
 the document; pending writes prevent transfer. Transfers use persisted ready,
 commit and acknowledgement states. Retired windows retain their drafts for
 recovery at the next main-window start.
+
+## Goose tools and hooks
+
+Settings → Tools & hooks lists Goose extension defaults and open conversations.
+Enable or disable extension defaults for new chats, or add a command/HTTP MCP
+extension. New extensions start disabled. Credential fields accept names of
+existing Goose vault/environment entries; the editor never writes secret values.
+Unknown configuration fields and existing credentials are preserved.
+
+Conversation tools shows the selected chat's active extensions and tool catalog.
+Code mode uses Goose's in-process JavaScript tool composition. Removing an
+extension affects only the idle selected chat; tool permission choices are Goose
+preferences shared across chats. Fastrock's workspace bindings remain managed.
+
+Hooks lists user/project plugins and their effective activity. Create a user hook
+plugin directly in the page; it starts disabled. Edit a plugin's
+hooks.json in the native editor, then Save or Discard. Save validates the bounded
+hook definitions, rejects stale edits and retains the original as a backup.
+Defaults and hooks apply to newly activated sessions. The bundled vwork policy is
+protected. Malformed Goose configuration is preserved and must be repaired before
+native settings can overwrite it.

@@ -1,7 +1,11 @@
 //! Embedded Goose adapter. Goose owns agents/config/storage; these are UI projections.
+mod capabilities;
+mod capability_config;
+pub(crate) mod capability_controls;
 mod cheap_profile;
 mod checkpoint_storage;
 mod checkpoints;
+mod config_guard;
 mod controls;
 mod delegation;
 mod delegation_tools;
@@ -120,6 +124,8 @@ pub(crate) async fn connect(
         .clone()
         .or_else(|| std::env::current_dir().ok())
         .ok_or_else(|| anyhow::anyhow!("Working directory unavailable"))?;
+    tokio::task::spawn_blocking(|| config_guard::validate(goose_runtime::config::Config::global()))
+        .await??;
     profiles::prepare().await?;
     hooks::prepare(cwd.clone()).await?;
     let connection = embedded::connect().await?;
@@ -537,6 +543,10 @@ impl Adapter {
                 )
             }
             "thread/start" => self.new_session(params).await,
+            method if method.starts_with("fastrock/capability/") => {
+                self.capability_request(params, method.rsplit('/').next().unwrap())
+                    .await
+            }
             method if method.starts_with("fastrock/schedule/") => {
                 self.schedule_request(params, method).await
             }

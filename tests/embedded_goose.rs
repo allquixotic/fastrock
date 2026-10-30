@@ -3,6 +3,8 @@
 mod benchmark_seed;
 #[path = "../src/goose/cheap_profile.rs"]
 mod cheap_profile;
+#[path = "../src/goose/config_guard.rs"]
+mod config_guard;
 #[path = "../src/goose/embedded.rs"]
 mod embedded;
 #[path = "../src/goose/summary_service.rs"]
