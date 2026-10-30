@@ -923,3 +923,33 @@ compilation, Mac compatibility check and static checks passed. No Mac execution.
 A negative heartbeat-loss run (`scale-stale-guard-1`) rejected scales 1, 10, 100
 and 1,000 before launching any seed/app process. Its expected nonzero outcome
 and empty phase records verify fail-closed monitoring and tenfold reduction.
+
+## 0.4.0-alpha.1 signed milestone
+
+[Release CI 40982537902](https://github.com/allquixotic/fastrock/actions/runs/40982537902)
+passed from `7042bcba492f03700de38c8cc07807f75966304e`. Windows and Mac compiled;
+Windows passed 706 application tests, one isolated native renderer test, nine
+workspace tests, the standalone embedded-Goose fixture, release policy and four
+watchdog tests. The Mac publishing job was intentionally skipped, and temporary
+runner 42 was removed after compilation.
+
+CI signed and timestamped the executable, then tested those exact bytes with
+embedded Goose streaming/cancellation, real vwork edits/conflicts/compaction,
+Rally human Apply, selection/clipboard, scrolling, per-turn summaries/search,
+two-window navigation, paused queues and process-crash recovery. All eight
+native fixture scenarios passed. They used only isolated local provider/Rally
+services and fixture credentials. Live user profiles remain unvalidated.
+
+[Fastrock 0.4.0-alpha.1](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-alpha.1)
+was published on 2026-10-30 UTC as a Windows x64 ZIP. Independent download checks
+matched GitHub's digest, the checksum file and the embedded build/signing receipt.
+Bundled provenance verified against the exact source, tag and release workflow.
+On games, the downloaded executable had Valid Authenticode from Sean McNamara
+and a Microsoft RFC3161 timestamp. ZIP SHA-256:
+`9b0a7227462618a72008907e9cc4280b9f77a6a2be593b8572901a62dc977479`.
+Executable SHA-256:
+`4b4f9ad2681d2f3d0741fe610a97fe1d39d5ef15499b134af439b7217e5197d8`.
+
+This is the embedded-runtime milestone, not final 0.4.0 acceptance. Repository
+and conversation workspace binding, remaining orchestration, auxiliary UI panels,
+arbitrary old-history navigation and live required-model validation remain open.

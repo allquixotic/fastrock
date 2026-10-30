@@ -1,0 +1,61 @@
+{
+  "release": "v0.4.0-alpha.1",
+  "source_commit": "7042bcba492f03700de38c8cc07807f75966304e",
+  "workflow_run": 40982537902,
+  "zip_sha256": "9b0a7227462618a72008907e9cc4280b9f77a6a2be593b8572901a62dc977479",
+  "games_signature": {
+    "status": "Valid",
+    "publisher": "CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US",
+    "timestampPublisher": "CN=Microsoft Public RSA Time Stamping Authority, OU=nShield TSS ESN:7800-05E0-D947, OU=Microsoft America Operations, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+    "sha256": "4B4F9AD2681D2F3D0741FE610A97FE1D39D5EF15499B134AF439B7217E5197D8"
+  },
+  "ci_native_fixtures": {
+    "goose-chat-smoke": {
+      "result": "PASS",
+      "binary_sha256": "4b4f9ad2681d2f3d0741fe610a97fe1d39d5ef15499b134af439b7217e5197d8",
+      "peak_process_bytes": 143912960
+    },
+    "process-recovery-smoke": {
+      "result": "PASS",
+      "binary_sha256": "4b4f9ad2681d2f3d0741fe610a97fe1d39d5ef15499b134af439b7217e5197d8",
+      "peak_process_bytes": 149663744
+    },
+    "queue-recovery-smoke": {
+      "result": "PASS",
+      "binary_sha256": "4b4f9ad2681d2f3d0741fe610a97fe1d39d5ef15499b134af439b7217e5197d8",
+      "peak_process_bytes": 151318528
+    },
+    "rally-smoke": {
+      "result": "PASS",
+      "binary_sha256": "4b4f9ad2681d2f3d0741fe610a97fe1d39d5ef15499b134af439b7217e5197d8",
+      "peak_process_bytes": 166203392
+    },
+    "selection-smoke": {
+      "result": "PASS",
+      "binary_sha256": "4b4f9ad2681d2f3d0741fe610a97fe1d39d5ef15499b134af439b7217e5197d8",
+      "peak_process_bytes": 159313920
+    },
+    "summary-smoke": {
+      "result": "PASS",
+      "binary_sha256": "4b4f9ad2681d2f3d0741fe610a97fe1d39d5ef15499b134af439b7217e5197d8",
+      "peak_process_bytes": 180551680
+    },
+    "vwork-smoke": {
+      "result": "PASS",
+      "binary_sha256": "4b4f9ad2681d2f3d0741fe610a97fe1d39d5ef15499b134af439b7217e5197d8",
+      "peak_process_bytes": 161820672
+    },
+    "scroll-smoke": {
+      "binary_sha256": "4b4f9ad2681d2f3d0741fe610a97fe1d39d5ef15499b134af439b7217e5197d8",
+      "peak_process_bytes": 162349056,
+      "frame_p95_ms": {
+        "prose": 5.562,
+        "table": 3.999,
+        "code": 3.391,
+        "tools": 4.281,
+        "streaming": 5.588
+      }
+    }
+  },
+  "live_provider_validation": false
+}

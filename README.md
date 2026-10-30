@@ -40,8 +40,10 @@ authorized opt-level 2 settings below.
 
 ## Test builds
 
-[Fastrock 0.3.4](https://github.com/allquixotic/fastrock/releases/tag/v0.3.4)
-is available as a signed Windows x64 ZIP. Extract it and run `fastrock.exe`.
+[Fastrock 0.4.0-alpha.1](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-alpha.1)
+is available as a signed Windows x64 ZIP with embedded Goose and vwork. Extract
+it and run `fastrock.exe`. This prerelease provides the embedded-runtime milestone;
+the outstanding 0.4.0 features and live-profile acceptance remain open.
 All release assets are built and published by CI. Current releases compile
 macOS for compatibility; historical Mac releases include signed, notarized DMGs.
 The 0.4.0 branch uses optimization level 2 for application code and dependencies,
