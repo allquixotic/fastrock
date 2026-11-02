@@ -2045,3 +2045,32 @@ scrolling speedup. Arbitrary 100-message history pages loaded in 4.6–11.7 ms.
 The signed CI matrix now includes compaction as its 35th case. All signed tests,
 packaging and provenance checks remain required before RC5 publication. Final
 0.4.0 still requires live-profile acceptance.
+
+### RC5 signed publication and independent verification
+
+[Fastrock 0.4.0-rc.5](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.5)
+was published by [CI run 41481527583](https://github.com/allquixotic/fastrock/actions/runs/41481527583)
+from `aacb908c9220ea589100ad2ee7307ff2645f5de3`. Windows passed 782 application
+tests, one isolated renderer test, 30 workspace tests, the standalone embedded
+Goose fixture, release-policy tests and watchdog tests. Both platforms compiled;
+no Mac application or tests ran, no Mac binaries were published, and the
+temporary build runner removed its registration.
+
+All 35 native acceptance cases passed on the exact signed executable in 931.83
+seconds. Manual compaction passed every lifecycle/history/context assertion,
+including restart, failure, Stop and disabled-command refusal. Summary-priority,
+supplementary catalog and all five scrolling scenarios also passed. These
+results supplement the full games benchmark above.
+
+The independently downloaded ZIP is 138,178,986 bytes, SHA-256
+`c17fa276aa9de98f1cfd4496c9a9e4e6d3a0b8c80d640d8aa9afc4d719b528b5`.
+The executable SHA-256 is
+`51c9a47eca407e44200dc6031d88a79f20599f61dd4496d4dfc1f111f4902fe8`.
+Checksum, build metadata, licenses and GitHub attestation matched the RC5 tag,
+source commit and release workflow. Read-only checks on games verified the
+expected Sean McNamara Authenticode publisher and Microsoft timestamp without
+launching the downloaded application.
+
+The [release receipt](benchmarks/rc5-release-ci-2026-11-02.json) records case
+results and artifact identities. RC5 acceptance is complete; final 0.4.0 remains
+subject to live-profile acceptance.
