@@ -272,8 +272,8 @@ T57|x|RC2 summary priority/config/hook fixes; 781 tests, eight native cases and 
 T58|x|Bounded native effort-control completion passed on games and signed RC4; 34 native cases, Rust suites, package/attestation/signature verified|V39,V54,V83,I.distribution
 
 T59|x|Restore manual compaction; games lifecycle/history/failure/scale and signed RC5 35-case matrix passed; Mac compile, package/attestation/signature verified|V38,V39,V41,V44,V63,V85
-T60|x|Windowless Goose hook inheritance; native visibility/output, related regressions, guarded scale and Mac/Windows compile passed|V38,V40,V44,V65,V73,V84,V86
-T61|x|Project fixture bounded native load/save/close waits; games project and console regressions passed|V79,V86
+T60|x|Windowless Goose hook inheritance; signed RC7 zero-popup/output regression, guarded scale and independent signature/provenance passed|V38,V40,V44,V65,V73,V84,V86
+T61|x|Project fixture bounded native load/save/close waits; games and all 36 signed RC7 native cases passed|V79,V86
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 

@@ -2128,3 +2128,37 @@ RC6 local regression and guarded full-scale benchmark evidence above.
 The corrected project fixture and real Goose console fixture both passed on
 games. [Native receipt](benchmarks/rc7-regressions-games-2026-11-02.json).
 The failed CI snapshots remain in [the RC6 timing receipt](benchmarks/rc6-ci-project-timing-failure-2026-11-02.json).
+
+### RC7 signed publication and independent verification
+
+[Fastrock 0.4.0-rc.7](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.7)
+was published by [CI run 41502766802](https://github.com/allquixotic/fastrock/actions/runs/41502766802)
+from `c54ac1b5eef7f373efd2a455ff5d0df87a28bc1f`. Windows passed 782 application tests,
+one isolated renderer test, 30 workspace tests, the standalone embedded Goose
+fixture, release-policy tests and watchdog tests. Both platforms compiled;
+no Mac application or tests ran, no Mac binaries were published, and the
+temporary build runner removed its registration.
+
+All 36 native cases passed on the exact signed executable in 939.69 seconds.
+The real Goose shell/hook fixture observed zero visible console windows while
+preserving stdout/stderr, hook payload delivery, shell exit code 7 and redirected
+application diagnostics. Project load and invalid-reference snapshots were
+settled before assertions. Compaction, summary-priority, the supplementary
+catalog fixture and all five scrolling scenarios also passed. The user confirmed
+that the affected machine runs Windows 11 24H2 or newer, which supports the
+windowless-console API. Goose source remains unchanged.
+
+The independently downloaded ZIP is 138,188,635 bytes, SHA-256
+`a08a2c89c30c4fcf434481964557a72ef281bb1715d234925825748719abaac2`.
+The executable SHA-256 is
+`8ec817a71bbe299f87b727469769b15c5d569ded4c4996e6110ce1dca38cdd0e`.
+Checksum, metadata, licenses and GitHub attestation matched the RC7 tag,
+source commit and release workflow. Read-only checks on games verified the
+expected Sean McNamara Authenticode publisher and Microsoft timestamp without
+launching the downloaded application.
+
+The [release receipt](benchmarks/rc7-release-ci-2026-11-02.json) records the
+results and artifact identities. The guarded full-scale RC6 benchmark above
+remains applicable: RC7 changes fixture synchronization and the version only.
+RC7 automated acceptance is complete; final 0.4.0 still needs live-profile
+acceptance. RC6 was never published.
