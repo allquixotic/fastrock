@@ -113,6 +113,7 @@ pub struct Cli {
 pub fn prepare_process_env() {
     perf::mark_process_start();
     let cli = parse_cli_or_exit();
+    platform::prepare_child_console();
     let codex_home = codex_utils_home_dir::find_codex_home().ok();
     let prefs = Prefs::load(codex_home.as_deref().map(AsRef::as_ref));
     let renderer = cli

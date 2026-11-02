@@ -1,0 +1,155 @@
+{
+  "result": "PASS",
+  "binary_sha256": "029e9c5aacf331c120ccf7d94ec0954be515bc3f21827b5a4ce07e94425b891e",
+  "peak_process_bytes": 136900608,
+  "real_goose_shell": true,
+  "real_hook_lifecycle": true,
+  "visible_console_windows": [],
+  "stdout_stderr_preserved": true,
+  "nonzero_exit_preserved": true,
+  "redirected_app_output_preserved": true,
+  "observations": [
+    {
+      "phase": "hook",
+      "event": "SessionStart",
+      "pid": 16764,
+      "window": null,
+      "visible": false,
+      "payload": {
+        "event": "SessionStart",
+        "session_id": "20261102_1",
+        "matcher_context": null,
+        "working_dir": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\project"
+      }
+    },
+    {
+      "phase": "hook",
+      "event": "PreToolUse",
+      "pid": 13428,
+      "window": null,
+      "visible": false,
+      "payload": {
+        "event": "PreToolUse",
+        "session_id": "20261102_1",
+        "matcher_context": "shell",
+        "tool_call_id": "console-1",
+        "tool_name": "shell",
+        "tool_input": {
+          "command": "C:\\Users\\SeanMcNamara\\AppData\\Roaming\\uv\\python\\cpython-3.14.8-windows-x86_64-none\\python.exe C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\console-observer.py C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\console-observations.jsonl success",
+          "timeout_secs": 10
+        },
+        "working_dir": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\project"
+      }
+    },
+    {
+      "phase": "success",
+      "event": null,
+      "pid": 16616,
+      "window": null,
+      "visible": false,
+      "payload": null
+    },
+    {
+      "phase": "hook",
+      "event": "PostToolUse",
+      "pid": 16024,
+      "window": null,
+      "visible": false,
+      "payload": {
+        "event": "PostToolUse",
+        "session_id": "20261102_1",
+        "matcher_context": "shell",
+        "tool_call_id": "console-1",
+        "tool_name": "shell",
+        "tool_input": {
+          "command": "C:\\Users\\SeanMcNamara\\AppData\\Roaming\\uv\\python\\cpython-3.14.8-windows-x86_64-none\\python.exe C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\console-observer.py C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\console-observations.jsonl success",
+          "timeout_secs": 10
+        },
+        "working_dir": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\project"
+      }
+    },
+    {
+      "phase": "hook",
+      "event": "PreToolUse",
+      "pid": 16912,
+      "window": null,
+      "visible": false,
+      "payload": {
+        "event": "PreToolUse",
+        "session_id": "20261102_1",
+        "matcher_context": "shell",
+        "tool_call_id": "console-2",
+        "tool_name": "shell",
+        "tool_input": {
+          "command": "C:\\Users\\SeanMcNamara\\AppData\\Roaming\\uv\\python\\cpython-3.14.8-windows-x86_64-none\\python.exe C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\console-observer.py C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\console-observations.jsonl failure",
+          "timeout_secs": 10
+        },
+        "working_dir": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\project"
+      }
+    },
+    {
+      "phase": "failure",
+      "event": null,
+      "pid": 508,
+      "window": null,
+      "visible": false,
+      "payload": null
+    },
+    {
+      "phase": "hook",
+      "event": "Stop",
+      "pid": 8092,
+      "window": null,
+      "visible": false,
+      "payload": {
+        "event": "Stop",
+        "session_id": "20261102_1",
+        "matcher_context": null,
+        "last_assistant_message": "Console fixture finished.",
+        "working_dir": "C:\\Users\\SeanMcNamara\\fastrock-040-policy\\rc6-console-candidate\\console\\project"
+      }
+    }
+  ],
+  "regression_baseline": {
+    "version": "0.4.0-rc.5",
+    "binary_sha256": "51c9a47eca407e44200dc6031d88a79f20599f61dd4496d4dfc1f111f4902fe8",
+    "visible_console_count": 7,
+    "observations": [
+      {
+        "phase": "hook",
+        "event": "SessionStart",
+        "visible": true
+      },
+      {
+        "phase": "hook",
+        "event": "PreToolUse",
+        "visible": true
+      },
+      {
+        "phase": "success",
+        "event": null,
+        "visible": false
+      },
+      {
+        "phase": "hook",
+        "event": "PostToolUse",
+        "visible": true
+      },
+      {
+        "phase": "hook",
+        "event": "PreToolUse",
+        "visible": true
+      },
+      {
+        "phase": "failure",
+        "event": null,
+        "visible": false
+      },
+      {
+        "phase": "hook",
+        "event": "Stop",
+        "visible": true
+      }
+    ]
+  }
+}

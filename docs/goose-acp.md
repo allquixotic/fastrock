@@ -6,6 +6,21 @@ APIs on its own Tokio runtime, connected to the UI adapter by a bounded memory
 stream. There is no Goose process or HTTP/stdio hop to an external Goose service.
 The existing adapter preserves native transcript, permission and queue behavior.
 
+On Windows 11 24H2 / Windows Server 2025 and newer, Fastrock prepares a
+windowless console before starting worker threads. This is necessary because
+Goose 1.57 hides the Developer shell process but starts command hooks through
+ordinary `sh -c` processes, which otherwise open a console from a GUI parent.
+Fastrock uses the documented
+[AllocConsoleWithOptions](https://learn.microsoft.com/en-us/windows/console/allocconsolewithoptions)
+API with `ALLOC_CONSOLE_MODE_NO_WINDOW`; it does not patch Goose or intercept
+process creation. Hooks inherit that session while their normal pipes continue
+to carry input and output. Existing caller consoles and redirected standard
+handles are preserved. Credential/vwork helper modes and CLI help exit before
+this GUI initialization. The API is resolved dynamically so older Windows can
+still load Fastrock, but those versions retain the upstream hook-window
+limitation and receive a diagnostic. Explicit new-window tool commands remain
+under the user's control.
+
 Goose's built-in extensions use its public built-in registry. The Fastrock tools
 and vwork MCP adapters use session-scoped loopback routes inside the same process;
 the routes call embedded Rust handlers. They never connect to a vwork daemon.

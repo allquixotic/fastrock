@@ -1,0 +1,41 @@
+{
+  "binary_sha256": "029e9c5aacf331c120ccf7d94ec0954be515bc3f21827b5a4ce07e94425b891e",
+  "result": "PASS",
+  "cases": [
+    {
+      "name": "vwork",
+      "result": "PASS",
+      "error": null,
+      "seconds": 31.89,
+      "peak_tree_bytes": 161169408
+    },
+    {
+      "name": "capabilities",
+      "result": "PASS",
+      "error": null,
+      "seconds": 31.09,
+      "peak_tree_bytes": 156663808
+    },
+    {
+      "name": "terminal",
+      "result": "PASS",
+      "error": null,
+      "seconds": 33.29,
+      "peak_tree_bytes": 157257728
+    },
+    {
+      "name": "compaction",
+      "result": "PASS",
+      "error": null,
+      "seconds": 10.63,
+      "peak_tree_bytes": 158707712
+    },
+    {
+      "name": "shell",
+      "result": "PASS",
+      "error": null,
+      "seconds": 20.66,
+      "peak_tree_bytes": 157241344
+    }
+  ]
+}

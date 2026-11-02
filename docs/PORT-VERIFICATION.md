@@ -2074,3 +2074,39 @@ launching the downloaded application.
 The [release receipt](benchmarks/rc5-release-ci-2026-11-02.json) records case
 results and artifact identities. RC5 acceptance is complete; final 0.4.0 remains
 subject to live-profile acceptance.
+
+### RC6 Goose shell-hook console repair, 2026-11-02
+
+Signed RC5 reproduced seven visible console windows during a real embedded
+Goose shell fixture. The main shell processes were already hidden; SessionStart,
+PreToolUse, PostToolUse and Stop command hooks inherited visible consoles because
+Goose 1.57 starts them with ordinary `sh -c`. Fastrock now prepares a windowless
+console with the documented Windows 11 24H2 / Server 2025 API, preserving
+redirected standard handles. Goose remains unmodified. Older Windows detects
+the unavailable API without a load failure but retains the upstream hook-window
+limitation; details and the official API reference are in
+[the integration document](goose-acp.md).
+
+The same fixture passed on the candidate with zero visible console windows.
+Both stdout and stderr, a shell exit code of 7, hook payload delivery and
+redirected application diagnostics were preserved. Peak process memory was
+136,900,608 bytes. The receipt includes the failed RC5 baseline observations.
+[Console receipt](benchmarks/rc6-console-games-2026-11-02.json).
+
+Games also passed 782 application tests and the native vwork, capability/hook,
+interactive-terminal, manual-compaction and explicit-shell regressions,
+including Stop/Quit/crash descendant cleanup. Windows compilation and Mac
+library compilation passed; no Mac application or tests ran.
+[Related native results](benchmarks/rc6-regressions-games-2026-11-02.json).
+
+The guarded 1,000-conversation/eight-stream/10,000-message workload passed at
+full scale, with 225,746,944 peak process bytes (215.3 MiB). Observed history
+opening was 605.4 ms, synchronous tab-switch work 0.3–0.6 ms and recent frame
+p95 9.438 ms. The October 30 0.3.4 baseline was 1,102 ms, 0.7–1.0 ms and 8.422 ms;
+these different-day observations do not establish a general scrolling speedup.
+The 32 GB ceiling and guest/hypervisor guards remained active; host monitor
+samples stayed above 5.5 GB available. Arbitrary history pages loaded in
+5.6–14.4 ms. [Scale receipt](benchmarks/rc6-scale-games-2026-11-02.json).
+
+Console visibility is now the 36th signed native acceptance case. Full signed
+CI acceptance and artifact verification remain required for RC6 publication.

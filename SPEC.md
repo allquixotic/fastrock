@@ -198,6 +198,8 @@ V84: Existing enabled user-wide vwork policy ! reused; RC2-owned duplicate actio
 
 V85: Manual Compact menu/palette/slash actions ! unchanged Goose session/prompt command, active provider/profile, visible busy/completion/failure and cancellation. Disabled Goose slash commands ! explicit refusal, no ordinary inference fallback. Original transcript ! preserved, next prompt ! compacted context; restart ! same context. Busy/recovery/steering guards ! retained; restored UI ! Resume before Compact; manual compaction ! no search-summary enqueue. Verify: v85 typed adapter test and native compaction/persist/restart/error/disabled-command fixture.
 
+V86: Windows 11 24H2+/Server 2025 Goose shell and ordinary command hooks ! no visible console/focus flash; retain stdout/stderr, exit status, hook payload/policy and redirected app logs. Existing caller consoles ! untouched; helpers/CLI ! bypass GUI console setup; Goose source ! unchanged. Older Windows ! dynamic API detection, no startup/import failure; unsupported windowless hooks ! diagnostic. Verify: windows-console-smoke real shell/hooks/window observation, shell/capability/native terminal regression.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -270,6 +272,7 @@ T57|x|RC2 summary priority/config/hook fixes; 781 tests, eight native cases and 
 T58|x|Bounded native effort-control completion passed on games and signed RC4; 34 native cases, Rust suites, package/attestation/signature verified|V39,V54,V83,I.distribution
 
 T59|x|Restore manual compaction; games lifecycle/history/failure/scale and signed RC5 35-case matrix passed; Mac compile, package/attestation/signature verified|V38,V39,V41,V44,V63,V85
+T60|x|Windowless Goose hook inheritance; native visibility/output, related regressions, guarded scale and Mac/Windows compile passed|V38,V40,V44,V65,V73,V84,V86
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -748,3 +751,11 @@ B250|2026-11-02|Restart fixture omitted explicit Resume; normal Send stayed paus
 B251|2026-11-02|Compaction steering refusal did not match native cannot-steer classification, preventing automatic queue fallback|Use recognized refusal wording and assert typed steering guard; V85
 
 B252|2026-11-02|Disabled-command fixture exported backend history, omitting the UI-only pre-dispatch refusal|Assert visible transcript export for refused command; retain complete-history exports for real compactions; V85
+
+B253|2026-11-02|Goose hides Developer shell but command hooks spawn sh without no-window flag; GUI process supplies no inheritable console, so vwork pre-tool hook opens window|Allocate windowless console via documented Windows API before threads; preserve stdio and Goose source; native hook/shell visibility regression; V86
+
+B254|2026-11-02|Console fixture assumed MCP-style __shell suffix for public platform tool|Resolve shell from actual provider tool catalog and retain request evidence; V86
+
+B255|2026-11-02|Console fixture returned empty JSON with block-on-failure, so real Goose correctly rejected shell calls|Return explicit allow decision; observed old SessionStart/PreToolUse/Stop consoles confirm regression; V86
+
+B256|2026-11-02|Console fixture confused Bedrock tool-result transport status with shell exit status; Goose delivers exit 7 in result text|Assert actual shell output/exit report without changing upstream provider semantics; V86

@@ -7,6 +7,21 @@
 //! - Windows: the GUI subsystem has no console for `--help` and argument
 //!   errors ([`attach_parent_console`]).
 
+#[cfg(windows)]
+mod windows_console;
+
+/// Configure console inheritance before any workers or embedded services start.
+pub(crate) fn prepare_child_console() {
+    #[cfg(windows)]
+    match windows_console::prepare() {
+        Ok(true) => {}
+        Ok(false) => eprintln!(
+            "Fastrock: windowless Goose hooks require Windows 11 24H2 or Windows Server 2025; this Windows version lacks AllocConsoleWithOptions."
+        ),
+        Err(error) => eprintln!("Fastrock: could not prepare windowless hooks: {error}"),
+    }
+}
+
 /// Windows remote desktops can advertise OpenGL while losing the presentation
 /// surface across reconnects. Use CPU rendering for Auto in those sessions.
 pub(crate) fn remote_desktop_session() -> bool {

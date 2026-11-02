@@ -21,7 +21,7 @@ CASES = [
     ('palette', None), ('terminal', None), ('checkpoints', None), ('compaction', None),
     ('sidebar', None), ('organization', None), ('sidebar-drag', None),
     ('sidebar-policy', None), ('titles', None), ('queue', None),
-    ('mentions', None), ('review', None), ('shell', None), ('side', None),
+    ('mentions', None), ('review', None), ('shell', None), ('console', None), ('side', None),
     ('window-recovery', None), ('delete', None), ('history', []),
     ('selection', []),
     ('summary', ['--turns', '3', '--navigation', '--windows', '--tray']),
