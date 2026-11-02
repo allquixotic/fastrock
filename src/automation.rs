@@ -46,6 +46,11 @@ pub(crate) enum Step {
     WaitIdle(u64),
     /// Wait for session provider/model/effort controls to finish their request.
     WaitGoose(u64),
+    /// Wait for the project editor's asynchronous load/save or close to settle.
+    WaitProject {
+        open: bool,
+        timeout_ms: u64,
+    },
     WaitRally {
         #[serde(default)]
         rows: usize,
@@ -291,6 +296,7 @@ impl AppController {
                 | Step::WaitReady(_)
                 | Step::WaitIdle(_)
                 | Step::WaitGoose(_)
+                | Step::WaitProject { .. }
                 | Step::WaitRally { .. }
                 | Step::WaitPurpose(_)
                 | Step::WaitSummaries(_)
@@ -1052,6 +1058,11 @@ impl AppController {
                     && !state.get_setup_loading()
                     && state.get_options().row_count() > 0;
                 ready || timed_out(elapsed, *timeout, "Goose session controls ready")
+            }
+            Step::WaitProject { open, timeout_ms } => {
+                let state = self.window.global::<crate::ui::ProjectState>();
+                (state.get_open() == *open && !state.get_busy() && (!*open || state.get_ready()))
+                    || timed_out(elapsed, *timeout_ms, "project editor settled")
             }
             _ => true,
         }

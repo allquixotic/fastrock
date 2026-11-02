@@ -184,7 +184,7 @@ V77: Permanent deletion ! unchanged Goose public API, durable intent, reserved i
 
 V78: Sidebar cache loading ! background IO; delayed hydration ! preserve newer names/read decisions/deletions and defer saves until loaded. File mentions/log-folder creation ! no UI-thread file IO. Verify: v78 hydration race tests and native sidebar/summary/mention fixtures.
 
-V79: Project defaults ! same embedded store, validated registered Git references, revision-guarded saves, isolated new workspaces and explicit one-off branch override; source checkout ! unchanged. Native editor ! background IO/stale-response guards; sidebar copy/filter ! repository identity, complete bounded history. Verify: v79_project_defaults_are_guarded_persistent_and_select_isolated_bases and dev/windows-projects-smoke.py.
+V79: Project defaults ! same embedded store, validated registered Git references, revision-guarded saves, isolated new workspaces and explicit one-off branch override; source checkout ! unchanged. Native editor ! background IO/stale-response guards; sidebar copy/filter ! repository identity, complete bounded history. Native acceptance ! bounded load/save/close state waits before dependent input or assertions. Verify: v79_project_defaults_are_guarded_persistent_and_select_isolated_bases and dev/windows-projects-smoke.py.
 
 V80: Visible commands ! supported embedded routes; Goose model/permission controls ! Goose options, MCP/hooks ! capability editor, New ! isolated project workspace, Changes ! bounded in-process diff without model dispatch. Unsupported commands ! absent from suggestions and preserve manually entered drafts. Temporary close ! durable discard intent, metadata cleanup after queue synchronization, no late completion resurrection. Verify: v80_goose_palette_excludes_unsupported_policies_and_keeps_workflows, dev/windows-commands-smoke.py and expanded dev/windows-side-smoke.py.
 
@@ -273,6 +273,7 @@ T58|x|Bounded native effort-control completion passed on games and signed RC4; 3
 
 T59|x|Restore manual compaction; games lifecycle/history/failure/scale and signed RC5 35-case matrix passed; Mac compile, package/attestation/signature verified|V38,V39,V41,V44,V63,V85
 T60|x|Windowless Goose hook inheritance; native visibility/output, related regressions, guarded scale and Mac/Windows compile passed|V38,V40,V44,V65,V73,V84,V86
+T61|x|Project fixture bounded native load/save/close waits; games project and console regressions passed|V79,V86
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -326,6 +327,7 @@ Window recovery verification, 2026-10-30: games 767 application tests, isolated 
 RC preparation acceptance, 2026-10-30: 775 Windows application tests, renderer, 30 workspace tests, embedded Goose fixture and Mac compile passed. Native core matrix 33/33 passed; final UI project/command/200%-scale selection checks passed. Full 1,000/eight/10,000 comparison passed without scale reduction; candidate peak process 228,163,584 bytes, tree commit 166,637,568 bytes. Final local SHA-256 `3284f028eb47250efe5ed17fe47556a61c1d3ae3f6813170f3f547ec593ca009`. Exact signed CI matrix remains publication gate; live AWS profiles/final release remain T36/T44. Evidence: docs/benchmarks/rc1-acceptance-games-2026-10-30.json and rc1-scale-{baseline,candidate}-games-2026-10-30.json.
 
 RC2 publication, 2026-10-30: source d2bb0434c4aa38078f26d68ab69cec6913c755c3; CI 41099188723 attempt 2 passed 775 application/one renderer/30 workspace tests, embedded Goose, policy/watchdog and 33 signed native cases plus catalog/scroll. Windows ZIP/checksum/attestation published; independent source/tag/workflow provenance and games Authenticode/timestamp passed. Mac compile only; temporary runner removed. GitHub incident delayed status; cancelled attempt 1 excluded from acceptance. Receipt docs/benchmarks/rc2-release-ci-2026-10-30.json. RC complete; T36/T44 final acceptance remain open.
+
 
 ## §B BUGS
 id|date|cause|fix
@@ -759,3 +761,5 @@ B254|2026-11-02|Console fixture assumed MCP-style __shell suffix for public plat
 B255|2026-11-02|Console fixture returned empty JSON with block-on-failure, so real Goose correctly rejected shell calls|Return explicit allow decision; observed old SessionStart/PreToolUse/Stop consoles confirm regression; V86
 
 B256|2026-11-02|Console fixture confused Bedrock tool-result transport status with shell exit status; Goose delivers exit 7 in result text|Assert actual shell output/exit report without changing upstream provider semantics; V86
+
+B257|2026-11-02|Signed RC6 project fixture sampled after fixed one-second load delay; captured busy=true/ready=false, later saved/restored correct state|Bounded native project load/save/close waits; preserve all assertions and failed CI evidence; RC6 unpublished; V79

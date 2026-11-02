@@ -2110,3 +2110,21 @@ samples stayed above 5.5 GB available. Arbitrary history pages loaded in
 
 Console visibility is now the 36th signed native acceptance case. Full signed
 CI acceptance and artifact verification remain required for RC6 publication.
+
+### RC6 CI timing failure and RC7 fixture correction
+
+[RC6 CI run 41497822864](https://github.com/allquixotic/fastrock/actions/runs/41497822864)
+passed compilation, Rust tests, signing and the first eleven native cases,
+then stopped at project settings. The load snapshot still had `busy=true`,
+`ready=false` after the fixture's fixed one-second delay. Later snapshots
+showed the completed save and correct default; the invalid-reference snapshot
+was also sampled while busy. No RC6 binary was packaged or published.
+
+RC7 replaces fixed project load/save/close delays with bounded native state
+waits and keeps every functional assertion. This changes fixture automation
+only, beyond the version bump; the console fix and normal behavior retain the
+RC6 local regression and guarded full-scale benchmark evidence above.
+
+The corrected project fixture and real Goose console fixture both passed on
+games. [Native receipt](benchmarks/rc7-regressions-games-2026-11-02.json).
+The failed CI snapshots remain in [the RC6 timing receipt](benchmarks/rc6-ci-project-timing-failure-2026-11-02.json).

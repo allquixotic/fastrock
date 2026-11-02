@@ -1,0 +1,20 @@
+{
+  "binary_sha256": "c0b2d75cdc0e5e899326c84ec71a2a4b45950fad270df513a26620711ab2620b",
+  "result": "PASS",
+  "cases": [
+    {
+      "name": "projects",
+      "result": "PASS",
+      "error": null,
+      "seconds": 11.45,
+      "peak_tree_bytes": 156360704
+    },
+    {
+      "name": "console",
+      "result": "PASS",
+      "error": null,
+      "seconds": 5.42,
+      "peak_tree_bytes": 156774400
+    }
+  ]
+}

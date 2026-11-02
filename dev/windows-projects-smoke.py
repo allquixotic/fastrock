@@ -34,6 +34,9 @@ def dump(name):
     return [{'project':['dump',str(out/(name+'.json'))]}, {'wait':250}]
 def read(name):
     return json.loads((out/(name+'.json')).read_text(encoding='utf-8'))
+def settled(open=True):
+    # Yield queued native pointer/key callbacks, then observe async completion.
+    return [{'wait':100}, {'wait_project':{'open':open,'timeout_ms':30000}}]
 def run(name, steps):
     script = out/(name+'-steps.json')
     script.write_text(json.dumps(steps), encoding='utf-8')
@@ -42,16 +45,16 @@ def run(name, steps):
         return ProcessGuard(process, timeout=120).wait()
 try:
     peak = run('settings', [
-        {'wait_ready':30000}, {'resize':[1440,1000]}, {'project':['open',str(repo)]}, {'wait':1000}, *dump('loaded'),
-        {'project':['reference','missing-branch']}, {'click_text':'Save default'}, {'wait':500}, *dump('invalid'),
-        {'project':['reference','feature']}, {'click_text':'Save default'}, {'wait':700}, *dump('saved'),
+        {'wait_ready':30000}, {'resize':[1440,1000]}, {'project':['open',str(repo)]}, *settled(), *dump('loaded'),
+        {'project':['reference','missing-branch']}, {'click_text':'Save default'}, *settled(), *dump('invalid'),
+        {'project':['reference','feature']}, {'click_text':'Save default'}, *settled(), *dump('saved'),
         # Click the rendered ComboBox label (not the LineEdit) to verify native
         # selection stays synchronized after its asynchronous model populated.
         {'click_text':'feature'}, {'wait':200}, {'key':'down'}, {'key':'return'}, {'wait':200}, *dump('picked-main'),
         {'click_text':'main'}, {'wait':200}, {'key':'up'}, {'key':'return'}, {'wait':200}, *dump('picked-feature'),
-        {'snapshot':str(out/'project-settings.png')}, {'click_text':'New chat'}, {'wait':1000}, {'wait_idle':30000},
+        {'snapshot':str(out/'project-settings.png')}, {'click_text':'New chat'}, *settled(False), {'wait_idle':30000},
         {'composer':['type','Keep project draft é']},
-        {'key':'ctrl+shift+P'}, {'wait':200}, {'palette':['query','Project settings']}, {'wait':200}, {'key':'return'}, {'wait':800}, *dump('palette'),
+        {'key':'ctrl+shift+P'}, {'wait':200}, {'palette':['query','Project settings']}, {'wait':200}, {'key':'return'}, *settled(), *dump('palette'),
         {'key':'escape'}, {'wait':200}, *dump('closed'), {'palette':['dump',str(out/'draft.json')]}, {'wait':200}, {'quit':True},
     ])
     assert read('loaded')['ready'] and read('loaded')['reference']=='HEAD', read('loaded')
@@ -63,9 +66,9 @@ try:
     assert read('draft')['draft']=='Keep project draft é', read('draft')
     assert not read('closed')['open'], 'Escape did not close the project editor'
     peak = max(peak, run('restart', [
-        {'wait_ready':30000}, {'wait':1200}, {'project':['open',str(repo)]}, {'wait':600}, *dump('restored'),
-        {'project':['reference','main']}, {'click_text':'New chat'}, {'wait':900}, {'wait_idle':30000},
-        {'project':['open',str(repo)]}, {'wait':600}, *dump('after-override'), {'click_text':'Close'}, {'quit':True},
+        {'wait_ready':30000}, {'wait':1200}, {'project':['open',str(repo)]}, *settled(), *dump('restored'),
+        {'project':['reference','main']}, {'click_text':'New chat'}, *settled(False), {'wait_idle':30000},
+        {'project':['open',str(repo)]}, *settled(), *dump('after-override'), {'click_text':'Close'}, {'quit':True},
     ]))
     assert read('restored')['reference']=='feature' and read('restored')['revision']==1
     assert read('after-override')['reference']=='feature', 'One-off branch changed the saved default'

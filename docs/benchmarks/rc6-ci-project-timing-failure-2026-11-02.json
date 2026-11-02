@@ -1,0 +1,128 @@
+{
+  "result": "FAIL",
+  "version": "0.4.0-rc.6",
+  "ci": "https://github.com/allquixotic/fastrock/actions/runs/41497822864",
+  "artifact_id": 13167484611,
+  "artifact_sha256": "8f6fee09261c2947ad7f2234f920cbecdd4d6aeb902831643ec4cc9db1068080",
+  "published": false,
+  "failure": "Traceback (most recent call last):\r\n  File \"D:\\a\\fastrock\\fastrock\\dev\\windows-projects-smoke.py\", line 57, in <module>\r\n    assert read('loaded')['ready'] and read('loaded')['reference']=='HEAD', read('loaded')\r\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\nAssertionError: {'open': True, 'busy': True, 'ready': False, 'name': 'project', 'path': 'D:\\\\a\\\\fastrock\\\\fastrock\\\\build\\\\rc-acceptance\\\\projects\\\\project', 'reference': 'HEAD', 'branches': [], 'error': '', 'status': '', 'revision': None}\r\n",
+  "snapshots": {
+    "loaded": {
+      "open": true,
+      "busy": true,
+      "ready": false,
+      "name": "project",
+      "path": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\projects\\project",
+      "reference": "HEAD",
+      "branches": [],
+      "error": "",
+      "status": "",
+      "revision": null
+    },
+    "invalid": {
+      "open": true,
+      "busy": true,
+      "ready": true,
+      "name": "project",
+      "path": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\projects\\project",
+      "reference": "missing-branch",
+      "branches": [
+        "HEAD",
+        "feature",
+        "main"
+      ],
+      "error": "",
+      "status": "",
+      "revision": 0
+    },
+    "saved": {
+      "open": true,
+      "busy": false,
+      "ready": true,
+      "name": "project",
+      "path": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\projects\\project",
+      "reference": "feature",
+      "branches": [
+        "HEAD",
+        "feature",
+        "main"
+      ],
+      "error": "",
+      "status": "Default saved",
+      "revision": 1
+    },
+    "picked-main": {
+      "open": true,
+      "busy": false,
+      "ready": true,
+      "name": "project",
+      "path": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\projects\\project",
+      "reference": "main",
+      "branches": [
+        "HEAD",
+        "feature",
+        "main"
+      ],
+      "error": "",
+      "status": "Default saved",
+      "revision": 1
+    },
+    "picked-feature": {
+      "open": true,
+      "busy": false,
+      "ready": true,
+      "name": "project",
+      "path": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\projects\\project",
+      "reference": "feature",
+      "branches": [
+        "HEAD",
+        "feature",
+        "main"
+      ],
+      "error": "",
+      "status": "Default saved",
+      "revision": 1
+    },
+    "palette": {
+      "open": true,
+      "busy": false,
+      "ready": true,
+      "name": "project",
+      "path": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\projects\\project",
+      "reference": "feature",
+      "branches": [
+        "HEAD",
+        "feature",
+        "main"
+      ],
+      "error": "",
+      "status": "",
+      "revision": 1
+    },
+    "closed": {
+      "open": false,
+      "busy": false,
+      "ready": true,
+      "name": "project",
+      "path": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\projects\\project",
+      "reference": "feature",
+      "branches": [
+        "HEAD",
+        "feature",
+        "main"
+      ],
+      "error": "",
+      "status": "",
+      "revision": 1
+    },
+    "draft": {
+      "open": false,
+      "selected": 0,
+      "query": "Project settings",
+      "rows": [],
+      "busy": false,
+      "draft": "Keep project draft \u00e9"
+    }
+  },
+  "cause": "Fixed delays sampled asynchronous project load/save while busy; later snapshots show completed operations. RC7 uses bounded state waits with unchanged assertions."
+}
