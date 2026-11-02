@@ -196,6 +196,8 @@ V83: Goose parameter edits/plugin registration ! preserve YAML comments, quoting
 
 V84: Existing enabled user-wide vwork policy ! reused; RC2-owned duplicate action ! removed, custom hooks/matchers/failure policy ! preserved; migrated helper ! follows installed executable; first hook backup ! retained. Verify: hook migration, duplicate cleanup and native first-start fixtures.
 
+V85: Manual Compact menu/palette/slash actions ! unchanged Goose session/prompt command, active provider/profile, visible busy/completion/failure and cancellation. Disabled Goose slash commands ! explicit refusal, no ordinary inference fallback. Original transcript ! preserved, next prompt ! compacted context; restart ! same context. Busy/recovery/steering guards ! retained; restored UI ! Resume before Compact; manual compaction ! no search-summary enqueue. Verify: v85 typed adapter test and native compaction/persist/restart/error/disabled-command fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -266,6 +268,8 @@ T55|x|Honor temporary side-fork semantics and boundary insertion through public 
 T56|x|Native queue start/reorder, compressed-source mentions, Review, explicit shell, Goose slash commands and local Changes verified|V38,V40,V41,V42,V70,V71,V72,V73,V80
 T57|x|RC2 summary priority/config/hook fixes; 781 tests, eight native cases and guarded full-scale games workload passed; provider routes fixture-verified|V38,V39,V44,V65,V82,V83,V84
 T58|x|Bounded native effort-control completion passed on games and signed RC4; 34 native cases, Rust suites, package/attestation/signature verified|V39,V54,V83,I.distribution
+
+T59|x|Restore manual compaction; typed/native lifecycle, history/context/failure and guarded scale passed on games; Mac compile passed|V38,V39,V41,V44,V63,V85
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -734,3 +738,13 @@ B245|2026-10-30|Native provider fixture assumed block YAML and migrated active_p
 B246|2026-10-30|Signed RC3 effort fixture sampled Clear after fixed 600ms while sessionChanging=true; later new conversation correctly used cleared default|Bounded wait for Goose controls before dependent actions/assertions; preserve timing evidence; V39,V83
 
 B247|2026-10-30|New automation readiness predicate called ModelRc::row_count without Model trait import|Import Slint Model; Windows/Mac compile gate
+
+B248|2026-11-02|Compact still dispatched retired _goose/unstable/session/compact; embedded Goose 1.57 only offers slash-command compaction and native acceptance omitted it|Route through session/prompt with full turn lifecycle; add typed and real embedded native compaction regression; V85
+
+B249|2026-11-02|Compaction fixture assumed snake_case visibility fields; Goose stores camelCase metadata|Use upstream userVisible/agentVisible schema; product compaction already succeeded; V85
+
+B250|2026-11-02|Restart fixture omitted explicit Resume; normal Send stayed paused while Compact bypassed native restored-chat guard|Require Resume for Compact like Send; fixture exercises refusal then explicit Resume before context-continuation check; V41,V47,V85
+
+B251|2026-11-02|Compaction steering refusal did not match native cannot-steer classification, preventing automatic queue fallback|Use recognized refusal wording and assert typed steering guard; V85
+
+B252|2026-11-02|Disabled-command fixture exported backend history, omitting the UI-only pre-dispatch refusal|Assert visible transcript export for refused command; retain complete-history exports for real compactions; V85

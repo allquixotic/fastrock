@@ -18,7 +18,7 @@ CASES = [
     ('delegation', None), ('schedules', None), ('webhook', None),
     ('provider-setup', []), ('profiles', None), ('effort', None),
     ('capabilities', None), ('recipes', None), ('projects', None), ('commands', None),
-    ('palette', None), ('terminal', None), ('checkpoints', None),
+    ('palette', None), ('terminal', None), ('checkpoints', None), ('compaction', None),
     ('sidebar', None), ('organization', None), ('sidebar-drag', None),
     ('sidebar-policy', None), ('titles', None), ('queue', None),
     ('mentions', None), ('review', None), ('shell', None), ('side', None),

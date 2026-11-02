@@ -1121,21 +1121,49 @@ impl AppController {
             "worktree" => self.worktree_continue(index),
             "compact" => {
                 if let Some(thread_id) = thread_id {
+                    if self
+                        .thread_tab(index)
+                        .is_some_and(|thread| self.thread_recovery_paused(thread))
+                    {
+                        self.toast("Recovered work is paused. Choose Resume before compacting.");
+                        return;
+                    }
+                    if let Some(thread) = self.thread_tab_mut(index) {
+                        if thread.is_busy() {
+                            self.toast("Wait for the current turn before compacting");
+                            return;
+                        }
+                        thread.phase = ThreadPhase::Running;
+                        thread.extras.turn_starts_in_flight += 1;
+                    }
+                    self.refresh_tabs();
+                    self.composer_show();
                     self.backend.call(
                         |request_id| ClientRequest::ThreadCompactStart {
                             request_id,
                             params: ThreadCompactStartParams { thread_id },
                         },
                         move |app, result: Result<ThreadCompactStartResponse, BackendError>| {
-                            if let Err(err) = result
-                                && let Some(index) = app.tab_index_by_id(tab_id)
-                            {
+                            let Some(index) = app.tab_index_by_id(tab_id) else {
+                                return;
+                            };
+                            if let Some(thread) = app.thread_tab_mut(index) {
+                                thread.extras.turn_starts_in_flight =
+                                    thread.extras.turn_starts_in_flight.saturating_sub(1);
+                                if result.is_err() && thread.active_turn_id.is_none() {
+                                    thread.phase = ThreadPhase::Idle;
+                                    thread.extras.interrupt_pending = false;
+                                }
+                            }
+                            if let Err(err) = result {
                                 app.transcript_push_notice(
                                     index,
                                     NoticeKind::Error,
                                     format!("Could not compact: {}", err.user_message()),
                                 );
                             }
+                            app.refresh_tabs();
+                            app.composer_show();
                         },
                     );
                 }

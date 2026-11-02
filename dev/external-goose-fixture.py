@@ -79,7 +79,7 @@ def prompt(req):
                     changes=[dict(operation='update',kind='HierarchicalRequirement',ref=artifact,fields={'Name':'AI reviewed title'})])))
                 assert 'result' in result and not result['result']['isError'],result
     update(sid,dict(sessionUpdate='agent_message_chunk',messageId='a-'+sid,content=dict(type='text',text='Started '+sid+' ')))
-    if text.startswith('hold'):
+    if text.startswith('hold') or text == '/compact':
         cancel.wait(30)
     else:
         cancel.wait(.15)

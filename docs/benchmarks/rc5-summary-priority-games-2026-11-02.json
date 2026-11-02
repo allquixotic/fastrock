@@ -1,0 +1,60 @@
+{
+  "result": "PASS",
+  "binary_sha256": "8f3ccbb97859d7804ddf3404dd156e6a892185c3e3412c76b385da0926e8f8e3",
+  "peak_process_bytes": 149450752,
+  "three_tool_calls_one_completed_turn": true,
+  "foreground_preempts_stalled_summary": true,
+  "original_comments_preserved": true,
+  "requests": [
+    {
+      "kind": "naming",
+      "at": 357383.288622,
+      "in_turn": false
+    },
+    {
+      "kind": "foreground",
+      "at": 357383.4244622,
+      "in_turn": false
+    },
+    {
+      "kind": "summary",
+      "at": 357383.4781755,
+      "in_turn": false
+    },
+    {
+      "kind": "summary",
+      "at": 357387.6902415,
+      "in_turn": false
+    },
+    {
+      "kind": "naming",
+      "at": 357387.8041177,
+      "in_turn": false
+    },
+    {
+      "kind": "foreground",
+      "at": 357387.8158698,
+      "in_turn": false
+    },
+    {
+      "kind": "foreground",
+      "at": 357388.1600854,
+      "in_turn": true
+    },
+    {
+      "kind": "foreground",
+      "at": 357388.4978114,
+      "in_turn": true
+    },
+    {
+      "kind": "foreground",
+      "at": 357388.8216754,
+      "in_turn": true
+    },
+    {
+      "kind": "summary",
+      "at": 357389.1700351,
+      "in_turn": false
+    }
+  ]
+}

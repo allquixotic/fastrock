@@ -2007,3 +2007,41 @@ identity. This completes RC4 acceptance. Final 0.4.0 still awaits live-profile
 acceptance; the reported three-minute first-response delay remains unmeasured
 with the working profile. Confirmed summary contention and migration defects
 are fixed, with phase timings available for the next live comparison.
+
+### RC5 manual compaction repair, 2026-11-02
+
+The reported “Could not compact: Method not found” reproduced on signed RC4.
+Fastrock still called `_goose/unstable/session/compact`; embedded Goose 1.57
+supports manual compaction through `session/prompt` with `/compact`. The existing
+acceptance matrix omitted this action. RC5 uses that public command through the
+normal durable turn lifecycle without modifying Goose. Busy, recovery, Stop and
+steering guards apply; manual compaction does not enqueue a search summary.
+
+On games, 782 application tests passed, including the typed compaction/busy/Stop/
+steering regression. The new native fixture passed command-palette, tab-menu and
+slash routes using real embedded Goose against a loopback Bedrock fixture. It
+verified the selected Opus model, preserved visible history, hidden condensed
+model context, restart continuation, explicit Resume, provider failure,
+cancellation and disabled-command refusal. Both Windows and Mac compilation
+passed; no application or tests ran on the Mac.
+[Compaction receipt](benchmarks/rc5-compaction-games-2026-11-02.json).
+
+The summary-priority regression also passed: no summary requests between three
+tool calls, and a stalled background summary yielded to foreground work.
+[Request-order evidence](benchmarks/rc5-summary-priority-games-2026-11-02.json).
+
+The full games workload passed without scale reduction: 1,000 stored
+conversations, eight simultaneous streams and 10,000 history messages. Peak
+process memory was 224,395,264 bytes (214 MiB), with the 32 GB ceiling and
+host/guest headroom guards active. Hypervisor available memory remained above
+5.9 GB in the monitor samples. History opening measured 603.3 ms, synchronous
+tab-switch work 0.3–0.5 ms, and recent scrolling frame p95 9.221 ms. The prior
+October 30 0.3.4 baseline measured 1,102 ms, 0.7–1.0 ms and 8.422 ms respectively;
+the measurements are from different days and do not establish a general
+scrolling speedup. Arbitrary 100-message history pages loaded in 4.6–11.7 ms.
+[Scale receipt](benchmarks/rc5-scale-games-2026-11-02.json),
+[0.3.4 baseline](benchmarks/rc1-scale-baseline-games-2026-10-30.json).
+
+The signed CI matrix now includes compaction as its 35th case. All signed tests,
+packaging and provenance checks remain required before RC5 publication. Final
+0.4.0 still requires live-profile acceptance.

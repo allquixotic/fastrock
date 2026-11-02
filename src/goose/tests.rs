@@ -176,6 +176,106 @@ async fn event(client: &mut AppServerClient) -> AppServerEvent {
 }
 
 #[tokio::test]
+async fn v85_typed_compaction_prompt_busy_cancel_and_steer_guards() {
+    use codex_app_server_protocol::{
+        ClientRequest, RequestId, ServerNotification, ThreadCompactStartParams,
+        ThreadCompactStartResponse,
+    };
+    let (mut client, temp) = fixture().await;
+    let id = new(&client, temp.path()).await;
+    let request = serde_json::to_value(ClientRequest::ThreadCompactStart {
+        request_id: RequestId::String("compact".into()),
+        params: ThreadCompactStartParams {
+            thread_id: id.clone(),
+        },
+    })
+    .unwrap();
+    send(&client, &id, "hold before compaction").await;
+    let compact = || {
+        call(
+            &client,
+            request["method"].as_str().unwrap(),
+            request["params"].clone(),
+        )
+    };
+    assert!(
+        compact()
+            .await
+            .unwrap_err()
+            .message
+            .contains("Wait for the turn")
+    );
+    call(&client, "turn/interrupt", json!({"threadId":id}))
+        .await
+        .unwrap();
+    loop {
+        if let AppServerEvent::ServerNotification(n) = event(&mut client).await {
+            if matches!(*n, ServerNotification::TurnCompleted(_)) {
+                break;
+            }
+        }
+    }
+    call(
+        &client,
+        "fastrock/goose/resumeQueue",
+        json!({"threadId":id}),
+    )
+    .await
+    .unwrap();
+    let result = call(
+        &client,
+        request["method"].as_str().unwrap(),
+        request["params"].clone(),
+    )
+    .await
+    .unwrap();
+    let _: ThreadCompactStartResponse = serde_json::from_value(result).unwrap();
+    let tid = loop {
+        if let AppServerEvent::ServerNotification(n) = event(&mut client).await {
+            if let ServerNotification::TurnStarted(n) = *n {
+                assert_eq!(n.thread_id, id);
+                assert!(serde_json::to_string(&n.turn).unwrap().contains("/compact"));
+                break n.turn.id;
+            }
+        }
+    };
+    let refused = call(
+        &client,
+        "turn/steer",
+        json!({"threadId":id,"expectedTurnId":tid,
+        "input":[{"type":"text","text":"Follow-up stays outside compaction"}]}),
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        refused.message.contains("cannot steer"),
+        "Native steering fallback must queue this message"
+    );
+    assert!(
+        call(
+            &client,
+            request["method"].as_str().unwrap(),
+            request["params"].clone()
+        )
+        .await
+        .is_err()
+    );
+    call(&client, "turn/interrupt", json!({"threadId":id}))
+        .await
+        .unwrap();
+    loop {
+        if let AppServerEvent::ServerNotification(n) = event(&mut client).await {
+            if let ServerNotification::TurnCompleted(n) = *n {
+                assert_eq!(n.turn.id, tid);
+                assert_eq!(serde_json::to_value(n.turn.status).unwrap(), "interrupted");
+                break;
+            }
+        }
+    }
+    client.shutdown().await.unwrap();
+}
+
+#[tokio::test]
 async fn concurrent_sessions_and_cancel() {
     use codex_app_server_protocol::ServerNotification;
     let (mut client, temp) = fixture().await;

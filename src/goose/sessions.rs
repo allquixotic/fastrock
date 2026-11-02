@@ -558,6 +558,10 @@ impl Adapter {
         self.start_turn_locked(params).await
     }
     pub(super) async fn start_turn_locked(self: &Arc<Self>, params: &Value) -> Reply {
+        self.start_turn_kind(params, false).await
+    }
+
+    async fn start_turn_kind(self: &Arc<Self>, params: &Value, compacting: bool) -> Reply {
         let requested_at = std::time::Instant::now();
         let foreground = self.summaries.as_ref().map(|s| s.foreground());
         self.deletion_ready(session_id(text(params, "threadId"))?)
@@ -579,6 +583,18 @@ impl Adapter {
             }
             if s.active.is_some() {
                 return Err(error("This Goose conversation already has an active turn"));
+            }
+        }
+        if compacting && self.embedded_runtime {
+            let enabled = tokio::task::spawn_blocking(
+                goose_runtime::agents::execute_commands::slash_commands_enabled,
+            )
+            .await
+            .map_err(|_| error("Could not read Goose command settings"))?;
+            if !enabled {
+                return Err(error(
+                    "Manual compaction requires Goose slash commands. Enable GOOSE_SLASH_COMMANDS_ENABLED in Goose settings and try again.",
+                ));
             }
         }
         // ACP mode/config options are authoritative; Codex-only knobs are not sent.
@@ -627,6 +643,7 @@ impl Adapter {
                 .get_mut(&id)
                 .ok_or_else(|| error("Session unavailable"))?;
             s.active = Some(tid.clone());
+            s.compacting = compacting;
             s.run_id = None;
             s.cancel_requested = false;
             s.first_response_since = Some(requested_at);
@@ -698,7 +715,7 @@ impl Adapter {
         }
         s.info["updatedAt"] = json!(chrono::Utc::now().to_rfc3339());
         s.info["_meta"]["lastMessageAt"] = s.info["updatedAt"].clone();
-        let summarize = completed && !s.ephemeral && !user_command;
+        let summarize = completed && !s.ephemeral && !user_command && !s.compacting;
         let delegated = s.binding.delegation.is_some();
         let t = s.turn_mut();
         match reply {
@@ -757,6 +774,7 @@ impl Adapter {
                 return;
             };
             s.active = None;
+            s.compacting = false;
             s.first_response_since = None;
             s.run_id = None;
             s.cancel_requested = false;
@@ -782,6 +800,11 @@ impl Adapter {
             if s.active.as_deref() != params["expectedTurnId"].as_str() {
                 return Err(error(
                     "The Goose turn has changed; send again or queue the message",
+                ));
+            }
+            if s.compacting {
+                return Err(error(
+                    "Goose cannot steer a compaction; wait for it to finish or stop it",
                 ));
             }
             s.run_id
@@ -846,6 +869,15 @@ impl Adapter {
             self.checkpoint_ready(id)
                 .await
                 .map_err(|e| error(e.to_string()))?;
+            // Goose 1.57 exposes manual compaction as a slash command through
+            // session/prompt, not the retired session/compact extension method.
+            // Retain the normal durable dispatch, cancellation and busy lifecycle.
+            self.start_turn_kind(
+                &json!({"threadId":ui_id(id),"input":[{"type":"text","text":"/compact","textElements":[]}]}),
+                true,
+            )
+            .await?;
+            return Ok(json!({}));
         }
         let mut args = json!({"sessionId":id});
         if suffix == "rename" {

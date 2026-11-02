@@ -1,0 +1,14 @@
+{
+  "result": "PASS",
+  "binary_sha256": "8f3ccbb97859d7804ddf3404dd156e6a892185c3e3412c76b385da0926e8f8e3",
+  "peak_process_bytes": 151916544,
+  "native_palette_tab_action_and_slash": true,
+  "selected_model_preserved": true,
+  "model_context_replaced": true,
+  "visible_history_preserved": true,
+  "restart_preserves_context": true,
+  "no_search_summary_after_compact": true,
+  "failed_compaction_preserves_history": true,
+  "stop_cancels_compaction": true,
+  "disabled_commands_refused": true
+}

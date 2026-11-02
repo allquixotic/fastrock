@@ -1,0 +1,95 @@
+{
+  "binary_sha256": "8f3ccbb97859d7804ddf3404dd156e6a892185c3e3412c76b385da0926e8f8e3",
+  "seed_sha256": "334994d84fe8001aa1d254e49c0a2032eb9bb927a5660a49e50c7f3a3ef35f7e",
+  "host": "GAMES",
+  "os": "Windows-11-10.0.26100-SP0",
+  "backend": "embedded Goose 1.57.0",
+  "hard_cap_bytes": 32000000000,
+  "attempts": [
+    {
+      "divisor": 1,
+      "stored_conversations": 1000,
+      "history_messages": 10000,
+      "concurrent_streams": 8,
+      "phases": {
+        "seed": {
+          "cap_bytes": 1948608512,
+          "peak_app_bytes": 106311680,
+          "peak_tree_commit_bytes": 101675008
+        },
+        "app": {
+          "cap_bytes": 1932920832,
+          "peak_app_bytes": 224395264,
+          "peak_tree_commit_bytes": 169332736
+        }
+      },
+      "result": "PASS",
+      "peak_concurrent_streams": 8,
+      "history_open_observed_ms": 603.3,
+      "switch_dispatch_ms": [
+        0.3,
+        0.3,
+        0.5,
+        0.4,
+        0.3
+      ],
+      "frame": {
+        "p50_ms": 4.548,
+        "p95_ms": 9.221,
+        "p99_ms": 10.286
+      },
+      "render": {
+        "p50_ms": 3.601,
+        "p95_ms": 8.298,
+        "p99_ms": 9.148
+      },
+      "event_loop": {
+        "p50_ms": 16.537,
+        "p95_ms": 19.963,
+        "p99_ms": 24.962
+      },
+      "history_export_messages": 10000,
+      "current_summaries_preserved": true,
+      "history_navigation": {
+        "first": {
+          "browsing": true,
+          "loading": false,
+          "start": 0,
+          "end": 100,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 4.5904,
+          "rows": 100,
+          "bytes": 285990
+        },
+        "middle": {
+          "browsing": true,
+          "loading": false,
+          "start": 5000,
+          "end": 5100,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 4.5785,
+          "rows": 100,
+          "bytes": 292500
+        },
+        "last": {
+          "browsing": true,
+          "loading": false,
+          "start": 9900,
+          "end": 10000,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 11.709999999999999,
+          "rows": 100,
+          "bytes": 292569
+        },
+        "middle_frame": {
+          "p50_ms": 4.577,
+          "p95_ms": 6.126,
+          "p99_ms": 6.784
+        }
+      }
+    }
+  ]
+}
