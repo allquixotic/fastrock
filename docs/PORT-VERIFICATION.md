@@ -2367,3 +2367,42 @@ All six targeted native cases then passed on games: console, summary,
 summary-priority, memory, queue-recovery and process-recovery. The corrected
 summary test observed background learning while preserving its exact answer and
 summary pairs. [Regression receipt](benchmarks/rc11-regressions-games-2026-11-03.json).
+
+### RC11 signed publication and independent verification
+
+[Fastrock 0.4.0-rc.11](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.11)
+was published by [CI run 41710589158](https://github.com/allquixotic/fastrock/actions/runs/41710589158)
+from `198394efa42698b054cf8c950e1e872151a1996f`. Both platforms compiled;
+Windows passed 795 application tests, one renderer test and 38 workspace tests,
+plus embedded provider/store fixtures and release-policy/watchdog checks.
+All 38 native cases passed on the signed executable in 991.7 seconds, followed
+by the supplementary catalog and five scrolling scenarios. Memory recall,
+per-turn bounds, project isolation, editing, forgetting, restart persistence and
+foreground cancellation passed. The corrected summary fixture also observed
+idle learning without changing its exact foreground/summary pairs.
+
+Windows attempt 1 passed tests but failed PowerShell Gallery setup on its hosted
+runner. Attempt 2 passed on a fresh runner with the same CI build inputs; no
+signing or test gates were bypassed. Mac publication was skipped, no Mac app or
+tests ran, and the temporary runner was removed.
+
+The independently downloaded ZIP is 138,743,701 bytes, SHA-256
+`3c5c769c5593f7cb563e8dbef176aa5adce5c1f3e5f071573c24fa333ea69563`.
+Its executable SHA-256 is
+`0ec9b728e94f97f3ba5d2f5452506438d64f9678dad76afd133b4906edb083af`.
+Checksum, metadata, licenses, and both online and bundled GitHub attestations
+matched the RC11 tag, source and release workflow. Read-only Authenticode
+verification on games confirmed the expected Sean McNamara publisher and secure
+Microsoft timestamp without launching the downloaded app.
+[Release receipt](benchmarks/rc11-release-ci-2026-11-03.json).
+
+RC11 automated acceptance is complete. Live Bedrock profile validation remains
+required for final stable 0.4.0.
+
+Cleanup removed 1.27 GiB locally and 0.77 GiB on games: temporary fixture stores,
+transfer ZIPs, standalone verification EXEs, uploaded CI input copies, and three
+obsolete test executables identified against the current compiler manifest.
+All 144 local-fixture evidence files were archived and hash-verified before
+deletion. Active incremental/dependency caches, current build outputs, sources,
+user data, baselines and signed release evidence remain. Games stayed running.
+[Cleanup receipt](benchmarks/rc11-cleanup-2026-11-03.json).

@@ -835,3 +835,5 @@ B278|2026-11-03|Selected memory editor stretched action buttons vertically|Bound
 B279|2026-11-03|Release benchmark launched in SSH service session; scrolling dispatched but native presentation captured zero frames|Existing frame-count gate rejected run; document desktop/asuser requirement and rerun with live memory guard; V33,V45
 
 B280|2026-11-03|Legacy summary fixture classified idle memory extraction as a foreground answer, breaking request counts/numbering; priority/console fixtures shared assumption|Separate memory accounting and valid empty extraction response, force learning during summary regression; retain failed RC10 tag and publish corrected fixtures under RC11; V44,V92
+
+B281|2026-11-03|RC11 hosted Windows runner failed PowerShell Gallery registration with missing NuGet -source value after Rust tests passed|Retry failed Windows job on fresh runner with identical source/build inputs; repository setup and signing passed on attempt 2; all publication gates retained; no application change

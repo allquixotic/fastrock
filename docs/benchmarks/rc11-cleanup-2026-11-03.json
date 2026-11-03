@@ -1,0 +1,153 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.11",
+  "local": {
+    "removed": [
+      {
+        "path": "/Users/sean/dev/codex/fastrock-ci-build/work/fastrock/fastrock/build/release-inputs",
+        "bytes": 718471644
+      },
+      {
+        "path": "/tmp/fastrock-rc11-release/signed-fastrock.exe",
+        "bytes": 137920784
+      },
+      {
+        "path": "/Users/sean/dev/codex/fastrock/target/x86_64-pc-windows-msvc/debug/deps/codex_gui-2b0c112a0cfac89c.exe",
+        "bytes": 186747392
+      },
+      {
+        "path": "/Users/sean/dev/codex/fastrock/target/x86_64-pc-windows-msvc/debug/deps/embedded_goose-e643b832221f5993.exe",
+        "bytes": 138068480
+      },
+      {
+        "path": "/Users/sean/dev/codex/fastrock/target/x86_64-pc-windows-msvc/debug/deps/fastrock-dceb414d5d62b91f.exe",
+        "bytes": 14258176
+      }
+    ],
+    "removed_transfer_bytes": 163240618,
+    "removed_bytes": 1358707094,
+    "disk_free_before": 3480274034688,
+    "disk_free_after": 3481469550592,
+    "incremental_and_dependency_caches": "preserved; only obsolete test EXEs identified against the current compiler manifest removed"
+  },
+  "games": {
+    "phases": [
+      {
+        "evidence_files": 44,
+        "archive": "C:\\Users\\SeanMcNamara\\fastrock-rc10-verify\\fixture-evidence.zip",
+        "archive_sha256": "211afd40c8c27c1232022807fb5054a5d1a1b2c3a220c0a7a61c767af202e7c5",
+        "archive_bytes": 3214625,
+        "removed": [
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc10-verify\\scale",
+            "bytes": 60835602
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc10-verify\\scale-desktop",
+            "bytes": 39527919
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc10-verify\\fastrock.exe",
+            "bytes": 137906688
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc10-verify\\embedded_goose.exe",
+            "bytes": 138068480
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc10-benchmark.zip",
+            "bytes": 106257670
+          }
+        ],
+        "removed_bytes": 482596359,
+        "scope": "Only RC10 fixture data, executables and transfer ZIP; preserved receipts, logs, source and active caches. VM remains running."
+      },
+      {
+        "evidence_files": 100,
+        "archive": "C:\\Users\\SeanMcNamara\\fastrock-rc11-fixture-verify\\fixture-evidence.zip",
+        "archive_sha256": "17bc266c4a82992c3429255955c4a9e01b194f0902a04815bbd18d4534b0fb4d",
+        "archive_bytes": 1730985,
+        "removed": [
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc11-fixture-verify\\acceptance",
+            "bytes": 12332024
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc11-fixture-verify\\fastrock.exe",
+            "bytes": 137904128
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc11-fixtures.zip",
+            "bytes": 56982948
+          }
+        ],
+        "removed_bytes": 207219100,
+        "scope": "Only RC11 fixture data, executables and transfer ZIP; preserved receipts, logs, source and active caches. VM remains running."
+      },
+      {
+        "result": "PASS",
+        "removed": [
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc10-verify\\dev",
+            "bytes": 546513
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc10-verify\\cleanup-fixtures.py",
+            "bytes": 2059
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc10-verify\\host-guard.json",
+            "bytes": 69
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc11-fixture-verify\\dev",
+            "bytes": 598629
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc11-fixture-verify\\cleanup-fixtures.py",
+            "bytes": 2009
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc11-fixture-verify\\verify-windows-signature.ps1",
+            "bytes": 1057
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc11-fixture-verify\\fastrock-rc11-signature-check.ps1",
+            "bytes": 344
+          },
+          {
+            "path": "C:\\Users\\SeanMcNamara\\fastrock-rc11-fixture-verify\\signed-fastrock.exe",
+            "bytes": 137920784
+          }
+        ],
+        "removed_bytes": 139071464,
+        "disk_free_before": 2891915988992,
+        "disk_free_after": 2892055351296,
+        "archives_reverified": true,
+        "application_launched": false
+      }
+    ],
+    "removed_bytes": 828886923
+  },
+  "fixture_evidence": {
+    "files": 144,
+    "verified_on_both_hosts": true,
+    "archives": [
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc10-verify\\fixture-evidence.zip",
+        "sha256": "211afd40c8c27c1232022807fb5054a5d1a1b2c3a220c0a7a61c767af202e7c5"
+      },
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc11-fixture-verify\\fixture-evidence.zip",
+        "sha256": "17bc266c4a82992c3429255955c4a9e01b194f0902a04815bbd18d4534b0fb4d"
+      }
+    ]
+  },
+  "preserved": [
+    "active incremental/dependency caches and current build/test executables",
+    "sources and user data",
+    "0.3.x and prior release baselines",
+    "signed release ZIP, attestations, CI evidence and raw benchmark/regression evidence"
+  ],
+  "games_vm_stopped": false
+}

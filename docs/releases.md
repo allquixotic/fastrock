@@ -4,16 +4,19 @@
 
 Application code and dependencies use opt-level 2, no LTO or debug information,
 256 codegen units, incremental compilation and no stripping. Build scripts remain
-at opt-level 0. Goose and vwork are pinned, unmodified Rust dependencies;
-release archives include their licenses. Existing 0.3.x binaries retain the
+at opt-level 0. Goose stays pinned and unmodified; embedded vwork is maintained
+with Fastrock. Release archives include their licenses. Existing 0.3.x binaries retain the
 historical settings documented below.
 
 Binary publication is gated on feature-complete, verified release-candidate
-readiness. [RC2 is published](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.2)
-with the completed implementation and all 33 native acceptance cases passing on
-its exact signed executable. The downloaded ZIP's checksum, source/tag/workflow
-attestation and Windows signature were independently verified. See the
-[release receipt](benchmarks/rc2-release-ci-2026-10-30.json). Development source is
+readiness. [RC11 is published](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.11)
+with conservative automatic memories, 834 Rust tests and all 38 native acceptance
+cases passing on its exact signed executable. The downloaded ZIP's checksum,
+source/tag/workflow attestations and Windows signature were independently verified.
+See the [release receipt](benchmarks/rc11-release-ci-2026-11-03.json) and
+[memory behavior and limits](MEMORIES.md). RC10 was blocked by a summary fixture
+that miscounted idle memory calls; its tag remains, with no published binary.
+RC11 corrects the fixture and deliberately tests that interleave. Development source is
 committed and pushed to main; local fixture builds are not releases. Mac builds
 check compatibility without publishing Mac assets. Final 0.4.0 also requires the
 user's live Bedrock profile validation; fixtures do not establish live access.
