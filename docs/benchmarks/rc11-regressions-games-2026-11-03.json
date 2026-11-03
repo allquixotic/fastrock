@@ -1,0 +1,153 @@
+{
+  "binary_sha256": "352089f5b32c46f280104425e029cbc6c9b2c49328371dd75f79fb328dc2f782",
+  "result": "PASS",
+  "cases": [
+    {
+      "name": "console",
+      "result": "PASS",
+      "error": null,
+      "seconds": 6.02,
+      "peak_tree_bytes": 153759744
+    },
+    {
+      "name": "summary",
+      "result": "PASS",
+      "error": null,
+      "seconds": 35.48,
+      "peak_tree_bytes": 143163392
+    },
+    {
+      "name": "summary-priority",
+      "result": "PASS",
+      "error": null,
+      "seconds": 8.23,
+      "peak_tree_bytes": 153350144
+    },
+    {
+      "name": "memory",
+      "result": "PASS",
+      "error": null,
+      "seconds": 40.92,
+      "peak_tree_bytes": 154533888
+    },
+    {
+      "name": "queue-recovery",
+      "result": "PASS",
+      "error": null,
+      "seconds": 15.84,
+      "peak_tree_bytes": 114069504
+    },
+    {
+      "name": "process-recovery",
+      "result": "PASS",
+      "error": null,
+      "seconds": 18.86,
+      "peak_tree_bytes": 154873856
+    }
+  ],
+  "summary": {
+    "result": "PASS",
+    "binary_sha256": "352089f5b32c46f280104425e029cbc6c9b2c49328371dd75f79fb328dc2f782",
+    "process_draft_recovery": false,
+    "forced_process_crash": false,
+    "explicit_recovery_resume": false,
+    "uncertain_send_never_replayed": false,
+    "peak_process_bytes": 191021056,
+    "requests": [
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      },
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      },
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      },
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      }
+    ],
+    "memory_requests": [
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": false
+      }
+    ],
+    "summary_only_match": true,
+    "exported_turns": 3,
+    "complete_history_preserved": true,
+    "native_cheap_profile_saved": true,
+    "all_provider_requests_local": true,
+    "independent_rally_navigation": true,
+    "backend_overlay_navigation": true,
+    "in_process_windows": true,
+    "peak_native_windows": 3,
+    "window_owner_pids": {
+      "7d03eb4b-7075-4f18-819c-32bd0172f50a": 3064,
+      "13e16cfe-e36b-4536-92b8-a6d66d3c5f55": 3064
+    },
+    "tray_lifecycle": {
+      "close_requested": true,
+      "turn_completed_hidden": true,
+      "restore_requested": true,
+      "restored": true,
+      "quit_menu_requested": true,
+      "quit_selected": true
+    }
+  },
+  "memory": {
+    "passed": true,
+    "sha256": "352089f5b32c46f280104425e029cbc6c9b2c49328371dd75f79fb328dc2f782",
+    "peakBytes": 149032960,
+    "learningRequests": 4,
+    "foregroundRequests": 12,
+    "checks": [
+      "completed-turn learning",
+      "actual model recall tool",
+      "parallel per-turn budget",
+      "repository isolation",
+      "native edit/pin",
+      "stalled HTTP foreground cancellation",
+      "restart persistence",
+      "forget tombstone",
+      "learning/recall toggles"
+    ]
+  },
+  "notes": [
+    "Unchanged RC10 CI application binary; corrected test scripts for RC11.",
+    "Summary regression deliberately interleaves idle memory learning and preserves exact conversation/summary counts.",
+    "Signed full matrix remains a release gate."
+  ]
+}

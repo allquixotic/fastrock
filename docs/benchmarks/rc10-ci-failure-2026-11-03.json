@@ -1,0 +1,97 @@
+{
+  "result": "FAIL; publication correctly blocked",
+  "version": "0.4.0-rc.10",
+  "source_commit": "6c7b02d7e8cf3790a5639492051bd648bd391536",
+  "ci_run": 41704925852,
+  "ci_url": "https://github.com/allquixotic/fastrock/actions/runs/41704925852",
+  "evidence_artifact_id": 13268036201,
+  "evidence_artifact_sha256": "17b9a3de3e34006ba0aa6b4506de50ba1149932535e3bbd83d85a152a569e845",
+  "rust_tests_passed": 834,
+  "passed_native_cases": [
+    "rally",
+    "goose",
+    "vwork",
+    "delegation",
+    "schedules",
+    "webhook",
+    "provider-setup",
+    "profiles",
+    "effort",
+    "model-options",
+    "capabilities",
+    "recipes",
+    "projects",
+    "commands",
+    "palette",
+    "terminal",
+    "checkpoints",
+    "compaction",
+    "sidebar",
+    "organization",
+    "sidebar-drag",
+    "sidebar-policy",
+    "titles",
+    "queue",
+    "mentions",
+    "review",
+    "shell",
+    "console",
+    "side",
+    "window-recovery",
+    "delete",
+    "history",
+    "selection"
+  ],
+  "failed_case": "summary",
+  "cause": "Fixture treated the new idle memory-extraction call as a foreground answer, inflating conversation counts and numbering.",
+  "summary_diagnostics": {
+    "tray_state": {
+      "close_requested": true,
+      "turn_completed_hidden": true,
+      "restore_requested": true,
+      "restored": true,
+      "quit_menu_requested": true,
+      "quit_selected": true
+    },
+    "provider_requests": [
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      },
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      },
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      }
+    ],
+    "peak_process_bytes": 195469312
+  },
+  "remedy": "Keep RC10 tag unchanged; separate memory requests in summary/priority/console fixtures, force an idle-learning interleave in summary regression, and retest for RC11. Application implementation unchanged."
+}

@@ -31,6 +31,10 @@ class PriorityFixture(ProviderFixture):
 
     def respond(self, handler, body):
         system = ' '.join(c.get('text', '') for c in body.get('system', []))
+        if 'Fastrock conservative memory extraction' in system:
+            self.audit.append(dict(kind='memory', at=time.monotonic(), in_turn=self.in_turn))
+            assert not self.in_turn, 'Memory learning started between tool calls'
+            return super().respond(handler, body)
         summary = 'search index sidecar' in json.dumps(body)
         naming = 'Generate a short title (four words or less)' in system
         self.audit.append(dict(kind='summary' if summary else 'naming' if naming else 'foreground',

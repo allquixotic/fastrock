@@ -42,6 +42,7 @@ for folder in ('home', 'codex', 'project', 'goose/config', 'local', 'roaming'):
     'BEDROCK_DISABLE_STREAMING: true\nBEDROCK_MAX_RETRIES: 0\n'
     'GOOSE_DISABLE_SESSION_NAMING: true\nextensions: {}\n', encoding='utf-8')
 requests = []
+memory_requests = []
 release_first_turn = threading.Event()
 
 
@@ -51,17 +52,21 @@ class Provider(BaseHTTPRequestHandler):
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+        memory = 'Fastrock conservative memory extraction' in json.dumps(body.get('system', []))
         summary = 'search index sidecar' in json.dumps(body)
-        requests.append({'path': self.path, 'summary': summary})
+        (memory_requests if memory else requests).append({'path': self.path, 'summary': summary})
         assert self.path.startswith('/model/') and self.path.endswith('/converse'), self.path
+        if memory:
+            assert 'openai.gpt-6-luna' in self.path and not body.get('toolConfig'), body
         turn = sum(not request['summary'] for request in requests)
-        if args.recovery and not summary and turn == 2:
+        foreground = not (summary or memory)
+        if args.recovery and foreground and turn == 2:
             release_first_turn.set()
-        if args.recovery and not summary and turn == 1:
+        if args.recovery and foreground and turn == 1:
             assert release_first_turn.wait(60), 'No explicit Resume reached the provider'
-        if args.tray and not summary and turn == 1:
+        if args.tray and foreground and turn == 1:
             assert release_first_turn.wait(20), 'Native window was not hidden during the active turn'
-        text = ('ObsidianNeedle: compaction-length keyword fixture for searching this conversation.'
+        text = ('[]' if memory else 'ObsidianNeedle: compaction-length keyword fixture for searching this conversation.'
                 if summary else f'Native embedded Goose answer {turn}, produced by the local fixture.')
         response = json.dumps({'output': {'message': {'role': 'assistant', 'content': [{'text': text}]}},
                               'stopReason': 'end_turn', 'usage': {'inputTokens': 3, 'outputTokens': 4, 'totalTokens': 7},
@@ -73,7 +78,7 @@ class Provider(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(response)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
-            assert args.recovery and turn == 1, 'Unexpected provider disconnect'
+            assert memory or (args.recovery and turn == 1), 'Unexpected provider disconnect'
 
 
 server = ThreadingHTTPServer(('127.0.0.1', 0), Provider)
@@ -107,6 +112,10 @@ if args.recovery:
 else:
     for turn in range(1, args.turns + 1):
         steps += [{'send': f'Please give a short fixture answer {turn}'}, {'wait_idle': 30000}, {'wait': 2000}]
+        if args.navigation and turn == 1:
+            # Exercise auxiliary learning deterministically without conflating it
+            # with user answers or search summaries (B280).
+            steps += [{'wait_summaries': 30000}, {'wait': 6000}]
 steps += [{'transcript': 'export-complete:' + str(out / 'complete.md')}, {'wait': 300},
          {'sidebar': ['search', 'OBSIDIANNEEDLE']}, {'wait': 1500},
          {'sidebar': ['dump', str(out / 'matches.json')]}, {'snapshot': str(out / 'search.png')},
@@ -460,7 +469,7 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
         if menu_driver is not None:
             menu_driver.join(timeout=2)
         if args.tray:
-            (out / 'tray-diagnostics.json').write_text(json.dumps(dict(tray_state=tray_state, provider_requests=requests, peak_process_bytes=peak), indent=2), encoding='utf-8')
+            (out / 'tray-diagnostics.json').write_text(json.dumps(dict(tray_state=tray_state, provider_requests=requests, memory_requests=memory_requests, peak_process_bytes=peak), indent=2), encoding='utf-8')
         if process.poll() is None:
             process.kill()
             process.wait(timeout=10)
@@ -474,6 +483,8 @@ assert len(matches) == 1 and matches[0]['id'].startswith('goose:'), matches
 assert json.loads((out / 'empty.json').read_text(encoding='utf-8'))['rows'] == []
 expected_requests = 3 if args.recovery else 2 * (args.turns + int(args.windows) + int(args.process_recovery))
 assert len(requests) == expected_requests, f'Unexpected model calls: {requests}'
+if args.navigation:
+    assert memory_requests, 'Summary regression did not exercise background memory learning'
 paired_requests = requests[1:] if args.recovery else requests
 for ordinary, summary in zip(paired_requests[::2], paired_requests[1::2]):
     assert ordinary['summary'] is False and 'openai.gpt-6.1-sol' in ordinary['path']
@@ -552,7 +563,7 @@ if args.tray:
     assert (out / 'codex/gui.json').exists(), 'Explicit Quit did not flush UI preferences'
 receipt = dict(result='PASS', binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                process_draft_recovery=args.process_recovery, forced_process_crash=crashed_with_saved_draft, explicit_recovery_resume=args.recovery or args.process_recovery, uncertain_send_never_replayed=args.recovery or args.process_recovery,
-               peak_process_bytes=peak, requests=requests, summary_only_match=True,
+               peak_process_bytes=peak, requests=requests, memory_requests=memory_requests, summary_only_match=True,
                exported_turns=args.turns, complete_history_preserved=True,
                native_cheap_profile_saved=True, all_provider_requests_local=True,
                independent_rally_navigation=args.navigation, backend_overlay_navigation=args.navigation,

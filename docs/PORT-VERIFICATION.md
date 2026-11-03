@@ -2352,3 +2352,18 @@ The initial SSH service-session launch captured no rendered frames and failed th
 existing measurement gate; the identical binary passed in the signed-in desktop.
 [Both receipts](benchmarks/rc10-scale-games-2026-11-03.json) are retained.
 Signed CI must verify the exact RC10 release executable before publication.
+
+RC10 was subsequently blocked by CI: all 834 Rust tests and 33 preceding native
+cases passed, but the legacy summary fixture counted an idle memory-extraction
+request as an additional foreground answer. No RC10 binary was published.
+[Failure evidence](benchmarks/rc10-ci-failure-2026-11-03.json) records the cause.
+RC11 retains the same application behavior and corrects summary, priority and
+console fixture accounting. The summary test now deliberately waits for a
+learning request while retaining exact foreground and summary counts. The RC10
+tag remains unchanged; the full-scale memory benchmark above still covers the
+unchanged implementation.
+
+All six targeted native cases then passed on games: console, summary,
+summary-priority, memory, queue-recovery and process-recovery. The corrected
+summary test observed background learning while preserving its exact answer and
+summary pairs. [Regression receipt](benchmarks/rc11-regressions-games-2026-11-03.json).

@@ -833,3 +833,5 @@ B277|2026-11-03|Memory migration recognized developer by name alone, including f
 B278|2026-11-03|Selected memory editor stretched action buttons vertically|Bound action row to native control height and keep editor unstretched; native screenshot; V93
 
 B279|2026-11-03|Release benchmark launched in SSH service session; scrolling dispatched but native presentation captured zero frames|Existing frame-count gate rejected run; document desktop/asuser requirement and rerun with live memory guard; V33,V45
+
+B280|2026-11-03|Legacy summary fixture classified idle memory extraction as a foreground answer, breaking request counts/numbering; priority/console fixtures shared assumption|Separate memory accounting and valid empty extraction response, force learning during summary regression; retain failed RC10 tag and publish corrected fixtures under RC11; V44,V92

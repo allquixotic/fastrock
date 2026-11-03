@@ -50,7 +50,8 @@ class ConsoleFixture(ProviderFixture):
         self.results = []
 
     def respond(self, handler, body):
-        if 'search index sidecar' in json.dumps(body):
+        if ('search index sidecar' in json.dumps(body)
+                or 'Fastrock conservative memory extraction' in json.dumps(body.get('system', []))):
             return super().respond(handler, body)
         self.requests.append(dict(path=handler.path, summary=False, body=body))
         self.rounds += 1
