@@ -30,6 +30,10 @@ mod schedule;
 pub(crate) use queue::Recovery;
 mod effort_controls;
 mod effort_defaults;
+mod memory;
+mod memory_context;
+mod memory_controls;
+mod memory_tool;
 mod rpc;
 mod sessions;
 mod shell;
@@ -585,6 +589,17 @@ impl Adapter {
                     "description":"Open a conversation to select its model and provider.","hidden":false,
                     "supportedReasoningEfforts":[],"defaultReasoningEffort":"medium","isDefault":true}],"nextCursor":null}),
                 )
+            }
+            method if method.starts_with("fastrock/memory/") => {
+                let memory = self
+                    .summaries
+                    .as_ref()
+                    .ok_or_else(|| error("Memories unavailable"))?;
+                memory
+                    .memory
+                    .request(method.rsplit('/').next().unwrap(), params)
+                    .await
+                    .map_err(|e| error(format!("Memory operation: {e}")))
             }
             "thread/start" => self.new_session(params).await,
             method if method.starts_with("fastrock/recipe/") => {

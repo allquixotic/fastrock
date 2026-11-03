@@ -39,14 +39,58 @@ async fn persist(manager: &SessionManager, id: &str, defaults: Vec<ExtensionConf
 
 pub(super) async fn prepare(id: &str) -> Result<()> {
     let manager = SessionManager::new(goose_runtime::config::paths::Paths::data_dir());
-    if has_selection(&manager.get_session(id, false).await?.extension_data)? {
+    let session = manager.get_session(id, false).await?;
+    let mut defaults = if has_selection(&session.extension_data)? {
+        EnabledExtensionsState::from_extension_data(&session.extension_data)
+            .context("Saved tool selection is invalid")?
+            .extensions
+    } else {
+        tokio::task::spawn_blocking(|| {
+            goose_runtime::config::extensions::get_enabled_extensions_with_config(Config::global())
+        })
+        .await?
+    };
+    // Old ordinary coding sessions acquire the local read-only recall tool.
+    // Explicit empty/restricted tool sets and temporary/subagent sessions stay
+    // untouched. Saved memory settings still control what the tool can return.
+    let add_memory = !matches!(
+        session.session_type,
+        goose_runtime::session::SessionType::Hidden | goose_runtime::session::SessionType::SubAgent
+    ) && defaults.iter().any(unrestricted_developer)
+        && !defaults
+            .iter()
+            .any(|e| e.name() == super::memory_tool::NAME);
+    if add_memory {
+        defaults.push(ExtensionConfig::Builtin {
+            name: super::memory_tool::NAME.into(),
+            description: "Bounded local memory recall".into(),
+            display_name: Some("Memories".into()),
+            timeout: Some(5),
+            bundled: Some(true),
+            available_tools: vec![],
+        });
+        manager
+            .set_extension_state(id, &EnabledExtensionsState::new(defaults))
+            .await?;
         return Ok(());
     }
-    let defaults = tokio::task::spawn_blocking(|| {
-        goose_runtime::config::extensions::get_enabled_extensions_with_config(Config::global())
-    })
-    .await?;
     persist(&manager, id, defaults).await
+}
+
+fn unrestricted_developer(extension: &ExtensionConfig) -> bool {
+    match extension {
+        ExtensionConfig::Platform {
+            name,
+            available_tools,
+            ..
+        }
+        | ExtensionConfig::Builtin {
+            name,
+            available_tools,
+            ..
+        } => name == "developer" && available_tools.is_empty(),
+        _ => false,
+    }
 }
 
 #[cfg(test)]
@@ -54,6 +98,28 @@ mod tests {
     use super::*;
     use goose_runtime::{config::GooseMode, session::SessionType};
     use serde_json::json;
+
+    #[test]
+    fn v92_memory_migration_preserves_restricted_developer_tools() {
+        let extension = |kind, tools| {
+            serde_json::from_value::<ExtensionConfig>(json!({
+                "type":kind,"name":"developer","description":"","available_tools":tools
+            }))
+            .unwrap()
+        };
+        for kind in ["builtin", "platform"] {
+            assert!(unrestricted_developer(&extension(kind, json!([]))));
+            assert!(!unrestricted_developer(&extension(
+                kind,
+                json!(["text_editor"])
+            )));
+        }
+        let remote: ExtensionConfig = serde_json::from_value(json!({
+            "type":"streamable_http","name":"developer","description":"","uri":"http://127.0.0.1:1"
+        }))
+        .unwrap();
+        assert!(!unrestricted_developer(&remote));
+    }
 
     #[tokio::test]
     async fn v81_legacy_tools_materialize_without_replacing_explicit_choices() {

@@ -25,7 +25,7 @@ CASES = [
     ('window-recovery', None), ('delete', None), ('history', []),
     ('selection', []),
     ('summary', ['--turns', '3', '--navigation', '--windows', '--tray']),
-    ('summary-priority', None),
+    ('summary-priority', None), ('memory', None),
     ('queue-recovery', ['--recovery']), ('process-recovery', ['--process-recovery']),
 ]
 

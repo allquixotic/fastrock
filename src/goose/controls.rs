@@ -14,6 +14,7 @@ impl AppController {
         self.effort_controls_install();
         self.profiles_install();
         self.capabilities_install();
+        self.memory_install();
         self.recipes_install();
         self.schedules_install();
         self.window

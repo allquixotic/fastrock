@@ -8,6 +8,7 @@ use thiserror::Error;
 pub mod checkpoints;
 pub mod embedded;
 pub mod integration;
+pub mod memories;
 pub mod projects;
 pub mod review;
 pub mod scrollback;

@@ -1,0 +1,62 @@
+import { CheckBox, LineEdit, TextEdit, ListView } from "std-widgets.slint";
+import { Theme, FlatButton } from "theme.slint";
+export struct LearnedMemoryRow { id: string, title: string, text: string, detail: string, pinned: bool, global: bool }
+export global LearnedMemoryState {
+    in property <[LearnedMemoryRow]> rows;
+    in property <string> revision;
+    in property <bool> learning;
+    in property <bool> recall;
+    in property <bool> busy;
+    in property <string> status;
+    in-out property <string> selected;
+    in-out property <string> text;
+    in-out property <bool> pinned;
+    in-out property <bool> global;
+    in-out property <bool> dirty;
+    in-out property <bool> confirm-clear;
+    callback action(action: string);
+    callback select(id: string);
+}
+export component LearnedMemoriesPage inherits Rectangle {
+    VerticalLayout {
+        padding: Theme.pad-xl; spacing: Theme.pad-m;
+        HorizontalLayout {
+            Text { text: "Memories"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; horizontal-stretch: 1; }
+            FlatButton { text: "Refresh"; enabled: !LearnedMemoryState.busy && !LearnedMemoryState.dirty; clicked => { LearnedMemoryState.action("list"); } }
+        }
+        Text { text: "Learn durable terminology, preferences and project conventions after completed turns. Learning runs only while idle, using the cheap profile selected in Providers. Temporary chats and delegated work do not contribute. Existing histories are not mined."; color: Theme.text-muted; wrap: word-wrap; }
+        CheckBox { text: "Learn automatically"; checked: LearnedMemoryState.learning; enabled: !LearnedMemoryState.busy && !LearnedMemoryState.dirty; toggled => { LearnedMemoryState.action("toggle-learning"); } }
+        CheckBox { text: "Allow memory recall"; checked: LearnedMemoryState.recall; enabled: !LearnedMemoryState.busy && !LearnedMemoryState.dirty; toggled => { LearnedMemoryState.action("toggle-recall"); } }
+        Text { text: "The model can recall relevant facts with a local tool, at most 2,048 bytes per turn. Up to 512 facts across projects, 96 per project. Unpinned facts expire after 180 days; oldest unpinned facts make room when full. Repository workspaces share memories. Manual edits are protected from automatic replacement."; color: Theme.text-faint; wrap: word-wrap; }
+        if LearnedMemoryState.status != "": Text { text: LearnedMemoryState.status; color: Theme.text-muted; wrap: word-wrap; }
+        ListView {
+            vertical-stretch: 1; min-height: 140px;
+            for row in LearnedMemoryState.rows: Rectangle {
+                height: 78px; background: row.id == LearnedMemoryState.selected ? Theme.selected : touch.has-hover ? Theme.hover : transparent;
+                VerticalLayout { padding: Theme.pad-m; spacing: 2px;
+                    Text { text: row.title; color: Theme.text; font-weight: 600; overflow: elide; }
+                    Text { text: row.text; color: Theme.text; overflow: elide; }
+                    Text { text: row.detail; color: Theme.text-muted; overflow: elide; }
+                }
+                touch := TouchArea { enabled: !LearnedMemoryState.busy && !LearnedMemoryState.dirty; mouse-cursor: pointer; clicked => { LearnedMemoryState.select(row.id); } }
+            }
+        }
+        if LearnedMemoryState.selected != "": VerticalLayout {
+            spacing: Theme.pad-s; vertical-stretch: 0;
+            TextEdit { height: 80px; text <=> LearnedMemoryState.text; enabled: !LearnedMemoryState.busy; edited => { LearnedMemoryState.dirty = true; } }
+            CheckBox { text: "Pin (keep until forgotten)"; checked <=> LearnedMemoryState.pinned; enabled: !LearnedMemoryState.busy; toggled => { LearnedMemoryState.dirty = true; } }
+            CheckBox { text: "Use across all projects"; checked <=> LearnedMemoryState.global; enabled: !LearnedMemoryState.busy; toggled => { LearnedMemoryState.dirty = true; } }
+            HorizontalLayout { alignment: start; spacing: Theme.pad-s; height: Theme.row-height;
+                FlatButton { text: "Save"; enabled: LearnedMemoryState.dirty && !LearnedMemoryState.busy; clicked => { LearnedMemoryState.action("update"); } }
+                FlatButton { text: "Discard edits"; enabled: LearnedMemoryState.dirty && !LearnedMemoryState.busy; clicked => { LearnedMemoryState.action("discard"); } }
+                FlatButton { text: "Forget"; danger: true; enabled: !LearnedMemoryState.busy && !LearnedMemoryState.dirty; clicked => { LearnedMemoryState.action("forget"); } }
+            }
+        }
+        HorizontalLayout { alignment: start; spacing: Theme.pad-s;
+            FlatButton { text: LearnedMemoryState.confirm-clear ? "Confirm forget all" : "Forget all memories…"; danger: true; enabled: !LearnedMemoryState.busy && !LearnedMemoryState.dirty; clicked => {
+                if LearnedMemoryState.confirm-clear { LearnedMemoryState.action("clear"); } else { LearnedMemoryState.confirm-clear = true; }
+            } }
+            if LearnedMemoryState.confirm-clear: FlatButton { text: "Cancel"; clicked => { LearnedMemoryState.confirm-clear = false; } }
+        }
+    }
+}

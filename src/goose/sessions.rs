@@ -654,6 +654,14 @@ impl Adapter {
             let s = sessions
                 .get_mut(&id)
                 .ok_or_else(|| error("Session unavailable"))?;
+            if !compacting {
+                if let (Some(service), Some(context)) = (
+                    &self.summaries,
+                    super::memory_context::context(s, &params["input"], &tid),
+                ) {
+                    service.memory.begin(&id, context);
+                }
+            }
             s.active = Some(tid.clone());
             s.compacting = compacting;
             s.run_id = None;
@@ -728,6 +736,9 @@ impl Adapter {
         s.info["updatedAt"] = json!(chrono::Utc::now().to_rfc3339());
         s.info["_meta"]["lastMessageAt"] = s.info["updatedAt"].clone();
         let summarize = completed && !s.ephemeral && !user_command && !s.compacting;
+        if let Some(service) = &self.summaries {
+            service.memory.end(id, summarize);
+        }
         let delegated = s.binding.delegation.is_some();
         let t = s.turn_mut();
         match reply {
@@ -830,6 +841,9 @@ impl Adapter {
                 json!({"sessionId":id,"expectedRunId":run,"prompt":prompt(&params["input"])?}),
             )
             .await?;
+        if let Some(service) = &self.summaries {
+            service.memory.discard_learning(id);
+        }
         if let Some(message_id) = reply["messageId"].as_str() {
             let mut sessions = self.sessions.lock().await;
             if let Some(s) = sessions.get_mut(id) {
@@ -928,6 +942,9 @@ impl Adapter {
     }
     pub(super) async fn close_session(&self, params: &Value) -> Reply {
         let id = session_id(text(params, "threadId"))?;
+        if let Some(service) = &self.summaries {
+            service.memory.end(id, false);
+        }
         let gate = self.gate(id).await;
         let _lock = gate.lock().await;
         let shell = self

@@ -7,11 +7,18 @@ mod cheap_profile;
 mod config_guard;
 #[path = "../src/goose/embedded.rs"]
 mod embedded;
+#[path = "../src/goose/memory.rs"]
+mod memory;
+#[path = "../src/goose/memory_tool.rs"]
+mod memory_tool;
 #[path = "../src/goose/summary_service.rs"]
 mod summary_service;
 #[path = "../src/goose/summary_worker.rs"]
 mod summary_worker;
 mod model {
+    pub fn now() -> i64 {
+        chrono::Utc::now().timestamp()
+    }
     pub fn ui_id(id: &str) -> String {
         format!("goose:{id}")
     }

@@ -1,0 +1,178 @@
+{
+  "result": "PASS",
+  "feature": "Conservative automatic memories with bounded in-process recall",
+  "binarySha256": "ce358ef7f2a46e741ab8d8ae905e942b09707942be11c011fa1bb589307691cd",
+  "gooseRevision": "30bba95105e59bc3e7df624cf6b4d433690cfe12",
+  "gooseModified": false,
+  "totalRustTests": 834,
+  "rust": [
+    {
+      "target": "embedded",
+      "passed": true,
+      "peakBytes": 16048128,
+      "passedTests": 7,
+      "logSha256": "b567bc1ec6c78d8e54e5eb9972e75a3b03332392e02cd26a234ecba188c78ce4"
+    },
+    {
+      "target": "integration",
+      "passed": true,
+      "peakBytes": 19247104,
+      "passedTests": 7,
+      "logSha256": "2801ee797029df145e13caa0b3c3c283fd1630cc29d12d1cf077659a5937dfb4"
+    },
+    {
+      "target": "store_startup",
+      "passed": true,
+      "peakBytes": 13500416,
+      "passedTests": 0,
+      "logSha256": "a567e3f626399dd8237c32044f9c3f814898ae6445020e155bea0610ff6b3c29"
+    },
+    {
+      "target": "review",
+      "passed": true,
+      "peakBytes": 12836864,
+      "passedTests": 3,
+      "logSha256": "967993a8f563da2b5c7a1fd1f8bcd24f5f5e4cf448d9aba544d9aea529ee4b90"
+    },
+    {
+      "target": "checkpoints",
+      "passed": true,
+      "peakBytes": 24457216,
+      "passedTests": 7,
+      "logSha256": "6ae579445057f5a6bad684daf05f03c8b4c8fccb0b3f401fcb8d2e74b74d16fe"
+    },
+    {
+      "target": "fastrock_workspaces",
+      "passed": true,
+      "peakBytes": 59158528,
+      "passedTests": 14,
+      "logSha256": "61a1b7393cd02ee5b49479425e836ab529ee6add5d699af194ddfaf77ed60162"
+    },
+    {
+      "target": "codex_gui",
+      "passed": true,
+      "peakBytes": 118300672,
+      "passedTests": 795,
+      "logSha256": "5d08d45f4703aac8aca5878ccaf326f0c3759ffb197a4dfd6fa7bce1aad8ebbc"
+    },
+    {
+      "target": "renderer",
+      "passed": true,
+      "peakBytes": 24752128,
+      "passedTests": 1,
+      "logSha256": "8abcb61823216fa556d977b66e6268bc67f368038f4b5e14bd9fb6e00eb9e638"
+    },
+    {
+      "target": "fastrock",
+      "passed": true,
+      "peakBytes": 2043904,
+      "passedTests": 0,
+      "logSha256": "df166913f47ff1f04202cae9b31df67ed272d692d99a0023a8117dc3029100dd"
+    },
+    {
+      "target": "embedded_goose",
+      "passed": true,
+      "peakBytes": 88248320,
+      "passedTests": 0,
+      "logSha256": "0002285a637c0cc8897bd51a7ef1f074863286721c4f150695e1a97a1624e9db"
+    }
+  ],
+  "native": {
+    "binary_sha256": "ce358ef7f2a46e741ab8d8ae905e942b09707942be11c011fa1bb589307691cd",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.48,
+        "peak_tree_bytes": 106790912
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 40.12,
+        "peak_tree_bytes": 154402816
+      }
+    ]
+  },
+  "memories": {
+    "passed": true,
+    "sha256": "ce358ef7f2a46e741ab8d8ae905e942b09707942be11c011fa1bb589307691cd",
+    "peakBytes": 135729152,
+    "learningRequests": 4,
+    "foregroundRequests": 12,
+    "checks": [
+      "completed-turn learning",
+      "actual model recall tool",
+      "parallel per-turn budget",
+      "repository isolation",
+      "native edit/pin",
+      "stalled HTTP foreground cancellation",
+      "restart persistence",
+      "forget tombstone",
+      "learning/recall toggles"
+    ]
+  },
+  "precedingRegressionMatrix": {
+    "binary_sha256": "27a9299741642f4dce0314103a16424ae4def76d3b3f75c2999186e1ec09cb93",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 4.62,
+        "peak_tree_bytes": 152907776
+      },
+      {
+        "name": "model-options",
+        "result": "PASS",
+        "error": null,
+        "seconds": 9.44,
+        "peak_tree_bytes": 153157632
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.09,
+        "peak_tree_bytes": 153419776
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 39.11,
+        "peak_tree_bytes": 154619904
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.03,
+        "peak_tree_bytes": 153415680
+      },
+      {
+        "name": "summary-priority",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.23,
+        "peak_tree_bytes": 153485312
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 40.53,
+        "peak_tree_bytes": 154615808
+      }
+    ]
+  },
+  "macosCompile": "PASS; application and tests never executed on Mac",
+  "providerCalls": "Local fixtures only; no working profiles or paid API calls",
+  "notes": [
+    "The preceding seven-case matrix predates only a tighter restricted-tool migration and compact editor row sizing; final Rust suites and native capability/memory fixtures cover those changes."
+  ]
+}

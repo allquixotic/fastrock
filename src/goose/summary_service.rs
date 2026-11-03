@@ -87,6 +87,7 @@ struct Queue {
 }
 
 pub(super) struct Service {
+    pub memory: Arc<super::memory::Runtime>,
     queue: Arc<Queue>,
     task: tokio::task::JoinHandle<()>,
     home: PathBuf,
@@ -99,16 +100,19 @@ impl Drop for Foreground {
     fn drop(&mut self) {
         let mut pending = self.0.queue.pending.lock().unwrap();
         pending.foreground -= 1;
+        self.0.memory.resume();
         self.0.queue.notify.notify_one();
     }
 }
 impl Drop for Service {
     fn drop(&mut self) {
+        self.memory.stop();
         self.task.abort();
     }
 }
 impl Service {
     pub fn foreground(self: &Arc<Self>) -> Foreground {
+        self.memory.pause();
         self.queue.pending.lock().unwrap().pause();
         self.queue.notify.notify_one();
         Foreground(self.clone())
@@ -130,7 +134,13 @@ impl Service {
                 tokio::time::sleep(Duration::from_secs(60)).await;
             }
         });
-        let service = Arc::new(Self { queue, task, home });
+        let memory = super::memory::Runtime::start(home.clone());
+        let service = Arc::new(Self {
+            queue,
+            task,
+            home,
+            memory,
+        });
         *singleton = Arc::downgrade(&service);
         service
     }
@@ -274,7 +284,7 @@ async fn run(queue: Arc<Queue>, summaries: &Summaries, manager: &SessionManager)
             let result = tokio::select! {
                 biased;
                 _ = cancelled.cancelled() => Ok(()),
-                result = process(manager, summaries, &queue, &id, &cancelled) => result,
+                result = async { let _permit = super::memory::BACKGROUND.acquire().await?; process(manager, summaries, &queue, &id, &cancelled).await } => result,
             };
             let failed = result.is_err() && !cancelled.is_cancelled();
             {

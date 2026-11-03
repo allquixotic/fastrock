@@ -142,6 +142,9 @@ class ProviderFixture:
     def respond(self, handler, body):
         assert handler.path.startswith('/model/') and handler.path.endswith(('/converse', '/converse-stream')), handler.path
         assert len(self.requests) < 512, 'Provider request loop'
+        if 'Fastrock conservative memory extraction' in json.dumps(body.get('system', [])):
+            return self.json_response(handler, dict(output={'message': {'role': 'assistant', 'content': [{'text':'[]'}]}},
+                stopReason='end_turn', usage={'inputTokens':1,'outputTokens':1,'totalTokens':2}, metrics={'latencyMs':1}))
         messages = body['messages']
         # Bedrock combines adjacent user messages. The app's agent-only side
         # boundary remains in the recorded body but is not a fixture command.

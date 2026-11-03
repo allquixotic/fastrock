@@ -16,6 +16,7 @@ Broader GUI contract: repository `GUI.md`.
 - Named independent provider/endpoint/AWS profile/region/credential/model/effort profiles where unchanged Goose permits. Display supported reasoning levels; accept custom saved levels only through supported Goose APIs.
 - Codex histories untouched on disk, absent from UI. Goose history retained; one current search summary backfilled per existing conversation.
 - One latest compaction-length keyword-focused summary per conversation; each completed user-facing turn replaces it asynchronously. Compressed summary shares vwork redb; no historical summaries; original conversation retained. Settings identify cheap profile, else Bedrock GPT-6 Luna; unavailable means deterministic search only.
+- 2026-11-03 memory authorization: conservative automatic learning after completed turns, bounded recall, idle maintenance in vwork redb; vwork may change, Goose remains unchanged. User accepts model-initiated in-process recall tool instead of unsupported transient ACP injection; learning must yield to foreground work.
 - Search performs immediate case-insensitive title/current-summary matching, then bounded multithreaded fuzzy search over current summaries. No model call per query; cancel obsolete searches.
 - Track Mac/games free space; clean identified stale build junk only when needed.
 - Native Slint 1.18.1; bound transcript memory; no idle repaint polling.
@@ -39,6 +40,7 @@ Broader GUI contract: repository `GUI.md`.
 - I.vwork: embedded vwork Engine and public tool API, exclusive existing redb owner; workspace browser/editor/compaction and compressed current search summaries share database.
 - I.orchestration: persistent threads/runs/queues/lineage/mailboxes/schedules; delegate/message/wait/interrupt/fork/model switch/explicit merge/recovery; no quota features.
 - I.search: immediate deterministic substring plus bounded parallel fuzzy search; background cheap-model current-summary replacement and backfill.
+- I.memory: completed-turn learning, bounded in-process recall tool, compressed facts/tombstones, native memory controls.
 - I.checkpoints: per-turn/manual snapshots, native file review, guarded file restore and Goose conversation rewind; durable interrupted-restore review.
 - I.lifecycle: close-to-tray, explicit Quit, restart Resume and safe cancellation.
 
@@ -212,6 +214,10 @@ V90: Speed ! separate session option after effort; only officially supported mod
 
 V91: Model selector button/dropdowns ! left-aligned, labels immediately before their fields; action buttons ! compact; content-sized with narrow-window bounds; native Slint. App-owned visible captions ! no Goose brand; preserve protocol/config identifiers, attribution and user/model content. Verify: native control bounds and UI text fixtures.
 
+V92: Automatic memory ! completed non-ephemeral, non-delegated user turns only; user-authored evidence required, no tool/assistant inference or history backfill. Cheap-model extraction ! bounded, cancellable, idle only; unchanged Goose public APIs. Recall ! public builtin MCP over in-process streams, in-memory try-lock, host-supplied repository/global scope, max 2,048 UTF-8 bytes of facts per user turn, no database/network/learning waits. Model chooses recall; ordinary tool result enters history. Transient system injection blocked by private ACP provider manager. Verify: actual provider/tool fixture, turn budget/session binding, foreground cancellation/cache contention tests.
+
+V93: Memories ! dedicated zstd-compressed state in owning vwork redb, <=512 facts/96 per scope, revision guards, evidence/source provenance, pinned manual edits, deterministic expiry/eviction and deduplication. Forget ! durable hashed tombstones; stale learners cannot resurrect; clear ! generation invalidation. Native settings ! independent learning/recall controls, inspect/edit/pin/forget/reset. No source-table scans, Goose config edits or mandatory memory availability. Verify: memory store lifecycle/concurrency/restart tests and native memory controls.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -292,6 +298,7 @@ T64|x|Filter conversation providers by local readiness; preserve setup and exist
 T65|x|Add persisted support-aware Bedrock Speed through public session APIs|V90
 T66|x|Content-sized native model controls and remove app-owned Goose branding|V91
 T67|x|RC9 Windows/Mac compile, fixture/native/scale acceptance and signed-CI publication gate|V39,V44,V45,V89,V90,V91
+T68|x|Conservative automatic memories, bounded recall tool, redb maintenance and native controls; 834 Rust tests, embedded fixtures, native memory/capabilities and Mac compile pass; docs/benchmarks/memory-games-2026-11-03.json|V38,V40,V44,V82,V92,V93,I.goose,I.vwork
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -809,3 +816,17 @@ B269|2026-11-03|Local unit-driver job assignment raced a zero-test executable ex
 B270|2026-11-03|Branding cleanup capitalized leading Cannot steer, breaking case-sensitive queue fallback (existing V85 regression caught it)|Retain recognized cannot steer phrase in functional session wording; V85
 
 B271|2026-11-03|Native fixture read UTF-8 UI dumps with Windows locale encoding, losing the triangle glyph; alignment assertion omitted button padding|Use explicit UTF-8 and compare padded text origin with label origin; actual speed selection passed; V91
+
+B272|2026-11-03|Memory first compile omitted redb ReadableTable and used a dev-only async-trait in production decorator|Import public trait and promote existing macro dependency; V93 build verification
+
+B273|2026-11-03|Memory native cancellation fixture assumed a six-second wait drained three debounced jobs|Isolate stalled-request scenario after restart with one pending turn; V92
+
+B274|2026-11-03|ACP provider factory decorates inventory, not conversational providers; unit decorator checks missed absent model context|Actual provider fixture required; use public in-process builtin recall tool, document transient injection blocker; V92
+
+B275|2026-11-03|Restore migration treated public extension-state Option as Result|Convert missing state to descriptive error; compile checks
+
+B276|2026-11-03|Native fixture invoked Forget before queued Slint row selection reached controller; sent empty fact ID|Wait for selection event before destructive fixture action; V93
+
+B277|2026-11-03|Memory migration recognized developer by name alone, including filtered or external tools|Require unrestricted builtin/platform developer; restricted-selection regression; V92
+
+B278|2026-11-03|Selected memory editor stretched action buttons vertically|Bound action row to native control height and keep editor unstretched; native screenshot; V93

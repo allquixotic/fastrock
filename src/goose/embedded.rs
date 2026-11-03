@@ -20,6 +20,7 @@ pub(super) async fn connect() -> anyhow::Result<Connection> {
     goose_runtime::builtin_extension::register_builtin_extensions(
         goose_mcp::BUILTIN_EXTENSIONS.clone(),
     );
+    super::memory_tool::register();
     let active_runs = Arc::new(ActiveRunRegistry::default());
     let live_voice = Arc::new(LiveVoiceService::from_config(active_runs.clone()));
     let provider_factory: AcpProviderFactory = Arc::new(|name| {
@@ -38,7 +39,10 @@ pub(super) async fn connect() -> anyhow::Result<Connection> {
     let agent = Arc::new(
         GooseAcpAgent::new(GooseAcpAgentOptions {
             provider_factory,
-            builtin_selection: AcpBuiltinSelection::from_requested(Vec::new()),
+            builtin_selection: AcpBuiltinSelection {
+                defaults: vec!["developer".into(), super::memory_tool::NAME.into()],
+                explicit: Vec::new(),
+            },
             data_dir: Paths::data_dir(),
             config_dir: Paths::config_dir(),
             disable_session_naming: goose_runtime::config::Config::global()
