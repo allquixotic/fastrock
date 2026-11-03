@@ -20,8 +20,9 @@ export global GooseState {
     in property <bool> busy;
     in property <bool> changing;
     in property <[GooseOption]> options;
-    in property <string> summary: "Goose";
+    in property <string> summary: "Model options";
     in property <string> error;
+    callback refresh();
     callback choose(id: string, value: string);
     in property <bool> effort-available;
     in property <string> effort-context;
@@ -71,34 +72,51 @@ export component GooseControls inherits Rectangle {
                 }
             }
         }
-        FlatButton {
-            text: GooseState.summary + (GooseState.expanded ? "  ▴" : "  ▾");
-            clicked => { GooseState.expanded = !GooseState.expanded; }
+        Rectangle {
+            height: 28px;
+            summary-size := Text { text: GooseState.summary + "  ▾"; font-size: Theme.font-size; visible: false; }
+            FlatButton {
+                x: 0px; y: 0px;
+                width: min(parent.width, summary-size.preferred-width + 2 * Theme.pad-l);
+                text: GooseState.summary + (GooseState.expanded ? "  ▴" : "  ▾");
+                clicked => { GooseState.expanded = !GooseState.expanded; if GooseState.expanded { GooseState.refresh(); } }
+            }
         }
         if GooseState.expanded: ScrollView {
-            height: min(320px, GooseState.options.length * 38px + 148px);
-            VerticalLayout {
+            height: min(320px, options-content.preferred-height);
+            options-content := VerticalLayout {
+                alignment: start;
                 spacing: Theme.pad-s;
-                for option in GooseState.options: HorizontalLayout {
-                    Text { text: option.title; color: Theme.text-muted; width: 110px; vertical-alignment: center; }
+                for option in GooseState.options: Rectangle {
+                    height: 32px;
+                    Text { x: 0px; y: 0px; height: parent.height; text: option.title; color: Theme.text-muted; width: 110px; vertical-alignment: center; }
+                    option-size := VerticalLayout {
+                        visible: false;
+                        for name in option.names: Text { text: name; font-size: Theme.font-size; }
+                    }
                     ComboBox {
-                        horizontal-stretch: 1;
+                        x: 118px; y: 0px;
+                        width: min(max(0px, parent.width - 118px), option-size.preferred-width + 48px);
                         model: option.names;
                         current-index: option.selected;
-                        enabled: !GooseState.busy && !GooseState.changing && option.values.length > 1;
+                        enabled: !GooseState.busy && !GooseState.changing && (option.values.length > 1 || option.selected < 0);
                         selected(value) => { GooseState.choose(option.id, option.values[self.current-index]); }
                     }
                 }
                 HorizontalLayout {
-                    LineEdit { text <=> GooseState.custom-model; placeholder-text: "Exact model or inference profile ID"; enabled: !GooseState.busy && !GooseState.changing; }
-                    FlatButton { text: "Use model ID"; enabled: !GooseState.busy && !GooseState.changing && GooseState.custom-model != ""; clicked => { GooseState.choose("model", GooseState.custom-model); } }
+                    height: 32px;
+                    alignment: start;
+                    LineEdit { horizontal-stretch: 0; preferred-width: 360px; text <=> GooseState.custom-model; placeholder-text: "Exact model or inference profile ID"; enabled: !GooseState.busy && !GooseState.changing; }
+                    FlatButton { horizontal-stretch: 0; text: "Use model ID"; enabled: !GooseState.busy && !GooseState.changing && GooseState.custom-model != ""; clicked => { GooseState.choose("model", GooseState.custom-model); } }
                 }
                 HorizontalLayout {
-                    FlatButton { text: "Save effort default"; enabled: GooseState.effort-available && !GooseState.busy && !GooseState.changing; clicked => { GooseState.save-effort-default(false); } }
-                    FlatButton { text: "Clear effort default"; enabled: !GooseState.busy && !GooseState.changing; clicked => { GooseState.save-effort-default(true); } }
+                    height: 28px;
+                    alignment: start;
+                    FlatButton { horizontal-stretch: 0; text: "Save effort default"; enabled: GooseState.effort-available && !GooseState.busy && !GooseState.changing; clicked => { GooseState.save-effort-default(false); } }
+                    FlatButton { horizontal-stretch: 0; text: "Clear effort default"; enabled: !GooseState.busy && !GooseState.changing; clicked => { GooseState.save-effort-default(true); } }
                 }
                 if GooseState.effort-status != "": Text { text: GooseState.effort-status; color: Theme.text-muted; wrap: word-wrap; }
-                Text { text: "Goose controls tool permissions. Fastrock does not sandbox tool processes."; color: Theme.text-faint; wrap: word-wrap; font-size: Theme.font-size-small; }
+                Text { text: "Mode controls tool permissions. Tool processes are not sandboxed."; color: Theme.text-faint; wrap: word-wrap; font-size: Theme.font-size-small; }
             }
         }
         if GooseState.error != "": Text { text: GooseState.error; color: Theme.danger; wrap: word-wrap; }
@@ -113,14 +131,14 @@ export component GooseSettingsPage inherits Rectangle {
             padding: Theme.pad-xl;
             spacing: Theme.pad-l;
             alignment: start;
-            Text { text: "Goose"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; }
-            Text { text: "Goose runs inside Fastrock. Your existing Goose provider settings, credentials, extensions and conversations remain in place."; color: Theme.text; wrap: word-wrap; }
-            Text { text: "Open a conversation and expand Goose options above its Send button to select the provider, model, mode, and thinking effort offered by Goose for that session."; color: Theme.text; wrap: word-wrap; }
-            Text { text: "Save effort default in those options remembers the current choice for that provider and model, including named profiles. New conversations and explicit provider/model switches use it when Goose offers that value. Restored conversations and forks retain their own settings. Clear effort default restores Goose's default for future selections."; color: Theme.text-muted; wrap: word-wrap; }
+            Text { text: "Providers"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; }
+            Text { text: "Your existing provider settings, credentials, extensions and conversations remain in place."; color: Theme.text; wrap: word-wrap; }
+            Text { text: "Expand the model button above Send to select Provider, Mode, Model, Thinking Effort and Speed for that conversation."; color: Theme.text; wrap: word-wrap; }
+            Text { text: "Save effort default in those options remembers the current choice for that provider and model, including named profiles. New conversations and explicit provider/model switches use it when that value is supported. Restored conversations and forks retain their own settings. Clear effort default restores the model default for future selections."; color: Theme.text-muted; wrap: word-wrap; }
             FlatButton { text: "Provider defaults"; clicked => { root.defaults-open = !root.defaults-open; } }
             if root.defaults-open: VerticalLayout {
                 spacing: Theme.pad-m;
-                Text { text: "Saved in your Goose configuration. Provider credentials remain in their existing location. Quit and restart Fastrock after changing these defaults; current conversations keep their settings."; color: Theme.text-muted; wrap: word-wrap; }
+                Text { text: "Saved in your provider configuration. Provider credentials remain in their existing location. Quit and restart Fastrock after changing these defaults; current conversations keep their settings."; color: Theme.text-muted; wrap: word-wrap; }
                 HorizontalLayout {
                     Text { text: "Default provider"; color: Theme.text-muted; width: 160px; vertical-alignment: center; }
                     ComboBox { model: GooseState.provider-names; current-index <=> GooseState.setup-provider; enabled: GooseState.setup-loaded && !GooseState.setup-loading; }
@@ -131,9 +149,9 @@ export component GooseSettingsPage inherits Rectangle {
                 }
                 for field in GooseState.setup-fields: HorizontalLayout {
                     Text { text: field.title; color: Theme.text-muted; width: 160px; vertical-alignment: center; }
-                    LineEdit { text <=> field.value; enabled: GooseState.setup-loaded && !GooseState.setup-loading; placeholder-text: "Use Goose / environment default"; }
+                    LineEdit { text <=> field.value; enabled: GooseState.setup-loaded && !GooseState.setup-loading; placeholder-text: "Use configuration / environment default"; }
                 }
-                Text { text: "AWS settings are shared across Goose conversations. Environment variables may override saved defaults. Named profiles below store new API keys in the OS credential vault."; color: Theme.text-muted; wrap: word-wrap; }
+                Text { text: "AWS settings are shared across conversations. Environment variables may override saved defaults. Named profiles below store new API keys in the OS credential vault."; color: Theme.text-muted; wrap: word-wrap; }
                 HorizontalLayout {
                     FlatButton { text: "Save provider defaults"; enabled: GooseState.setup-loaded && !GooseState.setup-loading; clicked => { GooseState.save-setup(); } }
                     FlatButton { text: "Reload provider defaults"; enabled: !GooseState.setup-loading; clicked => { GooseState.load-setup(); } }
@@ -142,7 +160,7 @@ export component GooseSettingsPage inherits Rectangle {
             }
             ProviderProfiles {}
             Text { text: "Cheap model for search summaries"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; }
-            Text { text: "Search runs locally. Background summaries use this profile and the selected provider's saved Goose credentials. If unavailable, search uses existing titles and summaries without a more expensive model fallback."; color: Theme.text-muted; wrap: word-wrap; }
+            Text { text: "Search runs locally. Background summaries use this profile and the selected provider's saved credentials. If unavailable, search uses existing titles and summaries without a more expensive model fallback."; color: Theme.text-muted; wrap: word-wrap; }
             HorizontalLayout {
                 Text { text: "Profile name"; color: Theme.text-muted; width: 110px; vertical-alignment: center; }
                 LineEdit { text <=> GooseState.cheap-name; enabled: !GooseState.cheap-loading; }

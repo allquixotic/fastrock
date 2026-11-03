@@ -241,8 +241,8 @@ export component DiagnosticsPage inherits Rectangle {
 
                 if SettingsState.server-error != "": Banner {
                     tone: 3;
-                    text: "Goose is not running: " + SettingsState.server-error;
-                    action: "Restart Goose";
+                    text: "Runtime is not running: " + SettingsState.server-error;
+                    action: "Restart runtime";
                     activated => {
                         SettingsState.restart-server();
                     }
@@ -281,7 +281,7 @@ export component DiagnosticsPage inherits Rectangle {
                     VerticalLayout {
                         padding: Theme.pad-l;
                         spacing: Theme.pad-m;
-                        Text { text: "Goose keeps its own provider, credential, extension and recipe configuration. Fastrock appearance, keyboard and window settings are saved separately."; color: Theme.text-muted; wrap: word-wrap; }
+                        Text { text: "Provider, credential, extension and recipe configuration is separate from appearance, keyboard and window settings."; color: Theme.text-muted; wrap: word-wrap; }
                         FlatButton { text: "Open provider settings"; clicked => { SettingsState.open-page("goose"); } }
                         FlatButton { text: "Open tools and hooks"; clicked => { SettingsState.open-page("capabilities"); } }
                     }

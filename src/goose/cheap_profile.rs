@@ -28,7 +28,7 @@ impl CheapProfile {
         );
         ensure!(
             super::provider_policy::allowed(&self.provider),
-            "Select a supported Goose provider"
+            "Select a supported provider"
         );
         ensure!(
             !self.model.trim().is_empty()

@@ -140,10 +140,10 @@ pub(super) fn render(content: &str, dir: &Path, values: &Value) -> Result<Recipe
         vec![],
         None::<fn(&str, &str) -> Result<String>>,
     )
-    .context("Goose cannot safely reopen template syntax introduced by these parameter values")?;
+    .context("Cannot safely reopen template syntax introduced by these parameter values")?;
     ensure!(
         serde_json::to_value(&rendered)? == serde_json::to_value(second)?,
-        "Goose would reinterpret template syntax in these parameter values"
+        "The recipe parser would reinterpret template syntax in these parameter values"
     );
     Ok(rendered)
 }

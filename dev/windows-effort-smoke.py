@@ -45,7 +45,7 @@ def run(name, steps):
 try:
     peak = run('save', [{'wait_ready':30000}, {'resize':[1440,1100]}, *new(),
         {'sidebar':['dump',str(out/'first-tab.json')]}, *dump('initial'),
-        {'click_text':f'Goose · {OPUS}  ▾'}, {'wait':200},
+        {'click_text':f'{OPUS}  ▾'}, {'wait':200},
         *choose('thinking_effort','high'), {'click_text':'Save effort default'}, {'wait':100}, *dump('saved'),
         {'snapshot':str(out/'effort-default.png')},
         *choose('thinking_effort','low'), {'send':'Keep explicit low effort in this conversation'}, {'wait_idle':30000}, {'wait':500},

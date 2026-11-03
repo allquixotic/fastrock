@@ -30,7 +30,7 @@ pub(super) async fn connect() -> anyhow::Result<Connection> {
                     move || supported_provider(&name)
                 })
                 .await?,
-                "Fastrock supports Goose Bedrock, OpenAI and Anthropic providers; external agent providers are disabled"
+                "Fastrock supports Bedrock, OpenAI and Anthropic providers; external agent providers are disabled"
             );
             goose_runtime::providers::create_with_default_model(&name, Vec::new()).await
         })

@@ -9,7 +9,7 @@ impl Adapter {
         action: &str,
     ) -> Reply {
         if !self.embedded_runtime {
-            return Err(unsupported("Goose capabilities"));
+            return Err(unsupported("Tools & hooks"));
         }
         // Config/hook writes from different native windows share one owner.
         static SETTINGS: Mutex<()> = Mutex::const_new(());
@@ -52,7 +52,7 @@ impl Adapter {
                 result.map(|_| json!({})).map_err(|e| error(e.to_string()))
             })
             .await
-            .map_err(|_| error("Goose capability settings worker stopped"))?;
+            .map_err(|_| error("Capability settings worker stopped"))?;
         }
         let mut id = params["threadId"]
             .as_str()
@@ -138,9 +138,9 @@ impl Adapter {
                 };
                 let tool_rows = tools["tools"]
                     .as_array()
-                    .ok_or_else(|| error("Goose returned an invalid tool catalog"))?;
+                    .ok_or_else(|| error("The runtime returned an invalid tool catalog"))?;
                 if tool_rows.len() > 4096 {
-                    return Err(error("Goose tool catalog exceeds 4096 entries"));
+                    return Err(error("Tool catalog exceeds 4096 entries"));
                 }
                 let tools:Vec<_>=tool_rows.iter().map(|t|json!({"name":t["name"],"permission":t["permission"],"description":text(t,"description").chars().take(4096).collect::<String>(),"protected":config::managed_session_name(text(t,"name"), &bindings, true)})).collect();
                 let extensions:Vec<_>=extensions["extensions"].as_array().into_iter().flatten().map(|entry|{

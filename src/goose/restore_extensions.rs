@@ -19,7 +19,7 @@ fn has_selection(data: &ExtensionData) -> Result<bool> {
     };
     // Malformed explicit state is not permission to enable inherited tools.
     let state: EnabledExtensionsState = serde_json::from_value(value.clone())
-        .context("Saved Goose tool selection is invalid; preserve it for recovery")?;
+        .context("Saved tool selection is invalid; preserve it for recovery")?;
     EnabledExtensionsState::check_unique_keys(&state.extensions)?;
     Ok(true)
 }

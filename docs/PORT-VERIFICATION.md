@@ -2251,3 +2251,44 @@ Goose 1.57.0 and vwork 0.3.5 from the pinned Cargo lockfile.
 [The release receipt](benchmarks/rc8-release-ci-2026-11-03.json) records the
 artifact identities and signed acceptance results. RC8 automated acceptance is
 complete. Live Bedrock profile validation remains required for final 0.4.0.
+
+
+### RC9 provider controls and speed, 2026-11-03
+
+Conversation providers now use cached local readiness checks for credentials,
+models and endpoints. Empty/disabled entries are hidden; supported AWS sources,
+external credential helpers and vault profiles remain available. Picker opening
+performs no network probes or helper execution. Settings retains setup choices.
+Model controls and their opener are content-sized and explicitly left-aligned;
+app-owned captions use functional names without backend branding.
+
+Speed follows Thinking Effort. Public SessionManager model configuration in
+unchanged Goose 1.57.0 carries Standard/Ultrafast for AWS-supported Bedrock
+Responses routes. The native fixture selected Ultrafast, preserved it through
+effort changes and restart, isolated conversations, rejected it for Luna, and
+checked narrow/wide field bounds and alignment. A loopback Responses fixture
+verified actual `service_tier` payloads through the real provider. Fast/Priority
+is not supported by these AWS model cards; existing Converse/Chat Completions
+routes remain Standard-only. See [route policy](BEDROCK-SPEED.md).
+
+Windows passed 788 application tests, one isolated renderer test, 33 workspace
+tests and standalone runtime/store fixtures. Nine targeted native cases passed:
+schedules, provider setup, profiles, effort, model options, capabilities,
+recipes, compaction and sidebar. Mac compilation passed without running the
+application or tests. Initial compaction error-classification failure and native
+fixture synchronization/geometry corrections are recorded in SPEC.md.
+[Regression evidence](benchmarks/rc9-regressions-games-2026-11-03.json).
+
+The full 1,000-conversation/eight-stream/10,000-message workload passed without
+scale reduction: peak process memory 225,996,800 bytes (215.5 MiB), history
+opening 602.1 ms, switch dispatch 0.4 ms and frame p95 9.07 ms. First/middle/last
+history pages took 4.1–12.4 ms. The retained October 30 0.3.4 baseline measured
+182,415,360 process bytes plus an external backend (tree commit 220,450,816
+bytes), history opening 1,102 ms and frame p95 8.422 ms. Different-day samples
+and differing process/tree metrics do not establish a general performance or
+memory improvement. Host/guest reserves and the 32 GB hard ceiling stayed
+active. [Scale evidence](benchmarks/rc9-scale-games-2026-11-03.json).
+
+Signed CI must still pass the complete 37-case native matrix and independent
+package verification before publication is considered complete. Live Bedrock
+profile acceptance remains required for stable 0.4.0.

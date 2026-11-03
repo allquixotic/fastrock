@@ -47,7 +47,7 @@ export component CapabilitiesPage inherits Rectangle {
         content := VerticalLayout {
             padding: Theme.pad-xl; spacing: Theme.pad-m; alignment: start;
             HorizontalLayout {
-                Text { text: "Goose capabilities"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; horizontal-stretch: 1; }
+                Text { text: "Tools & hooks"; color: Theme.text; font-size: Theme.font-size-large; font-weight: 600; horizontal-stretch: 1; }
                 FlatButton { text: "Refresh"; enabled: !CapabilityState.busy && !CapabilityState.dirty; clicked => { CapabilityState.action("refresh"); } }
             }
             HorizontalLayout {
@@ -62,14 +62,14 @@ export component CapabilitiesPage inherits Rectangle {
                 selected(value) => { CapabilityState.choose-session(self.current-index); }
             }
             Text {
-                text: CapabilityState.section == 0 ? "Extension defaults apply to new conversations. Commands may start configured MCP extensions. Existing Goose credentials and environment references are preserved."
-                    : CapabilityState.section == 1 ? "Select an open conversation. Code mode and extension removal apply to that conversation while idle. Tool permission choices are shared by Goose across conversations."
-                    : "Goose discovers hooks from installed plugins. Changes take effect in newly activated sessions. Project settings can override a plugin’s enabled default. Fastrock’s vwork policy is managed automatically.";
+                text: CapabilityState.section == 0 ? "Extension defaults apply to new conversations. Commands may start configured MCP extensions. Existing credentials and environment references are preserved."
+                    : CapabilityState.section == 1 ? "Select an open conversation. Code mode and extension removal apply to that conversation while idle. Tool permission choices are shared across conversations."
+                    : "Hooks are discovered from installed plugins. Changes take effect in newly activated sessions. Project settings can override a plugin’s enabled default. Fastrock’s vwork policy is managed automatically.";
                 color: Theme.text-muted; wrap: word-wrap;
             }
             if CapabilityState.section == 1: HorizontalLayout {
                 FlatButton { text: CapabilityState.code-mode ? "Disable code mode" : "Enable code mode"; enabled: !CapabilityState.busy && CapabilityState.session-index >= 0; clicked => { CapabilityState.action("code-mode"); } }
-                Text { text: "Runs JavaScript tool composition inside Goose."; color: Theme.text-muted; wrap: word-wrap; }
+                Text { text: "Runs JavaScript tool composition."; color: Theme.text-muted; wrap: word-wrap; }
             }
             if CapabilityState.section == 1 && CapabilityState.session-extensions.length > 0: ListView {
                 height: 135px;
@@ -102,7 +102,7 @@ export component CapabilitiesPage inherits Rectangle {
             }
             if CapabilityState.editing-hooks && CapabilityState.section == 2: VerticalLayout {
                 spacing: Theme.pad-m;
-                Text { text: "hooks.json · commands run only on their configured Goose events. Save retains the previous file as a backup."; color: Theme.text-muted; wrap: word-wrap; }
+                Text { text: "hooks.json · commands run only on their configured events. Save retains the previous file as a backup."; color: Theme.text-muted; wrap: word-wrap; }
                 TextEdit { height: 240px; text <=> CapabilityState.hook-text; enabled: !CapabilityState.busy; edited => { CapabilityState.dirty = true; } }
                 HorizontalLayout {
                     FlatButton { text: "Save hooks"; enabled: !CapabilityState.busy && CapabilityState.dirty; clicked => { CapabilityState.action("hooks-save"); } }
@@ -117,12 +117,12 @@ export component CapabilitiesPage inherits Rectangle {
                 ComboBox { model: ["Command (stdio)", "HTTP MCP"]; current-index <=> CapabilityState.transport; enabled: !CapabilityState.busy; }
                 LineEdit { text <=> CapabilityState.address; placeholder-text: CapabilityState.transport == 0 ? "Executable path or command" : "MCP URL without embedded credentials"; enabled: !CapabilityState.busy; }
                 if CapabilityState.transport == 0: LineEdit { text <=> CapabilityState.args; placeholder-text: "Non-secret arguments as a JSON array"; enabled: !CapabilityState.busy; }
-                LineEdit { text <=> CapabilityState.keys; placeholder-text: "Existing Goose credential / environment key names, comma separated"; enabled: !CapabilityState.busy; }
-                Text { text: "Use existing Goose credential keys for secrets. New extensions are saved disabled; enable their default when ready."; color: Theme.text-faint; wrap: word-wrap; }
+                LineEdit { text <=> CapabilityState.keys; placeholder-text: "Existing credential / environment key names, comma separated"; enabled: !CapabilityState.busy; }
+                Text { text: "Use existing credential keys for secrets. New extensions are saved disabled; enable their default when ready."; color: Theme.text-faint; wrap: word-wrap; }
                 FlatButton { text: "Save extension"; enabled: !CapabilityState.busy; clicked => { CapabilityState.action("add"); } }
             }
             if CapabilityState.status != "": Text { text: CapabilityState.status; color: Theme.text-muted; wrap: word-wrap; }
-            if CapabilityState.busy: Text { text: "Loading Goose capabilities…"; color: Theme.text-faint; }
+            if CapabilityState.busy: Text { text: "Loading tools & hooks…"; color: Theme.text-faint; }
         }
     }
 }

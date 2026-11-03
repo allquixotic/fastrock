@@ -165,7 +165,7 @@ try:
         action('run', 'Edited recurring'), {'wait': 2000}, action('save'), {'wait': 500}, *dump('stale'),
         *create('Daily', 'schedule-check-daily', '1', action('time', daily)),
         *dump('before-quit'), {'open_settings': 'appearance'}, {'wait': 200},
-        {'click_text': 'Goose'}, {'wait': 300}, {'click_text': 'Schedules'}, {'wait': 300},
+        {'click_text': 'Providers'}, {'wait': 300}, {'click_text': 'Schedules'}, {'wait': 300},
         {'quit': True}], 'initial')
     assert task(read('once'), 'Once')['last']['status'] == 'completed', read('once')
     assert len(read('once')['data']['tasks']) == 1 and read('once')['status'] == 'Schedule saved', read('once')

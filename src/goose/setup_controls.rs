@@ -124,7 +124,7 @@ impl AppController {
                     Ok(setup) => {
                         publish(&state, &setup);
                         app.settings.goose_setup = Some(setup);
-                        state.set_setup_status("Saved in Goose configuration. Quit and restart Fastrock to use the new defaults. Environment overrides still apply.".into());
+                        state.set_setup_status("Saved in provider configuration. Quit and restart Fastrock to use the new defaults. Environment overrides still apply.".into());
                     }
                     Err(error) => state.set_setup_status(error.to_string().into()),
                 }
@@ -170,6 +170,7 @@ impl AppController {
                     "effortStatus":state.get_effort_status().as_str(),
                     "sessionChanging":state.get_changing(),
                     "threadError":self.active_thread_index().and_then(|i|self.thread_tab(i)).and_then(|t|t.last_error.as_deref()),
+                    "controlGeometry":self.model_controls_geometry_for_test(),
                     "sessionOptions":state.get_options().iter().map(|option| serde_json::json!({"id":option.id.as_str(),
                         "current":option.values.row_data(option.selected as usize).map(|v|v.to_string()),
                         "values":option.values.iter().map(|v|v.to_string()).collect::<Vec<_>>()})).collect::<Vec<_>>()});

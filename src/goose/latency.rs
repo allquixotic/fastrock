@@ -68,7 +68,7 @@ pub(super) fn record(phase: Phase, start: Instant) {
     tracing::info!(
         phase = LABELS[phase as usize],
         elapsed_ms = milliseconds,
-        "Goose latency"
+        "Response latency"
     );
 }
 

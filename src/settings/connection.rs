@@ -27,7 +27,7 @@ impl AppController {
     }
     pub(super) fn settings_connection_refresh_status(&mut self) {
         let state = self.window.global::<SettingsState>();
-        state.set_connection_current("Embedded Goose".into());
+        state.set_connection_current("Built-in runtime".into());
         state.set_connection_state(
             match (&self.settings.server_error, self.backend.is_ready()) {
                 (Some(_), _) => "Not running",

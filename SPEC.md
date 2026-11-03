@@ -52,6 +52,8 @@ R7: Goose Bedrock construction uses process-global config/environment; independe
 R8: Goose 1.57.0 public secret setters can fall back to plaintext files; no public vault-only writer. Named OpenAI/Anthropic profiles instead use its public declarative command-auth API and Fastrock’s bundled OS-vault helper; original credential entries remain unchanged.
 R4: AWS Runtime supports Converse/InvokeModel and OpenAI-compatible APIs; Runtime/Mantle routes differ; exact model/profile must preserve installed working configuration; https://docs.aws.amazon.com/bedrock/latest/userguide/endpoints.html.
 
+R9: AWS Bedrock GPT-6.1 Sol/GPT-6 Astra model cards: Standard/Ultrafast via Responses; GPT-6 Luna/GPT-6 Sol Standard only; no Fast/Priority. https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-openai-gpt-6-1-sol.html and model-card-openai-gpt-6-luna.html. Goose public SessionManager ModelConfig.request_params supports service_tier without patches.
+
 ## §V INVARIANTS
 V1–V14 retain the imported upstream behavior/history. V10 describes its historical signed distributions; current Fastrock prereleases follow V15/V22.
 V1: Upward user scroll ! detach tail-following before virtual row measurement; small idle scroll ! persist; automatic height/offset adjustment ! preserve live tail following.
@@ -204,6 +206,12 @@ V87: Store opening ! shared across callers, cancellation-safe and retained by co
 
 V88: Project grouping ! each folder once, status categories nested inside; preserve distinct roots and every conversation, no UI-thread filesystem IO. Settled ! collapsed by default, including search; only explicit expansion reveals threads, persisted independently per project. Preserve ungrouped status view, paging, ordering and drag status without moving repositories. Verify: v88_projects_appear_once_and_settled_requires_expansion, v88_settled_default_and_explicit_expansion_survive_reload, native sidebar fixture.
 
+V89: Conversation provider picker ! locally configured credentials/model/endpoint only; disabled/blank configurations hidden. Preserve command-auth, vault, AWS profiles/SSO/IAM and setup choices. Readiness refresh ! off UI thread; no network/helper execution on picker open. Verify: local readiness and native picker fixtures.
+
+V90: Speed ! separate session option after effort; only officially supported model/route tiers. Bedrock Responses 6.1 Sol/6 Astra ! Standard/Ultrafast; no unsupported Fast. Persist via unchanged Goose public model config, preserve effort/params; idle gate, restore/fork/isolation and actual wire payload verified.
+
+V91: Model selector button/dropdowns ! left-aligned, labels immediately before their fields; action buttons ! compact; content-sized with narrow-window bounds; native Slint. App-owned visible captions ! no Goose brand; preserve protocol/config identifiers, attribution and user/model content. Verify: native control bounds and UI text fixtures.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -280,6 +288,10 @@ T60|x|Windowless Goose hook inheritance; signed RC7 zero-popup/output regression
 T61|x|Project fixture bounded native load/save/close waits; games and all 36 signed RC7 native cases passed|V79,V86
 T62|x|Remove repeated large-store startup IO and false cold-open deadlines; shared retained owners, diagnostics and realistic native performance/recovery tests; Windows suite, vwork native CI and guarded 2.50GiB fixture passed (rc8-startup-games-2026-11-03.json)|V38,V40,V44,V47,V82,V87
 T63|x|Group projects once with nested status categories and explicitly expanded Settled threads; V88 unit tests and native organization/drag fixtures passed (rc8-regressions-games-2026-11-03.json)|V42,V51,V68,V79,V88
+T64|x|Filter conversation providers by local readiness; preserve setup and existing credential routes|V89
+T65|x|Add persisted support-aware Bedrock Speed through public session APIs|V90
+T66|x|Content-sized native model controls and remove app-owned Goose branding|V91
+T67|x|RC9 Windows/Mac compile, fixture/native/scale acceptance and signed-CI publication gate|V39,V44,V45,V89,V90,V91
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -781,3 +793,19 @@ B261|2026-11-03|Targeted Cargo update reselected unrelated Windows dependency ed
 B262|2026-11-03|Large-store baseline safely aborted on unreadable host heartbeat; generic error discarded cause although monitor stayed healthy; tenfold reduced comparison passed|Bound transient missing/permission read retries to 40ms, retain freshness/reserve checks and report error category; watchdog regression; V45,V87
 
 B263|2026-11-03|Large fixture seeding filled redb default 1GiB cache and hit the hypervisor reserve cap before app measurement|Seed payload with a 32MiB cache; app cache unchanged; keep guard and tenfold fallback; V45,V87
+
+B264|2026-11-03|Conversation picker filtered engine scope only, exposing providers with blank credentials/model configuration|Cache local readiness off UI thread; preserve valid credential helpers and setup choices; V89
+
+B265|2026-11-03|Selector button and ComboBoxes stretched across composer; backend branding exposed throughout captions|Content-sized native layouts and functional text; V91
+
+B266|2026-11-03|Slint rejects explicit width together with explicit min-width on one component|Use content-bounded width alone, which fixes both layout bounds; V91 compile gate
+
+B267|2026-11-03|Explicit-width children retained Slint automatic centering, putting labels after fields and centering the model button; user rejected screenshot|Anchor labels/button at x=0 and fields at fixed label offset; prevent action row stretching; native alignment assertions; V91
+
+B268|2026-11-03|Text visitor omits ComboBox popup trees and End is not a supported selection key; global pointer driver is desktop-size dependent|Use native control click and supported DownArrow selection; preserve actual widget coverage; V91
+
+B269|2026-11-03|Local unit-driver job assignment raced a zero-test executable exiting successfully|Accept already-completed zero exit; kill/fail any live uncontained process; benchmark watchdog unchanged
+
+B270|2026-11-03|Branding cleanup capitalized leading Cannot steer, breaking case-sensitive queue fallback (existing V85 regression caught it)|Retain recognized cannot steer phrase in functional session wording; V85
+
+B271|2026-11-03|Native fixture read UTF-8 UI dumps with Windows locale encoding, losing the triangle glyph; alignment assertion omitted button padding|Use explicit UTF-8 and compare padded text origin with label origin; actual speed selection passed; V91

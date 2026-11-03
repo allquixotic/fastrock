@@ -13,7 +13,9 @@ fn read(config: &Config) -> Result<Defaults> {
     match config.get_param(KEY) {
         Ok(value) => Ok(value),
         Err(ConfigError::NotFound(_)) => Ok(BTreeMap::new()),
-        Err(_) => anyhow::bail!("Could not read saved reasoning defaults in Goose configuration"),
+        Err(_) => {
+            anyhow::bail!("Could not read saved reasoning defaults in provider configuration")
+        }
     }
 }
 
@@ -41,8 +43,9 @@ fn write(config: &Config, provider: &str, model: &str, value: Option<&str>) -> R
         defaults.values().map(BTreeMap::len).sum::<usize>() <= 4096,
         "Too many saved reasoning defaults"
     );
-    super::config_guard::edit(config, |config| Ok(config.set_param(KEY, defaults)?))
-        .map_err(|_| anyhow::anyhow!("Could not save reasoning defaults in Goose configuration"))?;
+    super::config_guard::edit(config, |config| Ok(config.set_param(KEY, defaults)?)).map_err(
+        |_| anyhow::anyhow!("Could not save reasoning defaults in provider configuration"),
+    )?;
     Ok(())
 }
 
@@ -51,12 +54,10 @@ async fn identity(id: &str) -> Result<(String, String)> {
         .get_session(id, false)
         .await?;
     Ok((
-        session
-            .provider_name
-            .context("Goose has not selected a provider")?,
+        session.provider_name.context("No provider selected")?,
         session
             .model_config
-            .context("Goose has not selected a model")?
+            .context("No model selected")?
             .model_name,
     ))
 }
@@ -82,9 +83,9 @@ impl Adapter {
         if !self.embedded_runtime {
             return Ok(None);
         }
-        let (provider, model) = identity(id).await.map_err(|_| {
-            error("Could not resolve this Goose provider/model for reasoning defaults")
-        })?;
+        let (provider, model) = identity(id)
+            .await
+            .map_err(|_| error("Could not resolve this provider/model for reasoning defaults"))?;
         let desired = tokio::task::spawn_blocking(move || {
             let _guard = GATE
                 .lock()
@@ -127,7 +128,7 @@ impl Adapter {
             let session = sessions
                 .get(id)
                 .filter(|s| s.loaded)
-                .ok_or_else(|| error("Open a Goose conversation first"))?;
+                .ok_or_else(|| error("Open a conversation first"))?;
             if session.active.is_some() {
                 return Err(error("Wait for the current turn before saving defaults"));
             }
@@ -138,13 +139,13 @@ impl Adapter {
                         || !offered(&session.config, &value)))
             {
                 return Err(error(
-                    "Goose options changed. Review the current options before saving",
+                    "Model options changed. Review the current options before saving",
                 ));
             }
         }
-        let (provider, model) = identity(id).await.map_err(|_| {
-            error("Could not resolve this Goose provider/model for reasoning defaults")
-        })?;
+        let (provider, model) = identity(id)
+            .await
+            .map_err(|_| error("Could not resolve this provider/model for reasoning defaults"))?;
         tokio::task::spawn_blocking(move || {
             let _guard = GATE
                 .lock()

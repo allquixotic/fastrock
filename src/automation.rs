@@ -946,6 +946,34 @@ impl AppController {
         found
     }
 
+    pub(crate) fn model_controls_geometry_for_test(&self) -> Vec<serde_json::Value> {
+        use i_slint_core::item_tree::ItemRc;
+        use i_slint_core::items::{ComplexText, SimpleText, StyledTextItem};
+        use i_slint_core::window::WindowInner;
+        use std::ops::ControlFlow;
+        let inner = WindowInner::from_pub(self.window.window());
+        let Some(component) = inner.try_component() else {
+            return vec![];
+        };
+        let mut rows = Vec::new();
+        ItemRc::new_root(component).visit_descendants::<()>(|item| {
+            if item.is_visible() {
+                let raw = if let Some(text) = item.downcast::<StyledTextItem>() {
+                    Some(i_slint_core::styled_text::get_raw_text(&text.as_pin_ref().text()).into_owned())
+                } else if let Some(text) = item.downcast::<ComplexText>() {
+                    Some(text.as_pin_ref().text().to_string())
+                } else { item.downcast::<SimpleText>().map(|t| t.as_pin_ref().text().to_string()) };
+                if let Some(text) = raw {
+                    let rect = item.geometry();
+                    let point = item.map_to_window(rect.origin);
+                    rows.push(serde_json::json!({"text":text,"x":point.x,"y":point.y,"width":rect.size.width,"height":rect.size.height}));
+                }
+            }
+            ControlFlow::Continue(())
+        });
+        rows
+    }
+
     // Inspect the actual rendered sidebar glyph extents in Windows smoke tests.
     fn sidebar_rendered_text(&self) -> Vec<serde_json::Value> {
         use i_slint_core::item_tree::ItemRc;
@@ -1086,7 +1114,7 @@ impl AppController {
                     && !state.get_changing()
                     && !state.get_setup_loading()
                     && state.get_options().row_count() > 0;
-                ready || timed_out(elapsed, *timeout, "Goose session controls ready")
+                ready || timed_out(elapsed, *timeout, "Session controls ready")
             }
             Step::WaitProject { open, timeout_ms } => {
                 let state = self.window.global::<crate::ui::ProjectState>();

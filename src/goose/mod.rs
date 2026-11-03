@@ -48,8 +48,11 @@ mod fork;
 mod fork_storage;
 mod projects;
 mod provider_policy;
+mod provider_readiness;
 pub(crate) mod setup;
 mod setup_controls;
+mod speed;
+mod speed_controls;
 mod summary_worker;
 #[cfg(test)]
 mod tests;
@@ -84,7 +87,7 @@ pub(super) fn error(message: impl Into<String>) -> JSONRPCErrorError {
 fn unsupported(method: &str) -> JSONRPCErrorError {
     JSONRPCErrorError {
         code: -32601,
-        message: format!("{method} is unavailable with this Goose ACP connection."),
+        message: format!("{method} is unavailable with this session connection."),
         data: None,
     }
 }
@@ -130,7 +133,7 @@ pub(crate) async fn connect(
 ) -> anyhow::Result<AppServerClient> {
     anyhow::ensure!(
         options.cli_overrides.is_empty(),
-        "Codex -c overrides do not apply to embedded Goose. Use Goose configuration or provider profiles."
+        "Codex -c overrides do not apply to the built-in runtime. Use provider configuration or provider profiles."
     );
     let cwd = options
         .cwd
@@ -171,15 +174,17 @@ async fn connect_command(
         .stderr(std::process::Stdio::piped());
     #[cfg(windows)]
     command.creation_flags(0x08000000);
-    let mut child = command.spawn().map_err(|e| anyhow::anyhow!("Unable to start Goose ACP: {e}. Install Goose CLI (v1.56.0 or newer recommended), run `goose configure`, and put goose on PATH, or set FASTROCK_GOOSE to its executable."))?;
+    let mut child = command
+        .spawn()
+        .map_err(|e| anyhow::anyhow!("Unable to start the configured test fixture: {e}"))?;
     let input = child
         .stdin
         .take()
-        .ok_or_else(|| anyhow::anyhow!("Goose stdin unavailable"))?;
+        .ok_or_else(|| anyhow::anyhow!("Stdin unavailable"))?;
     let output = child
         .stdout
         .take()
-        .ok_or_else(|| anyhow::anyhow!("Goose stdout unavailable"))?;
+        .ok_or_else(|| anyhow::anyhow!("Stdout unavailable"))?;
     let stderr = child.stderr.take();
     let mut tasks = Vec::new();
     if let Some(stderr) = stderr {
@@ -296,7 +301,7 @@ where
                 }
                 let _ = events_tx
                     .send(AppServerEvent::Disconnected {
-                        message: format!("Goose ACP event error: {}", e.message),
+                        message: format!("Session event error: {}", e.message),
                     })
                     .await;
                 return;
@@ -306,7 +311,7 @@ where
         read_adapter.answers.lock().await.clear();
         let _ = events_tx
             .send(AppServerEvent::Disconnected {
-                message: "Goose ACP event stream ended.".into(),
+                message: "Session event stream ended.".into(),
             })
             .await;
     }));
@@ -320,10 +325,10 @@ where
             "_meta":{"goose":{"customNotifications":true,"toolCallLabelEnrichment":false}}}}),
         )
         .await
-        .map_err(|e| anyhow::anyhow!("Goose ACP initialization: {}", e.message))?;
+        .map_err(|e| anyhow::anyhow!("Session initialization: {}", e.message))?;
     anyhow::ensure!(
         hello["protocolVersion"] == 1,
-        "Unsupported Goose ACP protocol version: {}",
+        "Unsupported Session protocol version: {}",
         hello["protocolVersion"]
     );
     *adapter.capabilities.lock().await = hello["agentCapabilities"].clone();
@@ -361,7 +366,7 @@ where
             _ = running.join_next(), if !running.is_empty() => {},
         }}
     }));
-    let metadata = json!({"gooseAdapter":true,"userAgent":format!("Goose {} (ACP)",text(&hello["agentInfo"],"version")),
+    let metadata = json!({"gooseAdapter":true,"userAgent":format!("{} (ACP)",text(&hello["agentInfo"],"version")),
         "platformOs":std::env::consts::OS,"platformFamily":std::env::consts::FAMILY});
     Ok(AppServerClient::adapter(
         writer,
@@ -374,18 +379,14 @@ where
 }
 
 impl Adapter {
-    fn config_event(&self, id: &str, options: Vec<Value>) -> Result<(), JSONRPCErrorError> {
-        let options = if self.embedded_runtime {
-            provider_policy::visible_options(options)
-        } else {
-            options
-        };
+    fn config_event(&self, id: &str, session: &Session) -> Result<(), JSONRPCErrorError> {
+        let options = self.visible_config(session);
         self.events
             .try_send(AppServerEvent::GooseConfig {
                 thread_id: ui_id(id),
                 options,
             })
-            .map_err(|_| error("Goose UI event queue overflow or closed"))
+            .map_err(|_| error("UI event queue overflow or closed"))
     }
     fn emit(&self, mut value: Value) -> Result<(), JSONRPCErrorError> {
         stamp_item_event(&mut value);
@@ -397,7 +398,7 @@ impl Adapter {
         .map_err(|e| error(format!("ACP presentation decode: {e}")))?;
         self.events
             .try_send(event)
-            .map_err(|_| error("Goose UI event queue overflow or closed"))
+            .map_err(|_| error("UI event queue overflow or closed"))
     }
     async fn gate(&self, id: &str) -> Arc<Mutex<()>> {
         self.gates
@@ -428,7 +429,7 @@ impl Adapter {
                     self.emit(event)?;
                 }
                 if params["update"]["sessionUpdate"] == "config_option_update" {
-                    self.config_event(id, session.config.clone())?;
+                    self.config_event(id, session)?;
                 }
                 if let Some(run) = params["update"]["_meta"]["goose"].get("activeRunId") {
                     session.run_id = run.as_str().map(str::to_owned);
@@ -458,12 +459,12 @@ impl Adapter {
                     let sessions = self.sessions.lock().await;
                     let session = sessions
                         .get(id)
-                        .ok_or_else(|| error("Permission for unknown Goose session"))?;
+                        .ok_or_else(|| error("Permission for unknown session"))?;
                     (
                         session
                             .active
                             .clone()
-                            .ok_or_else(|| error("Permission outside active Goose prompt"))?,
+                            .ok_or_else(|| error("Permission outside active prompt"))?,
                         text(&params["toolCall"], "title").to_string(),
                     )
                 };
@@ -499,7 +500,7 @@ impl Adapter {
                     .unwrap_or_default();
                 self.emit(json!({"id":request_id,"method":"item/tool/requestUserInput","params":{"threadId":ui_id(id),"turnId":turn_id,
                     "itemId":params["toolCall"]["toolCallId"],"isBlocking":true,
-                    "questions":[{"id":"permission","header":"Goose permission","question":format!("{title}{details}"),"isOther":false,"isSecret":false,"options":choices}]}}))?;
+                    "questions":[{"id":"permission","header":"Tool permission","question":format!("{title}{details}"),"isOther":false,"isSecret":false,"options":choices}]}}))?;
             }
             _ if value.get("id").is_some() => {
                 self.rpc.send(json!({"jsonrpc":"2.0","id":value["id"],"error":{"code":-32601,"message":"Client method not supported by Fastrock"}})).await?;
@@ -571,7 +572,7 @@ impl Adapter {
                 let defaults = self.defaults.lock().await;
                 Ok(
                     json!({"config":{"model":defaults["modelId"].as_str().unwrap_or("__goose_default__"),"model_provider":"goose",
-                    "model_providers":{"goose":{"name":"Goose ACP","wire_api":"responses"}}},"origins":{},"layers":[]}),
+                    "model_providers":{"goose":{"name":"Session","wire_api":"responses"}}},"origins":{},"layers":[]}),
                 )
             }
             "configRequirements/read" => Ok(json!({"requirements":null})),
@@ -580,8 +581,8 @@ impl Adapter {
                 let defaults = self.defaults.lock().await;
                 let id = defaults["modelId"].as_str().unwrap_or("__goose_default__");
                 Ok(
-                    json!({"data":[{"id":id,"model":id,"displayName":if id=="__goose_default__"{"Goose configured default"}else{id},
-                    "description":"Configured by Goose. Open a conversation to select its ACP model and provider.","hidden":false,
+                    json!({"data":[{"id":id,"model":id,"displayName":if id=="__goose_default__"{"Configured default"}else{id},
+                    "description":"Open a conversation to select its model and provider.","hidden":false,
                     "supportedReasoningEfforts":[],"defaultReasoningEffort":"medium","isDefault":true}],"nextCursor":null}),
                 )
             }
@@ -655,20 +656,21 @@ impl Adapter {
                 let sessions = self.sessions.lock().await;
                 let s = sessions
                     .get(id)
-                    .ok_or_else(|| error("Open a Goose conversation first"))?;
+                    .ok_or_else(|| error("Open a conversation first"))?;
                 Ok(json!({"cwd": s.info["cwd"], "workspace": s.binding.workspace}))
             }
             "fastrock/goose/config" => {
+                if self.embedded_runtime {
+                    provider_policy::refresh()
+                        .await
+                        .map_err(|_| error("Could not refresh provider configuration"))?;
+                }
                 let id = session_id(text(params, "threadId"))?;
                 let sessions = self.sessions.lock().await;
                 let s = sessions
                     .get(id)
-                    .ok_or_else(|| error("Open a Goose conversation first"))?;
-                let options = if self.embedded_runtime {
-                    provider_policy::visible_options(s.config.clone())
-                } else {
-                    s.config.clone()
-                };
+                    .ok_or_else(|| error("Open a conversation first"))?;
+                let options = self.visible_config(s);
                 Ok(json!({"configOptions":options,"busy":s.active.is_some()}))
             }
             "fastrock/goose/saveEffortDefault" => self.save_effort_default(params).await,
@@ -684,7 +686,7 @@ impl Adapter {
                     .is_some_and(|s| s.active.is_some())
                 {
                     return Err(error(
-                        "Wait for the current Goose turn before changing its configuration",
+                        "Wait for the current turn before changing its configuration",
                     ));
                 }
                 self.set_config(id, text(params, "configId"), &params["value"])

@@ -343,7 +343,7 @@ fn v24_renaming_extension_keeps_dirty_workspace_editable() {
     let mut browser = opened();
     browser.action("virtual-edit:keep this draft");
     let mut renamed = installation();
-    renamed.label = "renamed Goose extension".into();
+    renamed.label = "renamed extension".into();
     browser.apply(Event::Discovery {
         providers: vec![renamed.clone()],
         catalog: vec![CatalogItem {

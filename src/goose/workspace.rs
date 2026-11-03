@@ -56,7 +56,7 @@ impl Adapter {
         }
         if !found {
             return Err(error(
-                "Selected workspace store is not enabled in Goose configuration",
+                "Selected workspace store is not enabled in provider configuration",
             ));
         }
         Ok(Some(resolved))

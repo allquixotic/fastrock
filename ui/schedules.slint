@@ -53,7 +53,7 @@ export component SchedulesPage inherits Rectangle {
                 FlatButton { text: "New schedule"; enabled: !ScheduleState.saving; clicked => { ScheduleState.new-task(); } }
                 FlatButton { text: "Refresh"; enabled: !ScheduleState.loading; clicked => { ScheduleState.refresh(); } }
             }
-            Text { text: "Each run starts a fresh conversation in an isolated workspace, using the source conversation’s latest Goose settings and permissions. Changes require explicit integration. Schedules stay paused after restart until you choose Resume."; color: Theme.text-muted; wrap: word-wrap; }
+            Text { text: "Each run starts a fresh conversation in an isolated workspace, using the source conversation’s latest provider settings and permissions. Changes require explicit integration. Schedules stay paused after restart until you choose Resume."; color: Theme.text-muted; wrap: word-wrap; }
             for row in ScheduleState.rows: Rectangle {
                 border-radius: Theme.radius-small;
                 background: row.id == ScheduleState.edit-id ? Theme.selected : Theme.surface-sunken;

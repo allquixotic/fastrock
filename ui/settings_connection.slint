@@ -16,7 +16,7 @@ export component ConnectionPage inherits Rectangle {
     VerticalLayout {
         PageHeader {
             title: "Connection";
-            subtitle: "Goose runs inside Fastrock and uses your existing Goose configuration.";
+            subtitle: "Uses your existing provider configuration.";
             side-padding: root.side;
         }
         ScrollView {
@@ -70,8 +70,8 @@ export component ConnectionPage inherits Rectangle {
                 }
 
                 SectionTitle {
-                    title: "Embedded Goose";
-                    subtitle: "Manage providers, models and tools in Goose settings. No separate Goose installation is needed.";
+                    title: "Built-in runtime";
+                    subtitle: "Manage providers, models and tools in provider settings. No separate installation is needed.";
                 }
                 if SettingsState.connection-result != "": Banner {
                     tone: SettingsState.connection-result-tone;

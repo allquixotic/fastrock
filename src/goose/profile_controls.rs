@@ -77,6 +77,7 @@ impl AppController {
         state.set_engine(if profile.engine == "anthropic" { 1 } else { 0 });
         state.set_url(profile.url.into());
         state.set_model(profile.model.into());
+        state.set_base_path(profile.base_path.into());
         state.set_secret("".into());
         state.set_status("".into());
     }
@@ -97,6 +98,7 @@ impl AppController {
             .into(),
             url: state.get_url().trim().to_owned(),
             model: state.get_model().trim().to_owned(),
+            base_path: state.get_base_path().trim().to_owned(),
             credential_id: String::new(),
         };
         if let Err(e) = profile.validate() {
@@ -117,9 +119,7 @@ impl AppController {
                         state.set_edit_id(p.id.into());
                         state.set_revision(p.revision.into());
                         state.set_create_id(uuid::Uuid::new_v4().to_string().into());
-                        state.set_status(
-                            "Profile saved in Goose; credential stored in the OS vault".into(),
-                        );
+                        state.set_status("Profile saved; credential stored in the OS vault".into());
                     }
                     Err(e) => state.set_status(e.to_string().into()),
                 }
@@ -145,6 +145,7 @@ impl AppController {
             "name" => state.set_name(arg(1).into()),
             "engine" => state.set_engine(if arg(1) == "anthropic" { 1 } else { 0 }),
             "url" => state.set_url(arg(1).into()),
+            "base-path" => state.set_base_path(arg(1).into()),
             "model" => state.set_model(arg(1).into()),
             // Automation logs step arguments. Pass only an environment name,
             // never a credential value in the fixture script or diagnostics.

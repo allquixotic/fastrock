@@ -24,7 +24,7 @@ try:
   {'click_text':'Archived'},{'wait':900},*dump('archived'),{'click_text':'Show active'},{'wait':900},*dump('active'),
   {'sidebar':['search','NoSuchThread987']},{'wait':700},*dump('filtered'),{'sidebar':['search','']},{'wait':700},*dump('restored'),
   {'shortcut':'escape'},{'wait_idle':10000},{'composer':['type','Keep sidebar draft']},
-  {'key':'ctrl+shift+P'},{'wait':200},{'palette':['query','Goose recipes']},{'wait':200},{'key':'return'},{'wait':900},
+  {'key':'ctrl+shift+P'},{'wait':200},{'palette':['query','Recipes']},{'wait':200},{'key':'return'},{'wait':900},
   {'settings':['recipes','dump',str(out/'recipes.json')]},{'wait':200},
   {'key':'ctrl+shift+P'},{'wait':200},{'palette':['query','Tools and hooks']},{'wait':200},{'key':'return'},{'wait':900},
   {'settings':['capabilities','dump',str(out/'capabilities.json')]},{'wait':200},{'select_tab':0},{'wait':200},

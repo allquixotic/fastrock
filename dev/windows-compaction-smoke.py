@@ -135,7 +135,7 @@ try:
         {'wait_idle': 30000}, {'tab_action': 'compact'}, {'wait_idle': 30000},
         {'transcript': 'export:' + str(out / 'disabled.md')}, {'wait': 400}, {'quit': True}]))
     assert len(provider.compactions) == 4, 'Disabled command invoked compaction'
-    assert 'Manual compaction requires Goose slash commands' in text('disabled')
+    assert 'Manual compaction requires slash commands' in text('disabled')
     assert not any(not r['summary'] and r['prompt'] == '/compact' for r in provider.requests), 'Compaction fell through to ordinary inference'
     assert not provider.errors, provider.errors
     receipt = dict(result='PASS', binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(), peak_process_bytes=peak,

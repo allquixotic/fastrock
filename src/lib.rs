@@ -74,7 +74,11 @@ const SESSION_END_BUDGET: Duration = Duration::from_secs(5);
 
 /// Command line for `codex-gui`.
 #[derive(Debug, Parser)]
-#[command(name = "fastrock", version, about = "Native Goose and Rally workspace")]
+#[command(
+    name = "fastrock",
+    version,
+    about = "Native coding and Rally workspace"
+)]
 pub struct Cli {
     /// Folder to open a new thread in.
     pub folder: Option<PathBuf>,
@@ -88,7 +92,7 @@ pub struct Cli {
     #[arg(long, value_name = "auto|software|gpu")]
     pub renderer: Option<String>,
 
-    /// Legacy connection option. Only embedded Goose is supported.
+    /// Legacy connection option. External agent connections are not supported.
     #[arg(long = "remote", value_name = "ADDR")]
     pub remote: Option<String>,
 

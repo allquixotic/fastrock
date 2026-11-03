@@ -66,8 +66,8 @@ impl Rpc {
             .await;
             let message = result
                 .err()
-                .map(|e| format!("Goose ACP disconnected: {e}"))
-                .unwrap_or_else(|| "Goose ACP process exited.".into());
+                .map(|e| format!("Session disconnected: {e}"))
+                .unwrap_or_else(|| "Session connection closed.".into());
             let _ = incoming
                 .send(json!({"method":"fastrock/disconnected","params":{"message":message}}))
                 .await;
@@ -154,7 +154,7 @@ impl Rpc {
         self.writer
             .send(value)
             .await
-            .map_err(|_| super::error("Goose connection closed"))
+            .map_err(|_| super::error("Connection closed"))
     }
 }
 
@@ -180,9 +180,9 @@ impl Call {
         } else {
             tokio::time::timeout(Duration::from_secs(60), &mut self.rx)
                 .await
-                .map_err(|_| super::error(format!("Goose {} timed out", self.method)))?
+                .map_err(|_| super::error(format!("{} timed out", self.method)))?
         };
-        reply.map_err(|_| super::error("Goose disconnected before replying"))?
+        reply.map_err(|_| super::error("Connection closed before replying"))?
     }
 }
 impl Drop for Call {

@@ -386,7 +386,7 @@ impl AppController {
         let message = state.get_text().to_string();
         if let Some((command, args)) = slash::parse(&message) {
             if self.backend.is_goose() && !command.available_in_goose() {
-                self.toast("This command is unavailable with Goose. Use Goose options or Tools & hooks for its supported controls.");
+                self.toast("This command is unavailable in this conversation. Use Model options or Tools & hooks for its supported controls.");
                 return;
             }
             self.composer_close_popup();
@@ -803,7 +803,7 @@ impl AppController {
         state.set_busy(busy);
         state.set_placeholder(placeholder(thread.phase).into());
         if self.backend.is_goose() {
-            state.set_placeholder("Ask Goose anything".into());
+            state.set_placeholder("Ask anything".into());
         }
         state.set_send_label(if busy { "Queue" } else { "Send" }.into());
 

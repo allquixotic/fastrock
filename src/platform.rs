@@ -16,7 +16,7 @@ pub(crate) fn prepare_child_console() {
     match windows_console::prepare() {
         Ok(true) => {}
         Ok(false) => eprintln!(
-            "Fastrock: windowless Goose hooks require Windows 11 24H2 or Windows Server 2025; this Windows version lacks AllocConsoleWithOptions."
+            "Fastrock: windowless hooks require Windows 11 24H2 or Windows Server 2025; this Windows version lacks AllocConsoleWithOptions."
         ),
         Err(error) => eprintln!("Fastrock: could not prepare windowless hooks: {error}"),
     }

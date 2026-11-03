@@ -83,7 +83,16 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
         uri: axum::http::Uri,
         Json(body): Json<Value>,
     ) -> Json<Value> {
+        let model = body["model"].clone();
         captured.lock().await.push((uri.to_string(), body));
+        if uri.path() == "/openai/v1/responses" {
+            return Json(
+                json!({"id":"fixture-response","object":"response","created_at":0,
+                "status":"completed","model":model,"output":[{"id":"fixture-message","type":"message","role":"assistant","status":"completed",
+                "content":[{"type":"output_text","text":"speed fixture reply","annotations":[]}]}],
+                "usage":{"input_tokens":2,"output_tokens":3,"total_tokens":5}}),
+            );
+        }
         Json(
             json!({"output":{"message":{"role":"assistant","content":[{"text":"fixture reply"}]}},"stopReason":"end_turn","usage":{"inputTokens":2,"outputTokens":2,"totalTokens":4},"metrics":{"latencyMs":1}}),
         )
@@ -318,6 +327,7 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
         "Restart repeated an up-to-date summary"
     );
     drop(restarted);
+    speed_fixture(captured.clone()).await?;
     http.abort();
     println!(
         "V38/V39/V40/V44: embedded Goose routes and sessions; cheap-model backfill, replacement, source preservation and restart passed (fixtures only)."
@@ -329,3 +339,93 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
 mod provider_policy;
 #[path = "../src/goose/setup.rs"]
 mod setup;
+
+#[path = "../src/goose/provider_readiness.rs"]
+mod provider_readiness;
+#[path = "../src/goose/speed.rs"]
+mod speed;
+#[path = "../src/vault.rs"]
+mod vault;
+
+async fn speed_fixture(
+    captured: std::sync::Arc<tokio::sync::Mutex<Vec<(String, Value)>>>,
+) -> Result<()> {
+    use goose_runtime::config::{declarative_providers as api, paths::Paths};
+    use goose_runtime::{
+        agents::Agent,
+        session::{SessionManager, SessionType},
+    };
+    let model = "us.openai.gpt-6.1-sol";
+    let profile: api::DeclarativeProviderConfig = serde_json::from_value(json!({
+        "name":"custom_speed_fixture", "display_name":"Speed fixture", "engine":"openai",
+        "base_url":std::env::var("AWS_ENDPOINT_URL_BEDROCK_RUNTIME")?, "base_path":"openai/v1/responses",
+        "requires_auth":false,"supports_streaming":false,"dynamic_models":false,"models":[{"name":model}]
+    }))?;
+    tokio::fs::create_dir_all(api::custom_providers_dir()).await?;
+    tokio::fs::write(
+        api::custom_providers_dir().join("custom_speed_fixture.json"),
+        serde_json::to_vec(&profile)?,
+    )
+    .await?;
+    goose_runtime::providers::refresh_custom_providers().await?;
+    let manager = SessionManager::new(Paths::data_dir());
+    let session = manager
+        .create_session(
+            std::env::current_dir()?,
+            "speed fixture".into(),
+            SessionType::User,
+            goose_runtime::config::GooseMode::Auto,
+        )
+        .await?;
+    let agent = Agent::new();
+    let provider = goose_runtime::providers::create("custom_speed_fixture", vec![]).await?;
+    agent
+        .update_provider(provider, ModelConfig::new(model), &session.id)
+        .await?;
+    manager
+        .update(&session.id)
+        .provider_name("custom_speed_fixture")
+        .model_config(ModelConfig::new(model))
+        .apply()
+        .await?;
+    let before = captured.lock().await.len();
+    for value in ["ultrafast", "default"] {
+        let mut config = manager
+            .get_session(&session.id, false)
+            .await?
+            .model_config
+            .context("Missing model config")?;
+        speed::change(&mut config, value, true)?;
+        manager
+            .update(&session.id)
+            .model_config(config)
+            .apply()
+            .await?;
+        // Agent resolves its model config from the public store for each call.
+        let config = agent.model_config_for_session(&session.id).await?;
+        let provider = agent.provider(&session.id).await?;
+        provider
+            .complete(
+                &config,
+                "fixture",
+                &[Message::user().with_text("hello speed")],
+                &[],
+            )
+            .await?;
+    }
+    let rows = captured.lock().await;
+    ensure!(
+        rows.len() == before + 2,
+        "Speed must make exactly two local calls"
+    );
+    for ((path, body), expected) in rows[before..].iter().zip(["ultrafast", "default"]) {
+        ensure!(
+            path == "/openai/v1/responses"
+                && body["model"] == model
+                && body["service_tier"] == expected,
+            "Speed/model/route lost before the actual HTTP request"
+        );
+    }
+    println!("V90: public session settings reached actual Responses HTTP payloads");
+    Ok(())
+}

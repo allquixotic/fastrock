@@ -309,7 +309,7 @@ impl AppController {
             (None, true) => "Running".to_string(),
             (None, false) => "Starting".to_string(),
         };
-        facts.push(kv("Goose runtime", server));
+        facts.push(kv("Runtime", server));
         for (phase, timing) in crate::goose::latency::facts() {
             facts.push(kv(phase, timing));
         }

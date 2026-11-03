@@ -5,6 +5,11 @@ use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 
 impl AppController {
     pub(crate) fn goose_controls_install(&mut self) {
+        self.window
+            .global::<GooseState>()
+            .on_refresh(crate::ui_thread::scoped_callback!(|| {
+                crate::ui_thread::with_app(AppController::goose_picker_refresh);
+            }));
         self.goose_setup_install();
         self.effort_controls_install();
         self.profiles_install();
@@ -93,9 +98,9 @@ impl AppController {
             .map(|o| super::text(o, "currentValue"))
             .unwrap_or("");
         state.set_summary(if model.is_empty() {
-            "Goose options".into()
+            "Model options".into()
         } else {
-            format!("Goose · {model}").into()
+            model.into()
         });
         let provider = options
             .into_iter()
@@ -117,6 +122,33 @@ impl AppController {
                 .any(|r| r.id == "thinking_effort" && r.selected >= 0),
         );
         state.set_options(ModelRc::new(VecModel::from(rows)));
+    }
+    fn goose_picker_refresh(&mut self) {
+        let Some(id) = self
+            .active_thread_index()
+            .and_then(|i| self.thread_tab(i))
+            .and_then(|t| t.thread_id.clone())
+        else {
+            return;
+        };
+        let backend = self.backend.clone();
+        self.backend.spawn(async move {
+            let result = backend
+                .goose_request("fastrock/goose/config", json!({"threadId":id}))
+                .await;
+            crate::ui_thread::post(move |app| {
+                if let Ok(reply) = result {
+                    app.composer_shared.goose_configs.insert(
+                        id,
+                        reply["configOptions"]
+                            .as_array()
+                            .cloned()
+                            .unwrap_or_default(),
+                    );
+                    app.goose_controls_refresh();
+                }
+            });
+        });
     }
     fn goose_choose(&mut self, config_id: String, value: String) {
         let Some(id) = self
@@ -320,7 +352,7 @@ impl AppController {
                 state.set_cheap_loading(false);
                 state.set_cheap_status(
                     if result.is_ok() {
-                        "Saved the cheap profile in Goose settings."
+                        "Saved the cheap profile in provider settings."
                     } else {
                         "Could not save the cheap profile."
                     }

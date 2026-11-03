@@ -94,14 +94,14 @@ impl Setup {
 fn read(config: &Config) -> Result<Setup> {
     let values = config
         .all_values()
-        .map_err(|_| anyhow::anyhow!("Could not read Goose configuration"))?;
+        .map_err(|_| anyhow::anyhow!("Could not read provider configuration"))?;
     let mut fields = BTreeMap::new();
     for (key, _) in FIELDS {
         let value = match values.get(key) {
             None => "",
             Some(value) => value.as_str().ok_or_else(|| {
                 anyhow::anyhow!(
-                    "A provider setting has an unsupported value; correct it in Goose configuration"
+                    "A provider setting has an unsupported value; correct it in provider configuration"
                 )
             })?,
         };
@@ -165,13 +165,15 @@ pub(crate) async fn load() -> Result<Setup> {
 }
 
 pub(crate) async fn save(expected: Setup, desired: Setup) -> Result<Setup> {
-    tokio::task::spawn_blocking(move || {
+    let saved = tokio::task::spawn_blocking(move || {
         let _guard = SETUP_GATE
             .lock()
             .map_err(|_| anyhow::anyhow!("Provider settings are unavailable"))?;
         write(Config::global(), &expected, &desired)
     })
-    .await?
+    .await??;
+    super::provider_policy::refresh().await?;
+    Ok(saved)
 }
 
 #[cfg(test)]

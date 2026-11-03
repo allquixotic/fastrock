@@ -21,13 +21,13 @@ pub(super) fn page(params: &Value, total: usize, turns: bool) -> Result<Page, JS
         if descending { total } else { 0 }
     } else if let Some(raw) = cursor.strip_prefix(&prefix) {
         raw.parse::<usize>()
-            .map_err(|_| error("Invalid Goose history cursor"))?
+            .map_err(|_| error("Invalid history cursor"))?
             .min(total)
     } else if let Some(raw) = cursor.strip_prefix("goose-page:") {
         // Compatibility with an already issued 0.3.x offset cursor.
         let offset = raw
             .parse::<usize>()
-            .map_err(|_| error("Invalid Goose history cursor"))?
+            .map_err(|_| error("Invalid history cursor"))?
             .min(total);
         if descending { total - offset } else { offset }
     } else {

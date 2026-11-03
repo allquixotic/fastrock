@@ -795,7 +795,7 @@ impl AppController {
         self.embedded_target = true;
         self.set_server_status("restarting", "");
         self.backend.reconnect(ConnectionTarget::Goose);
-        self.toast("Using embedded Goose");
+        self.toast("Using the built-in runtime");
     }
 
     /// Removes a banner warning by its text.

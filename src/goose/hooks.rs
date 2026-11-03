@@ -58,14 +58,14 @@ fn register(config: &goose_runtime::config::Config, roots: &[PathBuf]) -> Result
     let existing: Value = match config.get_param("plugins") {
         Ok(value) => value,
         Err(goose_runtime::config::ConfigError::NotFound(_)) => json!({}),
-        Err(_) => anyhow::bail!("Cannot read Goose plugin settings"),
+        Err(_) => anyhow::bail!("Cannot read plugin settings"),
     };
     let entries = existing
         .as_object()
-        .ok_or_else(|| anyhow::anyhow!("Goose plugins must be a mapping"))?;
+        .ok_or_else(|| anyhow::anyhow!("Plugins must be a mapping"))?;
     ensure!(
         entries.values().all(|entry| entry["enabled"].is_boolean()),
-        "Invalid Goose plugin setting; original configuration preserved"
+        "Invalid plugin setting; original configuration preserved"
     );
     if paths.iter().all(|path| entries.contains_key(path)) {
         return Ok(());
@@ -74,14 +74,14 @@ fn register(config: &goose_runtime::config::Config, roots: &[PathBuf]) -> Result
         let mut plugins: Value = match config.get_param("plugins") {
             Ok(value) => value,
             Err(goose_runtime::config::ConfigError::NotFound(_)) => json!({}),
-            Err(_) => anyhow::bail!("Cannot read Goose plugin settings"),
+            Err(_) => anyhow::bail!("Cannot read plugin settings"),
         };
         let entries = plugins
             .as_object_mut()
-            .ok_or_else(|| anyhow::anyhow!("Goose plugins must be a mapping"))?;
+            .ok_or_else(|| anyhow::anyhow!("Plugins must be a mapping"))?;
         ensure!(
             entries.values().all(|entry| entry["enabled"].is_boolean()),
-            "Invalid Goose plugin setting; original configuration preserved"
+            "Invalid plugin setting; original configuration preserved"
         );
         let mut changed = false;
         for path in paths {

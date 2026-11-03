@@ -38,7 +38,7 @@ impl Adapter {
         }
         if !tools.is_empty() && self.capabilities.lock().await["mcpCapabilities"]["http"] != true {
             return Err(error(
-                "This Goose does not advertise HTTP MCP support required for Fastrock tools. Update Goose or disable these tools.",
+                "This connection does not support the tool protocol required for workspace tools.",
             ));
         }
         let registration = if tools.is_empty() {
@@ -111,7 +111,7 @@ impl Adapter {
         let id = response["sessionId"]
             .as_str()
             .filter(|s| !s.is_empty())
-            .ok_or_else(|| error("Goose returned an empty session ID"))?;
+            .ok_or_else(|| error("The runtime returned an empty session ID"))?;
         if let Some(r) = registration {
             self.mcp.bind(&r.key, id).await;
         }
@@ -127,9 +127,9 @@ impl Adapter {
             }
             if restricted {
                 let extensions = self.rpc.call("_goose/unstable/session/extensions/list",json!({"sessionId":id})).await?;
-                let actual = extensions["extensions"].as_array().ok_or_else(||error("Cannot verify Goose's restricted tool configuration"))?;
+                let actual = extensions["extensions"].as_array().ok_or_else(||error("Cannot verify the restricted tool configuration"))?;
                 if actual.len()!=servers.len() || actual.iter().any(|e| e["extension"]["type"]!="mcp" || !servers.iter().any(|s|s["url"]==e["extension"]["server"]["url"])) {
-                    return Err(error("Goose enabled tools outside this restricted Fastrock session"));
+                    return Err(error("The runtime enabled tools outside this restricted Fastrock session"));
                 }
             }
             let instructions=[params["baseInstructions"].as_str(),params["developerInstructions"].as_str()].into_iter().flatten().collect::<Vec<_>>().join("\n\n");
@@ -176,7 +176,7 @@ impl Adapter {
             session.loaded = true;
             session.ephemeral = params["ephemeral"] == true;
             session.binding.workspace = workspace;
-            self.config_event(id, session.config.clone())?;
+            self.config_event(id, session)?;
         }
         if let Some(model) = params["model"]
             .as_str()
@@ -194,12 +194,13 @@ impl Adapter {
             }
         }
         self.apply_effort_default(id).await?;
+        self.refresh_speed(id).await?;
         let result = self
             .sessions
             .lock()
             .await
             .get(id)
-            .ok_or_else(|| error("Goose session disappeared"))?
+            .ok_or_else(|| error("Session disappeared"))?
             .response();
         self.emit(json!({"method":"thread/started","params":{"thread":result["thread"]}}))?;
         Ok(result)
@@ -330,7 +331,7 @@ impl Adapter {
                     .map_err(|e| error(e.to_string()))?;
                 super::restore_extensions::prepare(id)
                     .await
-                    .map_err(|e| error(format!("Restore Goose tools: {e:#}")))?;
+                    .map_err(|e| error(format!("Restore tools: {e:#}")))?;
             }
             if self.capabilities.lock().await["loadSession"] != true {
                 return Err(unsupported("session/load"));
@@ -424,12 +425,13 @@ impl Adapter {
             s.config = config_options(&response);
             drop(sessions);
             self.restrict_native_delegation(id).await?;
+            self.refresh_speed(id).await?;
             let mut sessions = self.sessions.lock().await;
             let s = sessions
                 .get_mut(id)
                 .ok_or_else(|| error("Session unavailable"))?;
             s.loaded = true;
-            self.config_event(id, s.config.clone())?;
+            self.config_event(id, s)?;
         }
         let mut sessions = self.sessions.lock().await;
         let s = sessions
@@ -444,7 +446,7 @@ impl Adapter {
             result["thread"]["turns"] = json!(
                 s.turns
                     .all_turns()
-                    .map_err(|_| error("Restore Goose history failed"))?
+                    .map_err(|_| error("Restore history failed"))?
             );
         }
         drop(sessions);
@@ -458,7 +460,7 @@ impl Adapter {
         let s = sessions
             .get_mut(id)
             .filter(|s| s.loaded)
-            .ok_or_else(|| error("Load the Goose session before reading history"))?;
+            .ok_or_else(|| error("Load the session before reading history"))?;
         let turns = method == "thread/turns/list";
         let total = if turns {
             s.turns.len()
@@ -471,7 +473,7 @@ impl Adapter {
         } else {
             s.turns
                 .items_page(page.offset, page.limit, page.descending)
-                .map_err(|_| error("Restore Goose history page failed"))?
+                .map_err(|_| error("Restore history page failed"))?
         };
         Ok(json!({"data":data,"nextCursor":page.next,"backwardsCursor":null}))
     }
@@ -491,15 +493,18 @@ impl Adapter {
         let session = sessions
             .get_mut(id)
             .filter(|session| session.loaded)
-            .ok_or_else(|| error("Load the Goose session before browsing history"))?;
+            .ok_or_else(|| error("Load the session before browsing history"))?;
         let window = session
             .turns
             .window(start, 100)
-            .map_err(|_| error("Restore Goose history window failed"))?;
-        serde_json::to_value(window).map_err(|_| error("Encode Goose history window failed"))
+            .map_err(|_| error("Restore history window failed"))?;
+        serde_json::to_value(window).map_err(|_| error("Encode history window failed"))
     }
 
     pub(super) async fn set_config(&self, id: &str, config_id: &str, value: &Value) -> Reply {
+        if self.embedded_runtime && config_id == "speed" {
+            return self.set_speed(id, value).await;
+        }
         let result = self.set_config_raw(id, config_id, value).await?;
         if matches!(config_id, "provider" | "model") {
             if let Some(updated) = self.apply_effort_default(id).await? {
@@ -520,7 +525,7 @@ impl Adapter {
             let sessions = self.sessions.lock().await;
             let s = sessions
                 .get(id)
-                .ok_or_else(|| error("Goose session unavailable"))?;
+                .ok_or_else(|| error("Session unavailable"))?;
             let option = s
                 .config
                 .iter()
@@ -534,7 +539,7 @@ impl Adapter {
                 }
             } else if !option_values(option).iter().any(|o| o["value"] == *value) {
                 return Err(error(format!(
-                    "Goose has not offered this {config_id} value for this session"
+                    "The provider has not offered this {config_id} value for this session"
                 )));
             }
         }
@@ -547,12 +552,13 @@ impl Adapter {
             .await?;
         if let Some(s) = self.sessions.lock().await.get_mut(id) {
             s.config = config_options(&result);
-            self.config_event(id, s.config.clone())?;
+            self.config_event(id, s)?;
         }
         if self.embedded_runtime {
-            result["configOptions"] = json!(super::provider_policy::visible_options(
-                config_options(&result)
-            ));
+            self.refresh_speed(id).await?;
+            if let Some(s) = self.sessions.lock().await.get(id) {
+                result["configOptions"] = json!(self.visible_config(s));
+            }
         }
         Ok(result)
     }
@@ -581,14 +587,14 @@ impl Adapter {
             let s = sessions
                 .get(&id)
                 .filter(|s| s.loaded)
-                .ok_or_else(|| error("Open the Goose session before sending"))?;
+                .ok_or_else(|| error("Open the session before sending"))?;
             if s.recovery_only {
                 return Err(error(
                     "Review the uncertain history in Checkpoints or fork before the interrupted turn before sending new work",
                 ));
             }
             if s.active.is_some() {
-                return Err(error("This Goose conversation already has an active turn"));
+                return Err(error("This conversation already has an active turn"));
             }
         }
         if compacting && self.embedded_runtime {
@@ -596,10 +602,10 @@ impl Adapter {
                 goose_runtime::agents::execute_commands::slash_commands_enabled,
             )
             .await
-            .map_err(|_| error("Could not read Goose command settings"))?;
+            .map_err(|_| error("Could not read command settings"))?;
             if !enabled {
                 return Err(error(
-                    "Manual compaction requires Goose slash commands. Enable GOOSE_SLASH_COMMANDS_ENABLED in Goose settings and try again.",
+                    "Manual compaction requires slash commands. Enable GOOSE_SLASH_COMMANDS_ENABLED in provider settings and try again.",
                 ));
             }
         }
@@ -691,7 +697,7 @@ impl Adapter {
                 adapter.finish_turn(&id, &tid, reply).await;
             }))
             .await
-            .map_err(|_| error("Goose stopped before prompt dispatch"))?;
+            .map_err(|_| error("The runtime stopped before prompt dispatch"))?;
         Ok(json!({"turn":response_turn}))
     }
 
@@ -736,7 +742,7 @@ impl Adapter {
                     .filter(|r| !matches!(*r, "end_turn" | "cancelled"))
                 {
                     if let Some(items) = t["items"].as_array_mut() {
-                        items.push(json!({"type":"agentMessage","id":format!("stop-{tid}"),"text":format!("Goose stopped: {reason}.")}));
+                        items.push(json!({"type":"agentMessage","id":format!("stop-{tid}"),"text":format!("The runtime stopped: {reason}.")}));
                     }
                 }
             }
@@ -802,20 +808,20 @@ impl Adapter {
             let sessions = self.sessions.lock().await;
             let s = sessions
                 .get(id)
-                .ok_or_else(|| error("Goose session unavailable"))?;
+                .ok_or_else(|| error("Session unavailable"))?;
             if s.active.as_deref() != params["expectedTurnId"].as_str() {
                 return Err(error(
-                    "The Goose turn has changed; send again or queue the message",
+                    "The turn has changed; send again or queue the message",
                 ));
             }
             if s.compacting {
                 return Err(error(
-                    "Goose cannot steer a compaction; wait for it to finish or stop it",
+                    "The session cannot steer a compaction; wait for it to finish or stop it",
                 ));
             }
             s.run_id
                 .clone()
-                .ok_or_else(|| error("Goose has not reported a steerable run yet"))?
+                .ok_or_else(|| error("The session has not reported a steerable run yet"))?
         };
         let reply = self
             .rpc
@@ -1019,7 +1025,7 @@ fn prompt(input: &Value) -> Result<Vec<Value>, JSONRPCErrorError> {
         "text"=>Ok(json!({"type":"text","text":part["text"]})),
         "image"=>{
             let url=text(part,"url");
-            let (header,data)=url.split_once(",").ok_or_else(||error("Goose image input must be an embedded data URL"))?;
+            let (header,data)=url.split_once(",").ok_or_else(||error("Image input must be an embedded data URL"))?;
             let mime=header.strip_prefix("data:").and_then(|s|s.strip_suffix(";base64")).ok_or_else(||error("Unsupported image encoding"))?;
             base64::engine::general_purpose::STANDARD.decode(data).map_err(|_|error("Invalid image data"))?;
             Ok(json!({"type":"image","mimeType":mime,"data":data}))
@@ -1032,7 +1038,7 @@ fn prompt(input: &Value) -> Result<Vec<Value>, JSONRPCErrorError> {
             let format=image::guess_format(&bytes).map_err(|_|error("Unsupported image format"))?;
             Ok(json!({"type":"image","mimeType":format.to_mime_type(),"data":base64::engine::general_purpose::STANDARD.encode(bytes)}))
         },
-        _=>Err(error(format!("Goose does not support this input type: {}",text(part,"type")))),
+        _=>Err(error(format!("Unsupported input type: {}",text(part,"type")))),
     }).collect()
 }
 

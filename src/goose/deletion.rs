@@ -250,7 +250,9 @@ impl Adapter {
     }
     pub(super) async fn delete_session(self: &Arc<Self>, params: &Value) -> Reply {
         if !self.embedded_runtime {
-            return Err(unsupported("Permanent deletion requires embedded Goose"));
+            return Err(unsupported(
+                "Permanent deletion requires the built-in runtime",
+            ));
         }
         let id = session_id(text(params, "threadId"))?.to_owned();
         // Same order as scheduling: schedule gate, parent gate, child gate.
@@ -392,7 +394,7 @@ impl Adapter {
                 .call("session/close", json!({"sessionId":id}))
                 .await?;
             manager.delete_session(&id).await.map_err(|_| {
-                error("Goose could not delete history; retry Delete. Recovery record preserved")
+                error("Could not delete history; retry Delete. Recovery record preserved")
             })?;
         }
         let record = self

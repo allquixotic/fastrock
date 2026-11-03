@@ -900,7 +900,7 @@ impl AppController {
         state.set_server_ready(false);
         self.settings.snapshot_error = None;
         self.settings_fields_refresh();
-        self.toast("Restarting Goose…");
+        self.toast("Restarting runtime…");
         self.backend.restart();
     }
 

@@ -32,7 +32,9 @@ impl Running {
 impl Adapter {
     pub(super) async fn shell_command(self: &Arc<Self>, params: &Value) -> Reply {
         if !self.embedded_runtime {
-            return Err(unsupported("User shell commands require embedded Goose"));
+            return Err(unsupported(
+                "User shell commands require the built-in runtime",
+            ));
         }
         let id = session_id(text(params, "threadId"))?.to_owned();
         let command = text(params, "command").to_owned();

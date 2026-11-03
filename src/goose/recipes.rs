@@ -16,7 +16,7 @@ impl Adapter {
             .await?;
         let rows = catalog["recipes"]
             .as_array()
-            .ok_or_else(|| error("Invalid Goose recipe catalog"))?;
+            .ok_or_else(|| error("Invalid recipe catalog"))?;
         if rows.len() > 512 {
             return Err(error("Recipe library exceeds 512 entries"));
         }

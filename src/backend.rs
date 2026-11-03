@@ -46,7 +46,7 @@ const MAX_BATCH_EVENTS: usize = 1024;
 pub(crate) enum BackendError {
     #[error("{0}")]
     Request(#[from] TypedRequestError),
-    #[error("the embedded Goose runtime is not running")]
+    #[error("the runtime is not running")]
     Unavailable,
 }
 
@@ -89,7 +89,7 @@ enum Control {
 }
 
 /// Shown when the event stream ends without a `Disconnected` reason.
-const CONNECTION_LOST: &str = "The embedded Goose runtime stopped.";
+const CONNECTION_LOST: &str = "The runtime stopped.";
 
 #[derive(Clone)]
 enum ServerState {
@@ -655,7 +655,7 @@ impl Pump<'_> {
         if let Some(client) = self.client.take()
             && let Err(err) = client.shutdown().await
         {
-            tracing::warn!(%err, "failed to stop embedded Goose runtime for restart");
+            tracing::warn!(%err, "failed to stop runtime for restart");
         }
         let restarted = match &mut self.relaunch {
             Relaunch::External(options) => AppServerClient::external(options)
@@ -671,7 +671,7 @@ impl Pump<'_> {
             Err(err) => {
                 let _ = self.state_tx.send(ServerState::Stopped);
                 let message = format!("{err:#}");
-                tracing::error!(error = %message, "embedded Goose runtime failed to restart");
+                tracing::error!(error = %message, "runtime failed to restart");
                 ui_thread::post_all(move |app| app.on_server_failed(message.clone()));
             }
         }
@@ -682,7 +682,7 @@ impl Pump<'_> {
     async fn stop(&mut self, _thread_ids: Vec<String>) {
         if let Some(client) = self.client.take() {
             if let Err(err) = client.shutdown().await {
-                tracing::warn!(%err, "failed to shut down embedded Goose runtime");
+                tracing::warn!(%err, "failed to shut down runtime");
             }
         }
         let _ = self.state_tx.send(ServerState::Stopped);

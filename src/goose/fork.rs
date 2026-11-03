@@ -14,7 +14,7 @@ impl Adapter {
         delegation: Option<super::delegation::Delegation>,
     ) -> Reply {
         if !self.embedded_runtime {
-            return Err(unsupported("Fork requires embedded Goose"));
+            return Err(unsupported("Fork requires the built-in runtime"));
         }
         let side = params["ephemeral"] == true && delegation.is_none();
         let source_id = session_id(text(params, "threadId"))?;

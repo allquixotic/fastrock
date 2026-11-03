@@ -242,15 +242,15 @@ pub(super) async fn configured_embedded(
     tokio::task::spawn_blocking(move || {
         let mut entries = serde_json::Map::new();
         for entry in goose_runtime::config::extensions::get_all_extensions() {
-            let mut value = serde_json::to_value(&entry.config)
-                .map_err(|_| error("Invalid Goose extension"))?;
+            let mut value =
+                serde_json::to_value(&entry.config).map_err(|_| error("Invalid extension"))?;
             value["enabled"] = json!(entry.enabled);
             entries.insert(entry.config.name(), value);
         }
         for extension in goose_runtime::plugins::mcp_servers::enabled_plugin_mcp_servers(Some(&cwd))
         {
-            let mut value = serde_json::to_value(&extension)
-                .map_err(|_| error("Invalid Goose plugin extension"))?;
+            let mut value =
+                serde_json::to_value(&extension).map_err(|_| error("Invalid plugin extension"))?;
             value["enabled"] = json!(true);
             entries.insert(extension.name(), value);
         }
@@ -258,5 +258,5 @@ pub(super) async fn configured_embedded(
             .map_err(|e| error(e.to_string()))
     })
     .await
-    .map_err(|_| error("Goose extension discovery failed"))?
+    .map_err(|_| error("Extension discovery failed"))?
 }

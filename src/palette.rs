@@ -178,18 +178,18 @@ impl AppController {
             (
                 "providers",
                 "Provider profiles",
-                "Goose models, endpoints and credentials",
+                "Models, endpoints and credentials",
                 true,
             ),
             (
                 "capabilities",
                 "Tools and hooks",
-                "Goose extensions, tool permissions and code mode",
+                "Extensions, tool permissions and code mode",
                 true,
             ),
             (
                 "recipes",
-                "Goose recipes",
+                "Recipes",
                 "Reusable prompts, instructions and model settings",
                 true,
             ),

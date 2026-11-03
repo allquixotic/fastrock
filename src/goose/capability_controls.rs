@@ -103,7 +103,7 @@ impl AppController {
                 } else if section == 1 {
                     format!(
                         "{} · {}",
-                        row["permission"].as_str().unwrap_or("Goose mode default"),
+                        row["permission"].as_str().unwrap_or("Mode default"),
                         row["description"]
                             .as_str()
                             .unwrap_or("")

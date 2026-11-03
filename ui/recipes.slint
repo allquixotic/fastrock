@@ -23,7 +23,7 @@ export component RecipesPage inherits Rectangle {
         content-height: content.preferred-height;
         content := VerticalLayout {
             alignment: start; padding: Theme.pad-l; spacing: Theme.pad-m;
-            Text { text: "Goose recipes"; color: Theme.text; font-size: 20px; font-weight: 600; }
+            Text { text: "Recipes"; color: Theme.text; font-size: 20px; font-weight: 600; }
             Text { text: "Reusable instructions, prompts, model settings and tools. Prepare a new workspace conversation, then review and send its prompt."; color: Theme.text-muted; wrap: word-wrap; }
             HorizontalLayout {
                 FlatButton { text: "Reload recipes"; enabled: !RecipeState.busy && !RecipeState.dirty; clicked => { RecipeState.action("list"); } }

@@ -45,7 +45,7 @@ pub(super) fn add(tools: &mut Vec<Value>) {
     };
     let child =
         json!({"type":"string","description":"Exact child thread ID returned by delegate_task."});
-    tools.push(json!({"type":"namespace","name":"fastrock_agents","description":"Coordinate isolated child Goose conversations when the user requests delegation. Child workspace changes require explicit reviewed integration.","tools":[
+    tools.push(json!({"type":"namespace","name":"fastrock_agents","description":"Coordinate isolated child conversations when the user requests delegation. Child workspace changes require explicit reviewed integration.","tools":[
         function("delegate_task", "Create and start a child with fresh task context, inherited permissions/provider, and isolated vwork workspaces. Use a stable unique task_id: repeating it returns the existing child without rerunning work. Include all needed task context in instructions. No automatic integration.",
             json!({"task_id":{"type":"string","minLength":1,"maxLength":80},"instructions":{"type":"string","minLength":1,"maxLength":32768},"model":{"type":"string"},"effort":{"type":"string"}}),json!(["task_id","instructions"])),
         function("list_delegates", "List your direct child conversations, including durable task identities and recovery status. Use the returned cursor for more.",json!({"cursor":{"type":"string"}}),json!([])),

@@ -1527,19 +1527,16 @@ fn summary_fields(thread: &ThreadTab) -> Vec<(&'static str, String)> {
         return vec![
             (
                 "Model",
-                thread
-                    .model
-                    .clone()
-                    .unwrap_or_else(|| "Goose default".into()),
+                thread.model.clone().unwrap_or_else(|| "Default".into()),
             ),
             (
                 "Provider",
                 thread
                     .model_provider
                     .clone()
-                    .unwrap_or_else(|| "Goose default".into()),
+                    .unwrap_or_else(|| "Default".into()),
             ),
-            ("Permissions", "See Goose options".into()),
+            ("Permissions", "See Model options".into()),
             ("Sandbox", "Tools use your account permissions".into()),
         ];
     }

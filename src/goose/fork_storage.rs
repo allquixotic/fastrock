@@ -136,6 +136,13 @@ mod tests {
             .update(&source.id)
             .schedule_id(Some("must-not-repeat".into()))
             .provider_name("aws_bedrock")
+            .model_config(
+                goose_provider_types::model::ModelConfig::new("us.openai.gpt-6.1-sol")
+                    .with_merged_request_params(std::collections::HashMap::from([
+                        ("service_tier".into(), serde_json::json!("ultrafast")),
+                        ("thinking_effort".into(), serde_json::json!("high")),
+                    ])),
+            )
             .apply()
             .await
             .unwrap();
@@ -149,6 +156,15 @@ mod tests {
         assert!(fork.schedule_id.is_none());
         assert_eq!(fork.provider_name.as_deref(), Some("aws_bedrock"));
         assert_eq!(fork.working_dir, temp.path().join("child"));
+        let model = fork.model_config.as_ref().unwrap();
+        assert_eq!(
+            model.request_param::<String>("service_tier").as_deref(),
+            Some("ultrafast")
+        );
+        assert_eq!(
+            model.request_param::<String>("thinking_effort").as_deref(),
+            Some("high")
+        );
         let conversation = fork.conversation.unwrap();
         assert_eq!(conversation.messages().len(), 2);
         assert_eq!(conversation.messages()[1].id.as_deref(), Some("a1"));

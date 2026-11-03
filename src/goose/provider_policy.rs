@@ -5,30 +5,68 @@ use anyhow::{Result, ensure};
 use goose_runtime::config::Config;
 use serde_json::Value;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     sync::{LazyLock, RwLock},
 };
-static CUSTOM: LazyLock<RwLock<BTreeMap<String, String>>> =
-    LazyLock::new(|| RwLock::new(BTreeMap::new()));
+#[derive(Default)]
+struct Snapshot {
+    custom: BTreeMap<String, String>,
+    ready: BTreeSet<String>,
+    routes: BTreeMap<String, super::speed::Route>,
+}
+static SNAPSHOT: LazyLock<RwLock<Snapshot>> = LazyLock::new(|| RwLock::new(Snapshot::default()));
+static REFRESH: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 pub(super) async fn refresh() -> Result<()> {
-    let choices = tokio::task::spawn_blocking(|| -> Result<BTreeMap<String, String>> {
+    let _guard = REFRESH.lock().await;
+    let snapshot = tokio::task::spawn_blocking(|| -> Result<Snapshot> {
         use goose_runtime::config::declarative_providers as api;
-        Ok(api::load_custom_providers(&api::custom_providers_dir())?
-            .into_iter()
-            .filter(|p| {
-                matches!(
-                    p.engine,
-                    api::ProviderEngine::OpenAI | api::ProviderEngine::Anthropic
-                )
-            })
-            .map(|p| (p.name, p.display_name))
-            .collect())
+        let config = Config::global();
+        let mut result = Snapshot::default();
+        for name in super::setup::PROVIDERS {
+            if super::provider_readiness::builtin(config, name) {
+                result.ready.insert(name.into());
+            }
+        }
+        for p in api::load_custom_providers(&api::custom_providers_dir())? {
+            if !matches!(
+                p.engine,
+                api::ProviderEngine::OpenAI | api::ProviderEngine::Anthropic
+            ) {
+                continue;
+            }
+            result.custom.insert(p.name.clone(), p.display_name.clone());
+            if super::provider_readiness::custom(config, &p) {
+                result.ready.insert(p.name.clone());
+            }
+            if p.engine == api::ProviderEngine::OpenAI {
+                if let Ok(url) =
+                    api::expand_env_vars(&p.base_url, p.env_vars.as_deref().unwrap_or_default())
+                {
+                    result.routes.insert(
+                        p.name,
+                        super::speed::Route {
+                            url,
+                            path: p.base_path.unwrap_or_default(),
+                        },
+                    );
+                }
+            }
+        }
+        // Built-in OpenAI derives a Chat Completions path for Bedrock's /openai/v1
+        // prefix. It cannot select Ultrafast with this pinned dependency. A named
+        // Responses profile uses the public declarative base_path option instead.
+        Ok(result)
     })
     .await??;
-    *CUSTOM
+    *SNAPSHOT
         .write()
-        .map_err(|_| anyhow::anyhow!("Provider choices unavailable"))? = choices;
+        .map_err(|_| anyhow::anyhow!("Provider choices unavailable"))? = snapshot;
     Ok(())
+}
+pub(super) fn ultrafast(provider: &str, model: &str) -> bool {
+    SNAPSHOT
+        .read()
+        .is_ok_and(|s| s.routes.get(provider).is_some_and(|r| r.ultrafast(model)))
 }
 pub(super) fn choices() -> Vec<(String, String)> {
     let mut choices = vec![
@@ -36,28 +74,33 @@ pub(super) fn choices() -> Vec<(String, String)> {
         ("openai".into(), "OpenAI".into()),
         ("anthropic".into(), "Anthropic".into()),
     ];
-    if let Ok(custom) = CUSTOM.read() {
-        choices.extend(custom.iter().map(|(id, name)| (id.clone(), name.clone())));
+    if let Ok(snapshot) = SNAPSHOT.read() {
+        choices.extend(
+            snapshot
+                .custom
+                .iter()
+                .map(|(id, name)| (id.clone(), name.clone())),
+        );
     }
     choices
 }
 
 pub(super) fn allowed(name: &str) -> bool {
     super::setup::PROVIDERS.contains(&name)
-        || CUSTOM
+        || SNAPSHOT
             .read()
-            .is_ok_and(|choices| choices.contains_key(name))
+            .is_ok_and(|snapshot| snapshot.custom.contains_key(name))
 }
 fn resolve(config: &Config, requested: Option<&str>) -> Result<String> {
     let name = match requested.filter(|s| !s.is_empty() && *s != "goose") {
         Some(name) => name.to_owned(),
         None => config.get_goose_provider().map_err(|_| {
-            anyhow::anyhow!("Select a provider in Settings → Goose → Provider defaults first")
+            anyhow::anyhow!("Select a provider in Settings → Providers → Provider defaults first")
         })?,
     };
     ensure!(
         super::embedded::supported_provider(&name),
-        "Fastrock supports Bedrock, OpenAI and Anthropic model providers. External agent backends and other providers are disabled; choose a supported provider in Goose settings."
+        "Fastrock supports Bedrock, OpenAI and Anthropic model providers. External agent backends and other providers are disabled; choose a supported provider in provider settings."
     );
     Ok(name)
 }
@@ -75,25 +118,29 @@ pub(super) async fn restored(id: &str) -> Result<()> {
     selected(session.provider_name).await?;
     Ok(())
 }
-pub(super) fn visible_options(mut options: Vec<Value>) -> Vec<Value> {
+pub(super) fn visible_options(options: Vec<Value>) -> Vec<Value> {
+    let ready = SNAPSHOT.read().map(|s| s.ready.clone()).unwrap_or_default();
+    filter_options(options, &ready)
+}
+fn filter_options(mut options: Vec<Value>, ready: &BTreeSet<String>) -> Vec<Value> {
     for option in &mut options {
         if option["id"] == "provider" {
             if let Some(choices) = option["options"].as_array_mut() {
-                filter_choices(choices);
+                filter_choices(choices, ready);
             }
         }
     }
     options
 }
-fn filter_choices(choices: &mut Vec<Value>) {
+fn filter_choices(choices: &mut Vec<Value>, ready: &BTreeSet<String>) {
     choices.retain_mut(|choice| {
         if let Some(group) = choice["options"].as_array_mut() {
-            filter_choices(group);
+            filter_choices(group, ready);
             !group.is_empty()
         } else {
             choice["value"]
                 .as_str()
-                .is_some_and(|name| name == "goose" || allowed(name))
+                .is_some_and(|name| ready.contains(name))
         }
     });
 }
@@ -136,14 +183,14 @@ mod tests {
             ]}),
             json!({"id":"thinking_effort","options":[{"value":"high"}]}),
         ];
-        let filtered = visible_options(options.clone());
-        assert_eq!(filtered[0]["options"].as_array().unwrap().len(), 2);
+        let filtered = filter_options(options.clone(), &BTreeSet::from(["aws_bedrock".into()]));
+        assert_eq!(filtered[0]["options"].as_array().unwrap().len(), 1);
         assert_eq!(
-            filtered[0]["options"][1]["options"]
+            filtered[0]["options"][0]["options"]
                 .as_array()
                 .unwrap()
                 .len(),
-            3
+            1
         );
         assert_eq!(filtered[1], options[1]);
         assert_eq!(filtered[0]["currentValue"], "aws_bedrock");

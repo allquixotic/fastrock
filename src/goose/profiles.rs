@@ -17,6 +17,8 @@ pub(crate) struct Profile {
     pub engine: String,
     pub url: String,
     pub model: String,
+    #[serde(default)]
+    pub base_path: String,
 }
 impl Profile {
     pub fn validate(&self) -> Result<()> {
@@ -36,6 +38,13 @@ impl Profile {
                 && !self.model.chars().any(char::is_control),
             "Enter a model ID of 1–1024 bytes"
         );
+        ensure!(
+            self.base_path.len() <= 512
+                && !self.base_path.chars().any(char::is_control)
+                && !self.base_path.contains(['?', '#', ':'])
+                && !self.base_path.contains(".."),
+            "Enter a relative API request path without query parameters"
+        );
         super::setup::validate_field("OPENAI_BASE_URL", &self.url)?;
         ensure!(!self.url.is_empty(), "Enter the API base URL");
         Ok(())
@@ -48,15 +57,10 @@ fn engine(config: &api::DeclarativeProviderConfig) -> Option<&'static str> {
         _ => None,
     }
 }
-fn owned(config: &api::DeclarativeProviderConfig) -> Option<&str> {
-    let auth = config.auth.as_ref()?;
-    (engine(config).is_some()
-        && config.api_key_env.is_empty()
-        && auth.args.len() == 2
-        && auth.args[0] == "--fastrock-provider-credential"
-        && uuid::Uuid::parse_str(&auth.args[1]).is_ok())
-    .then(|| auth.args[1].as_str())
+pub(super) fn owned(config: &api::DeclarativeProviderConfig) -> Option<&str> {
+    super::provider_readiness::credential_id(config)
 }
+
 fn snapshot(config: &api::DeclarativeProviderConfig) -> Result<Profile> {
     let credential_id =
         owned(config).ok_or_else(|| anyhow::anyhow!("This profile is managed outside Fastrock"))?;
@@ -72,6 +76,7 @@ fn snapshot(config: &api::DeclarativeProviderConfig) -> Result<Profile> {
         engine: engine(config).unwrap().into(),
         url: config.base_url.clone(),
         model: config.models[0].name.clone(),
+        base_path: config.base_path.clone().unwrap_or_default(),
     };
     p.validate()?;
     Ok(p)
@@ -114,7 +119,7 @@ fn update(
         headers: None,
         requires_auth: true,
         catalog_provider_id: config.catalog_provider_id.clone(),
-        base_path: config.base_path.clone(),
+        base_path: (!desired.base_path.is_empty()).then(|| desired.base_path.clone()),
         toolshim: config.toolshim,
         preserves_thinking: None,
         auth: Some(auth),
@@ -122,7 +127,7 @@ fn update(
 }
 fn read() -> Result<Vec<Profile>> {
     let configs = api::load_custom_providers(&api::custom_providers_dir())
-        .map_err(|_| anyhow::anyhow!("Could not read Goose provider profiles"))?;
+        .map_err(|_| anyhow::anyhow!("Could not read provider profiles"))?;
     let mut profiles = Vec::new();
     for config in configs {
         if owned(&config).is_some() {
@@ -248,7 +253,8 @@ pub(crate) async fn save(desired: Profile, create_id: String, secret: String) ->
                         headers: None,
                         requires_auth: true,
                         catalog_provider_id: None,
-                        base_path: None,
+                        base_path: (!desired.base_path.is_empty())
+                            .then(|| desired.base_path.clone()),
                         toolshim: false,
                         preserves_thinking: None,
                         auth: Some(auth),
@@ -263,7 +269,7 @@ pub(crate) async fn save(desired: Profile, create_id: String, secret: String) ->
                 if new_key {
                     let _ = crate::vault::remove("provider", &credential_id);
                 }
-                bail!("Could not save Goose provider profile; reload to inspect the configuration")
+                bail!("Could not save provider profile; reload to inspect the configuration")
             }
         };
         // Enable through Goose's public API; no credential is passed to Goose.
@@ -295,9 +301,7 @@ pub(crate) async fn save(desired: Profile, create_id: String, secret: String) ->
     goose_runtime::providers::refresh_custom_providers()
         .await
         .map_err(|_| {
-            anyhow::anyhow!(
-                "Profile saved; restart Fastrock to refresh the Goose provider registry"
-            )
+            anyhow::anyhow!("Profile saved; restart Fastrock to refresh the provider registry")
         })?;
     super::provider_policy::refresh().await?;
     Ok(profile)

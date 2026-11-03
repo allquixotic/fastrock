@@ -211,7 +211,7 @@ async fn dispatch(route: &Route, request: &Value) -> Reply {
             let session = route
                 .session
                 .as_deref()
-                .ok_or_else(|| error("Goose session is still starting"))?;
+                .ok_or_else(|| error("Session is still starting"))?;
             let params = &request["params"];
             let name = text(params, "name");
             let tool = route

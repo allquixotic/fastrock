@@ -21,10 +21,7 @@ fn read(config: &Config, key: &str) -> Result<Value> {
     super::config_guard::validate(config)?;
     match config.get_param::<Value>(key) {
         Ok(value) => {
-            ensure!(
-                value.is_object(),
-                "Goose {key} configuration must be a mapping"
-            );
+            ensure!(value.is_object(), "{key} configuration must be a mapping");
             Ok(value)
         }
         Err(ConfigError::NotFound(_)) => Ok(json!({})),
@@ -138,7 +135,7 @@ fn mutate(
             let updated = (|| {
                 ensure!(
                     next.is_object() && revision(&next) == expected,
-                    "Goose settings changed; reload before saving"
+                    "Provider settings changed; reload before saving"
                 );
                 edit(&mut next)?;
                 super::config_guard::parameter(&next)
@@ -236,7 +233,7 @@ pub(super) fn new_extension(form: &Value) -> Result<Value> {
             && env_keys.iter().all(
                 |s| s.len() <= 128 && s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
             ),
-        "Enter comma-separated environment or saved Goose credential key names"
+        "Enter comma-separated environment or saved credential key names"
     );
     let mut value = match form["kind"].as_str() {
         Some("stdio") => {
@@ -310,7 +307,7 @@ pub(super) fn create_plugin(
     crate::rally::store::atomic_write(
         &path.join("plugin.json"),
         &serde_json::to_vec_pretty(
-            &json!({"name":name,"version":"1.0.0","description":"User-configured Goose hooks"}),
+            &json!({"name":name,"version":"1.0.0","description":"User-configured hooks"}),
         )?,
     )?;
     Ok(())
@@ -368,7 +365,7 @@ pub(super) fn validate_hooks(text: &str) -> Result<()> {
                     | "AfterShellExecution"
                     | "Stop"
             ),
-            "Unknown Goose hook event: {event}"
+            "Unknown hook event: {event}"
         );
         let rules = rules
             .as_array()
@@ -389,7 +386,7 @@ pub(super) fn validate_hooks(text: &str) -> Result<()> {
                         && action["command"]
                             .as_str()
                             .is_some_and(|s| !s.trim().is_empty()),
-                    "Goose hook action requires type command and a command"
+                    "Hook action requires type command and a command"
                 );
                 if let Some(timeout) = action.get("timeout") {
                     ensure!(

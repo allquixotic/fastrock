@@ -7,7 +7,7 @@ pub(crate) enum ConnectionTarget {
 
 impl ConnectionTarget {
     pub(crate) fn label(&self) -> String {
-        "Embedded Goose".into()
+        "Built-in runtime".into()
     }
     pub(crate) fn is_embedded(&self) -> bool {
         true
@@ -32,7 +32,7 @@ pub(crate) fn parse_connection(
         return Ok(ConnectionTarget::Goose);
     }
     anyhow::bail!(
-        "Fastrock uses embedded Goose; external agent connections are no longer supported"
+        "Fastrock uses the built-in runtime; external agent connections are no longer supported"
     )
 }
 
@@ -76,7 +76,7 @@ impl ConnectionChoice {
             "The --remote connection"
         };
         format!(
-            "{source} cannot be used: {err:#}. Change it under Settings › Connection, or select embedded Goose."
+            "{source} cannot be used: {err:#}. Change it under Settings › Connection, or select the built-in runtime."
         )
     }
 }

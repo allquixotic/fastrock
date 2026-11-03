@@ -1,0 +1,153 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.9",
+  "binary_sha256": "84daf09a2ba464bfec08b00cac0d987dc1c6f2ea8425e8b5a19dd2d1f22f552f",
+  "windows_rust": {
+    "application": 788,
+    "renderer": 1,
+    "workspace": 33,
+    "embedded_goose_fixture": "PASS; actual Responses service_tier payloads",
+    "store_startup_fixture": "PASS",
+    "logs": [
+      {
+        "file": "checkpoints.0.log",
+        "sha256": "5434ac00dde9cb59628563fc962d24a9119ab2da7ead4c1a48e75b489d547784",
+        "passed": 7
+      },
+      {
+        "file": "codex_gui.0.log",
+        "sha256": "af7e873e6f667dec2853345967b21d01630970a299d1152a4c3e3710bdf97122",
+        "passed": 788
+      },
+      {
+        "file": "codex_gui.1.log",
+        "sha256": "1d9d191d0e98d48cd783dc5d243e542518a293a3d6f83fb72a346a00d5a3b9a0",
+        "passed": 1
+      },
+      {
+        "file": "embedded.0.log",
+        "sha256": "f8a085512efe155bcec0a59c85d4841f1d064f74061662f4b06846b9bed12250",
+        "passed": 7
+      },
+      {
+        "file": "embedded_goose.0.log",
+        "sha256": "0002285a637c0cc8897bd51a7ef1f074863286721c4f150695e1a97a1624e9db",
+        "passed": 0
+      },
+      {
+        "file": "fastrock.0.log",
+        "sha256": "df166913f47ff1f04202cae9b31df67ed272d692d99a0023a8117dc3029100dd",
+        "passed": 0
+      },
+      {
+        "file": "fastrock_workspaces.0.log",
+        "sha256": "89928a836d10133575176ec5614e5f7641f568c7dfc20d822ab7be90211fa958",
+        "passed": 9
+      },
+      {
+        "file": "integration.0.log",
+        "sha256": "1cf4707109a4c3d603a53b9d2edfafa115f9ae36f17c97d11f07af0d84060e22",
+        "passed": 7
+      },
+      {
+        "file": "review.0.log",
+        "sha256": "8d8cfab76cd4ca423e18502f52964cd269aa41d1c5d81fd6f01b9323483396a6",
+        "passed": 3
+      },
+      {
+        "file": "store_startup.0.log",
+        "sha256": "a567e3f626399dd8237c32044f9c3f814898ae6445020e155bea0610ff6b3c29",
+        "passed": 0
+      }
+    ]
+  },
+  "native_matrix": {
+    "binary_sha256": "84daf09a2ba464bfec08b00cac0d987dc1c6f2ea8425e8b5a19dd2d1f22f552f",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 64.38,
+        "peak_tree_bytes": 159821824
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.05,
+        "peak_tree_bytes": 157298688
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 28.68,
+        "peak_tree_bytes": 157855744
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.44,
+        "peak_tree_bytes": 156782592
+      },
+      {
+        "name": "model-options",
+        "result": "PASS",
+        "error": null,
+        "seconds": 9.43,
+        "peak_tree_bytes": 156340224
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.29,
+        "peak_tree_bytes": 156975104
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.7,
+        "peak_tree_bytes": 157249536
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.43,
+        "peak_tree_bytes": 116707328
+      },
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.85,
+        "peak_tree_bytes": 156332032
+      }
+    ]
+  },
+  "model_options": {
+    "result": "PASS",
+    "binary_sha256": "84daf09a2ba464bfec08b00cac0d987dc1c6f2ea8425e8b5a19dd2d1f22f552f",
+    "peak_process_bytes": 106209280,
+    "configured_only": true,
+    "no_helper_probe": true,
+    "native_speed_click": true,
+    "per_session": true,
+    "restart": true,
+    "model_switch_reset": true,
+    "unsupported_rejected": true,
+    "compact_bounds": true,
+    "branding_removed": true
+  },
+  "macos_compile": "PASS; no application or tests launched",
+  "archive_sha256": "c08e78b5229c2a8e2f57f3bedbe1bccd619ecdef6b2c33393cf2bcf79c59fd25",
+  "notes": [
+    "Initial compaction queue test failure corrected and all 788 application tests rerun successfully.",
+    "Subsequent CLI help/error grammar-only edits are covered by exact-source CI compilation and tests."
+  ]
+}

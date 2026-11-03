@@ -26,14 +26,14 @@ pub(super) fn parameter(value: &impl serde::Serialize) -> Result<serde_yaml::Val
 pub(super) fn edit<T>(config: &Config, change: impl FnOnce(&Config) -> Result<T>) -> Result<T> {
     let _guard = EDIT
         .lock()
-        .map_err(|_| anyhow::anyhow!("Goose settings unavailable"))?;
+        .map_err(|_| anyhow::anyhow!("Provider settings unavailable"))?;
     validate(config)?;
     let path = config.path();
     let path = Path::new(&path);
     let original = match std::fs::read(path) {
         Ok(bytes) => Some(bytes),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
-        Err(_) => anyhow::bail!("Cannot read Goose configuration"),
+        Err(_) => anyhow::bail!("Cannot read provider configuration"),
     };
     let source = original.as_deref().unwrap_or(b"{}\n");
     // A private temporary directory also isolates Goose's intermediate .tmp
@@ -66,15 +66,15 @@ pub(super) fn edit<T>(config: &Config, change: impl FnOnce(&Config) -> Result<T>
     let effective: serde_yaml::Mapping = serde_yaml::from_slice(&std::fs::read(&draft_path)?)?;
     ensure!(
         effective == desired,
-        "Cannot preserve Goose configuration semantics; original file kept"
+        "Cannot preserve provider configuration semantics; original file kept"
     );
     ensure!(
         std::fs::read(path).ok() == original,
-        "Goose settings changed during editing; reload before saving"
+        "Provider settings changed during editing; reload before saving"
     );
     let parent = path
         .parent()
-        .ok_or_else(|| anyhow::anyhow!("Invalid Goose configuration path"))?;
+        .ok_or_else(|| anyhow::anyhow!("Invalid provider configuration path"))?;
     std::fs::create_dir_all(parent)?;
     let mut file = tempfile::NamedTempFile::new_in(parent)?;
     // NamedTempFile starts private. Preserve more restrictive existing modes.
@@ -84,7 +84,7 @@ pub(super) fn edit<T>(config: &Config, change: impl FnOnce(&Config) -> Result<T>
     file.write_all(&rendered)?;
     file.as_file().sync_all()?;
     file.persist(path)
-        .map_err(|_| anyhow::anyhow!("Cannot save Goose configuration"))?;
+        .map_err(|_| anyhow::anyhow!("Cannot save provider configuration"))?;
     // Public invalidation also advances Goose's config generation. Ordinary
     // parameter reads already reload the file; provider caches observe this.
     config.invalidate_secrets_cache();
@@ -130,7 +130,7 @@ fn apply_delta(
 fn merge_format(original: &[u8], desired: &[u8]) -> Result<Vec<u8>> {
     let parse = |bytes: &[u8]| {
         serde_yaml::from_slice::<serde_yaml::Mapping>(bytes)
-            .map_err(|_| anyhow::anyhow!("Cannot safely edit Goose configuration"))
+            .map_err(|_| anyhow::anyhow!("Cannot safely edit provider configuration"))
     };
     let before = parse(original)?;
     let after = parse(desired)?;
@@ -138,15 +138,15 @@ fn merge_format(original: &[u8], desired: &[u8]) -> Result<Vec<u8>> {
         return Ok(original.to_vec());
     }
     let source = std::str::from_utf8(original)
-        .map_err(|_| anyhow::anyhow!("Goose configuration must be UTF-8"))?;
+        .map_err(|_| anyhow::anyhow!("Provider configuration must be UTF-8"))?;
     let file = yaml_edit::YamlFile::from_str(source)
-        .map_err(|_| anyhow::anyhow!("Cannot preserve Goose configuration formatting"))?;
+        .map_err(|_| anyhow::anyhow!("Cannot preserve provider configuration formatting"))?;
     let document = file
         .document()
-        .ok_or_else(|| anyhow::anyhow!("Goose configuration must be a mapping"))?;
+        .ok_or_else(|| anyhow::anyhow!("Provider configuration must be a mapping"))?;
     let mapping = document
         .as_mapping()
-        .ok_or_else(|| anyhow::anyhow!("Goose configuration must be a mapping"))?;
+        .ok_or_else(|| anyhow::anyhow!("Provider configuration must be a mapping"))?;
     patch_mapping(&mapping, &before, &after)?;
     let rendered = file.to_string().into_bytes();
     ensure!(
@@ -164,7 +164,7 @@ fn patch_mapping(
     for key in before.keys().filter(|key| !after.contains_key(*key)) {
         let key = key
             .as_str()
-            .ok_or_else(|| anyhow::anyhow!("Unsupported Goose setting key"))?;
+            .ok_or_else(|| anyhow::anyhow!("Unsupported setting key"))?;
         target.remove(key);
     }
     for (key, value) in after {
@@ -173,7 +173,7 @@ fn patch_mapping(
         }
         let name = key
             .as_str()
-            .ok_or_else(|| anyhow::anyhow!("Unsupported Goose setting key"))?;
+            .ok_or_else(|| anyhow::anyhow!("Unsupported setting key"))?;
         if let (Some(old), Some(new), Some(node)) = (
             before.get(key).and_then(|v| v.as_mapping()),
             value.as_mapping(),
@@ -195,7 +195,7 @@ fn patch_mapping(
             .document()
             .and_then(|doc| doc.as_mapping())
             .and_then(|map| map.get("value"))
-            .ok_or_else(|| anyhow::anyhow!("Cannot encode Goose setting"))?;
+            .ok_or_else(|| anyhow::anyhow!("Cannot encode setting"))?;
         target.set(name, node);
     }
     Ok(())
@@ -205,18 +205,18 @@ pub(super) fn validate(config: &Config) -> Result<()> {
     let file = match std::fs::File::open(config.path()) {
         Ok(file) => file,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-        Err(_) => anyhow::bail!("Cannot read Goose configuration; no settings were saved"),
+        Err(_) => anyhow::bail!("Cannot read provider configuration; no settings were saved"),
     };
     let mut bytes = Vec::new();
     file.take(8 * 1024 * 1024 + 1).read_to_end(&mut bytes)?;
     ensure!(
         bytes.len() <= 8 * 1024 * 1024,
-        "Goose configuration exceeds 8 MiB; no settings were saved"
+        "Provider configuration exceeds 8 MiB; no settings were saved"
     );
     // Do not include parser diagnostics: a bad line may contain a credential.
     ensure!(
         serde_yaml::from_slice::<serde_yaml::Mapping>(&bytes).is_ok(),
-        "Goose configuration is malformed; repair config.yaml before saving settings. Its original contents are preserved."
+        "Provider configuration is malformed; repair config.yaml before saving settings. Its original contents are preserved."
     );
     Ok(())
 }

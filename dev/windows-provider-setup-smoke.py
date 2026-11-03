@@ -62,7 +62,7 @@ try:
     saved = json.loads((out / 'saved.json').read_text(encoding='utf-8'))
     assert initial['loaded'] and not initial['busy'] and initial['model'] == 'openai.gpt-6.1-sol', initial
     assert 'cannot contain' in invalid['status'], invalid
-    assert 'Saved in Goose' in saved['status'] and saved['model'] == 'openai.gpt-6-luna', saved
+    assert 'Saved in provider configuration' in saved['status'] and saved['model'] == 'openai.gpt-6-luna', saved
     assert saved['fields']['AWS_REGION'] == 'us-west-2', saved
     assert secrets.read_bytes() == original_secrets, 'Setup changed credentials'
     assert 'preserve me' in config.read_text(encoding='utf-8'), 'Setup lost unrelated configuration'

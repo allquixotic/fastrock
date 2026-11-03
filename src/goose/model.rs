@@ -32,6 +32,7 @@ pub(super) struct Session {
     pub binding: super::workspace::BindingRecord,
     pub info: Value,
     pub config: Vec<Value>,
+    pub service_tier: Option<String>,
     pub turns: fastrock_workspaces::scrollback::History,
     pub active: Option<String>,
     pub compacting: bool,
@@ -87,7 +88,7 @@ impl Session {
             "projectId":self.binding.workspace.as_ref().map(|w|fastrock_workspaces::projects::id(&w.selection.home,&w.repo)),
             "ephemeral":self.ephemeral,"modelProvider":if provider.is_empty(){"goose"}else{provider},"model":model,
             "createdAt":created,"updatedAt":timestamp(&self.info["updatedAt"]),
-            "recencyAt":activity,"cwd":self.info["cwd"],"cliVersion":"Goose ACP",
+            "recencyAt":activity,"cwd":self.info["cwd"],"cliVersion":"Session",
             "source":"appServer","historyMode":"paginated","status":if self.active.is_some(){json!({"type":"active","activeFlags":[]})}else{json!({"type":"idle"})},"turns":[]})
     }
     pub fn response(&self) -> Value {
@@ -236,7 +237,7 @@ impl Session {
                     .as_array_mut()
                     .unwrap_or_else(|| unreachable!());
                 let index = items.iter().position(|i| i["id"] == id).unwrap_or_else(|| {
-                    items.push(json!({"type":"mcpToolCall","id":id,"server":"Goose","tool":"Tool","arguments":{},"status":"inProgress"}));
+                    items.push(json!({"type":"mcpToolCall","id":id,"server":"","tool":"Tool","arguments":{},"status":"inProgress"}));
                     items.len()-1
                 });
                 let item = &mut items[index];
