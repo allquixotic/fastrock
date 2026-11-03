@@ -200,6 +200,10 @@ V85: Manual Compact menu/palette/slash actions ! unchanged Goose session/prompt 
 
 V86: Windows 11 24H2+/Server 2025 Goose shell and ordinary command hooks ! no visible console/focus flash; retain stdout/stderr, exit status, hook payload/policy and redirected app logs. Existing caller consoles ! untouched; helpers/CLI ! bypass GUI console setup; Goose source ! unchanged. Older Windows ! dynamic API detection, no startup/import failure; unsupported windowless hooks ! diagnostic. Verify: windows-console-smoke real shell/hooks/window observation, shell/capability/native terminal regression.
 
+V87: Store opening ! shared across callers, cancellation-safe and retained by core service; health/read deadlines ! start after initialization. Clean redb reopen ! no full snapshot/integrity scan or redundant schema commits; interrupted/corrupt stores ! pre-repair evidence, verified recovery and no replacement. Startup/chat diagnostics ! bounded phase timings/open counters without paths or secrets. Verify: v87_cancelled_open_is_shared, v87_pool_retains_owner, vwork V25/V30, large-store native startup/I/O fixture.
+
+V88: Project grouping ! each folder once, status categories nested inside; preserve distinct roots and every conversation, no UI-thread filesystem IO. Settled ! collapsed by default, including search; only explicit expansion reveals threads, persisted independently per project. Preserve ungrouped status view, paging, ordering and drag status without moving repositories. Verify: v88_projects_appear_once_and_settled_requires_expansion, v88_settled_default_and_explicit_expansion_survive_reload, native sidebar fixture.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -274,6 +278,8 @@ T58|x|Bounded native effort-control completion passed on games and signed RC4; 3
 T59|x|Restore manual compaction; games lifecycle/history/failure/scale and signed RC5 35-case matrix passed; Mac compile, package/attestation/signature verified|V38,V39,V41,V44,V63,V85
 T60|x|Windowless Goose hook inheritance; signed RC7 zero-popup/output regression, guarded scale and independent signature/provenance passed|V38,V40,V44,V65,V73,V84,V86
 T61|x|Project fixture bounded native load/save/close waits; games and all 36 signed RC7 native cases passed|V79,V86
+T62|x|Remove repeated large-store startup IO and false cold-open deadlines; shared retained owners, diagnostics and realistic native performance/recovery tests; Windows suite, vwork native CI and guarded 2.50GiB fixture passed (rc8-startup-games-2026-11-03.json)|V38,V40,V44,V47,V82,V87
+T63|x|Group projects once with nested status categories and explicitly expanded Settled threads; V88 unit tests and native organization/drag fixtures passed (rc8-regressions-games-2026-11-03.json)|V42,V51,V68,V79,V88
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -763,3 +769,15 @@ B255|2026-11-02|Console fixture returned empty JSON with block-on-failure, so re
 B256|2026-11-02|Console fixture confused Bedrock tool-result transport status with shell exit status; Goose delivers exit 7 in result text|Assert actual shell output/exit report without changing upstream provider semantics; V86
 
 B257|2026-11-02|Signed RC6 project fixture sampled after fixed one-second load delay; captured busy=true/ready=false, later saved/restored correct state|Bounded native project load/save/close waits; preserve all assertions and failed CI evidence; RC6 unpublished; V79
+
+B258|2026-11-03|Vwork copied/fsynced entire healthy redb and checked all data on every Engine open; no-op schema/table commits repeated|Clean probe before snapshot; snapshot/full check only before recovery, preserve V25 corruption guarantees; vwork V30, V87
+
+B259|2026-11-03|Three-second health deadline included cold Engine open; cancellation discarded OnceCell initializer, while temporary Connections could repeatedly close/reopen store|Shared independent opening completion, core-owned pool and initialization outside operation deadlines; V87
+
+B260|2026-11-03|Status-first sidebar repeated identical project paths across categories; Settled displayed threads by default|Project-first layout, independent persisted category expansion and hidden-by-default Settled; V88
+
+B261|2026-11-03|Targeted Cargo update reselected unrelated Windows dependency edges while enabling local vwork patch, causing broad rebuild|Preserve existing lock dependency edges; change only Fastrock/vwork package identity, validate with --locked before CI; V39
+
+B262|2026-11-03|Large-store baseline safely aborted on unreadable host heartbeat; generic error discarded cause although monitor stayed healthy; tenfold reduced comparison passed|Bound transient missing/permission read retries to 40ms, retain freshness/reserve checks and report error category; watchdog regression; V45,V87
+
+B263|2026-11-03|Large fixture seeding filled redb default 1GiB cache and hit the hypervisor reserve cap before app measurement|Seed payload with a 32MiB cache; app cache unchanged; keep guard and tenfold fallback; V45,V87

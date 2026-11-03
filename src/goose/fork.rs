@@ -1,6 +1,6 @@
 //! Conversation and virtual-workspace forks share the existing in-process owners.
 use super::*;
-use fastrock_workspaces::{embedded::Connection, session::Selection, vwork::McpBinding};
+use fastrock_workspaces::{session::Selection, vwork::McpBinding};
 use goose_runtime::session::{SessionManager, SessionType};
 
 impl Adapter {
@@ -165,7 +165,8 @@ impl Adapter {
                 child.clone()
             } else {
                 let child_name = format!("fork-{}", uuid::Uuid::new_v4().simple());
-                Connection::new(home.clone())
+                self.stores
+                    .connection(home.clone())
                     .call(
                         "workspace_fork".into(),
                         json!({"workspace":parent,"name":child_name}),

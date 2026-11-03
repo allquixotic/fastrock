@@ -1,0 +1,546 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.8",
+  "vwork_revision": "6bb0b3d5baddc4300827d63d7de0f067e018f69d",
+  "candidate_full_store": {
+    "host": "GAMES",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "mib": 1280,
+        "repositories": 24,
+        "runs": {
+          "candidate": {
+            "binary_sha256": "a9a9e9d457c4bc4ef8df88a7f436ebcd188b76521fb160a0dbb57ba80dc29bf4",
+            "cap_bytes": 1150158848,
+            "io": {
+              "read_operations": 1497,
+              "write_operations": 1170,
+              "other_operations": 11973,
+              "read_bytes": 2658800,
+              "write_bytes": 1175491,
+              "other_bytes": 228565
+            },
+            "elapsed_ms": 3726.296,
+            "peak_app_bytes": 140042240,
+            "peak_tree_commit_bytes": 85757952,
+            "exit_code": 0,
+            "thread_ready_ms": [
+              200.3,
+              100.7,
+              200.6
+            ],
+            "startup_ready_ms": 1709.4,
+            "runtime": {
+              "timings": [
+                [
+                  "Session creation",
+                  "last 66 ms; peak 100 ms this run"
+                ],
+                [
+                  "Turn setup",
+                  "last 17 ms; peak 35 ms this run"
+                ],
+                [
+                  "Send to first response",
+                  "last 35 ms; peak 189 ms this run"
+                ],
+                [
+                  "Complete thread setup",
+                  "last 99 ms; peak 136 ms this run"
+                ],
+                [
+                  "Provider selection",
+                  "last 0 ms; peak 1 ms this run"
+                ],
+                [
+                  "Workspace selection",
+                  "last 0 ms; peak 0 ms this run"
+                ],
+                [
+                  "Workspace tools and hooks",
+                  "last 2 ms; peak 4 ms this run"
+                ],
+                [
+                  "Workspace store initialization",
+                  "opens 1; clean 1; recovered 0; new 0; last 1801 ms; peak 1801 ms this run"
+                ]
+              ],
+              "summaries": "ready=true, active=false, pending=0, foreground=0, retry=false, stage=commit, storage=ok"
+            },
+            "result": "PASS"
+          }
+        },
+        "seed": {
+          "cap_bytes": 2044262400,
+          "io": {
+            "read_operations": 4357,
+            "write_operations": 5013,
+            "other_operations": 44817,
+            "read_bytes": 2027563342,
+            "write_bytes": 4717520650,
+            "other_bytes": 298744
+          },
+          "elapsed_ms": 8948.045,
+          "peak_app_bytes": 43847680,
+          "peak_tree_commit_bytes": 36884480,
+          "exit_code": 0
+        },
+        "database_bytes": 2686455808,
+        "result": "PASS"
+      }
+    ]
+  },
+  "comparisons": [
+    {
+      "host": "GAMES",
+      "hard_cap_bytes": 32000000000,
+      "attempts": [
+        {
+          "mib": 2560,
+          "repositories": 24,
+          "runs": {
+            "baseline": {
+              "binary_sha256": "8ec817a71bbe299f87b727469769b15c5d569ded4c4996e6110ce1dca38cdd0e",
+              "cap_bytes": 1217472512,
+              "io": {
+                "read_operations": 233038,
+                "write_operations": 233032,
+                "other_operations": 4108,
+                "read_bytes": 1906955539,
+                "write_bytes": 1906938698,
+                "other_bytes": 79876
+              },
+              "elapsed_ms": 43033.236,
+              "peak_app_bytes": 70053888,
+              "peak_tree_commit_bytes": 20529152,
+              "exit_code": 1
+            }
+          },
+          "seed": {
+            "cap_bytes": 1352202240,
+            "io": {
+              "read_operations": 3170,
+              "write_operations": 5717,
+              "other_operations": 44971,
+              "read_bytes": 2660031,
+              "write_bytes": 5379576075,
+              "other_bytes": 293418
+            },
+            "elapsed_ms": 15344.137,
+            "peak_app_bytes": 1089519616,
+            "peak_tree_commit_bytes": 1085161472,
+            "exit_code": 0
+          },
+          "database_bytes": 5385490432,
+          "result": "ABORTED",
+          "reason": "Cannot verify hypervisor memory headroom",
+          "next_divisor": 10
+        },
+        {
+          "mib": 256,
+          "repositories": 2,
+          "runs": {
+            "baseline": {
+              "binary_sha256": "8ec817a71bbe299f87b727469769b15c5d569ded4c4996e6110ce1dca38cdd0e",
+              "cap_bytes": 1041946624,
+              "io": {
+                "read_operations": 67642,
+                "write_operations": 66894,
+                "other_operations": 13258,
+                "read_bytes": 1078574393,
+                "write_bytes": 540128768,
+                "other_bytes": 235917
+              },
+              "elapsed_ms": 3870.482,
+              "peak_app_bytes": 596701184,
+              "peak_tree_commit_bytes": 559689728,
+              "exit_code": 0,
+              "thread_ready_ms": [
+                1807.7,
+                200.1,
+                100.5
+              ],
+              "startup_ready_ms": 101.1,
+              "result": "PASS"
+            },
+            "candidate": {
+              "binary_sha256": "a9a9e9d457c4bc4ef8df88a7f436ebcd188b76521fb160a0dbb57ba80dc29bf4",
+              "cap_bytes": 1245767680,
+              "io": {
+                "read_operations": 1481,
+                "write_operations": 1163,
+                "other_operations": 11212,
+                "read_bytes": 2401144,
+                "write_bytes": 1085895,
+                "other_bytes": 204835
+              },
+              "elapsed_ms": 3053.641,
+              "peak_app_bytes": 149204992,
+              "peak_tree_commit_bytes": 84045824,
+              "exit_code": 0,
+              "thread_ready_ms": [
+                199.4,
+                99.8,
+                100.3
+              ],
+              "startup_ready_ms": 303.5,
+              "runtime": {
+                "timings": [
+                  [
+                    "Session creation",
+                    "last 33 ms; peak 105 ms this run"
+                  ],
+                  [
+                    "Turn setup",
+                    "last 21 ms; peak 53 ms this run"
+                  ],
+                  [
+                    "Send to first response",
+                    "last 42 ms; peak 167 ms this run"
+                  ],
+                  [
+                    "Complete thread setup",
+                    "last 75 ms; peak 148 ms this run"
+                  ],
+                  [
+                    "Provider selection",
+                    "last 0 ms; peak 0 ms this run"
+                  ],
+                  [
+                    "Workspace selection",
+                    "last 0 ms; peak 0 ms this run"
+                  ],
+                  [
+                    "Workspace tools and hooks",
+                    "last 3 ms; peak 3 ms this run"
+                  ],
+                  [
+                    "Workspace store initialization",
+                    "opens 1; clean 1; recovered 0; new 0; last 424 ms; peak 424 ms this run"
+                  ]
+                ],
+                "summaries": "ready=true, active=false, pending=0, foreground=0, retry=false, stage=commit, storage=ok"
+              },
+              "result": "PASS"
+            }
+          },
+          "seed": {
+            "cap_bytes": 1171597312,
+            "io": {
+              "read_operations": 265,
+              "write_operations": 535,
+              "other_operations": 4072,
+              "read_bytes": 221618,
+              "write_bytes": 537804349,
+              "other_bytes": 32472
+            },
+            "elapsed_ms": 1426.793,
+            "peak_app_bytes": 549728256,
+            "peak_tree_commit_bytes": 546369536,
+            "exit_code": 0
+          },
+          "database_bytes": 538972160,
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "host": "GAMES",
+      "hard_cap_bytes": 32000000000,
+      "attempts": [
+        {
+          "mib": 1280,
+          "repositories": 24,
+          "runs": {},
+          "seed": {
+            "cap_bytes": 1058744320,
+            "io": {
+              "read_operations": 1,
+              "write_operations": 661,
+              "other_operations": 234,
+              "read_bytes": 320,
+              "write_bytes": 942357440,
+              "other_bytes": 5462
+            },
+            "elapsed_ms": 4567.321,
+            "peak_app_bytes": 980086784,
+            "peak_tree_commit_bytes": 980086784,
+            "exit_code": 1
+          },
+          "result": "ABORTED",
+          "reason": "Fixture process tree reached its headroom cap (980086784/1058744320)",
+          "next_divisor": 10
+        },
+        {
+          "mib": 128,
+          "repositories": 2,
+          "runs": {
+            "baseline": {
+              "binary_sha256": "8ec817a71bbe299f87b727469769b15c5d569ded4c4996e6110ce1dca38cdd0e",
+              "cap_bytes": 1324349440,
+              "io": {
+                "read_operations": 34755,
+                "write_operations": 34131,
+                "other_operations": 13148,
+                "read_bytes": 541654905,
+                "write_bytes": 271660095,
+                "other_bytes": 236387
+              },
+              "elapsed_ms": 2819.769,
+              "peak_app_bytes": 327458816,
+              "peak_tree_commit_bytes": 289783808,
+              "exit_code": 0,
+              "thread_ready_ms": [
+                803.0,
+                99.5,
+                100.5
+              ],
+              "startup_ready_ms": 100.4,
+              "result": "PASS"
+            },
+            "candidate": {
+              "binary_sha256": "a9a9e9d457c4bc4ef8df88a7f436ebcd188b76521fb160a0dbb57ba80dc29bf4",
+              "cap_bytes": 1499150336,
+              "io": {
+                "read_operations": 1452,
+                "write_operations": 1169,
+                "other_operations": 11044,
+                "read_bytes": 2258378,
+                "write_bytes": 1049723,
+                "other_bytes": 200968
+              },
+              "elapsed_ms": 2135.301,
+              "peak_app_bytes": 138014720,
+              "peak_tree_commit_bytes": 83288064,
+              "exit_code": 0,
+              "thread_ready_ms": [
+                200.4,
+                99.7,
+                100.7
+              ],
+              "startup_ready_ms": 100.4,
+              "runtime": {
+                "timings": [
+                  [
+                    "Session creation",
+                    "last 23 ms; peak 146 ms this run"
+                  ],
+                  [
+                    "Turn setup",
+                    "last 13 ms; peak 16 ms this run"
+                  ],
+                  [
+                    "Send to first response",
+                    "last 34 ms; peak 149 ms this run"
+                  ],
+                  [
+                    "Complete thread setup",
+                    "last 55 ms; peak 184 ms this run"
+                  ],
+                  [
+                    "Provider selection",
+                    "last 0 ms; peak 0 ms this run"
+                  ],
+                  [
+                    "Workspace selection",
+                    "last 0 ms; peak 0 ms this run"
+                  ],
+                  [
+                    "Workspace tools and hooks",
+                    "last 3 ms; peak 11 ms this run"
+                  ],
+                  [
+                    "Workspace store initialization",
+                    "opens 1; clean 1; recovered 0; new 0; last 282 ms; peak 282 ms this run"
+                  ]
+                ],
+                "summaries": "ready=true, active=false, pending=0, foreground=0, retry=false, stage=commit, storage=ok"
+              },
+              "result": "PASS"
+            }
+          },
+          "seed": {
+            "cap_bytes": 1837328384,
+            "io": {
+              "read_operations": 265,
+              "write_operations": 347,
+              "other_operations": 4060,
+              "read_bytes": 221618,
+              "write_bytes": 269120573,
+              "other_bytes": 32524
+            },
+            "elapsed_ms": 1828.897,
+            "peak_app_bytes": 281612288,
+            "peak_tree_commit_bytes": 276484096,
+            "exit_code": 0
+          },
+          "database_bytes": 270536704,
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "host": "GAMES",
+      "hard_cap_bytes": 32000000000,
+      "attempts": [
+        {
+          "mib": 1280,
+          "repositories": 24,
+          "runs": {
+            "baseline": {
+              "binary_sha256": "8ec817a71bbe299f87b727469769b15c5d569ded4c4996e6110ce1dca38cdd0e",
+              "cap_bytes": 1161779200,
+              "io": {
+                "read_operations": 328981,
+                "write_operations": 328208,
+                "other_operations": 4071,
+                "read_bytes": 3786690196,
+                "write_bytes": 2686584050,
+                "other_bytes": 80962
+              },
+              "elapsed_ms": 51701.959,
+              "peak_app_bytes": 1135779840,
+              "peak_tree_commit_bytes": 1099886592,
+              "exit_code": 1
+            }
+          },
+          "seed": {
+            "cap_bytes": 1775798272,
+            "io": {
+              "read_operations": 4357,
+              "write_operations": 5007,
+              "other_operations": 45001,
+              "read_bytes": 2027563342,
+              "write_bytes": 4717496074,
+              "other_bytes": 297720
+            },
+            "elapsed_ms": 10885.679,
+            "peak_app_bytes": 43814912,
+            "peak_tree_commit_bytes": 36995072,
+            "exit_code": 0
+          },
+          "database_bytes": 2686455808,
+          "result": "ABORTED",
+          "reason": "Fixture process tree reached its headroom cap (1099886592/1161779200)",
+          "next_divisor": 10
+        },
+        {
+          "mib": 128,
+          "repositories": 2,
+          "runs": {
+            "baseline": {
+              "binary_sha256": "8ec817a71bbe299f87b727469769b15c5d569ded4c4996e6110ce1dca38cdd0e",
+              "cap_bytes": 1017505792,
+              "io": {
+                "read_operations": 34754,
+                "write_operations": 34106,
+                "other_operations": 13265,
+                "read_bytes": 541646813,
+                "write_bytes": 271550432,
+                "other_bytes": 235946
+              },
+              "elapsed_ms": 2568.013,
+              "peak_app_bytes": 327680000,
+              "peak_tree_commit_bytes": 290025472,
+              "exit_code": 0,
+              "thread_ready_ms": [
+                701.2,
+                101.4,
+                100.7
+              ],
+              "startup_ready_ms": 101.1,
+              "result": "PASS"
+            },
+            "candidate": {
+              "binary_sha256": "a9a9e9d457c4bc4ef8df88a7f436ebcd188b76521fb160a0dbb57ba80dc29bf4",
+              "cap_bytes": 1117894656,
+              "io": {
+                "read_operations": 1515,
+                "write_operations": 1169,
+                "other_operations": 11089,
+                "read_bytes": 2504424,
+                "write_bytes": 1049216,
+                "other_bytes": 201272
+              },
+              "elapsed_ms": 2280.823,
+              "peak_app_bytes": 137728000,
+              "peak_tree_commit_bytes": 83070976,
+              "exit_code": 0,
+              "thread_ready_ms": [
+                200.4,
+                99.6,
+                99.8
+              ],
+              "startup_ready_ms": 310.5,
+              "runtime": {
+                "timings": [
+                  [
+                    "Session creation",
+                    "last 25 ms; peak 94 ms this run"
+                  ],
+                  [
+                    "Turn setup",
+                    "last 13 ms; peak 16 ms this run"
+                  ],
+                  [
+                    "Send to first response",
+                    "last 50 ms; peak 123 ms this run"
+                  ],
+                  [
+                    "Complete thread setup",
+                    "last 59 ms; peak 130 ms this run"
+                  ],
+                  [
+                    "Provider selection",
+                    "last 0 ms; peak 1 ms this run"
+                  ],
+                  [
+                    "Workspace selection",
+                    "last 0 ms; peak 0 ms this run"
+                  ],
+                  [
+                    "Workspace tools and hooks",
+                    "last 2 ms; peak 3 ms this run"
+                  ],
+                  [
+                    "Workspace store initialization",
+                    "opens 1; clean 1; recovered 0; new 0; last 349 ms; peak 349 ms this run"
+                  ]
+                ],
+                "summaries": "ready=true, active=false, pending=0, foreground=0, retry=false, stage=commit, storage=ok"
+              },
+              "result": "PASS"
+            }
+          },
+          "seed": {
+            "cap_bytes": 1055389696,
+            "io": {
+              "read_operations": 395,
+              "write_operations": 474,
+              "other_operations": 4194,
+              "read_bytes": 201700420,
+              "write_bytes": 470572605,
+              "other_bytes": 36172
+            },
+            "elapsed_ms": 920.588,
+            "peak_app_bytes": 41451520,
+            "peak_tree_commit_bytes": 34332672,
+            "exit_code": 0
+          },
+          "database_bytes": 270536704,
+          "result": "PASS"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Synthetic valid redb payload plus real libgit2 repositories/workspaces; local provider fixture, not a live AWS latency claim.",
+    "Clean fixture forbids recovery snapshot creation; dirty/corrupt recovery covered by vwork native Windows/macOS CI.",
+    "Logical process IO counters include all process operations, not physical disk measurements.",
+    "RC7 full 2.50GiB baseline stopped at the hypervisor headroom guard before the first thread; tenfold comparison and full candidate passed. No unsafe complete-baseline timing is claimed.",
+    "Initial 5GiB comparison stopped on a transient heartbeat read; bounded read retries preserve freshness checks. A later seed hit the host reserve; fixture payload cache reduced to 32MiB, application cache unchanged.",
+    "Every guard abort terminated owned processes and reduced the next workload tenfold. 32GB hard cap and tighter host/guest reserves remained enforced.",
+    "Snapshot copies, full integrity scans and unchanged-schema writes removed from clean open. Crash recovery retains pre-repair evidence and full checking."
+  ]
+}

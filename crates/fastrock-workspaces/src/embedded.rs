@@ -9,11 +9,38 @@ use std::{
         atomic::{AtomicBool, Ordering},
     },
 };
-use tokio::sync::{OnceCell, Semaphore};
+use tokio::sync::{Semaphore, watch};
 use vwork_engine::engine::Engine;
+mod timing;
+pub use timing::diagnostic;
 
 type Registry = Mutex<HashMap<PathBuf, Weak<OwnerSlot>>>;
 static STORES: OnceLock<Registry> = OnceLock::new();
+type OpenResult = Option<Result<Arc<Store>, Arc<str>>>;
+type ConnectionRegistry = Mutex<HashMap<PathBuf, Weak<Mutex<Opening>>>>;
+static CONNECTIONS: OnceLock<ConnectionRegistry> = OnceLock::new();
+
+#[derive(Default)]
+struct Opening {
+    ready: Option<Arc<Store>>,
+    pending: Option<watch::Receiver<OpenResult>>,
+}
+
+/// A core service retains its connections until shutdown, including while no
+/// chat happens to be using a store. Construction and lookup perform no IO.
+#[derive(Default)]
+pub struct Pool(Mutex<HashMap<PathBuf, Connection>>);
+
+impl Pool {
+    pub fn connection(&self, home: PathBuf) -> Connection {
+        self.0
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .entry(home.clone())
+            .or_insert_with(|| Connection::new(home))
+            .clone()
+    }
+}
 
 #[derive(Default)]
 struct OwnerSlot {
@@ -70,10 +97,13 @@ impl Store {
                 .wait(owner)
                 .map_err(|_| anyhow::anyhow!("Workspace ownership unavailable"))?;
         }
+        let _opening = timing::Opening::start();
         let config = vwork_engine::transport::load_config(&home)?;
         let interval = std::time::Duration::from_secs(config.compact_interval_seconds);
+        let engine = Engine::open(&home, config)?;
+        timing::opened(&engine.recovery);
         let store = Arc::new(Self {
-            engine: Some(RwLock::new(Engine::open(&home, config)?)),
+            engine: Some(RwLock::new(engine)),
             slot: slot.clone(),
             failed: AtomicBool::new(false),
             workers: Arc::new(Semaphore::new(8)),
@@ -215,26 +245,78 @@ impl Store {
 #[derive(Clone)]
 pub struct Connection {
     home: PathBuf,
-    store: Arc<OnceCell<Arc<Store>>>,
+    state: Arc<Mutex<Opening>>,
 }
 
 impl Connection {
     pub fn new(home: PathBuf) -> Self {
-        Self {
-            home,
-            store: Arc::new(OnceCell::new()),
-        }
+        let mut connections = CONNECTIONS
+            .get_or_init(Default::default)
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        connections.retain(|_, state| state.strong_count() > 0);
+        let state = connections
+            .get(&home)
+            .and_then(Weak::upgrade)
+            .unwrap_or_else(|| {
+                let state = Arc::new(Mutex::new(Opening::default()));
+                connections.insert(home.clone(), Arc::downgrade(&state));
+                state
+            });
+        Self { home, state }
     }
 
     pub async fn store(&self) -> Result<Arc<Store>> {
         let home = self.home.clone();
-        let store = self
-            .store
-            .get_or_try_init(|| async {
-                tokio::task::spawn_blocking(move || Store::open(&home)).await?
-            })
-            .await?;
-        Ok(Arc::clone(store))
+        self.open_with(move || Store::open(&home)).await
+    }
+
+    async fn open_with(
+        &self,
+        open: impl FnOnce() -> Result<Arc<Store>> + Send + 'static,
+    ) -> Result<Arc<Store>> {
+        let mut receiver = {
+            let mut state = self
+                .state
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Workspace opening unavailable"))?;
+            if let Some(store) = &state.ready {
+                return Ok(store.clone());
+            }
+            if let Some(pending) = &state.pending {
+                pending.clone()
+            } else {
+                let (sender, receiver) = watch::channel(None);
+                state.pending = Some(receiver.clone());
+                let shared = self.state.clone();
+                // Completion belongs to the connection, not an individual
+                // waiter. Cancelling a health probe cannot discard an opening
+                // database and force its recovery/initialization to run again.
+                tokio::task::spawn_blocking(move || {
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(open))
+                        .unwrap_or_else(|_| Err(anyhow::anyhow!("Workspace opening panicked")))
+                        .map_err(|e| Arc::<str>::from(format!("{e:#}")));
+                    {
+                        let mut state = shared.lock().unwrap_or_else(|e| e.into_inner());
+                        if let Ok(store) = &result {
+                            state.ready = Some(store.clone());
+                        }
+                        state.pending = None;
+                    }
+                    sender.send_replace(Some(result));
+                });
+                receiver
+            }
+        };
+        loop {
+            if let Some(result) = receiver.borrow_and_update().clone() {
+                return result.map_err(|e| anyhow::anyhow!(e.to_string()));
+            }
+            receiver
+                .changed()
+                .await
+                .context("Workspace opening interrupted")?;
+        }
     }
 
     pub async fn call(&self, op: String, args: Value) -> Result<Value> {
@@ -281,6 +363,71 @@ pub fn run_hook(input: impl std::io::Read, mut output: impl std::io::Write) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn v87_cancelled_open_is_shared() {
+        let temp = tempfile::tempdir().unwrap();
+        let connection = Connection::new(temp.path().into());
+        let clone = connection.clone();
+        let home = temp.path().to_path_buf();
+        let release = Arc::new(std::sync::Barrier::new(2));
+        let blocker = release.clone();
+        let (started, ready) = tokio::sync::oneshot::channel();
+        let opening = tokio::spawn(async move {
+            clone
+                .open_with(move || {
+                    let _ = started.send(());
+                    blocker.wait();
+                    Store::open(&home)
+                })
+                .await
+        });
+        ready.await.unwrap();
+        opening.abort();
+        assert!(matches!(opening.await, Err(error) if error.is_cancelled()));
+        let second = Connection::new(temp.path().into());
+        assert!(Arc::ptr_eq(&connection.state, &second.state));
+        let mut waiter = tokio::spawn(async move { second.store().await.unwrap() });
+        let early = tokio::time::timeout(std::time::Duration::from_millis(100), &mut waiter).await;
+        release.wait();
+        assert!(
+            early.is_err(),
+            "second waiter must join the original cold open"
+        );
+        let owner = waiter.await.unwrap();
+        assert!(Arc::ptr_eq(&owner, &connection.store().await.unwrap()));
+    }
+
+    #[tokio::test]
+    async fn v87_pool_retains_owner() {
+        let temp = tempfile::tempdir().unwrap();
+        let pool = Pool::default();
+        let connection = pool.connection(temp.path().into());
+        let owner = connection.store().await.unwrap();
+        let weak = Arc::downgrade(&owner);
+        drop(owner);
+        drop(connection);
+        let another = Connection::new(temp.path().into());
+        assert!(Arc::ptr_eq(
+            &weak.upgrade().unwrap(),
+            &another.store().await.unwrap()
+        ));
+        drop(another);
+        assert!(
+            weak.upgrade().is_some(),
+            "core service retains its database without active chats"
+        );
+        drop(pool);
+        // The blocking initializer may still be returning from publishing its
+        // result. Shutdown releases ownership once that worker has returned.
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            while weak.upgrade().is_some() {
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+            }
+        })
+        .await
+        .expect("shutdown releases the owner");
+    }
 
     #[tokio::test]
     async fn v40_reopen_waits_until_previous_owner_has_closed() {

@@ -48,6 +48,7 @@ pub(crate) struct State {
     pub entries: BTreeMap<String, Entry>,
     pub order: Vec<String>,
     pub collapsed: BTreeSet<String>,
+    pub expanded: BTreeSet<String>,
     pub project_names: BTreeMap<String, String>,
     pub policy: Policy,
 }
@@ -59,12 +60,18 @@ impl Default for State {
             entries: BTreeMap::new(),
             order: vec![],
             collapsed: BTreeSet::new(),
+            expanded: BTreeSet::new(),
             project_names: BTreeMap::new(),
             policy: Policy::default(),
         }
     }
 }
 impl State {
+    pub fn is_collapsed(&self, section: &str) -> bool {
+        self.collapsed.contains(section)
+            || (!self.expanded.contains(section)
+                && super::organization_layout::section_name(section) == Some("settled"))
+    }
     pub fn section_at(
         &self,
         id: &str,
@@ -223,15 +230,15 @@ impl State {
                 _ => return Err("Invalid sidebar preference".into()),
             },
             Mutation::Collapse { section, collapsed } => {
-                if !["pinned", "active", "working", "snoozed", "settled"]
-                    .contains(&section.as_str())
-                {
+                if super::organization_layout::section_name(&section).is_none() {
                     return Err("Invalid sidebar group".into());
                 }
                 if collapsed {
+                    self.expanded.remove(&section);
                     self.collapsed.insert(section);
                 } else {
                     self.collapsed.remove(&section);
+                    self.expanded.insert(section);
                 }
             }
             Mutation::ProjectName { id, name } => {
@@ -249,6 +256,7 @@ impl State {
         }
         if self.entries.len() > MAX_ENTRIES
             || self.order.len() > MAX_ENTRIES
+            || self.collapsed.len() + self.expanded.len() > MAX_ENTRIES
             || self.project_names.len() > 10_000
         {
             return Err("Sidebar metadata capacity exceeded".into());
@@ -312,6 +320,7 @@ fn read(home: &Path) -> Result<State, String> {
     if state.version != 1
         || state.entries.len() > MAX_ENTRIES
         || state.order.len() > MAX_ENTRIES
+        || state.collapsed.len() + state.expanded.len() > MAX_ENTRIES
         || state
             .policy
             .auto_settle_days
@@ -410,6 +419,48 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn v88_settled_default_and_explicit_expansion_survive_reload() {
+        let mut state: super::State = serde_json::from_str("{\"version\":1}").unwrap();
+        assert!(state.is_collapsed("settled"));
+        let section = format!("project:{}:settled", "a".repeat(64));
+        assert!(state.is_collapsed(&section));
+        state
+            .apply(
+                super::Mutation::Collapse {
+                    section: section.clone(),
+                    collapsed: false,
+                },
+                0,
+            )
+            .unwrap();
+        let mut reloaded: super::State =
+            serde_json::from_slice(&serde_json::to_vec(&state).unwrap()).unwrap();
+        assert!(!reloaded.is_collapsed(&section));
+        assert!(reloaded.is_collapsed("settled"));
+        reloaded
+            .apply(
+                super::Mutation::Collapse {
+                    section: section.clone(),
+                    collapsed: true,
+                },
+                0,
+            )
+            .unwrap();
+        assert!(reloaded.is_collapsed(&section));
+        assert!(!reloaded.expanded.contains(&section));
+        assert!(
+            reloaded
+                .apply(
+                    super::Mutation::Collapse {
+                        section: "project:invalid:settled".into(),
+                        collapsed: false
+                    },
+                    0
+                )
+                .is_err()
+        );
+    }
     use super::*;
     #[test]
     fn v68_auto_settle_deadlines_attention_opt_out_and_activity() {

@@ -1,0 +1,140 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.8",
+  "binary_sha256": "a9a9e9d457c4bc4ef8df88a7f436ebcd188b76521fb160a0dbb57ba80dc29bf4",
+  "windows_rust": {
+    "application": 784,
+    "renderer": 1,
+    "workspace": 33,
+    "embedded_goose_fixture": "PASS",
+    "store_startup_fixture": "PASS",
+    "logs": [
+      {
+        "file": "checkpoints-eb8885f4e56d100f.exe.0.log",
+        "sha256": "fd3a330b8e7df7ee77c8af5d4d076200b99b2de7d6bb437c5a1acc2c38d5b85b",
+        "passed": 7
+      },
+      {
+        "file": "checkpoints-eb8885f4e56d100f.exe.1.log",
+        "sha256": "95eaabf4146ede30397659ab34ff152797bec868ad01c2a2f2397755bde940b9",
+        "passed": 0
+      },
+      {
+        "file": "codex_gui-f996cf519a98f2af.exe.0.log",
+        "sha256": "2a8dade1a88fc6f7a67a7075e4cd26bfff661616fad9df12995acbde7723415e",
+        "passed": 784
+      },
+      {
+        "file": "codex_gui-f996cf519a98f2af.exe.1.log",
+        "sha256": "47fa2707749e7c3201eb37ef7545753c09d177cbcdea31c7fc67ee37492e5776",
+        "passed": 1
+      },
+      {
+        "file": "embedded-8708720565806460.exe.0.log",
+        "sha256": "3153d8ec020cf99f5a9ecb994f562fcb334ad26e90189b1a6002f0439d4376b6",
+        "passed": 7
+      },
+      {
+        "file": "embedded-8708720565806460.exe.1.log",
+        "sha256": "95eaabf4146ede30397659ab34ff152797bec868ad01c2a2f2397755bde940b9",
+        "passed": 0
+      },
+      {
+        "file": "embedded_goose-2a9b004ccb4d5b17.exe.0.log",
+        "sha256": "0ae264256c98fc6664f846fa314860369553fd6d6ed96eef69c5d1f57b5e97ce",
+        "passed": 0
+      },
+      {
+        "file": "embedded_goose-2a9b004ccb4d5b17.exe.1.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "passed": 0
+      },
+      {
+        "file": "fastrock-e8f1f34d33176efe.exe.0.log",
+        "sha256": "df166913f47ff1f04202cae9b31df67ed272d692d99a0023a8117dc3029100dd",
+        "passed": 0
+      },
+      {
+        "file": "fastrock-e8f1f34d33176efe.exe.1.log",
+        "sha256": "df166913f47ff1f04202cae9b31df67ed272d692d99a0023a8117dc3029100dd",
+        "passed": 0
+      },
+      {
+        "file": "fastrock_workspaces-666b5f45a6abd0c2.exe.0.log",
+        "sha256": "532bf7920eff0e0d546304d4389df35d051b1061b34f0cad9657b1989208425c",
+        "passed": 9
+      },
+      {
+        "file": "fastrock_workspaces-666b5f45a6abd0c2.exe.1.log",
+        "sha256": "78a4499bf54e08c1f4ba620f0ad263f335716912645be00b61a4b21072ae8bcb",
+        "passed": 0
+      },
+      {
+        "file": "integration-c3e4b59530cc5725.exe.0.log",
+        "sha256": "fafb9aef3f25eb4aa5fce1d13ef42306b023a5f487414ce4f2aec6f93d2f5737",
+        "passed": 7
+      },
+      {
+        "file": "integration-c3e4b59530cc5725.exe.1.log",
+        "sha256": "95eaabf4146ede30397659ab34ff152797bec868ad01c2a2f2397755bde940b9",
+        "passed": 0
+      },
+      {
+        "file": "review-bc1bd00753c544a3.exe.0.log",
+        "sha256": "0a382ad265a2236684251f8fd5ed7f0699470aed1658ee90b491f733954b44e8",
+        "passed": 3
+      },
+      {
+        "file": "review-bc1bd00753c544a3.exe.1.log",
+        "sha256": "aae2a5680ba54bd7ba5d6757bbfb0b15993c95637011d550e95e4e864f4375a0",
+        "passed": 0
+      },
+      {
+        "file": "store_startup-6dc2dbb8acaa2372.exe.0.log",
+        "sha256": "6df2839788edd3d8739a5b48813e56d96d15a7e8b7ade7fe22dfc0de447527a5",
+        "passed": 0
+      },
+      {
+        "file": "store_startup-6dc2dbb8acaa2372.exe.1.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "passed": 0
+      }
+    ]
+  },
+  "watchdog_tests": 5,
+  "organization": {
+    "result": "PASS",
+    "binary_sha256": "a9a9e9d457c4bc4ef8df88a7f436ebcd188b76521fb160a0dbb57ba80dc29bf4",
+    "peak_process_bytes": 144515072,
+    "native_groups": true,
+    "project_once": true,
+    "settled_hidden_until_expanded": true,
+    "failure_wakes_snoozed_chat": true,
+    "batch_pin": true,
+    "project_filter": true,
+    "manual_order": true,
+    "collapse_and_search": true,
+    "project_name": true,
+    "restart_persistence": true,
+    "timed_wake_without_dispatch": true
+  },
+  "sidebar_drag": {
+    "result": "PASS",
+    "binary_sha256": "a9a9e9d457c4bc4ef8df88a7f436ebcd188b76521fb160a0dbb57ba80dc29bf4",
+    "peak_process_bytes": 144596992,
+    "native_pointer_drag": true,
+    "group_drop": true,
+    "reorder": true,
+    "wake": true,
+    "escape_without_agent_interruption": true,
+    "outside_cancel": true,
+    "restart": true
+  },
+  "macos_compile": "PASS; no application or tests launched",
+  "vwork": {
+    "revision": "6bb0b3d5baddc4300827d63d7de0f067e018f69d",
+    "ci": "https://github.com/allquixotic/vwork/actions/runs/41652857482",
+    "native_windows_and_macos": "PASS; packaging and repeated lifecycle races included",
+    "cross_clippy": "PASS; all targets, warnings denied"
+  }
+}

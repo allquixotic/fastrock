@@ -17,7 +17,8 @@ args.output.mkdir(parents=True, exist_ok=True)
 archive = args.output / f'fastrock-{version}-windows-x64{suffix(plan)}.zip'
 revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
 dirty=bool(subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],cwd=root,text=True).strip())
-metadata = {'source_commit':revision,'source_dirty':dirty,'binary_sha256':hashlib.sha256(args.binary.read_bytes()).hexdigest(),**plan, 'default_backend':'embedded Goose','goose_version':'1.57.0','vwork_version':'0.3.4', 'source':json.loads((root/'codex-gui-base.json').read_text())}
+locked = {p['name']: p['version'] for p in tomllib.loads((root/'Cargo.lock').read_text())['package'] if p['name'] in ('goose', 'vwork')}
+metadata = {'source_commit':revision,'source_dirty':dirty,'binary_sha256':hashlib.sha256(args.binary.read_bytes()).hexdigest(),**plan, 'default_backend':'embedded Goose','goose_version':locked['goose'],'vwork_version':locked['vwork'], 'source':json.loads((root/'codex-gui-base.json').read_text())}
 if args.signing_evidence:
     signature=json.loads(args.signing_evidence.read_text(encoding='utf-8-sig'))
     assert signature['status']=='Valid' and signature['timestamp_publisher']

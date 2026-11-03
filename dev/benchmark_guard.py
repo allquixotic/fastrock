@@ -21,7 +21,17 @@ class GuardStopped(RuntimeError):
 
 def headroom(path):
     try:
-        data = json.loads(Path(path).read_text(encoding='utf-8'))
+        # Windows can briefly deny/open-miss a file during atomic replacement.
+        # Retry the read for at most 40 ms; never reuse an earlier snapshot or
+        # waive its freshness, health or reserve checks.
+        for attempt in range(3):
+            try:
+                data = json.loads(Path(path).read_text(encoding='utf-8'))
+                break
+            except (PermissionError, FileNotFoundError):
+                if attempt == 2:
+                    raise
+                time.sleep(.02)
         age = time.time() - data['received_at']
         if not data['healthy'] or not 0 <= age <= 6:
             raise GuardStopped('Hypervisor memory heartbeat unavailable or stale')
@@ -29,7 +39,7 @@ def headroom(path):
             raise GuardStopped('Hypervisor memory reserve reached')
         return data['available'] - HOST_RESERVE
     except (OSError, ValueError, KeyError) as error:
-        raise GuardStopped('Cannot verify hypervisor memory headroom') from error
+        raise GuardStopped(f'Cannot verify hypervisor memory headroom ({type(error).__name__}, errno={getattr(error, "errno", None)})') from error
 
 
 def guest_headroom():

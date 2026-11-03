@@ -47,7 +47,7 @@ try:
  first,second,third=ids
  project_index=state['projectChoices'].index('project')
  peak=max(peak,run('organize',[{'wait_ready':30000},{'wait':1500},{'resize':[1440,1100]},
-  *thread(first,'pin'),*thread(second,'settle'),*thread(third,'snooze-hour'),*dump('groups'),{'snapshot':str(out/'groups.png')},
+  *thread(first,'pin'),*thread(second,'settle'),*thread(third,'snooze-hour'),*dump('settled-hidden'),{'sidebar':['section','settled',str(repos[0])]},{'wait':500},*dump('groups'),{'snapshot':str(out/'groups.png')},
   {'sidebar':['project',str(project_index)]},{'wait':300},*dump('project-filter'),{'sidebar':['project','0']},{'wait':300},
   {'resume':first},{'wait':300},{'click_text':'Resume'},{'wait':400},{'send':'hold organization fixture'},{'wait':900},*dump('pinned-working'),
   *thread(first,'unpin'),*dump('working'),{'shortcut':'escape'},{'wait_idle':15000},{'wait':600},*dump('active'),
@@ -57,6 +57,9 @@ try:
   {'sidebar':['section','pinned']},{'wait':500},*org('select'),
   {'sidebar':['folder',str(repos[0]),'rename-project']},{'wait':200},{'dialog_text':'Readable project'},{'dialog':True},{'wait':600},*dump('renamed'),
   *thread(third,'wake'),*thread(third,'snooze-hour'),{'quit':True}]))
+ hidden=read('settled-hidden');assert not any(r['id']==second for r in hidden['rows']),hidden
+ assert len(hidden['projectFolders'])==2 and len({r['path'] for r in hidden['projectFolders']})==2,hidden
+ assert any(s['section']=='settled' and s['collapsed'] for s in hidden['sections']),hidden
  state=read('groups');assert [row(state,i)['section'] for i in ids]==['pinned','settled','snoozed'],state
  assert {r['id'] for r in read('project-filter')['rows']}=={first,second},read('project-filter')
  assert row(read('pinned-working'),first)['section']=='pinned'
@@ -88,6 +91,6 @@ try:
  assert 'Readable project' in read('restarted')['projectChoices']
  assert sum(not r['summary'] for r in provider.requests)==before,'Restart or wake dispatched agent'
  assert not provider.errors,provider.errors
- receipt=dict(result='PASS',binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_process_bytes=peak,native_groups=True,failure_wakes_snoozed_chat=True,batch_pin=True,project_filter=True,manual_order=True,collapse_and_search=True,project_name=True,restart_persistence=True,timed_wake_without_dispatch=True)
+ receipt=dict(result='PASS',binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_process_bytes=peak,native_groups=True,project_once=True,settled_hidden_until_expanded=True,failure_wakes_snoozed_chat=True,batch_pin=True,project_filter=True,manual_order=True,collapse_and_search=True,project_name=True,restart_persistence=True,timed_wake_without_dispatch=True)
  (out/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8');print('PASS: native sidebar groups, filtering, batches, ordering, project names and timed wake',flush=True)
 finally:provider.close();provider.write_evidence(out)

@@ -39,7 +39,7 @@ try:
  peak = max(peak,run('drag', [
   {'wait_ready':30000},{'wait':1200},{'resize':[1440,1100]},
   *drag(first,'drop:pinned','pin'), *drag(second,'drop:pinned','pin-second'),
-  *drag(second,first,'order'), *drag(first,'drop:settled','settle'),
+  *drag(second,first,'order'), *drag(first,'drop:settled','settle'),{'sidebar':['section','settled',str(repo)]},{'wait':500},*dump('settle-expanded'),
   *action(first,'snooze-hour'), *drag(first,'drop:active','wake'),
   *pointer('press',first),*pointer('move','drop:pinned'),*pointer('move','drop:pinned'),*dump('cancel-during'),
   {'key':'Escape'},{'wait':250},*pointer('release','drop:pinned'),*dump('cancelled'),
@@ -51,7 +51,8 @@ try:
   assert not read(name)['dragging'],name
  assert row(read('pin'),first)['section']=='pinned',read('pin')
  assert [r['id'] for r in read('order')['rows'] if r['section']=='pinned']==[second,first],read('order')
- assert row(read('settle'),first)['section']=='settled' and not row(read('settle'),first)['pinned'],read('settle')
+ assert not any(r['id']==first for r in read('settle')['rows']),read('settle')
+ assert row(read('settle-expanded'),first)['section']=='settled' and not row(read('settle-expanded'),first)['pinned'],read('settle-expanded')
  assert row(read('wake'),first)['section']=='active',read('wake')
  assert read('cancel-during')['dragging'] and not read('cancelled')['dragging'],read('cancelled')
  assert row(read('cancelled'),first)['section']=='active',read('cancelled')

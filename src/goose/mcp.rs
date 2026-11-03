@@ -85,14 +85,14 @@ impl Bridge {
     /// One route per binding; all sessions call the same authenticated database owner.
     pub async fn vwork_server(&self, binding: &McpBinding) -> anyhow::Result<Option<Value>> {
         let mut shared = self.vwork.lock().await;
-        let client = VworkProvider::new(&binding.installation())?;
-        anyhow::ensure!(
-            client.shared_mcp_supported().await?,
-            "Embedded vwork MCP unavailable"
-        );
         let key = if let Some((_, key)) = shared.iter().find(|(b, _)| b == binding) {
             key.clone()
         } else {
+            let client = VworkProvider::new(&binding.installation())?;
+            anyhow::ensure!(
+                client.shared_mcp_supported().await?,
+                "Embedded vwork MCP unavailable"
+            );
             let key = uuid::Uuid::new_v4().to_string();
             self.state.routes.lock().await.insert(
                 key.clone(),

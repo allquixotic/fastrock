@@ -440,6 +440,12 @@ impl VworkProvider {
         if self.fixture {
             return self.fixture_call(op, arguments, timeout).await;
         }
+        // Cold opening/recovery is shared and is not a running mutation. Wait
+        // for it separately; a three-second health deadline must not abort it
+        // or report that an operation has already started changing workspaces.
+        self.embedded.store().await.map_err(|e| {
+            WorkspaceError::Message(format!("Open embedded workspace store: {e:#}"))
+        })?;
         // Timeouts do not imply rollback. The owner retains its concurrency
         // permit until a started mutation finishes, and never retries it.
         tokio::time::timeout(timeout, self.embedded.call(op.into(), arguments))

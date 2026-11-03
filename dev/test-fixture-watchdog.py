@@ -7,12 +7,27 @@ import time
 import json
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 from benchmark_guard import BoundedJob, GuardStopped, headroom
 from embedded_provider_fixture import ProcessGuard
 
 
 @unittest.skipUnless(os.name == 'nt', 'Windows process accounting')
 class Watchdog(unittest.TestCase):
+    def test_v45_heartbeat_replacement_retry_still_checks_current_data(self):
+        healthy = json.dumps(dict(healthy=True, available=8_000_000_000, received_at=time.time()))
+        with patch.object(Path, 'read_text', side_effect=[PermissionError(13, 'fixture'), healthy]) as read:
+            self.assertEqual(headroom('fixture'), 4_000_000_000)
+            self.assertEqual(read.call_count, 2)
+        stale = json.dumps(dict(healthy=True, available=8_000_000_000, received_at=time.time()-10))
+        with patch.object(Path, 'read_text', side_effect=[FileNotFoundError(), stale]):
+            with self.assertRaises(GuardStopped):
+                headroom('fixture')
+        with patch.object(Path, 'read_text', side_effect=PermissionError(13, 'fixture')) as read:
+            with self.assertRaises(GuardStopped):
+                headroom('fixture')
+            self.assertEqual(read.call_count, 3)
+
     def check_stop(self, **limits):
         unrelated = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])
         owned = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])

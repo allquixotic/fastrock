@@ -44,7 +44,12 @@ impl Adapter {
         super::hooks::prepare(std::path::PathBuf::from(cwd))
             .await
             .map_err(|_| error("Unable to prepare embedded vwork hooks"))?;
-        configured_embedded(self.vwork_paths.clone(), std::path::PathBuf::from(cwd)).await
+        let bindings =
+            configured_embedded(self.vwork_paths.clone(), std::path::PathBuf::from(cwd)).await?;
+        for binding in &bindings {
+            self.stores.connection(binding.home.clone());
+        }
+        Ok(bindings)
     }
 
     async fn vwork_servers(
@@ -163,6 +168,7 @@ impl Adapter {
         let mut servers = Vec::new();
         let mut persisted = Vec::new();
         for binding in bindings {
+            self.stores.connection(binding.home.clone());
             match self.mcp.vwork_server(&binding).await {
                 Ok(Some(server)) => {
                     servers.push(server);

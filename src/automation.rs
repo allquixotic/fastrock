@@ -100,6 +100,8 @@ pub(crate) enum Step {
     Palette(Vec<String>),
     /// Open the settings tab on a page.
     OpenSettings(String),
+    /// Bounded, non-sensitive runtime timings for startup acceptance.
+    RuntimeFacts(PathBuf),
     /// Drive a settings control, e.g. `["select", "common", "web_search", "4"]`
     /// (see `AppController::settings_automation`).
     Settings(Vec<String>),
@@ -407,8 +409,26 @@ impl AppController {
                         Some("organization") if args.len() == 2 => {
                             state.invoke_organization_action(args[1].as_str().into())
                         }
-                        Some("section") if args.len() == 2 => {
-                            state.invoke_section_toggle(args[1].as_str().into())
+                        Some("section") if (2..=3).contains(&args.len()) => {
+                            use slint::Model;
+                            let matches: Vec<_> = state
+                                .get_rows()
+                                .iter()
+                                .filter(|row| {
+                                    row.kind == crate::ui::SidebarRowKind::Section
+                                        && (row.id.as_str() == args[1]
+                                            || row.section.as_str() == args[1])
+                                        && args
+                                            .get(2)
+                                            .is_none_or(|project| row.project.as_str() == project)
+                                })
+                                .collect();
+                            assert_eq!(
+                                matches.len(),
+                                1,
+                                "Section automation needs one visible category; specify its project when ambiguous"
+                            );
+                            state.invoke_section_toggle(matches[0].id.clone());
                         }
                         Some("project") if args.len() == 2 => {
                             state.invoke_project_selected(args[1].parse().unwrap_or(0))
@@ -535,7 +555,7 @@ impl AppController {
                                     "openChats": self.tabs.iter().filter_map(|tab| tab.thread().map(|thread| serde_json::json!({"id":thread.thread_id,"paused":self.thread_recovery_paused(thread),"draft":if self.shown_composer_tab() == Some(tab.id) { self.window.global::<crate::ui::ComposerState>().get_text().to_string() } else { thread.composer.text.clone() },"attachments":thread.composer.attachments.iter().map(|a| &a.path).collect::<Vec<_>>(),"uncertain":thread.recovered_sends.len()}))).collect::<Vec<_>>(),
                                 });
                                 let project_folders = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Folder).map(|row| serde_json::json!({"path":row.folder.as_str(),"count":row.count})).collect::<Vec<_>>();
-                                let sections = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Section).map(|row| serde_json::json!({"id":row.id.as_str(),"count":row.count,"collapsed":row.collapsed})).collect::<Vec<_>>();
+                                let sections = state.get_rows().iter().filter(|row| row.kind == crate::ui::SidebarRowKind::Section).map(|row| serde_json::json!({"id":row.id.as_str(),"count":row.count,"collapsed":row.collapsed,"section":row.section.as_str(),"project":row.project.as_str()})).collect::<Vec<_>>();
                                 let data = serde_json::json!({"rows":rows,"sections":sections,"dragging":state.get_dragging(),"dropTarget":state.get_drop_target().as_str(),"groupProjects":state.get_group_projects(),"workingSection":state.get_working_section(),"autoSettleDays":state.get_auto_settle_days(),"regeneratingTitles":state.get_regenerating_titles(),"titleGenerationStatus":state.get_title_generation_status().as_str(),"organizationReady":state.get_organization_ready(),"organizationError":state.get_organization_error().as_str(),"projectChoices":state.get_project_choices().iter().map(|s|s.to_string()).collect::<Vec<_>>(),"selectionCount":state.get_selection_count(),"projectFolders":project_folders,"navigation":navigation,"maximum":self.purpose_maximum_for_test(),"width":self.prefs.sidebar_width,"tooltip_bounds":self.window.get_sidebar_tooltip_bounds().iter().collect::<Vec<_>>(),"tooltip_pane":self.window.get_sidebar_tooltip_pane().iter().collect::<Vec<_>>(),"tooltip_text":state.get_tooltip_text().as_str(),"rendered_text":self.sidebar_rendered_text()}).to_string();
                                 let path = path.clone();
                                 self.backend.spawn(async move {
@@ -581,6 +601,15 @@ impl AppController {
                 Step::Project(args) => self.project_automation(&args),
                 Step::OpenSettings(page) => self.open_settings(Some(&page)),
                 Step::Settings(args) => self.settings_automation(&args),
+                Step::RuntimeFacts(path) => {
+                    let facts = serde_json::json!({
+                        "timings": crate::goose::latency::facts(),
+                        "summaries": crate::goose::summary_diagnostic(),
+                    });
+                    self.backend.spawn(async move {
+                        let _ = tokio::fs::write(path, facts.to_string()).await;
+                    });
+                }
                 Step::OpenFile(path) => self.open_file_tab(path, None),
                 Step::OpenDiff(path) => match std::fs::read_to_string(&path) {
                     Ok(diff) => self.open_diff_tab(crate::app::folder_label(&path), diff),

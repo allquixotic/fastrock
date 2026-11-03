@@ -38,6 +38,7 @@ impl Adapter {
         }
         let selection: Selection = serde_json::from_value(value.clone())
             .map_err(|_| error("Invalid workspace selection"))?;
+        let _connection = self.stores.connection(selection.home.clone());
         let resolved = selection
             .resolve()
             .await

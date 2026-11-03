@@ -2162,3 +2162,51 @@ results and artifact identities. The guarded full-scale RC6 benchmark above
 remains applicable: RC7 changes fixture synchronization and the version only.
 RC7 automated acceptance is complete; final 0.4.0 still needs live-profile
 acceptance. RC6 was never published.
+
+### RC8 clean startup and project grouping, 2026-11-03
+
+Clean vwork startup previously copied and fsynced the entire database, scanned
+its integrity, and repeated unchanged schema/table writes. A cancelled health
+check could discard initialization; transient callers could reopen the store.
+Vwork 0.3.5 now probes clean state before recovery work. Dirty recovery still
+snapshots before repair and checks integrity; earlier recovery evidence remains
+intact. Fastrock shares cancellation-safe initialization and retains owners until
+shutdown, with health deadlines starting after initialization. Unchanged plugin
+registration is read-only. New timing diagnostics separate store opening, thread
+setup, provider selection and workspace setup without logging paths or secrets.
+
+The guarded games fixture passed with a 2,686,455,808-byte (2.50 GiB) database,
+24 repositories and 96 workspaces. Three new threads became ready in 200.3,
+100.7 and 200.6 ms. One clean database open took 1,801 ms; no full snapshot or
+integrity scan ran. Total logical process reads were 2,658,800 bytes, writes
+1,175,491 bytes, and peak process memory 140,042,240 bytes. RC7's same-size
+baseline reached the stricter hypervisor headroom guard during its scan and
+stopped before a first thread; the required tenfold comparison passed. A
+smaller 514 MiB comparison measured RC7's first thread at 1,807.7 ms versus
+199.4 ms, with about 1.08 GB versus 2.40 MB of process reads. These are local
+fixture measurements on games, not live AWS or work-machine guarantees.
+[Startup evidence, including safely aborted attempts](benchmarks/rc8-startup-games-2026-11-03.json).
+
+The complete 1,000-conversation/eight-stream/10,000-message workload passed
+without scale reduction: peak process memory 224,743,424 bytes (214.3 MiB),
+history opening 602.8 ms, synchronous switch dispatch 0.3–0.4 ms and frame
+p95 7.9 ms. First/middle/last history pages took 4.6–12.1 ms. The October 30
+0.3.4 baseline used 182,415,360 process bytes plus an external backend (tree
+commit 220,450,816 bytes), opened history in 1,102 ms and had frame p95
+8.422 ms. Different-day samples and process/tree metrics are not a general
+speedup or total-memory comparison. All host/guest guards remained active.
+[Scale evidence](benchmarks/rc8-scale-games-2026-11-03.json).
+
+The sidebar now renders each project once with nested status categories. Settled
+threads stay hidden, including search, until explicit per-project expansion;
+that preference survives restart. Native grouping and pointer-drag fixtures
+passed along with 784 application, one renderer and 33 workspace tests, the
+standalone Goose/store fixtures and five watchdog tests. Mac compilation passed
+without launching the application or tests. Vwork's native Windows/macOS
+[CI 41652857482](https://github.com/allquixotic/vwork/actions/runs/41652857482)
+passed its full suites, packaging and repeated lifecycle races.
+[Regression evidence](benchmarks/rc8-regressions-games-2026-11-03.json).
+
+Signed CI acceptance and independent package verification are required before
+RC8 publication is considered complete. Live Bedrock profiles remain required
+for the final stable release.

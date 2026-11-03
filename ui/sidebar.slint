@@ -487,7 +487,7 @@ component SectionRowView inherits Rectangle {
     height: 32px;
     background: SidebarState.dragging && SidebarState.drop-target == item.id ? Theme.selected : transparent;
     HorizontalLayout {
-        padding-left: 12px; padding-right: 12px; spacing: 6px;
+        padding-left: item.project == "" ? 12px : 24px; padding-right: 12px; spacing: 6px;
         Text { text: item.collapsed ? "▸" : "▾"; color: Theme.text-faint; width: 12px; vertical-alignment: center; }
         Text { text: item.title; font-size: Theme.font-size-small; color: Theme.text-muted; font-weight: 600; vertical-alignment: center; horizontal-stretch: 1; }
         Text { text: item.count; font-size: Theme.font-size-small; color: Theme.text-faint; vertical-alignment: center; }

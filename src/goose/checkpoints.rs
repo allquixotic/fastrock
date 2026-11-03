@@ -40,7 +40,7 @@ impl Adapter {
             Some(w) => (w.selection.home, Some(w.selection.workspace)),
             None => (self.vwork_paths.default_vwork_home.clone(), None),
         };
-        Ok((Connection::new(home), workspace))
+        Ok((self.stores.connection(home), workspace))
     }
     pub(super) async fn checkpoint_pending(&self, id: &str) -> Result<bool> {
         if !self.embedded_runtime {

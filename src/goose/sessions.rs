@@ -3,8 +3,10 @@ use base64::Engine;
 
 impl Adapter {
     pub(super) async fn new_session(self: &Arc<Self>, params: &Value) -> Reply {
+        let _timing = latency::Timer::start(latency::Phase::ThreadSetup);
         let _foreground = self.summaries.as_ref().map(|s| s.foreground());
         let provider = if self.embedded_runtime {
+            let _timing = latency::Timer::start(latency::Phase::ProviderSelection);
             let requested = params["modelProvider"]
                 .as_str()
                 .filter(|name| !name.is_empty() && *name != "goose");
@@ -17,7 +19,10 @@ impl Adapter {
         } else {
             None
         };
-        let workspace = self.selected_workspace(params).await?;
+        let workspace = {
+            let _timing = latency::Timer::start(latency::Phase::WorkspaceSelection);
+            self.selected_workspace(params).await?
+        };
         let workspace_cwd = workspace
             .as_ref()
             .map(|w| w.cwd.to_string_lossy().into_owned());
@@ -50,6 +55,7 @@ impl Adapter {
         let bindings = if restricted {
             vec![]
         } else {
+            let _timing = latency::Timer::start(latency::Phase::ToolSetup);
             let result = self.new_vwork_servers(cwd, workspace.as_ref()).await;
             let (vwork, bindings) = match result {
                 Ok(value) => value,
@@ -1047,6 +1053,7 @@ mod completion_tests {
         t["items"] = json!([{"type":"agentMessage","id":"answer","text":"done"}]);
         session.turns.push(t);
         let adapter = Arc::new(Adapter {
+            stores: Default::default(),
             rpc,
             events,
             sessions: Mutex::new(HashMap::from([("session".into(), session)])),

@@ -33,15 +33,6 @@ pub(super) fn attention(status: SidebarThreadStatus) -> bool {
         SidebarThreadStatus::Waiting | SidebarThreadStatus::Error
     )
 }
-fn section_title(section: &str) -> &'static str {
-    match section {
-        "pinned" => "Pinned",
-        "working" => "Working",
-        "snoozed" => "Snoozed",
-        "settled" => "Settled",
-        _ => "Active",
-    }
-}
 fn snooze_time(text: &str) -> Result<i64, String> {
     let date = chrono::NaiveDateTime::parse_from_str(text.trim(), "%Y-%m-%d %H:%M")
         .map_err(|_| "Use local date and time: YYYY-MM-DD HH:MM")?;
@@ -97,7 +88,7 @@ impl AppController {
         ui.on_section_toggle(crate::ui_thread::scoped_callback!(|id| {
             let section = id.to_string();
             crate::ui_thread::with_app(move |app| {
-                let collapsed = !app.sidebar.organization.state.collapsed.contains(&section);
+                let collapsed = !app.sidebar.organization.state.is_collapsed(&section);
                 app.organization_request(Some(Mutation::Collapse { section, collapsed }));
             });
         }));
@@ -164,109 +155,14 @@ impl AppController {
         if self.sidebar.archived {
             return projects::rows(&threads, &projects, &self.sidebar.collapsed, more, false);
         }
-        let order: HashMap<_, _> = org
-            .state
-            .order
-            .iter()
-            .enumerate()
-            .map(|(i, id)| (id.as_str(), i))
-            .collect();
-        let mut rows = vec![];
-        for section in ["pinned", "active", "working", "snoozed", "settled"] {
-            let subset: Vec<_> = threads
-                .iter()
-                .filter(|t| {
-                    org.state.section_at(
-                        &t.id,
-                        marks.get(&t.id).is_some_and(|m| working(m.status)),
-                        marks.get(&t.id).is_some_and(|m| attention(m.status)),
-                        t.updated_at,
-                        now,
-                    ) == section
-                })
-                .cloned()
-                .collect();
-            let empty_collapsed = HashSet::new();
-            let mut contents = projects::rows(
-                &subset,
-                &projects,
-                if org.state.policy.group_projects {
-                    &self.sidebar.collapsed
-                } else {
-                    &empty_collapsed
-                },
-                false,
-                section == "active" && self.sidebar.is_unfiltered(),
-            );
-            if !org.state.policy.group_projects {
-                contents.retain(|row| !matches!(row, RowSpec::Folder { .. }));
-            }
-            if contents.is_empty() {
-                continue;
-            }
-            // Keep repository groups contiguous while applying manual order within them.
-            let mut start = 0;
-            while start < contents.len() {
-                if !matches!(contents[start], RowSpec::Thread { .. }) {
-                    start += 1;
-                    continue;
-                }
-                let end = (start..contents.len())
-                    .find(|&i| !matches!(contents[i], RowSpec::Thread { .. }))
-                    .unwrap_or(contents.len());
-                contents[start..end].sort_by_key(|row| {
-                    let RowSpec::Thread { id, updated_at, .. } = row else {
-                        unreachable!()
-                    };
-                    match section {
-                        "snoozed" => (
-                            0,
-                            org.state
-                                .entries
-                                .get(id)
-                                .and_then(|e| e.snoozed_until)
-                                .unwrap_or(i64::MAX),
-                        ),
-                        "settled" => (
-                            0,
-                            -org.state
-                                .entries
-                                .get(id)
-                                .and_then(|e| e.settled_at)
-                                .unwrap_or(*updated_at),
-                        ),
-                        "working" => (0, -*updated_at),
-                        _ => (
-                            order.get(id.as_str()).copied().unwrap_or(usize::MAX),
-                            -*updated_at,
-                        ),
-                    }
-                });
-                start = end;
-            }
-            // An existing project represented in another group need not appear as an empty active folder.
-            if section == "active" {
-                contents.retain(|row| !matches!(row,RowSpec::Folder{path,count:0,..} if threads.iter().any(|t|t.group_root()==path)));
-                if contents.is_empty() {
-                    continue;
-                }
-            }
-            let collapsed =
-                org.state.collapsed.contains(section) && self.sidebar.search_term.is_empty();
-            rows.push(RowSpec::Section {
-                id: section.into(),
-                title: section_title(section).into(),
-                count: subset.len(),
-                collapsed,
-            });
-            if !collapsed {
-                rows.extend(contents);
-            }
+        super::organization_layout::Layout {
+            state: &org.state,
+            marks,
+            collapsed: &self.sidebar.collapsed,
+            now,
+            searching: !self.sidebar.search_term.is_empty(),
         }
-        if more {
-            rows.push(RowSpec::More);
-        }
-        rows
+        .rows(&threads, &projects, self.sidebar.is_unfiltered(), more)
     }
 
     pub(super) fn organization_retained(&self) -> Vec<ThreadSummary> {
@@ -619,7 +515,7 @@ impl AppController {
         ui.set_drop_target("".into());
         cancelled
     }
-    fn organization_drop_target(&self, x: f32, y: f32) -> Option<(String, Option<String>)> {
+    fn organization_drop_target(&self, x: f32, y: f32) -> Option<(String, Option<String>, String)> {
         let ui = self.window.global::<SidebarState>();
         if !(0.0..self.prefs.sidebar_width).contains(&x) {
             return None;
@@ -629,7 +525,8 @@ impl AppController {
             let index = ((x.max(12.0) - 12.0) / ((self.prefs.sidebar_width - 24.0) / 3.0))
                 .floor()
                 .clamp(0.0, 2.0) as usize;
-            return Some((["pinned", "active", "settled"][index].into(), None));
+            let section = ["pinned", "active", "settled"][index];
+            return Some((section.into(), None, section.into()));
         }
         let top = ui.get_list_top();
         if y < top || y > top + ui.get_viewport_height() {
@@ -639,8 +536,10 @@ impl AppController {
         let mut cursor = 0.0;
         let mut section = String::new();
         for row in self.sidebar.rows.iter() {
-            if row.kind == SidebarRowKind::Section {
-                section = row.id.to_string();
+            if row.kind == SidebarRowKind::Folder {
+                section.clear();
+            } else if row.kind == SidebarRowKind::Section {
+                section = row.section.to_string();
             }
             let height = match row.kind {
                 SidebarRowKind::Folder => 30.0,
@@ -651,9 +550,23 @@ impl AppController {
                 if !["pinned", "active", "settled"].contains(&section.as_str()) {
                     return None;
                 }
+                // Dropping inside a project changes status/order, never repository.
+                if self.sidebar.organization.state.policy.group_projects {
+                    let source = self
+                        .sidebar
+                        .organization
+                        .dragged
+                        .as_ref()
+                        .and_then(|id| self.sidebar.row_index.get(id))
+                        .and_then(|index| self.sidebar.rows.row_data(*index))?;
+                    if row.project != source.project {
+                        return None;
+                    }
+                }
                 return Some((
                     section,
                     (row.kind == SidebarRowKind::Thread).then(|| row.id.to_string()),
+                    row.id.to_string(),
                 ));
             }
             cursor += height;
@@ -666,7 +579,7 @@ impl AppController {
         }
         let target = self
             .organization_drop_target(x, y)
-            .map(|(section, before)| before.unwrap_or(section))
+            .map(|(_, _, display)| display)
             .unwrap_or_default();
         self.window
             .global::<SidebarState>()
@@ -678,7 +591,7 @@ impl AppController {
             .flatten();
         let dragged = self.sidebar.organization.dragged.clone();
         self.organization_cancel_drag();
-        let (Some(id), Some((section, before))) = (dragged, target) else {
+        let (Some(id), Some((section, before, _))) = (dragged, target) else {
             return;
         };
         let Some(source) = self

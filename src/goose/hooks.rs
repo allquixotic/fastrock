@@ -51,6 +51,25 @@ fn register(config: &goose_runtime::config::Config, roots: &[PathBuf]) -> Result
     if paths.is_empty() {
         return Ok(());
     }
+    // Ordinary discovery is read-only. Building a throwaway Config draft uses
+    // Goose's durable setters, which otherwise fsync repeatedly on every new
+    // chat even when all plugin directories are already registered.
+    super::config_guard::validate(config)?;
+    let existing: Value = match config.get_param("plugins") {
+        Ok(value) => value,
+        Err(goose_runtime::config::ConfigError::NotFound(_)) => json!({}),
+        Err(_) => anyhow::bail!("Cannot read Goose plugin settings"),
+    };
+    let entries = existing
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("Goose plugins must be a mapping"))?;
+    ensure!(
+        entries.values().all(|entry| entry["enabled"].is_boolean()),
+        "Invalid Goose plugin setting; original configuration preserved"
+    );
+    if paths.iter().all(|path| entries.contains_key(path)) {
+        return Ok(());
+    }
     super::config_guard::edit(config, |config| {
         let mut plugins: Value = match config.get_param("plugins") {
             Ok(value) => value,

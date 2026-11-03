@@ -1,9 +1,12 @@
 # Embedded workspaces in Fastrock 0.4.0
 
-The development branch links unmodified vwork 0.3.4 at
-`c53cea4879bc0e12735ae1c89bd7d5ca3e9b1910`. Existing stores use the same Engine,
+The development branch links vwork 0.3.5 at
+`6bb0b3d5baddc4300827d63d7de0f067e018f69d`, with the clean-startup optimization. Existing stores use the same Engine,
 redb schema, compression settings, revisions and leases. Fastrock holds one owner
-per canonical store path. Workspace I/O runs on bounded blocking workers;
+per canonical store path. Core services retain that owner; concurrent callers share
+a cancellation-safe open. Clean startup validates redb metadata without copying
+or scanning the entire database. Crash repair retains a pre-repair snapshot and
+full integrity verification. Workspace I/O runs on bounded blocking workers;
 compaction excludes active readers and writers. No vwork installation or daemon
 is required. Fresh installations receive a default local store.
 

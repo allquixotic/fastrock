@@ -10,6 +10,7 @@
 mod activity;
 mod deletion;
 mod organization;
+mod organization_layout;
 pub(crate) mod organization_store;
 mod project_actions;
 mod projects;
@@ -147,6 +148,7 @@ pub(crate) enum RowSpec {
         title: String,
         count: usize,
         collapsed: bool,
+        project: Option<PathBuf>,
     },
     Folder {
         path: PathBuf,
@@ -1248,8 +1250,16 @@ fn to_slint_row(spec: RowSpec, now: i64, marks: &HashMap<String, ThreadMark>) ->
             title,
             count,
             collapsed,
+            project,
         } => SidebarRow {
             kind: SidebarRowKind::Section,
+            section: organization_layout::section_name(&id)
+                .unwrap_or_default()
+                .into(),
+            project: project
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default()
+                .into(),
             id: id.into(),
             title: title.into(),
             count: count as i32,

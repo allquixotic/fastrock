@@ -9,13 +9,21 @@ pub(super) enum Phase {
     Configure,
     TurnSetup,
     FirstResponse,
+    ThreadSetup,
+    ProviderSelection,
+    WorkspaceSelection,
+    ToolSetup,
 }
-const LABELS: [&str; 5] = [
+const LABELS: [&str; 9] = [
     "Session creation",
     "Session loading",
     "Model configuration",
     "Turn setup",
     "Send to first response",
+    "Complete thread setup",
+    "Provider selection",
+    "Workspace selection",
+    "Workspace tools and hooks",
 ];
 #[derive(Default)]
 struct Measurement {
@@ -35,12 +43,24 @@ impl Measurement {
         Some(format!("last {last} ms; peak {peak} ms this run"))
     }
 }
-static MEASUREMENTS: [Measurement; 5] = [const {
+static MEASUREMENTS: [Measurement; 9] = [const {
     Measurement {
         last: AtomicU64::new(0),
         peak: AtomicU64::new(0),
     }
-}; 5];
+}; 9];
+
+pub(super) struct Timer(Phase, Instant);
+impl Timer {
+    pub fn start(phase: Phase) -> Self {
+        Self(phase, Instant::now())
+    }
+}
+impl Drop for Timer {
+    fn drop(&mut self) {
+        record(self.0, self.1);
+    }
+}
 
 pub(super) fn record(phase: Phase, start: Instant) {
     let milliseconds = start.elapsed().as_millis().min(u64::MAX as u128 - 1) as u64;
@@ -57,6 +77,10 @@ pub(crate) fn facts() -> Vec<(&'static str, String)> {
         .iter()
         .zip(&MEASUREMENTS)
         .filter_map(|(label, value)| value.display().map(|value| (*label, value)))
+        .chain(std::iter::once((
+            "Workspace store initialization",
+            fastrock_workspaces::embedded::diagnostic(),
+        )))
         .collect()
 }
 

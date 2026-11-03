@@ -1,7 +1,7 @@
 //! Explicit title generation uses the cheap profile and a bounded search summary.
 //! It never loads an agent or grants tools, and commits only to unchanged history.
 use super::*;
-use fastrock_workspaces::{embedded::Connection, summaries::Summaries};
+use fastrock_workspaces::summaries::Summaries;
 use goose_context_management::{CompactionModel, ProviderModel};
 use goose_provider_types::{conversation::message::Message, model::ModelConfig};
 use goose_runtime::{
@@ -87,7 +87,7 @@ impl Adapter {
         }
         let home = summary_store()
             .ok_or_else(|| error("Search summaries are unavailable; title preserved"))?;
-        let summaries = Summaries(Connection::new(home));
+        let summaries = Summaries(self.stores.connection(home));
         let source = summaries.get(ui_id(id)).await.map_err(|_| error("Search summary could not be read; title preserved"))?
             .filter(|s| !s.text.trim().is_empty()).ok_or_else(|| error("A search summary is not ready for this conversation. Check the cheap model in settings and try again after summarization."))?;
         let generated = tokio::time::timeout(Duration::from_secs(45), async {

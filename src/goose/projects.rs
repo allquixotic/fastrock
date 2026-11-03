@@ -1,5 +1,5 @@
 use super::*;
-use fastrock_workspaces::{embedded::Connection, projects};
+use fastrock_workspaces::projects;
 
 impl Adapter {
     async fn registered_projects(
@@ -23,7 +23,7 @@ impl Adapter {
         let mut seen = std::collections::HashSet::new();
         let mut projects = Vec::new();
         for home in homes {
-            let rows = projects::list(&Connection::new(home))
+            let rows = projects::list(&self.stores.connection(home))
                 .await
                 .map_err(|e| error(format!("Read registered projects: {e:#}")))?;
             projects.extend(rows.into_iter().filter(|p| seen.insert(p.id.clone())));
@@ -66,7 +66,7 @@ impl Adapter {
                 .ok_or_else(|| error("No embedded workspace store is configured"))?
                 .home
                 .clone();
-            let connection = Connection::new(home);
+            let connection = self.stores.connection(home);
             let repo = projects::register_project(&connection, root)
                 .await
                 .map_err(|e| error(e.to_string()))?;
@@ -75,7 +75,7 @@ impl Adapter {
                 .map_err(|e| error(e.to_string()))?
                 .project
         };
-        let connection = Connection::new(project.home.clone());
+        let connection = self.stores.connection(project.home.clone());
         let result = if save {
             let expected = params["expectedRevision"]
                 .as_u64()
@@ -126,7 +126,7 @@ impl Adapter {
         };
         let workspace = format!("chat-{}", uuid::Uuid::new_v4().simple());
         let session = projects::open_at(
-            &Connection::new(home),
+            &self.stores.connection(home),
             root,
             workspace,
             params["reference"].as_str().map(str::to_owned),
@@ -144,7 +144,7 @@ impl Adapter {
             .workspace
             .ok_or_else(|| error("This conversation has no virtual repository workspace"))?;
         let reference = projects::reference(
-            &Connection::new(workspace.selection.home.clone()),
+            &self.stores.connection(workspace.selection.home.clone()),
             workspace.selection.workspace.clone(),
         )
         .await

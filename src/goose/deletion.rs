@@ -1,7 +1,7 @@
 //! Explicit permanent deletion, with recoverable cleanup across Goose and vwork.
 use super::*;
 use base64::Engine as _;
-use fastrock_workspaces::{checkpoints, embedded::Connection, summaries::Summaries};
+use fastrock_workspaces::{checkpoints, summaries::Summaries};
 use goose_runtime::{config::paths::Paths, session::SessionManager};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -173,12 +173,12 @@ impl Adapter {
                     error("History deleted; summary cleanup needs a retry or restart")
                 })?;
             }
-            Summaries(Connection::new(record.summary_home.clone()))
+            Summaries(self.stores.connection(record.summary_home.clone()))
                 .forget(ui_id(&record.id))
                 .await
                 .map_err(|_| error("History deleted; summary cleanup needs a retry or restart"))?;
             checkpoints::forget(
-                &Connection::new(record.checkpoint_home.clone()),
+                &self.stores.connection(record.checkpoint_home.clone()),
                 record.id.clone(),
             )
             .await
@@ -350,7 +350,9 @@ impl Adapter {
             workspaces.sort();
             workspaces.dedup();
             for (home, workspace) in workspaces {
-                let leases = Connection::new(home)
+                let leases = self
+                    .stores
+                    .connection(home)
                     .call("temporary_list".into(), json!({}))
                     .await
                     .map_err(|_| error("Cannot check workspace leases; deletion stopped"))?;
