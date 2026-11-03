@@ -17,6 +17,7 @@ Broader GUI contract: repository `GUI.md`.
 - Codex histories untouched on disk, absent from UI. Goose history retained; one current search summary backfilled per existing conversation.
 - One latest compaction-length keyword-focused summary per conversation; each completed user-facing turn replaces it asynchronously. Compressed summary shares vwork redb; no historical summaries; original conversation retained. Settings identify cheap profile, else Bedrock GPT-6 Luna; unavailable means deterministic search only.
 - 2026-11-03 memory authorization: conservative automatic learning after completed turns, bounded recall, idle maintenance in vwork redb; vwork may change, Goose remains unchanged. User accepts model-initiated in-process recall tool instead of unsupported transient ACP injection; learning must yield to foreground work.
+- 2026-11-03 user authorizes next memory release candidate, 0.4.0-rc.10, through the configured signed GitHub Actions pipeline.
 - Search performs immediate case-insensitive title/current-summary matching, then bounded multithreaded fuzzy search over current summaries. No model call per query; cancel obsolete searches.
 - Track Mac/games free space; clean identified stale build junk only when needed.
 - Native Slint 1.18.1; bound transcript memory; no idle repaint polling.
@@ -830,3 +831,5 @@ B276|2026-11-03|Native fixture invoked Forget before queued Slint row selection 
 B277|2026-11-03|Memory migration recognized developer by name alone, including filtered or external tools|Require unrestricted builtin/platform developer; restricted-selection regression; V92
 
 B278|2026-11-03|Selected memory editor stretched action buttons vertically|Bound action row to native control height and keep editor unstretched; native screenshot; V93
+
+B279|2026-11-03|Release benchmark launched in SSH service session; scrolling dispatched but native presentation captured zero frames|Existing frame-count gate rejected run; document desktop/asuser requirement and rerun with live memory guard; V33,V45

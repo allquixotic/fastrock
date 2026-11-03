@@ -1,0 +1,132 @@
+{
+  "binary_sha256": "ce358ef7f2a46e741ab8d8ae905e942b09707942be11c011fa1bb589307691cd",
+  "seed_sha256": "239a94a6ba3c1f3f29872ff883292bc07c0f3211f0e3c23bdf5284c9760d02b4",
+  "host": "GAMES",
+  "os": "Windows-11-10.0.26100-SP0",
+  "backend": "embedded Goose 1.57.0",
+  "hard_cap_bytes": 32000000000,
+  "attempts": [
+    {
+      "divisor": 1,
+      "stored_conversations": 1000,
+      "history_messages": 10000,
+      "concurrent_streams": 8,
+      "phases": {
+        "seed": {
+          "cap_bytes": 4531386368,
+          "peak_app_bytes": 105922560,
+          "peak_tree_commit_bytes": 101433344
+        },
+        "app": {
+          "cap_bytes": 4486100992,
+          "peak_app_bytes": 226500608,
+          "peak_tree_commit_bytes": 173142016
+        }
+      },
+      "result": "PASS",
+      "peak_concurrent_streams": 8,
+      "history_open_observed_ms": 601.6,
+      "switch_dispatch_ms": [
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4
+      ],
+      "frame": {
+        "p50_ms": 4.588,
+        "p95_ms": 9.512,
+        "p99_ms": 10.44
+      },
+      "render": {
+        "p50_ms": 3.624,
+        "p95_ms": 8.277,
+        "p99_ms": 9.461
+      },
+      "event_loop": {
+        "p50_ms": 16.44,
+        "p95_ms": 19.789,
+        "p99_ms": 25.04
+      },
+      "history_export_messages": 10000,
+      "current_summaries_preserved": true,
+      "history_navigation": {
+        "first": {
+          "browsing": true,
+          "loading": false,
+          "start": 0,
+          "end": 100,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 7.1223,
+          "rows": 100,
+          "bytes": 285990
+        },
+        "middle": {
+          "browsing": true,
+          "loading": false,
+          "start": 5000,
+          "end": 5100,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 4.712,
+          "rows": 100,
+          "bytes": 292500
+        },
+        "last": {
+          "browsing": true,
+          "loading": false,
+          "start": 9900,
+          "end": 10000,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 4.9994000000000005,
+          "rows": 100,
+          "bytes": 292569
+        },
+        "middle_frame": {
+          "p50_ms": 4.574,
+          "p95_ms": 6.251,
+          "p99_ms": 7.493
+        }
+      }
+    }
+  ],
+  "source_commit": "cb804f3095fe8d9a4b346715f0bb91954b9922ce",
+  "notes": [
+    "Benchmarked the verified memory implementation before the RC10 version-only application metadata bump; executable still identifies as RC9. CI separately compiles and tests the exact RC10 tag.",
+    "Executed in the signed-in games desktop via asuser -e, with loopback providers and live hypervisor/guest memory guard.",
+    "Retained 0.3.4 comparison: rc1-scale-baseline-games-2026-10-30.json. Different-day samples do not establish general performance improvements.",
+    "Initial SSH service-session attempt captured zero rendered frames and was rejected. Repeated once in desktop session with unchanged executable and full workload."
+  ],
+  "rejected_service_session_attempt": {
+    "binary_sha256": "ce358ef7f2a46e741ab8d8ae905e942b09707942be11c011fa1bb589307691cd",
+    "seed_sha256": "239a94a6ba3c1f3f29872ff883292bc07c0f3211f0e3c23bdf5284c9760d02b4",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 4551813120,
+            "peak_app_bytes": 122462208,
+            "peak_tree_commit_bytes": 101871616
+          },
+          "app": {
+            "cap_bytes": 4538599424,
+            "peak_app_bytes": 227495936,
+            "peak_tree_commit_bytes": 164798464
+          }
+        },
+        "result": "FAILED",
+        "reason": "Insufficient scrolling frames"
+      }
+    ]
+  }
+}

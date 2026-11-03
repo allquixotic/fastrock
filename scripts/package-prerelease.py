@@ -42,7 +42,7 @@ if plan['profile'] == 'official':
     zip_symbols(args.output/f'fastrock-{version}-windows-x64-symbols.zip', [(pdb,'fastrock.pdb')], metadata)
 with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_STORED) as z:
     z.write(args.binary, 'fastrock.exe')
-    for filename in ['LICENSE','NOTICE','README.md','docs/RALLY-INVENTORY.md','docs/PORT-VERIFICATION.md','docs/gui.md','docs/releases.md','docs/goose-acp.md','docs/VIRTUAL_WORKSPACES.md']:
+    for filename in ['LICENSE','NOTICE','README.md','docs/RALLY-INVENTORY.md','docs/PORT-VERIFICATION.md','docs/gui.md','docs/releases.md','docs/goose-acp.md','docs/VIRTUAL_WORKSPACES.md','docs/MEMORIES.md']:
         if (root/filename).is_file(): z.write(root/filename, filename)
     for path in sorted((root/'docs/images').glob('*.png')):
         z.write(path, path.relative_to(root).as_posix())

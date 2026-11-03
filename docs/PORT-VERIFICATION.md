@@ -2326,3 +2326,29 @@ games stayed running. [Cleanup receipt](benchmarks/rc9-cleanup-2026-11-03.json).
 
 RC9 automated acceptance is complete. Live Bedrock profile validation remains
 required for the final stable release.
+
+### RC10 memory and scale verification, 2026-11-03
+
+Conservative automatic memories learn only from future completed user turns,
+using explicit user quotations and the cheap profile. Learning yields to foreground
+work. The supported in-process recall tool reads a RAM cache with a shared 2 KiB
+budget per turn; project isolation, manual sharing, expiry, tombstones and native
+Settings controls are documented in [Memories](MEMORIES.md).
+
+Windows passed 834 Rust tests, embedded provider/store fixtures, and native
+learning/recall/settings/restart/cancellation checks. Mac compiled without running
+the application or tests. [Memory receipt](benchmarks/memory-games-2026-11-03.json).
+
+The full 1,000-conversation/eight-stream/10,000-message workload passed with
+226,500,608 peak process bytes (216.0 MiB), history opening 601.6 ms, switch
+dispatch 0.4 ms, and scrolling frame p95 9.512 ms. First/middle/last history
+pages took 4.7–7.1 ms. Host/guest reserves and the 32 GB ceiling stayed active;
+no scale reduction was needed. The unchanged October 30 0.3.4 baseline recorded
+1,102 ms history opening and 8.422 ms frame p95. These different-day samples
+do not establish a general speed or memory improvement.
+
+This benchmark used memory commit `cb804f3` before the RC10 version metadata bump.
+The initial SSH service-session launch captured no rendered frames and failed the
+existing measurement gate; the identical binary passed in the signed-in desktop.
+[Both receipts](benchmarks/rc10-scale-games-2026-11-03.json) are retained.
+Signed CI must verify the exact RC10 release executable before publication.

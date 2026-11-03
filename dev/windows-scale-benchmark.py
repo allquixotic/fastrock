@@ -3,6 +3,8 @@
 
 Use the same seed executable and loopback Bedrock responses for 0.3.x and 0.4.0.
 The legacy baseline alone needs --legacy-goose. Hypervisor heartbeat is required.
+Run in the signed-in Windows desktop (games: asuser), not SSH's service session;
+session zero can dispatch automation without presenting any measured frames.
 """
 import argparse
 import hashlib

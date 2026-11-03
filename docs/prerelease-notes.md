@@ -1,10 +1,10 @@
-# Fastrock 0.4.0-rc.9
+# Fastrock 0.4.0-rc.10
 
-- The conversation Provider picker hides incomplete configurations. It checks nonblank credentials, model configuration and endpoints locally, retaining existing Bedrock AWS profiles, SSO and credential helpers. Provider setup remains available in Settings. Opening the picker does not run helpers or probe a model.
-- Model controls and the model button are left-aligned and fit their contents. Speed follows Thinking Effort. App-owned interface text uses functional labels without backend branding; configuration files and credentials remain in place.
-- Bedrock Responses profiles can select Standard or Ultrafast for GPT-6.1 Sol and GPT-6 Astra on supported routes. Choices persist per conversation, including restoration; model/provider changes use the newly selected configuration. Luna and GPT-6 Sol are Standard-only. AWS does not document Fast/Priority for these models.
-- Named profiles expose an optional API request path. For Bedrock Responses use `openai/v1/responses`, retaining the existing endpoint, credentials and model/inference profile ID. Existing Chat Completions and Converse configurations are unchanged; their speed control remains Standard-only with the pinned dependency.
+- Fastrock conservatively learns durable terminology, preferences and project conventions from explicit user statements after completed turns. It does not learn after individual tool calls or mine old conversations. Learning uses the configured cheap model, runs while idle, and is cancelled when foreground work starts.
+- A native in-process recall tool reads only the RAM cache and returns at most 2 KiB of relevant facts per user turn. Facts stay within their project unless explicitly shared. Goose remains unchanged; recall is model-initiated and uses an ordinary tool step.
+- Memories are compressed in vwork's existing redb, with deduplication, expiry, capacity limits and protection against stale learning results. Settings → Memories lets you inspect, edit, pin, forget or clear facts, and independently disable learning or recall.
+- Existing provider controls, Bedrock routes, speed settings, Rally boards, scheduling, workspaces and conversation features are retained. No separate backend installation is required.
 
-Ultrafast has premium pricing (six times Standard in the current AWS model cards). See [Bedrock speed support](https://github.com/allquixotic/fastrock/blob/v0.4.0-rc.9/docs/BEDROCK-SPEED.md) for exact routes and integration limits.
+See [memory behavior and limits](https://github.com/allquixotic/fastrock/blob/v0.4.0-rc.10/docs/MEMORIES.md). Forgetting a memory does not erase prior conversation/tool results. Memories maintained by previously enabled external extensions remain separate.
 
-Windows x64 ZIP. No separate backend installation is required. This is a release candidate; final live AWS profile acceptance remains with the user.
+Signed Windows x64 ZIP; macOS compatibility compile only. This is a release candidate; final live AWS profile acceptance remains with the user.
