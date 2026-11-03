@@ -1,0 +1,54 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.9",
+  "local": {
+    "selected": [
+      "/private/tmp/fastrock-rc9-tests.zip",
+      "/private/tmp/fastrock-rc9-final.zip",
+      "/private/tmp/fastrock-rc9-left.zip",
+      "/private/tmp/fastrock-rc9-native.zip",
+      "/Users/sean/dev/codex/fastrock-ci-build/work/fastrock/fastrock/build/release-inputs"
+    ],
+    "allocated_bytes": 1181798400,
+    "disk_free_before": 3538985717760,
+    "incremental_and_dependency_caches": "preserved",
+    "result": "PASS",
+    "disk_free_after": 3540167622656,
+    "free_space_increase_bytes": 1181904896
+  },
+  "games": {
+    "selected": [
+      "C:\\Users\\SeanMcNamara\\fastrock-rc9-verification",
+      "C:\\Users\\SeanMcNamara\\fastrock-rc9-final.zip",
+      "C:\\Users\\SeanMcNamara\\fastrock-rc9-left.zip",
+      "C:\\Users\\SeanMcNamara\\fastrock-rc9-native.zip",
+      "C:\\Users\\SeanMcNamara\\fastrock-rc9-tests.zip"
+    ],
+    "logical_bytes": 1331607717,
+    "disk_free_before": 2891584765952,
+    "result": "PASS",
+    "disk_free_after": 2892917731328,
+    "free_space_increase_bytes": 1332965376
+  },
+  "fixture_evidence": {
+    "files": 708,
+    "sha256": "c08e78b5229c2a8e2f57f3bedbe1bccd619ecdef6b2c33393cf2bcf79c59fd25",
+    "verified_on_both_hosts": true
+  },
+  "preserved": [
+    "active incremental and dependency caches",
+    "sources and user data",
+    "0.3.x and prior release baselines",
+    "raw fixture and signed release evidence"
+  ],
+  "games_vm_stopped": false,
+  "temporary_helpers": {
+    "removed_temporary_helpers": [
+      "fastrock-rc9-receive-heartbeat.py",
+      "fastrock-rc9-preserve-evidence.py",
+      "fastrock-rc9-clean-games.py",
+      "fastrock-rc9-clean-helpers.py"
+    ],
+    "removed_incomplete_archive": true
+  }
+}

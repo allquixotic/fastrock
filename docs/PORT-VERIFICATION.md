@@ -2289,6 +2289,40 @@ and differing process/tree metrics do not establish a general performance or
 memory improvement. Host/guest reserves and the 32 GB hard ceiling stayed
 active. [Scale evidence](benchmarks/rc9-scale-games-2026-11-03.json).
 
-Signed CI must still pass the complete 37-case native matrix and independent
-package verification before publication is considered complete. Live Bedrock
-profile acceptance remains required for stable 0.4.0.
+Signed CI and independent package verification subsequently passed, as recorded
+below. Live Bedrock profile acceptance remains required for stable 0.4.0.
+
+
+### RC9 signed publication and independent verification
+
+[Fastrock 0.4.0-rc.9](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.9)
+was published by [CI run 41680077115](https://github.com/allquixotic/fastrock/actions/runs/41680077115)
+from `78f7fd2be8a50f68749a71257e3e39305311e31f`. Both platforms compiled.
+Windows passed 788 application tests, one isolated renderer test, 33 workspace
+tests, standalone runtime/store fixtures, five release-policy tests (one
+Mac-only test skipped), and five watchdog tests. No Mac application/tests ran,
+no Mac binaries were published, and the temporary runner was removed.
+
+All 37 native cases passed on the exact signed executable in 948.57 seconds,
+including configured-only providers, native speed selection, restart persistence,
+conversation isolation, unsupported-tier rejection, compact field bounds and
+left alignment. The supplementary catalog and five scrolling scenarios passed.
+The runtime fixture verified actual Responses HTTP service-tier payloads.
+
+The independently downloaded ZIP is 138,360,177 bytes, SHA-256
+`91e4e0e1d55c28d046782249a27f5a1402857a00f927f773d00a38ca896edfd1`.
+The executable SHA-256 is
+`d2c79ffafa2b258e821ac97959887b21c3368a2992d5451b9427a5952061680f`.
+Checksum, metadata, licenses and GitHub attestation matched the RC9 tag, source
+commit and release workflow. Read-only signature verification on games confirmed
+the expected Sean McNamara Authenticode publisher and Microsoft timestamp without
+launching the downloaded application. [Release receipt](benchmarks/rc9-release-ci-2026-11-03.json).
+
+Cleanup removed task fixture stores, transfer ZIPs and uploaded CI build-input
+copies, freeing 1.10 GiB locally and 1.24 GiB on games. All 708 fixture evidence
+files were archived and hash-verified before deletion. Active incremental and
+dependency caches, sources, user data, baselines and release evidence remain;
+games stayed running. [Cleanup receipt](benchmarks/rc9-cleanup-2026-11-03.json).
+
+RC9 automated acceptance is complete. Live Bedrock profile validation remains
+required for the final stable release.
