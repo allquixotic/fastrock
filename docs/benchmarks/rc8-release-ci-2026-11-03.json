@@ -1,0 +1,717 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.8",
+  "verified_at": "2026-11-03T15:13:36.938720+00:00",
+  "source_commit": "5aee391704d94d2fc8f1d06795f85d27868148b0",
+  "release": {
+    "url": "https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.8",
+    "prerelease": true,
+    "windows_x64_zip": "fastrock-0.4.0-rc.8-windows-x64.zip",
+    "zip_sha256": "3db519f7f4a8fd9a86a40bc9b53bd337bdcbc6765b4b0ce9eef73f394ba363d4",
+    "zip_bytes": 138236818,
+    "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21",
+    "macos_assets": false
+  },
+  "ci": {
+    "url": "https://github.com/allquixotic/fastrock/actions/runs/41656477547",
+    "run_id": 41656477547,
+    "successful_windows_attempt": 1,
+    "conclusion": "success",
+    "evidence_artifact_id": 13242241630,
+    "evidence_artifact_sha256": "a0e2132e04ba88850ba83fb0f38d36e66f4d0c7504cffb962cfc9d0ef1688538",
+    "build": "PASS; Windows and macOS compile",
+    "macos_release_job": "skipped; no Mac application or tests executed",
+    "registered_temporary_runners_afterward": 0
+  },
+  "windows_rust": {
+    "application_tests": 784,
+    "renderer_tests": 1,
+    "workspace_tests": 33,
+    "embedded_goose_fixture": "PASS",
+    "clean_store_fixture": "PASS"
+  },
+  "release_policy": {
+    "tests": 5,
+    "skipped_macos_only": 1,
+    "result": "PASS"
+  },
+  "watchdog_tests": {
+    "tests": 5,
+    "result": "PASS"
+  },
+  "native_matrix": {
+    "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 49.5,
+        "peak_tree_bytes": 153747456
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 3.81,
+        "peak_tree_bytes": 152305664
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.27,
+        "peak_tree_bytes": 157122560
+      },
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 23.86,
+        "peak_tree_bytes": 157147136
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 63.94,
+        "peak_tree_bytes": 155709440
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 82.56,
+        "peak_tree_bytes": 154533888
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.84,
+        "peak_tree_bytes": 153186304
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 26.84,
+        "peak_tree_bytes": 153718784
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.44,
+        "peak_tree_bytes": 152489984
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 30.86,
+        "peak_tree_bytes": 153055232
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.69,
+        "peak_tree_bytes": 154148864
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.22,
+        "peak_tree_bytes": 152424448
+      },
+      {
+        "name": "commands",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.83,
+        "peak_tree_bytes": 152784896
+      },
+      {
+        "name": "palette",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.03,
+        "peak_tree_bytes": 152723456
+      },
+      {
+        "name": "terminal",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.28,
+        "peak_tree_bytes": 153022464
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 42.7,
+        "peak_tree_bytes": 155332608
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.08,
+        "peak_tree_bytes": 153452544
+      },
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.62,
+        "peak_tree_bytes": 152682496
+      },
+      {
+        "name": "organization",
+        "result": "PASS",
+        "error": null,
+        "seconds": 45.11,
+        "peak_tree_bytes": 154161152
+      },
+      {
+        "name": "sidebar-drag",
+        "result": "PASS",
+        "error": null,
+        "seconds": 34.06,
+        "peak_tree_bytes": 152719360
+      },
+      {
+        "name": "sidebar-policy",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.66,
+        "peak_tree_bytes": 152592384
+      },
+      {
+        "name": "titles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.49,
+        "peak_tree_bytes": 153436160
+      },
+      {
+        "name": "queue",
+        "result": "PASS",
+        "error": null,
+        "seconds": 17.64,
+        "peak_tree_bytes": 152674304
+      },
+      {
+        "name": "mentions",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.44,
+        "peak_tree_bytes": 152444928
+      },
+      {
+        "name": "review",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.44,
+        "peak_tree_bytes": 153821184
+      },
+      {
+        "name": "shell",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.25,
+        "peak_tree_bytes": 153251840
+      },
+      {
+        "name": "console",
+        "result": "PASS",
+        "error": null,
+        "seconds": 5.22,
+        "peak_tree_bytes": 152698880
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.64,
+        "peak_tree_bytes": 154464256
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.28,
+        "peak_tree_bytes": 155426816
+      },
+      {
+        "name": "delete",
+        "result": "PASS",
+        "error": null,
+        "seconds": 42.72,
+        "peak_tree_bytes": 155340800
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.62,
+        "peak_tree_bytes": 155295744
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.25,
+        "peak_tree_bytes": 155316224
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 29.47,
+        "peak_tree_bytes": 156086272
+      },
+      {
+        "name": "summary-priority",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.02,
+        "peak_tree_bytes": 153026560
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.23,
+        "peak_tree_bytes": 110366720
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 19.05,
+        "peak_tree_bytes": 154619904
+      }
+    ]
+  },
+  "projects": {
+    "result": "PASS",
+    "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21",
+    "peak_process_bytes": 96493568,
+    "native_project_editor": true,
+    "invalid_reference_preserves_input": true,
+    "saved_default_and_override": true,
+    "restart_persistence": true,
+    "draft_preserved": true,
+    "source_unchanged": true,
+    "no_provider_dispatch": true
+  },
+  "organization": {
+    "result": "PASS",
+    "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21",
+    "peak_process_bytes": 147296256,
+    "native_groups": true,
+    "project_once": true,
+    "settled_hidden_until_expanded": true,
+    "failure_wakes_snoozed_chat": true,
+    "batch_pin": true,
+    "project_filter": true,
+    "manual_order": true,
+    "collapse_and_search": true,
+    "project_name": true,
+    "restart_persistence": true,
+    "timed_wake_without_dispatch": true
+  },
+  "sidebar_drag": {
+    "result": "PASS",
+    "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21",
+    "peak_process_bytes": 146915328,
+    "native_pointer_drag": true,
+    "group_drop": true,
+    "reorder": true,
+    "wake": true,
+    "escape_without_agent_interruption": true,
+    "outside_cancel": true,
+    "restart": true
+  },
+  "console": {
+    "result": "PASS",
+    "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21",
+    "peak_process_bytes": 139481088,
+    "real_goose_shell": true,
+    "real_hook_lifecycle": true,
+    "visible_console_windows": [],
+    "stdout_stderr_preserved": true,
+    "nonzero_exit_preserved": true,
+    "redirected_app_output_preserved": true,
+    "observations": [
+      {
+        "phase": "hook",
+        "event": "SessionStart",
+        "pid": 7712,
+        "window": null,
+        "visible": false,
+        "payload": {
+          "event": "SessionStart",
+          "session_id": "20261103_1",
+          "matcher_context": null,
+          "working_dir": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\project"
+        }
+      },
+      {
+        "phase": "hook",
+        "event": "PreToolUse",
+        "pid": 7400,
+        "window": null,
+        "visible": false,
+        "payload": {
+          "event": "PreToolUse",
+          "session_id": "20261103_1",
+          "matcher_context": "shell",
+          "tool_call_id": "console-1",
+          "tool_name": "shell",
+          "tool_input": {
+            "command": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\console-observer.py D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\console-observations.jsonl success",
+            "timeout_secs": 10
+          },
+          "working_dir": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\project"
+        }
+      },
+      {
+        "phase": "success",
+        "event": null,
+        "pid": 6612,
+        "window": null,
+        "visible": false,
+        "payload": null
+      },
+      {
+        "phase": "hook",
+        "event": "PostToolUse",
+        "pid": 8940,
+        "window": null,
+        "visible": false,
+        "payload": {
+          "event": "PostToolUse",
+          "session_id": "20261103_1",
+          "matcher_context": "shell",
+          "tool_call_id": "console-1",
+          "tool_name": "shell",
+          "tool_input": {
+            "command": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\console-observer.py D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\console-observations.jsonl success",
+            "timeout_secs": 10
+          },
+          "working_dir": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\project"
+        }
+      },
+      {
+        "phase": "hook",
+        "event": "PreToolUse",
+        "pid": 5548,
+        "window": null,
+        "visible": false,
+        "payload": {
+          "event": "PreToolUse",
+          "session_id": "20261103_1",
+          "matcher_context": "shell",
+          "tool_call_id": "console-2",
+          "tool_name": "shell",
+          "tool_input": {
+            "command": "C:\\hostedtoolcache\\windows\\Python\\3.12.10\\x64\\python.exe D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\console-observer.py D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\console-observations.jsonl failure",
+            "timeout_secs": 10
+          },
+          "working_dir": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\project"
+        }
+      },
+      {
+        "phase": "failure",
+        "event": null,
+        "pid": 9212,
+        "window": null,
+        "visible": false,
+        "payload": null
+      },
+      {
+        "phase": "hook",
+        "event": "Stop",
+        "pid": 1340,
+        "window": null,
+        "visible": false,
+        "payload": {
+          "event": "Stop",
+          "session_id": "20261103_1",
+          "matcher_context": null,
+          "last_assistant_message": "Console fixture finished.",
+          "working_dir": "D:\\a\\fastrock\\fastrock\\build\\rc-acceptance\\console\\project"
+        }
+      }
+    ]
+  },
+  "compaction": {
+    "result": "PASS",
+    "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21",
+    "peak_process_bytes": 155766784,
+    "native_palette_tab_action_and_slash": true,
+    "selected_model_preserved": true,
+    "model_context_replaced": true,
+    "visible_history_preserved": true,
+    "restart_preserves_context": true,
+    "no_search_summary_after_compact": true,
+    "failed_compaction_preserves_history": true,
+    "stop_cancels_compaction": true,
+    "disabled_commands_refused": true
+  },
+  "summary_priority": {
+    "result": "PASS",
+    "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21",
+    "peak_process_bytes": 151216128,
+    "three_tool_calls_one_completed_turn": true,
+    "foreground_preempts_stalled_summary": true,
+    "original_comments_preserved": true,
+    "requests": [
+      {
+        "kind": "naming",
+        "at": 1105.312,
+        "in_turn": false
+      },
+      {
+        "kind": "foreground",
+        "at": 1105.515,
+        "in_turn": false
+      },
+      {
+        "kind": "summary",
+        "at": 1105.546,
+        "in_turn": false
+      },
+      {
+        "kind": "summary",
+        "at": 1109.64,
+        "in_turn": false
+      },
+      {
+        "kind": "naming",
+        "at": 1109.718,
+        "in_turn": false
+      },
+      {
+        "kind": "foreground",
+        "at": 1109.734,
+        "in_turn": false
+      },
+      {
+        "kind": "foreground",
+        "at": 1110.062,
+        "in_turn": true
+      },
+      {
+        "kind": "foreground",
+        "at": 1110.375,
+        "in_turn": true
+      },
+      {
+        "kind": "foreground",
+        "at": 1110.703,
+        "in_turn": true
+      },
+      {
+        "kind": "summary",
+        "at": 1111.015,
+        "in_turn": false
+      }
+    ]
+  },
+  "organization_catalog": {
+    "result": "PASS",
+    "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21",
+    "peak_process_bytes": 68894720,
+    "stored_conversations": 100,
+    "first_page": 50,
+    "pinned_outside_first_page": "goose:benchmark-0000",
+    "provider_activation": false
+  },
+  "scroll": {
+    "result": "PASS",
+    "backend": "embedded-goose",
+    "peak_process_bytes": 166060032,
+    "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21",
+    "host": "runnervmhao91",
+    "os": "Windows-2025Server-10.0.26100-SP0",
+    "requested_frames": 120,
+    "input": "Slint native wheel events, 16.667 ms timer; tick latency includes event-loop work",
+    "scenarios": {
+      "prose": {
+        "frames": 119,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 7.25,
+          "p95_ms": 8.354,
+          "p99_ms": 8.628
+        },
+        "present": {
+          "p50_ms": 0.604,
+          "p95_ms": 0.695,
+          "p99_ms": 0.896
+        },
+        "frame": {
+          "p50_ms": 7.867,
+          "p95_ms": 8.988,
+          "p99_ms": 9.281
+        },
+        "event_loop": {
+          "p50_ms": 16.216,
+          "p95_ms": 22.731,
+          "p99_ms": 23.564
+        },
+        "dirty_fraction": 0.4726
+      },
+      "table": {
+        "frames": 110,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.679,
+          "p95_ms": 5.637,
+          "p99_ms": 5.906
+        },
+        "present": {
+          "p50_ms": 0.599,
+          "p95_ms": 0.737,
+          "p99_ms": 1.079
+        },
+        "frame": {
+          "p50_ms": 5.277,
+          "p95_ms": 6.282,
+          "p99_ms": 6.587
+        },
+        "event_loop": {
+          "p50_ms": 16.276,
+          "p95_ms": 16.958,
+          "p99_ms": 17.268
+        },
+        "dirty_fraction": 0.5206
+      },
+      "code": {
+        "frames": 119,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.338,
+          "p95_ms": 5.005,
+          "p99_ms": 5.232
+        },
+        "present": {
+          "p50_ms": 0.588,
+          "p95_ms": 0.651,
+          "p99_ms": 0.696
+        },
+        "frame": {
+          "p50_ms": 4.94,
+          "p95_ms": 5.605,
+          "p99_ms": 5.872
+        },
+        "event_loop": {
+          "p50_ms": 16.261,
+          "p95_ms": 19.804,
+          "p99_ms": 20.572
+        },
+        "dirty_fraction": 0.4767
+      },
+      "tools": {
+        "frames": 113,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 5.095,
+          "p95_ms": 6.305,
+          "p99_ms": 6.502
+        },
+        "present": {
+          "p50_ms": 0.595,
+          "p95_ms": 0.693,
+          "p99_ms": 0.981
+        },
+        "frame": {
+          "p50_ms": 5.718,
+          "p95_ms": 6.914,
+          "p99_ms": 7.13
+        },
+        "event_loop": {
+          "p50_ms": 16.312,
+          "p95_ms": 17.167,
+          "p99_ms": 19.201
+        },
+        "dirty_fraction": 0.5068
+      },
+      "streaming": {
+        "frames": 119,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 7.446,
+          "p95_ms": 8.708,
+          "p99_ms": 8.818
+        },
+        "present": {
+          "p50_ms": 0.628,
+          "p95_ms": 1.067,
+          "p99_ms": 1.219
+        },
+        "frame": {
+          "p50_ms": 8.35,
+          "p95_ms": 9.408,
+          "p99_ms": 9.497
+        },
+        "event_loop": {
+          "p50_ms": 16.132,
+          "p95_ms": 21.036,
+          "p99_ms": 22.524
+        },
+        "dirty_fraction": 0.4811
+      }
+    }
+  },
+  "independent_download_verification": {
+    "checksum": "PASS",
+    "package_metadata_and_licenses": "PASS",
+    "attestation": "PASS",
+    "signer_workflow": "allquixotic/fastrock/.github/workflows/release.yml",
+    "source_ref": "refs/tags/v0.4.0-rc.8",
+    "source_digest": "5aee391704d94d2fc8f1d06795f85d27868148b0",
+    "windows_authenticode_on_games": {
+      "publisher": "CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US",
+      "status": "Valid",
+      "timestamp_publisher": "CN=Microsoft Public RSA Time Stamping Authority, OU=nShield TSS ESN:7A00-05E0-D947, OU=Microsoft America Operations, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+      "certificate_sha1": "F6C51FD0EF7F0AC6FF2C4D13699F5D051BAA08EC",
+      "binary_sha256": "6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21"
+    },
+    "application_launched": false
+  },
+  "notes": [
+    "Clean vwork startup no longer snapshots or scans all database contents; crash recovery keeps pre-repair evidence and full verification. Goose remains unchanged at 1.57.0; vwork is pinned to 0.3.5 source 6bb0b3d5baddc4300827d63d7de0f067e018f69d.",
+    "Projects appear once with nested status categories. Settled stays hidden, including search, until explicitly expanded; the preference persists independently per project.",
+    "Guarded 2.50GiB, 24-repository, 96-workspace fixture passed with three thread-ready observations of 200.3, 100.7 and 200.6ms and 140,042,240 peak process bytes. See rc8-startup-games-2026-11-03.json; full RC7 baseline safely stopped on the tighter hypervisor headroom guard.",
+    "Full 1,000-chat, eight-stream, 10,000-message benchmark passed at 224,743,424 peak process bytes. See rc8-scale-games-2026-11-03.json; the comparison baseline remains October 30.",
+    "The real Goose shell/hook fixture keeps zero visible consoles on Windows 11 24H2 or newer. Compaction and summary-priority remain passing; no search summaries ran between three foreground tool calls.",
+    "Live Bedrock profile validation remains final stable acceptance. Local provider fixtures do not establish AWS account availability or the exact work-machine latency."
+  ]
+}

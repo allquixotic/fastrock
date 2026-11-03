@@ -2207,6 +2207,47 @@ without launching the application or tests. Vwork's native Windows/macOS
 passed its full suites, packaging and repeated lifecycle races.
 [Regression evidence](benchmarks/rc8-regressions-games-2026-11-03.json).
 
-Signed CI acceptance and independent package verification are required before
-RC8 publication is considered complete. Live Bedrock profiles remain required
-for the final stable release.
+Signed CI acceptance and independent package verification subsequently passed
+as recorded below. Live Bedrock profiles remain required for the final stable
+release.
+
+RC8 cleanup removed inactive application incremental variants, obsolete official
+profile outputs, uploaded CI input copies, transfer ZIPs, 176 old test
+executables and synthetic RC8 stores. Filesystem free space increased by
+403.01 GiB on the Mac and 42.84 GiB on games. Current incremental/dependency
+caches, sources, user data, saved baselines and release evidence remain.
+438 fixture evidence files were archived and hash-verified on both machines
+before cleanup; games stayed running.
+[Cleanup receipt](benchmarks/rc8-cleanup-2026-11-03.json).
+
+### RC8 signed publication and independent verification
+
+[Fastrock 0.4.0-rc.8](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.8)
+was published by [CI run 41656477547](https://github.com/allquixotic/fastrock/actions/runs/41656477547)
+from `5aee391704d94d2fc8f1d06795f85d27868148b0`. Both platforms compiled;
+Windows passed 784 application tests, one isolated renderer test, 33 workspace
+tests, the standalone Goose and clean-store fixtures, five release-policy tests
+(one Mac-only test skipped) and five watchdog tests. No Mac application or
+tests ran, no Mac binaries were published, and no temporary runners remain
+registered.
+
+All 36 native cases passed on the exact signed executable in 938.96 seconds.
+The sidebar fixture confirmed one project row, hidden-by-default Settled and
+restart persistence. Native drag, manual compaction, summary priority, real
+Goose shell/hook console suppression, supplementary catalog coverage and all
+five scrolling scenarios passed. The large-store and full-scale games results
+above cover the same product changes with local providers.
+
+The independently downloaded ZIP is 138,236,818 bytes, SHA-256
+`3db519f7f4a8fd9a86a40bc9b53bd337bdcbc6765b4b0ce9eef73f394ba363d4`.
+The executable SHA-256 is
+`6542645072ad0c98649d96a57ba81967a976f9da655dd54069274abf3e914f21`.
+Checksum, package metadata, licenses and GitHub attestation matched the RC8
+tag, source commit and release workflow. Read-only signature verification on
+games confirmed the expected Sean McNamara Authenticode publisher and Microsoft
+timestamp without launching the downloaded application. Metadata identifies
+Goose 1.57.0 and vwork 0.3.5 from the pinned Cargo lockfile.
+
+[The release receipt](benchmarks/rc8-release-ci-2026-11-03.json) records the
+artifact identities and signed acceptance results. RC8 automated acceptance is
+complete. Live Bedrock profile validation remains required for final 0.4.0.

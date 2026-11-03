@@ -1,0 +1,41 @@
+{
+  "result": "PASS",
+  "date": "2026-11-03",
+  "source_commit": "5aee391704d94d2fc8f1d06795f85d27868148b0",
+  "cleanup": {
+    "local": {
+      "result": "PASS",
+      "removed_paths": 330,
+      "free_space_increase_bytes": 432727650304,
+      "manifest_sha256": "7008705eaf29fa96678e16052f12fbd8d2118910dd74e46f0d114be2cf8cd1ed",
+      "retained_current_incremental_caches": 39,
+      "removed_allocated_bytes": 580690739200
+    },
+    "games": {
+      "result": "PASS",
+      "removed_paths": 177,
+      "free_space_increase_bytes": 45999718400,
+      "manifest_sha256": "36899dbcf8b5897189c2099b5d2f9dae1274a90a6f09c1761f85a3b47532c99e",
+      "removed_logical_bytes": 46000901035
+    }
+  },
+  "preserved": {
+    "local_fixture_archive": {
+      "archive": "C:\\Users\\SeanMcNamara\\fastrock-release-evidence\\rc8-local-fixtures.zip",
+      "sha256": "c995db2ffd088d64b9bde65d4ec2e9f139b5babe6d749389d53b5da49f02c41d",
+      "bytes": 2619876,
+      "files": 438
+    },
+    "current_build_cache": true,
+    "dependency_caches": true,
+    "release_evidence_and_saved_baselines": true,
+    "source_and_user_data": true,
+    "games_vm_running_afterward": true
+  },
+  "notes": [
+    "Cleanup ran after the successful CI build and Windows Rust tests while signed native acceptance continued on GitHub-hosted Windows.",
+    "Removed old application incremental variants, inactive official-profile outputs, uploaded CI input copies, transfer ZIPs, 176 obsolete test executables and the isolated RC8 fixtures.",
+    "Retained current-day and newest two incremental variants per application crate. Filesystem free-space increase is smaller than allocated output totals because shared filesystem blocks remain referenced.",
+    "438 fixture logs, screenshots, scripts and receipts were archived and hash-verified before deleting synthetic databases. The archive is retained on both machines."
+  ]
+}
