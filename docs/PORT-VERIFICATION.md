@@ -2703,3 +2703,18 @@ requested review to exist, with a 30-second bound. Invalid or premature fixture
 selection fails explicitly. Storage, restore semantics and production controls
 are unchanged. The Mac restarted after successful build upload; hosted Windows
 CI continued independently. Release evidence is now retained outside `/tmp`.
+
+The [build 3 regressions](benchmarks/041-build3-regressions-games-2026-11-04.json)
+passed all **849 Windows Rust tests**, release-policy checks, and three native
+checkpoint runs with all fourteen assertions retained in each. The
+[full-scale benchmark](benchmarks/041-build3-scale-games-2026-11-04.json) passed
+1,000 conversations, eight simultaneous streams and 10,000 history messages,
+including navigation/export. Peak application memory was **246,345,728 bytes**,
+p95 frame time **9.824 ms**, switch dispatch **0.3–0.6 ms**, and history opening
+**802.2 ms**. Memory containment and host/guest headroom guards remained active.
+These fixture results do not establish the cause of the work-machine timeout.
+
+The post-restart SSH failure was key selection: the Mac's agent no longer
+offered the previously accepted Ed25519 key, while configured RSA was rejected.
+Host and guest authorized keys/configuration were unchanged; explicitly using
+the already-authorized Ed25519 key restored access without server changes.

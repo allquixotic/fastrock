@@ -1,0 +1,183 @@
+{
+  "result": "PASS",
+  "source_commit": "60e318879c85e13b29f356779326df47b7b8d2cf",
+  "binary_sha256": "e47d442d69fde0a137bcfa0392d69759b57bc3943394369c050a4c74588bf34d",
+  "windows_rust_tests": 849,
+  "application_tests": 804,
+  "renderer_tests": 1,
+  "workspace_tests": 44,
+  "checkpoint_runs": [
+    {
+      "binary_sha256": "e47d442d69fde0a137bcfa0392d69759b57bc3943394369c050a4c74588bf34d",
+      "peak_bytes": 156725248,
+      "turn_checkpoints": 4,
+      "checks": [
+        "manual/turn capture",
+        "native diff",
+        "file + exact conversation restore",
+        "retained backup",
+        "draft retention",
+        "stale review guard",
+        "original checkout unchanged",
+        "durable interrupted restore",
+        "restart review only",
+        "explicit rollback",
+        "files-only restore",
+        "conversation-only restore",
+        "approved uncertain tools never activated",
+        "read-only recovery preserves stored messages"
+      ]
+    },
+    {
+      "binary_sha256": "e47d442d69fde0a137bcfa0392d69759b57bc3943394369c050a4c74588bf34d",
+      "peak_bytes": 157085696,
+      "turn_checkpoints": 4,
+      "checks": [
+        "manual/turn capture",
+        "native diff",
+        "file + exact conversation restore",
+        "retained backup",
+        "draft retention",
+        "stale review guard",
+        "original checkout unchanged",
+        "durable interrupted restore",
+        "restart review only",
+        "explicit rollback",
+        "files-only restore",
+        "conversation-only restore",
+        "approved uncertain tools never activated",
+        "read-only recovery preserves stored messages"
+      ]
+    },
+    {
+      "binary_sha256": "e47d442d69fde0a137bcfa0392d69759b57bc3943394369c050a4c74588bf34d",
+      "peak_bytes": 157573120,
+      "turn_checkpoints": 4,
+      "checks": [
+        "manual/turn capture",
+        "native diff",
+        "file + exact conversation restore",
+        "retained backup",
+        "draft retention",
+        "stale review guard",
+        "original checkout unchanged",
+        "durable interrupted restore",
+        "restart review only",
+        "explicit rollback",
+        "files-only restore",
+        "conversation-only restore",
+        "approved uncertain tools never activated",
+        "read-only recovery preserves stored messages"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "case": "build3-tests-durability",
+      "result": "PASS",
+      "seconds": 2.05,
+      "peak_tree_bytes": 10260480
+    },
+    {
+      "case": "build3-tests-checkpoints",
+      "result": "PASS",
+      "seconds": 2.98,
+      "peak_tree_bytes": 15888384
+    },
+    {
+      "case": "build3-tests-embedded",
+      "result": "PASS",
+      "seconds": 2.25,
+      "peak_tree_bytes": 13017088
+    },
+    {
+      "case": "build3-tests-migration",
+      "result": "PASS",
+      "seconds": 1.84,
+      "peak_tree_bytes": 15523840
+    },
+    {
+      "case": "build3-tests-integration",
+      "result": "PASS",
+      "seconds": 3.39,
+      "peak_tree_bytes": 16490496
+    },
+    {
+      "case": "build3-tests-store_startup",
+      "result": "PASS",
+      "seconds": 1.58,
+      "peak_tree_bytes": 13774848
+    },
+    {
+      "case": "build3-tests-review",
+      "result": "PASS",
+      "seconds": 1.66,
+      "peak_tree_bytes": 16187392
+    },
+    {
+      "case": "build3-tests-fastrock_workspaces",
+      "result": "PASS",
+      "seconds": 3.09,
+      "peak_tree_bytes": 141303808
+    },
+    {
+      "case": "build3-tests-fastrock",
+      "result": "PASS",
+      "seconds": 1.33,
+      "peak_tree_bytes": 7491584
+    },
+    {
+      "case": "build3-tests-codex_gui",
+      "result": "PASS",
+      "seconds": 5.16,
+      "peak_tree_bytes": 193617920
+    },
+    {
+      "case": "build3-window",
+      "result": "PASS",
+      "seconds": 1.62,
+      "peak_tree_bytes": 14368768
+    },
+    {
+      "case": "build3-tests-embedded_goose",
+      "result": "PASS",
+      "seconds": 1.94,
+      "peak_tree_bytes": 67751936
+    },
+    {
+      "case": "build3-release-policy",
+      "result": "PASS",
+      "seconds": 1.22,
+      "peak_tree_bytes": 35176448
+    },
+    {
+      "case": "build3-checkpoints-1",
+      "result": "PASS",
+      "seconds": 32.28,
+      "peak_tree_bytes": 164405248
+    },
+    {
+      "case": "build3-checkpoints-2",
+      "result": "PASS",
+      "seconds": 31.48,
+      "peak_tree_bytes": 164122624
+    },
+    {
+      "case": "build3-checkpoints-3",
+      "result": "PASS",
+      "seconds": 33.0,
+      "peak_tree_bytes": 164208640
+    },
+    {
+      "case": "build3-scale",
+      "result": "PASS",
+      "seconds": 43.8,
+      "peak_tree_bytes": 217690112
+    }
+  ],
+  "notes": [
+    "Native checkpoint completion waits replace timing assumptions; all fourteen assertions retained in each of three runs.",
+    "Memory Job containment and host/guest headroom guards active; full 1000/8/10000 workload passed.",
+    "No Mac application or tests executed locally; all providers are fixtures."
+  ]
+}
