@@ -9,17 +9,22 @@ with Fastrock. Release archives include their licenses. Existing 0.3.x binaries 
 historical settings documented below.
 
 Binary publication is gated on feature-complete, verified release-candidate
-readiness. [RC11 is published](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.11)
-with conservative automatic memories, 834 Rust tests and all 38 native acceptance
-cases passing on its exact signed executable. The downloaded ZIP's checksum,
-source/tag/workflow attestations and Windows signature were independently verified.
-See the [release receipt](benchmarks/rc11-release-ci-2026-11-03.json) and
-[memory behavior and limits](MEMORIES.md). RC10 was blocked by a summary fixture
-that miscounted idle memory calls; its tag remains, with no published binary.
-RC11 corrects the fixture and deliberately tests that interleave. Development source is
-committed and pushed to main; local fixture builds are not releases. Mac builds
-check compatibility without publishing Mac assets. Final 0.4.0 also requires the
-user's live Bedrock profile validation; fixtures do not establish live access.
+readiness. [RC12 is published](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.12)
+with bounded old-thread recovery, safe Resume retries and Windows tray-instance
+activation. All 838 Rust tests and 39 native acceptance cases passed on its exact
+signed executable. The downloaded ZIP's checksum, source/tag/workflow attestations
+and Windows signature were independently verified. See the
+[release receipt](benchmarks/rc12-release-ci-2026-11-03.json),
+[verification](PORT-VERIFICATION.md), and [memory behavior and limits](MEMORIES.md).
+
+When upgrading from RC11 or older, use **Quit** in its tray menu before launching
+RC12. A window close leaves the old process running. Preserve the existing
+workspace database; a lock conflict is an ownership issue.
+
+Development source is committed and pushed to main; local fixture builds are not
+releases. Mac builds check compatibility without publishing Mac assets. Final
+0.4.0 also requires the user's live Bedrock profile validation; fixtures do not
+establish live access.
 
 The published alpha.1–alpha.3 builds are historical development milestones, not
 release candidates. Their [published notes](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-alpha.3) describe that

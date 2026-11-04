@@ -1,0 +1,236 @@
+{
+  "result": "PASS",
+  "recorded_at": "2026-11-04T02:44:35.276259+00:00",
+  "local": {
+    "removed": [
+      {
+        "path": "/tmp/fastrock-rc12-dev.zip",
+        "bytes": 184580
+      },
+      {
+        "path": "/tmp/fastrock-rc12-tests.zip",
+        "bytes": 144545078
+      },
+      {
+        "path": "/tmp/fastrock-rc12-final-tests.zip",
+        "bytes": 144646997
+      },
+      {
+        "path": "/Users/sean/dev/codex/fastrock-ci-build/work/fastrock/fastrock/build/release-inputs",
+        "bytes": 719199228,
+        "note": "Uploaded CI inputs, verified against retained BUILD-INPUT; Actions download and Windows test stage passed."
+      },
+      {
+        "path": "/Users/sean/dev/codex/fastrock/dev/__pycache__/windows-relaunch-smoke.cpython-312.pyc",
+        "bytes": 10470
+      },
+      {
+        "path": "/tmp/fastrock-rc12-build.log",
+        "bytes": 6466,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-final2-monitor.stop",
+        "bytes": 0,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-tests-results.json",
+        "bytes": 3053,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-run-tests.py",
+        "bytes": 1806,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-monitor.log",
+        "bytes": 1062,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-final2-monitor.log",
+        "bytes": 522,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-clean-games.py",
+        "bytes": 2540,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-monitor.stop",
+        "bytes": 0,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-scale.json",
+        "bytes": 2434,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-final-monitor.log",
+        "bytes": 2254,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-regressions.json",
+        "bytes": 1352,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-inventory.py",
+        "bytes": 385,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-release-runner.log",
+        "bytes": 472,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-final-build.log",
+        "bytes": 6058,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-startup.json",
+        "bytes": 2669,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-tests-final.json",
+        "bytes": 3053,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-tests.jsonl",
+        "bytes": 2258912,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-relaunch-final.json",
+        "bytes": 440,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-scale-monitor-failure.json",
+        "bytes": 1776,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-scale-final.json",
+        "bytes": 2421,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-final-tests.jsonl",
+        "bytes": 2258900,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-relaunch.json",
+        "bytes": 438,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-archive.py",
+        "bytes": 1177,
+        "note": "Evidence consolidated into release archive directory."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-release/signed-fastrock.exe",
+        "bytes": 137999120,
+        "note": "Temporary verification copy; signed ZIP and results retained."
+      },
+      {
+        "path": "/tmp/fastrock-rc12-release/live-ci.log",
+        "bytes": 215,
+        "note": "Temporary verification copy; signed ZIP and results retained."
+      }
+    ],
+    "bytes": 1151143878
+  },
+  "games": {
+    "host": "games",
+    "result": "PASS",
+    "at": "2026-11-04T02:25:39.116838+00:00",
+    "removed": [
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc12-verify",
+        "files": 1131,
+        "bytes": 6387094632,
+        "note": "Includes partial first deletion; readonly fixture Git objects handled on retry."
+      },
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc12-dev.zip",
+        "files": 1,
+        "bytes": 184580
+      },
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc12-tests.zip",
+        "files": 1,
+        "bytes": 144545078
+      },
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc12-final-tests.zip",
+        "files": 1,
+        "bytes": 144646997
+      },
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc12-local-evidence.zip",
+        "files": 1,
+        "bytes": 7186617
+      },
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc12-inventory.py",
+        "files": 1,
+        "bytes": 385
+      },
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc12-archive.py",
+        "files": 1,
+        "bytes": 1177
+      },
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc12-clean-games.py",
+        "files": 1,
+        "bytes": 2540
+      },
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc12-clean-games.json",
+        "files": 1,
+        "bytes": 1371
+      },
+      {
+        "path": "C:\\Users\\SeanMcNamara\\fastrock-rc12-release-verify",
+        "files": 3,
+        "bytes": 138000521,
+        "note": "Standalone downloaded executable and verification scripts; signed ZIP and signature evidence retained locally."
+      }
+    ],
+    "bytes": 6821663898,
+    "archived_evidence_sha256": "c1c4783b929b3e649fae04bab3cb5e1d51b1a3ee4909f8d2ebea4c1fa9ba1f0b",
+    "notes": "727 evidence files archived, copied and independently hash-verified on Mac before deletion. No user data, other app or VM affected."
+  },
+  "evidence": {
+    "path": "/tmp/fastrock-rc12-release/local-fixture-evidence.zip",
+    "files": 727,
+    "bytes": 7186617,
+    "sha256": "c1c4783b929b3e649fae04bab3cb5e1d51b1a3ee4909f8d2ebea4c1fa9ba1f0b",
+    "manifest": "EVIDENCE-MANIFEST.json",
+    "all_entries_hash_verified": true
+  },
+  "preserved": [
+    "User profiles, conversation databases and vwork stores",
+    "Active Cargo incremental/dependency caches and current compiled targets",
+    "Previous release archives, baselines and verification evidence",
+    "RC12 fixture evidence and CI input metadata"
+  ],
+  "notes": [
+    "Only explicit RC12 temporary paths removed. Games remained running.",
+    "Readonly Git objects inside isolated fixture repositories required clearing that file attribute before removal.",
+    "Current CI test manifest matched local compiled test targets; no active target executables removed."
+  ]
+}

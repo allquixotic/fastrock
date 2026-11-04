@@ -2453,3 +2453,36 @@ calls were used. [Startup receipt](benchmarks/rc12-startup-games-2026-11-03.json
 Vwork commit `b5facec2e5713603aac12da4770c9b5bc545ec46` passed hosted Windows and
 macOS CI, including lock classification, deferred cleanup with preserved edits,
 and repeated lifecycle races. Goose source remains unchanged.
+
+
+### RC12 signed publication and independent verification
+
+[Fastrock 0.4.0-rc.12](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.12)
+was published by [CI run 41760405166](https://github.com/allquixotic/fastrock/actions/runs/41760405166)
+from `703133910ff78254cd51dc021a07b773618351df`. First-attempt CI passed both
+compatibility builds, 798 application tests, one renderer test and 39 workspace
+tests, embedded provider/store harnesses, release policy and watchdog checks.
+All **39 native cases** passed on the signed executable in 1,015.53 seconds,
+including the locked-store/relaunch/Resume regression. Supplementary organization
+catalog and five scrolling scenarios also passed. The Mac publication job was
+skipped, no app or tests ran on Sean's Mac, and the temporary runner was removed.
+
+The independently downloaded Windows ZIP is 138,828,842 bytes, SHA-256
+`a89f074e439cc074727593241b7f7351c58a4cc334803248092001853c714a91`.
+Its executable SHA-256 is
+`824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1`.
+Checksum, package metadata, licenses, online and bundled GitHub attestations all
+matched the tag, source and release workflow. Read-only Authenticode inspection
+on games confirmed the expected Sean McNamara publisher and secure Microsoft
+timestamp without launching the downloaded app or changing host script policy.
+[Release receipt](benchmarks/rc12-release-ci-2026-11-03.json).
+
+Cleanup archived and hash-verified 727 fixture evidence files before removing
+temporary stores, test executables, transfer ZIPs and uploaded CI input copies.
+Active incremental/dependency caches, current compiled targets, source, user data,
+baselines and signed release/provenance evidence remain. Games stayed running.
+[Cleanup receipt](benchmarks/rc12-cleanup-2026-11-03.json).
+
+Use explicit **Quit** on an old RC11 tray process before upgrading. RC12 automated
+acceptance is complete; live Bedrock profile acceptance remains required for
+final stable 0.4.0.

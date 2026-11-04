@@ -1,0 +1,680 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.12",
+  "verified_at": "2026-11-04T02:56:53.428743+00:00",
+  "source_commit": "703133910ff78254cd51dc021a07b773618351df",
+  "release": {
+    "url": "https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.12",
+    "prerelease": true,
+    "windows_x64_zip": "fastrock-0.4.0-rc.12-windows-x64.zip",
+    "zip_sha256": "a89f074e439cc074727593241b7f7351c58a4cc334803248092001853c714a91",
+    "zip_bytes": 138828842,
+    "binary_sha256": "824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1",
+    "macos_assets": false
+  },
+  "ci": {
+    "url": "https://github.com/allquixotic/fastrock/actions/runs/41760405166",
+    "run_id": 41760405166,
+    "successful_windows_attempt": 1,
+    "conclusion": "success",
+    "evidence_artifact_id": 13291258893,
+    "evidence_artifact_sha256": "03d5bb09584f79ec0e736b45ad79d3ca21dd92bc41a679954a6bd8ca88ceb90d",
+    "build": "PASS; Windows and macOS compile",
+    "macos_release_job": "skipped; no Mac application or tests executed",
+    "registered_temporary_runners_afterward": 0
+  },
+  "windows_rust": {
+    "application_tests": 798,
+    "renderer_tests": 1,
+    "workspace_tests": 39,
+    "total": 838,
+    "embedded_goose_fixture": "PASS",
+    "clean_store_fixture": "PASS"
+  },
+  "native_matrix": {
+    "binary_sha256": "824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 49.53,
+        "peak_tree_bytes": 154079232
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 3.8,
+        "peak_tree_bytes": 152797184
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.06,
+        "peak_tree_bytes": 157937664
+      },
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 23.25,
+        "peak_tree_bytes": 159313920
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 63.53,
+        "peak_tree_bytes": 156753920
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 82.34,
+        "peak_tree_bytes": 155115520
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.23,
+        "peak_tree_bytes": 153808896
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 27.25,
+        "peak_tree_bytes": 154243072
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.23,
+        "peak_tree_bytes": 153116672
+      },
+      {
+        "name": "model-options",
+        "result": "PASS",
+        "error": null,
+        "seconds": 9.42,
+        "peak_tree_bytes": 153112576
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.06,
+        "peak_tree_bytes": 153628672
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.47,
+        "peak_tree_bytes": 154787840
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.83,
+        "peak_tree_bytes": 153178112
+      },
+      {
+        "name": "commands",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.23,
+        "peak_tree_bytes": 153251840
+      },
+      {
+        "name": "palette",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.23,
+        "peak_tree_bytes": 153174016
+      },
+      {
+        "name": "terminal",
+        "result": "PASS",
+        "error": null,
+        "seconds": 32.86,
+        "peak_tree_bytes": 153645056
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 41.49,
+        "peak_tree_bytes": 156000256
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.83,
+        "peak_tree_bytes": 154005504
+      },
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.84,
+        "peak_tree_bytes": 153116672
+      },
+      {
+        "name": "organization",
+        "result": "PASS",
+        "error": null,
+        "seconds": 44.89,
+        "peak_tree_bytes": 154767360
+      },
+      {
+        "name": "sidebar-drag",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.67,
+        "peak_tree_bytes": 153448448
+      },
+      {
+        "name": "sidebar-policy",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.64,
+        "peak_tree_bytes": 153165824
+      },
+      {
+        "name": "titles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.69,
+        "peak_tree_bytes": 154968064
+      },
+      {
+        "name": "queue",
+        "result": "PASS",
+        "error": null,
+        "seconds": 17.64,
+        "peak_tree_bytes": 153305088
+      },
+      {
+        "name": "mentions",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.45,
+        "peak_tree_bytes": 152989696
+      },
+      {
+        "name": "review",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.23,
+        "peak_tree_bytes": 154644480
+      },
+      {
+        "name": "shell",
+        "result": "PASS",
+        "error": null,
+        "seconds": 19.84,
+        "peak_tree_bytes": 153665536
+      },
+      {
+        "name": "console",
+        "result": "PASS",
+        "error": null,
+        "seconds": 5.22,
+        "peak_tree_bytes": 153145344
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.66,
+        "peak_tree_bytes": 154746880
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.06,
+        "peak_tree_bytes": 155443200
+      },
+      {
+        "name": "relaunch",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.66,
+        "peak_tree_bytes": 153468928
+      },
+      {
+        "name": "delete",
+        "result": "PASS",
+        "error": null,
+        "seconds": 42.89,
+        "peak_tree_bytes": 155967488
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.62,
+        "peak_tree_bytes": 155815936
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.03,
+        "peak_tree_bytes": 155627520
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 35.08,
+        "peak_tree_bytes": 156606464
+      },
+      {
+        "name": "summary-priority",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.02,
+        "peak_tree_bytes": 153571328
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 40.28,
+        "peak_tree_bytes": 154742784
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.62,
+        "peak_tree_bytes": 110268416
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 18.86,
+        "peak_tree_bytes": 155099136
+      }
+    ]
+  },
+  "relaunch": {
+    "result": "PASS",
+    "peak_bytes": 136019968,
+    "binary_sha256": "824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1",
+    "relaunch_seconds": 0.047000000000025466,
+    "checks": [
+      "old thread while store locked",
+      "close to tray",
+      "relaunch restores original window",
+      "secondary process exits",
+      "Resume rechecks storage and restores normal history",
+      "explicit quit releases ownership"
+    ]
+  },
+  "memory": {
+    "passed": true,
+    "sha256": "824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1",
+    "peakBytes": 146317312,
+    "learningRequests": 4,
+    "foregroundRequests": 12,
+    "checks": [
+      "completed-turn learning",
+      "actual model recall tool",
+      "parallel per-turn budget",
+      "repository isolation",
+      "native edit/pin",
+      "stalled HTTP foreground cancellation",
+      "restart persistence",
+      "forget tombstone",
+      "learning/recall toggles"
+    ]
+  },
+  "summary": {
+    "result": "PASS",
+    "binary_sha256": "824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1",
+    "process_draft_recovery": false,
+    "forced_process_crash": false,
+    "explicit_recovery_resume": false,
+    "uncertain_send_never_replayed": false,
+    "peak_process_bytes": 196325376,
+    "requests": [
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      },
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      },
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      },
+      {
+        "path": "/model/openai.gpt-6.1-sol/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": true
+      }
+    ],
+    "memory_requests": [
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": false
+      },
+      {
+        "path": "/model/openai.gpt-6-luna/converse",
+        "summary": false
+      }
+    ],
+    "summary_only_match": true,
+    "exported_turns": 3,
+    "complete_history_preserved": true,
+    "native_cheap_profile_saved": true,
+    "all_provider_requests_local": true,
+    "independent_rally_navigation": true,
+    "backend_overlay_navigation": true,
+    "in_process_windows": true,
+    "peak_native_windows": 3,
+    "window_owner_pids": {
+      "9e4c120c-e403-486a-bf63-820b340ffa4f": 7332,
+      "28b796be-ff60-4692-a0a3-48caed3c04af": 7332
+    },
+    "tray_lifecycle": {
+      "close_requested": true,
+      "turn_completed_hidden": true,
+      "restore_requested": true,
+      "restored": true,
+      "quit_menu_requested": true,
+      "quit_selected": true
+    }
+  },
+  "summary_priority": {
+    "result": "PASS",
+    "binary_sha256": "824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1",
+    "peak_process_bytes": 151068672,
+    "three_tool_calls_one_completed_turn": true,
+    "foreground_preempts_stalled_summary": true,
+    "original_comments_preserved": true,
+    "requests": [
+      {
+        "kind": "naming",
+        "at": 1200.187,
+        "in_turn": false
+      },
+      {
+        "kind": "foreground",
+        "at": 1200.375,
+        "in_turn": false
+      },
+      {
+        "kind": "summary",
+        "at": 1200.421,
+        "in_turn": false
+      },
+      {
+        "kind": "summary",
+        "at": 1204.531,
+        "in_turn": false
+      },
+      {
+        "kind": "naming",
+        "at": 1204.609,
+        "in_turn": false
+      },
+      {
+        "kind": "foreground",
+        "at": 1204.625,
+        "in_turn": false
+      },
+      {
+        "kind": "foreground",
+        "at": 1204.937,
+        "in_turn": true
+      },
+      {
+        "kind": "foreground",
+        "at": 1205.25,
+        "in_turn": true
+      },
+      {
+        "kind": "foreground",
+        "at": 1205.578,
+        "in_turn": true
+      },
+      {
+        "kind": "summary",
+        "at": 1205.89,
+        "in_turn": false
+      },
+      {
+        "kind": "memory",
+        "at": 1206.546,
+        "in_turn": false
+      }
+    ]
+  },
+  "organization_catalog": {
+    "result": "PASS",
+    "binary_sha256": "824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1",
+    "peak_process_bytes": 68939776,
+    "stored_conversations": 100,
+    "first_page": 50,
+    "pinned_outside_first_page": "goose:benchmark-0000",
+    "provider_activation": false
+  },
+  "scroll": {
+    "backend": "embedded-goose",
+    "peak_process_bytes": 167190528,
+    "binary_sha256": "824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1",
+    "host": "runnervmhao91",
+    "os": "Windows-2025Server-10.0.26100-SP0",
+    "requested_frames": 120,
+    "input": "Slint native wheel events, 16.667 ms timer; tick latency includes event-loop work",
+    "scenarios": {
+      "prose": {
+        "frames": 119,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 7.024,
+          "p95_ms": 7.887,
+          "p99_ms": 7.996
+        },
+        "present": {
+          "p50_ms": 0.497,
+          "p95_ms": 0.54,
+          "p99_ms": 0.646
+        },
+        "frame": {
+          "p50_ms": 7.507,
+          "p95_ms": 8.391,
+          "p99_ms": 8.515
+        },
+        "event_loop": {
+          "p50_ms": 16.214,
+          "p95_ms": 22.783,
+          "p99_ms": 23.135
+        },
+        "dirty_fraction": 0.4497
+      },
+      "table": {
+        "frames": 111,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.287,
+          "p95_ms": 5.204,
+          "p99_ms": 5.606
+        },
+        "present": {
+          "p50_ms": 0.504,
+          "p95_ms": 0.586,
+          "p99_ms": 0.796
+        },
+        "frame": {
+          "p50_ms": 4.78,
+          "p95_ms": 5.731,
+          "p99_ms": 6.137
+        },
+        "event_loop": {
+          "p50_ms": 16.298,
+          "p95_ms": 17.149,
+          "p99_ms": 17.577
+        },
+        "dirty_fraction": 0.5099
+      },
+      "code": {
+        "frames": 118,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.047,
+          "p95_ms": 4.76,
+          "p99_ms": 4.817
+        },
+        "present": {
+          "p50_ms": 0.497,
+          "p95_ms": 0.593,
+          "p99_ms": 0.629
+        },
+        "frame": {
+          "p50_ms": 4.573,
+          "p95_ms": 5.267,
+          "p99_ms": 5.325
+        },
+        "event_loop": {
+          "p50_ms": 16.118,
+          "p95_ms": 19.198,
+          "p99_ms": 20.143
+        },
+        "dirty_fraction": 0.4576
+      },
+      "tools": {
+        "frames": 112,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.769,
+          "p95_ms": 5.701,
+          "p99_ms": 5.833
+        },
+        "present": {
+          "p50_ms": 0.501,
+          "p95_ms": 0.6,
+          "p99_ms": 0.86
+        },
+        "frame": {
+          "p50_ms": 5.266,
+          "p95_ms": 6.195,
+          "p99_ms": 6.323
+        },
+        "event_loop": {
+          "p50_ms": 16.212,
+          "p95_ms": 16.926,
+          "p99_ms": 17.354
+        },
+        "dirty_fraction": 0.5101
+      },
+      "streaming": {
+        "frames": 122,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 6.937,
+          "p95_ms": 7.833,
+          "p99_ms": 8.111
+        },
+        "present": {
+          "p50_ms": 0.501,
+          "p95_ms": 0.559,
+          "p99_ms": 0.725
+        },
+        "frame": {
+          "p50_ms": 7.438,
+          "p95_ms": 8.365,
+          "p99_ms": 8.701
+        },
+        "event_loop": {
+          "p50_ms": 16.354,
+          "p95_ms": 21.232,
+          "p99_ms": 21.922
+        },
+        "dirty_fraction": 0.4726
+      }
+    }
+  },
+  "independent_download_verification": {
+    "checksum": "PASS",
+    "package_metadata_and_licenses": "PASS",
+    "online_and_bundled_attestation": "PASS",
+    "signer_workflow": "allquixotic/fastrock/.github/workflows/release.yml",
+    "source_ref": "refs/tags/v0.4.0-rc.12",
+    "source_digest": "703133910ff78254cd51dc021a07b773618351df",
+    "windows_authenticode_on_games": {
+      "publisher": "CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US",
+      "status": "Valid",
+      "timestamp_publisher": "CN=Microsoft Public RSA Time Stamping Authority, OU=nShield TSS ESN:7D00-05E0-D947, OU=Microsoft America Operations, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+      "certificate_sha1": "C78719535B808CFD7D2AA9667629C94D6F47B109",
+      "binary_sha256": "824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1",
+      "source_commit": "703133910ff78254cd51dc021a07b773618351df",
+      "workflow_run": "41760405166"
+    },
+    "application_launched": false
+  },
+  "notes": [
+    "RC12 fixes bounded old-history recovery, retry protection and duplicate tray ownership; Goose unchanged.",
+    "Guarded full-scale and 2.50 GiB store benchmarks passed on games; see RC12 local receipts.",
+    "Live Bedrock profile validation remains final stable acceptance; local fixtures do not establish live AWS account access."
+  ]
+}
