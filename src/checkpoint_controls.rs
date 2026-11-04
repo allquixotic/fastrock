@@ -165,13 +165,13 @@ impl AppController {
         let state = self.window.global::<CheckpointState>();
         match args.first().map(String::as_str) {
             Some("select") => {
-                if let Some(row) = args
+                let row = args
                     .get(1)
                     .and_then(|s| s.parse::<usize>().ok())
                     .and_then(|i| state.get_rows().row_data(i))
-                {
-                    state.invoke_select(row.id);
-                }
+                    .expect("Checkpoint fixture selected an unavailable row");
+                assert!(!state.get_busy(), "Checkpoint fixture selected while busy");
+                state.invoke_select(row.id);
             }
             Some("label") => state.set_label(args.get(1).map(String::as_str).unwrap_or("").into()),
             Some("files") => state.set_files(args.get(1).is_some_and(|s| s == "true")),

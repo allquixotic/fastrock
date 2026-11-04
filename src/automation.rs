@@ -48,6 +48,12 @@ pub(crate) enum Step {
     WaitGoose(u64),
     /// Wait for native capability input and asynchronous load/save to settle.
     WaitCapabilities(u64),
+    /// Wait for checkpoint load/save/restore and any chained refresh to finish.
+    WaitCheckpoints {
+        #[serde(default)]
+        reviewed: bool,
+        timeout_ms: u64,
+    },
     /// Native migration panel state; no filesystem polling on the UI thread.
     WaitMigration {
         active: bool,
@@ -308,6 +314,7 @@ impl AppController {
                 | Step::WaitIdle(_)
                 | Step::WaitGoose(_)
                 | Step::WaitCapabilities(_)
+                | Step::WaitCheckpoints { .. }
                 | Step::WaitMigration { .. }
                 | Step::WaitProject { .. }
                 | Step::WaitRally { .. }
@@ -1144,6 +1151,21 @@ impl AppController {
                 // never mistake an elapsed delay for a completed async save.
                 (elapsed >= Duration::from_millis(800) && !state.get_busy())
                     || timed_out(elapsed, *timeout, "Capability controls ready")
+            }
+            Step::WaitCheckpoints {
+                reviewed,
+                timeout_ms,
+            } => {
+                let state = self.window.global::<crate::ui::CheckpointState>();
+                (elapsed >= Duration::from_millis(200)
+                    && state.get_open()
+                    && !state.get_busy()
+                    && (!*reviewed || state.get_reviewed()))
+                    || timed_out(
+                        elapsed,
+                        *timeout_ms,
+                        &format!("checkpoint controls settled: {}", state.get_status()),
+                    )
             }
             Step::WaitProject { open, timeout_ms } => {
                 let state = self.window.global::<crate::ui::ProjectState>();

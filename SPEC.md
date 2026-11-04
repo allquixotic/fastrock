@@ -234,6 +234,7 @@ V99: New session/fork bindings ! sync every referenced workspace store before du
 id|status|task|cites
 T71|x|Buffered workspace durability, explicit save/shutdown barriers, 60s deadline and stable 0.4.1 packaging; Windows/hosted Mac storage tests, 848 app/workspace tests, native regressions and full-scale games benchmark passed|V98,V95,V96,V63,V47,I.vwork,I.lifecycle,I.distribution
 T72|x|Durable new-session/fork workspace references before cross-store identity publication; lazy restore retained; 849 Windows Rust tests, five native cases including forced crash, full-scale guarded benchmark passed|V99,V98,V35,I.vwork,I.goose
+T73|~|Checkpoint native acceptance waits for async restore/list/review completion before dependent selection or snapshots|V23,V98,I.ui
 T70|x|Fjall storage integration, engine-owned scrollback compression, automatic/manual migration GUI and concurrent workload acceptance|V95,V96,V40,V43,V92,V93,V94,I.vwork,I.memory
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
 T2|x|Recover Windows retained surface; Auto uses CPU in RDP|V2,I.paint
@@ -866,3 +867,5 @@ B286|2026-11-04|RC14 hosted effort clear reported generic save failure; exact YA
 B287|2026-11-04|Stable 0.4.1 CI killed a delegated agent before background sync; durable child binding survived but RAM-only fork workspace did not, so restore failed before uncertain-send review|V99; sync bound stores before publishing new session/fork identities. Preserve failed v0.4.1 tag/evidence; no binaries published. Corrected stable build uses additive tag without rewriting history.
 
 B288|2026-11-04|Task-local Windows validation launched a zero-test executable that exited before memory-job assignment|Keep guard fail-closed; compute budget before launch and use an owned delayed launcher so containment attaches before tests; resume remaining checks. No product change or weakened memory limit.
+
+B289|2026-11-04|Stable build 2 checkpoint fixture selected next row after fixed 1300ms without waiting for restore/list refresh; selection ignored and snapshot had completed restore but no review|V23; bounded native checkpoint completion waits, explicit reviewed-state wait and fail-fast selection assertions. Preserve failed build-2 tag/evidence; storage restore succeeded, no publication.

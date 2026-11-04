@@ -2685,3 +2685,21 @@ passed the full 1,000/8/10,000 workload with 251,674,624 peak application bytes,
 Historical navigation/export and all eight simultaneous streams passed. These
 measurements retain the comparison limitations above; no work-machine speedup
 or resolution of its session-load timeout is claimed.
+
+### Stable build 2 held on checkpoint fixture readiness
+
+[Build 2 CI](https://github.com/allquixotic/fastrock/actions/runs/41908963018)
+passed compilation, all 849 Rust tests, signing and sixteen native cases,
+including forced-crash delegation. It stopped before publication when the
+checkpoint fixture read a null review. Its snapshot reported a successfully
+completed restore, but the fixture had attempted to select the next row after
+a fixed 1.3-second delay without waiting for the chained list refresh. Selection
+could be silently ignored while busy or while the requested row was unavailable.
+Failed artifact SHA-256:
+`70bee4596fa3960547774719c469ed69c85d10bca73e298820c5573a6d01710b`.
+
+The fixture now waits for native checkpoint operations to settle and for a
+requested review to exist, with a 30-second bound. Invalid or premature fixture
+selection fails explicitly. Storage, restore semantics and production controls
+are unchanged. The Mac restarted after successful build upload; hosted Windows
+CI continued independently. Release evidence is now retained outside `/tmp`.

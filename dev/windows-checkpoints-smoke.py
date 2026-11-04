@@ -15,11 +15,22 @@ git_env={k:v for k,v in os.environ.items() if not k.upper().startswith('GIT_')};
 for args in (['init','.'],['add','src/main.rs'],['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-m','Fixture']):
  subprocess.run(['git','-c','core.hooksPath=NUL','-c','core.autocrlf=false',*args],cwd=repo,env=git_env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,check=True)
 def cp(*args):return {'checkpoints':list(args)}
-def dump(name):return [cp('dump',str(out/(name+'.json'))),{'wait':180}]
+def settled(reviewed=False):return {'wait_checkpoints':dict(reviewed=reviewed,timeout_ms=30000)}
+def dump(name):return [settled(),cp('dump',str(out/(name+'.json'))),{'wait':180}]
 def read(name):return json.loads((out/(name+'.json')).read_text(encoding='utf-8'))
-def review(index):return [cp('select',str(index)),{'wait':600}]
+def review(index):return [settled(),cp('select',str(index)),settled(True)]
 def export(name):return [{'transcript':'export-complete:'+str(out/(name+'.md'))},{'wait':400}]
 def run(name,steps,extra=None):
+ # A completed restore chains a list refresh. Never select against stale rows
+ # or treat a fixed delay as proof that durable storage and native UI settled.
+ checked=[];just_waited=False
+ for step in steps:
+  if just_waited and 'wait' in step:
+   just_waited=False;continue
+  checked.append(step);just_waited=False
+  if step.get('click_text') in ('Checkpoints','Save checkpoint','Restore selected','Restore retained backup','Refresh'):
+   checked.append(settled());just_waited=True
+ steps=checked
  script=out/(name+'-steps.json');script.write_text(json.dumps(steps),encoding='utf-8')
  with (out/(name+'.log')).open('w',encoding='utf-8') as log:
   process=subprocess.Popen([str(binary)],env=dict(env,**(extra or {}),CODEX_GUI_AUTOMATION=str(script)),stdout=log,stderr=log)
