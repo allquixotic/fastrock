@@ -5,6 +5,7 @@ Fastrock 0.4.0: stable T3 UI/orchestration in native Slint/Rust, unmodified embe
 Broader GUI contract: repository `GUI.md`.
 
 ## §C CONSTRAINTS
+- 2026-11-04 explicit stable 0.4.1 release authorized: ordinary Fjall changes buffered in RAM, OS flush in background, permanent journal target within 60s; explicit saves/recovery intents/shutdown sync before success. Tests/signing/benchmark gates retained; private live-profile feedback remains unavailable, not a new publication gate for this authorized version.
 - 2026-11-04: latest stable Fjall 3.1.13 replaces vwork redb; configure LZ4 in engine, no direct entropy compression in Fastrock/vwork except legacy migration decoding. Git delta support, shared immutable objects, independent workspace/conversation transaction keys. Automatic preserved-source migration, native progress, explicit migration menu; no source loss or silent overwrite.
 - Fastrock derives from pinned allquixotic/codex-gui; Apache-2.0 and Slint attribution preserved.
 - 2026-10-29 authorization supersedes external-backend rules: Goose/vwork/core orchestration in-process; configured MCPs/hooks/credential helpers and user/LLM tools may spawn. No Goose fork, Codex backend or remote agent servers.
@@ -225,9 +226,12 @@ V94: Windows relaunch ! activate existing profile owner and forward folder/resum
 V95: Fjall ! sole live virtual-workspace/search/memory/checkpoint store; LZ4 configured in engine including cold scrollback, no direct application entropy compression. Legacy decoding migration-only; no Goose changes. Verify vwork V32–V36, summary/checkpoint/memory regressions and `v95_engine_compresses_pages_and_releases_them`.
 V96: Existing redb ! automatic resumable migration on worker with native determinate stage progress; UI remains responsive, requests wait for migration rather than short startup timeout. Original retained; validation/durable activation before service; explicit menu migrates selected legacy store into unused destination, never overwrites active work. Verify `v96_migration_progress_and_manual_destination`, native migration/restart/cancel fixtures and full games acceptance.
 V97: Windows provider-config replacement ! bounded retry for access/sharing violations only, recheck original bytes before each attempt; persistent lock/concurrent edit ! preserve existing file. Mutation callbacks, credentials/tools ! never replayed. Errors ! safe stage/numeric OS code, no configuration values. Verify `v97_*` config guard tests and native effort/capability fixtures.
+V98: Ordinary workspace writes ! buffered journal, OS flush cadence 1s, non-debounced durable sync target 30s with 60s maximum healthy-storage age; dedicated worker independent of tool/runtime pool. Failure/overdue ! reject writes, preserve readable state, expose diagnostics. Explicit Save, manual memory/project edits, restore intent, migration activation and clean Quit ! durable barrier before success. Dispose-only scrollback may buffer without permanent guarantee. Verify vwork `v37_*`, native save/quit/restore and `v98_*` integration tests.
+
 
 ## §T TASKS
 id|status|task|cites
+T71|~|Buffered workspace durability, explicit save/shutdown barriers, 60s deadline and stable 0.4.1 CI release|V98,V95,V96,V63,V47,I.vwork,I.lifecycle,I.distribution
 T70|x|Fjall storage integration, engine-owned scrollback compression, automatic/manual migration GUI and concurrent workload acceptance|V95,V96,V40,V43,V92,V93,V94,I.vwork,I.memory
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
 T2|x|Recover Windows retained surface; Auto uses CPU in RDP|V2,I.paint

@@ -4999,7 +4999,7 @@ dependencies = [
 
 [[package]]
 name = "fastrock"
-version = "0.4.0-rc.15"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "arboard",
@@ -15972,8 +15972,8 @@ dependencies = [
 
 [[package]]
 name = "vwork"
-version = "0.4.0"
-source = "git+https://github.com/allquixotic/vwork?rev=e1793df58bef6fbeacaf0b311f3f7858d54be7a5#e1793df58bef6fbeacaf0b311f3f7858d54be7a5"
+version = "0.4.1"
+source = "git+https://github.com/allquixotic/vwork?rev=ee1a10b341f48c858dc4daa3c60e8608525fd08c#ee1a10b341f48c858dc4daa3c60e8608525fd08c"
 dependencies = [
  "anyhow",
  "base64 0.22.1",

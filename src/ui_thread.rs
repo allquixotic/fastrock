@@ -18,6 +18,7 @@ thread_local! {
     static NEXT: Cell<WindowId> = const { Cell::new(MAIN + 1) };
     static WINDOWS: RefCell<BTreeMap<usize, WindowId>> = const { RefCell::new(BTreeMap::new()) };
     static ROUTES: RefCell<Routes> = const { RefCell::new(Routes { owners: BTreeMap::new(), parents: BTreeMap::new() }) };
+    static SAVING_FOR_QUIT: Cell<bool> = const { Cell::new(false) };
 }
 tokio::task_local! { static ASYNC_WINDOW: WindowId; }
 
@@ -177,10 +178,51 @@ pub(crate) fn finish_quit() {
             request_quit();
             return;
         }
-        for id in ids() {
-            with_app_now_for(id, AppController::save_before_quit);
+        if SAVING_FOR_QUIT.replace(true) {
+            return;
         }
-        let _ = slint::quit_event_loop();
+        let Some(owner) = ids().into_iter().next() else {
+            SAVING_FOR_QUIT.set(false);
+            return;
+        };
+        with_app_for(owner, move |app| {
+            app.toast("Saving pending workspace changes…");
+            app.backend.spawn(async move {
+                let result =
+                    tokio::task::spawn_blocking(fastrock_workspaces::embedded::prepare_shutdown)
+                        .await
+                        .map_err(anyhow::Error::from)
+                        .and_then(|r| r);
+                let _ = slint::invoke_from_event_loop(move || {
+                    SAVING_FOR_QUIT.set(false);
+                    if let Err(error) = result {
+                        fastrock_workspaces::embedded::cancel_shutdown();
+                        with_app_for(owner, move |app| {
+                            let _ = app.window.show();
+                            app.push_warning(format!(
+                                "Could not finish saving; Fastrock remains open: {error:#}"
+                            ));
+                        });
+                        return;
+                    }
+                    // UI remains responsive during syncing; a Rally write may
+                    // have started since the initial quit check.
+                    let mut pending = false;
+                    for id in ids() {
+                        with_app_now_for(id, |app| pending |= app.rally_has_pending_write());
+                    }
+                    if pending {
+                        fastrock_workspaces::embedded::cancel_shutdown();
+                        request_quit();
+                        return;
+                    }
+                    for id in ids() {
+                        with_app_now_for(id, AppController::save_before_quit);
+                    }
+                    let _ = slint::quit_event_loop();
+                });
+            });
+        });
     });
 }
 pub(crate) fn another_window_visible(owner: WindowId) -> bool {

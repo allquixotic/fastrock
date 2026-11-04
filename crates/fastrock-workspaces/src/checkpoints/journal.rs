@@ -64,7 +64,7 @@ fn save(engine: &Engine, journal: &Journal) -> Result<()> {
         }
     }
     txn.commit()?;
-    Ok(())
+    engine.db.persist()
 }
 pub(super) fn forget_records(
     transaction: &vwork_engine::kv::WriteTransaction,

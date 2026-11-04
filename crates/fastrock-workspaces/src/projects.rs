@@ -233,7 +233,7 @@ pub async fn save_settings(
                     .open_table(SETTINGS)?
                     .insert(saved_repo.as_str(), bytes.as_slice())?;
                 transaction.commit()?;
-                Ok(())
+                engine.db.persist()
             })
         })
         .await?;

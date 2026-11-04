@@ -313,6 +313,10 @@ impl AppController {
         for (phase, timing) in crate::goose::latency::facts() {
             facts.push(kv(phase, timing));
         }
+        facts.push(kv(
+            "Workspace journal",
+            fastrock_workspaces::embedded::durability_diagnostic(),
+        ));
         if !self.connection_label.is_empty() {
             facts.push(kv("Connection", self.connection_label.as_str()));
         }

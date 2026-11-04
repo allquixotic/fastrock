@@ -1,3 +1,18 @@
+# Fastrock 0.4.1 stable
+
+Explicitly authorized 2026-11-04. Ordinary virtual-workspace changes use bounded
+RAM journal buffering, one-second OS flushes and a non-debounced 30-second sync
+target within the authorized 60-second durability window. Explicit editor Save,
+manual memory/project changes, merge/restore and shutdown sync before success.
+Pending age and sync errors appear in Diagnostics; overdue or failed storage
+pauses writes. Cross-store recovery and migration retain immediate barriers.
+Goose remains unchanged, including its SQLite history/configuration durability.
+
+This changes storage latency and crash-loss policy. It does not establish the
+cause of the reported work-machine `session/load` timeout or claim to fix it.
+Live work-profile validation remains user-owned; publication uses local-provider
+fixtures and the automated Windows/Mac-compile/signing gates.
+
 # Stable releases and rapid signed prereleases
 
 ## 0.4.0 release candidate

@@ -312,3 +312,25 @@ async fn v95_memory_commit_does_not_wait_for_unrelated_writer() {
     );
     assert_eq!(store.load().await.unwrap().facts.len(), 1);
 }
+
+#[tokio::test]
+async fn v98_manual_memory_settings_sync_before_success() {
+    let temp = tempfile::tempdir().unwrap();
+    let store = Memories(Connection::new(temp.path().into()));
+    edit(
+        &store,
+        0,
+        Edit::Settings {
+            learning: false,
+            recall: true,
+        },
+    )
+    .await;
+    let status = store
+        .0
+        .run(|owner| owner.with_engine(|engine| Ok(engine.db.durability_status())))
+        .await
+        .unwrap();
+    assert_eq!(status.pending_transactions, 0);
+    assert!(!status.failed && !status.overdue);
+}

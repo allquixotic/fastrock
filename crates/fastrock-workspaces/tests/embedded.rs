@@ -240,7 +240,7 @@ async fn v40_compaction_excludes_readers_and_summaries() {
 }
 
 #[tokio::test]
-async fn v40_embedded_workspace_revision_guard_and_utf8() {
+async fn v98_explicit_save_is_durable_with_revision_guard_and_utf8() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join("repo");
     let repo = git2::Repository::init(&root).unwrap();
@@ -299,6 +299,15 @@ async fn v40_embedded_workspace_revision_guard_and_utf8() {
         })
         .await
         .unwrap();
+    let status = connection
+        .run(|store| store.with_engine(|engine| Ok(engine.db.durability_status())))
+        .await
+        .unwrap();
+    assert_eq!(
+        status.pending_transactions, 0,
+        "Save must cross durable journal barrier"
+    );
+    assert!(!status.failed && !status.overdue);
     let error = provider
         .execute(Request::Write {
             workspace: "one".into(),

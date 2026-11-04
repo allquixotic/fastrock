@@ -123,6 +123,7 @@ pub async fn capture(
         if let Some(previous)=read(engine,&capture.session,&capture.id)? {
             same_workspace(&previous,workspace.as_deref())?;
             ensure!(previous.capture==capture,"Checkpoint identity already has different content");
+            if matches!(capture.phase.as_str(), "manual" | "restore-backup") { engine.db.persist()?; }
             return Ok(previous);
         }
         // Validate size before publishing a pin or any metadata.
@@ -142,11 +143,14 @@ pub async fn capture(
             let previous=table.get(record_key.as_str())?.map(|v|decode(v.value())).transpose()?;
             if let Some(previous)=previous {
                 ensure!(previous.capture==checkpoint.capture && previous.workspace==checkpoint.workspace,"Checkpoint identity already has different content");
+                if matches!(checkpoint.capture.phase.as_str(), "manual" | "restore-backup") { engine.db.persist()?; }
                 return Ok(previous);
             }
             table.insert(record_key.as_str(),bytes.as_slice())?;
         }
-        txn.commit()?;Ok(checkpoint)
+        txn.commit()?;
+        if matches!(checkpoint.capture.phase.as_str(), "manual" | "restore-backup") { engine.db.persist()?; }
+        Ok(checkpoint)
     })).await
 }
 /// Delete conversation metadata and restore-history backups. Virtual source
@@ -366,6 +370,7 @@ pub async fn restore_files(connection: &Connection, review: Review) -> Result<St
                     "workspace_restore",
                     &json!({"workspace":name,"expected_revision":ws.head,"revision":revision}),
                 )?;
+                engine.db.persist()?;
                 Ok(result["revision"]
                     .as_str()
                     .context("Missing restored revision")?

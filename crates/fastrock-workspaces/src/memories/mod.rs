@@ -239,7 +239,7 @@ impl Memories {
             let mut write = engine.db.begin_write()?;
             if cancelled.load(Ordering::Acquire) { return Ok(None); }
             let background = matches!(&edit, Edit::Learn(_) | Edit::Maintain(_));
-            if background { write.set_durability(vwork_engine::kv::Durability::None)?; }
+            if !background { write.set_durability(vwork_engine::kv::Durability::Immediate)?; }
             let mut state = {
                 let table = write.open_table(STATE)?;
                 table.get("current")?.map(|v| decode(v.value())).transpose()?.unwrap_or_default()

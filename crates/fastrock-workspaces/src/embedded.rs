@@ -19,6 +19,67 @@ static STORES: OnceLock<Registry> = OnceLock::new();
 type OpenResult = Option<Result<Arc<Store>, Arc<str>>>;
 type ConnectionRegistry = Mutex<HashMap<PathBuf, Weak<Mutex<Opening>>>>;
 static CONNECTIONS: OnceLock<ConnectionRegistry> = OnceLock::new();
+static QUIESCING: AtomicBool = AtomicBool::new(false);
+
+fn open_stores() -> Vec<Arc<Store>> {
+    let slots: Vec<_> = STORES
+        .get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .values()
+        .filter_map(Weak::upgrade)
+        .collect();
+    slots
+        .into_iter()
+        .filter_map(|slot| {
+            slot.owner
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .as_ref()
+                .and_then(Weak::upgrade)
+        })
+        .collect()
+}
+
+/// Worker-only: stop admitting operations, wait for existing operations, then
+/// sync every owner's journal. On error leave the UI/process alive for recovery.
+pub fn prepare_shutdown() -> Result<()> {
+    QUIESCING.store(true, Ordering::Release);
+    let result = open_stores().into_iter().try_for_each(|store| {
+        let engine = store
+            .engine
+            .as_ref()
+            .expect("live engine")
+            .write()
+            .map_err(|_| anyhow::anyhow!("Workspace shutdown lock unavailable"))?;
+        engine.db.persist()
+    });
+    if result.is_err() {
+        QUIESCING.store(false, Ordering::Release);
+    }
+    result
+}
+
+pub fn cancel_shutdown() {
+    QUIESCING.store(false, Ordering::Release);
+}
+
+/// RAM-only diagnostics; never open a database to inspect its durability.
+pub fn durability_diagnostic() -> String {
+    let mut pending = 0u64;
+    let mut oldest = 0u64;
+    let mut failed = false;
+    let mut overdue = false;
+    for status in vwork_engine::kv::durability_statuses() {
+        pending += status.pending_transactions;
+        oldest = oldest.max(status.oldest_pending_ms);
+        failed |= status.failed;
+        overdue |= status.overdue;
+    }
+    format!(
+        "{pending} pending transactions; oldest {oldest} ms; 60-second limit; sync failed: {failed}; overdue: {overdue}"
+    )
+}
 
 #[derive(Default)]
 struct Opening {
@@ -67,6 +128,10 @@ impl Drop for Store {
 
 impl Store {
     fn open(home: &Path) -> Result<Arc<Self>> {
+        ensure!(
+            !QUIESCING.load(Ordering::Acquire),
+            "Workspace storage is saving for shutdown"
+        );
         std::fs::create_dir_all(home)?;
         let home = home.canonicalize()?;
         let slot = {
@@ -97,6 +162,10 @@ impl Store {
                 .map_err(|_| anyhow::anyhow!("Workspace ownership unavailable"))?;
         }
         let _opening = timing::Opening::start();
+        ensure!(
+            !QUIESCING.load(Ordering::Acquire),
+            "Workspace storage is saving for shutdown"
+        );
         let config = vwork_engine::transport::load_config(&home)?;
         let engine = Engine::open_embedded(&home, config)?;
         timing::opened(&engine.recovery);
@@ -137,6 +206,10 @@ impl Store {
     /// transactions. Compaction can never overlap a reader or retain an Arc.
     pub fn with_engine<T>(&self, f: impl FnOnce(&Engine) -> Result<T>) -> Result<T> {
         ensure!(
+            !QUIESCING.load(Ordering::Acquire),
+            "Workspace storage is saving for shutdown"
+        );
+        ensure!(
             !self.failed.load(Ordering::Acquire),
             "Workspace maintenance failed; restart Fastrock for recovery"
         );
@@ -146,6 +219,10 @@ impl Store {
             .expect("live workspace engine")
             .try_read()
             .map_err(|_| anyhow::anyhow!("Workspace maintenance is in progress"))?;
+        ensure!(
+            !QUIESCING.load(Ordering::Acquire),
+            "Workspace storage is saving for shutdown"
+        );
         ensure!(
             !self.failed.load(Ordering::Acquire),
             "Workspace maintenance failed; restart Fastrock for recovery"
@@ -161,6 +238,10 @@ impl Store {
         f: impl FnOnce(&Engine) -> Result<T>,
     ) -> Result<T> {
         ensure!(
+            !QUIESCING.load(Ordering::Acquire),
+            "Workspace storage is saving for shutdown"
+        );
+        ensure!(
             !self.failed.load(Ordering::Acquire),
             "Workspace maintenance failed; restart Fastrock for recovery"
         );
@@ -173,6 +254,10 @@ impl Store {
                 anyhow::anyhow!("A workspace operation is active; review again after it finishes")
             })?;
         ensure!(
+            !QUIESCING.load(Ordering::Acquire),
+            "Workspace storage is saving for shutdown"
+        );
+        ensure!(
             !self.failed.load(Ordering::Acquire),
             "Workspace maintenance failed; restart Fastrock for recovery"
         );
@@ -180,6 +265,10 @@ impl Store {
     }
 
     fn call(&self, op: &str, args: &Value) -> Result<Value> {
+        ensure!(
+            !QUIESCING.load(Ordering::Acquire),
+            "Workspace storage is saving for shutdown"
+        );
         if op == "database_compact" {
             ensure!(
                 !self.failed.load(Ordering::Acquire),

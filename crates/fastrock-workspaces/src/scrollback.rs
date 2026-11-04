@@ -58,6 +58,7 @@ impl ColdStore {
         lease.try_lock()?;
         std::io::Write::write_all(&mut &lease, b"fastrock-transcript-cache-v1")?;
         let db = fjall::Database::builder(directory.path().join("data"))
+            .manual_journal_persist(true)
             .cache_size(16 * 1024 * 1024)
             .max_journaling_size(64 * 1024 * 1024)
             .worker_threads(1)
@@ -65,6 +66,7 @@ impl ColdStore {
             .open()?;
         let pages = db.keyspace("pages", || {
             fjall::KeyspaceCreateOptions::default()
+                .manual_journal_persist(true)
                 .max_memtable_size(4 * 1024 * 1024)
                 .data_block_compression_policy(fjall::config::CompressionPolicy::all(
                     fjall::CompressionType::Lz4,

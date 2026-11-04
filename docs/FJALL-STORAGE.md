@@ -49,6 +49,28 @@ whole-store compaction. Explicit maintenance remains available. Storage counters
 called `compressed_*` by older clients now represent logical stored record bytes;
 use directory disk usage for physical compression, including engine overhead.
 
+## Durability in 0.4.1
+
+Ordinary workspace changes commit atomically to Fjall's bounded RAM structures
+without waiting for a disk sync. A dedicated journal worker flushes OS buffers
+on a one-second cadence and requests permanent storage after 30 seconds from the
+oldest pending write. Continuous writes do not postpone this deadline. The
+user-authorized loss window is at most 60 seconds on functioning storage; the
+30-second target leaves time for slow I/O. A stalled device or suspended process
+cannot be given a hard wall-clock guarantee. Failed sync or pending age above
+60 seconds rejects further writes and appears in Settings → Diagnostics.
+
+Explicit editor Save, project settings, user memory edits, merge/restore,
+manual checkpoints, cross-store recovery intents and migration activation sync
+the journal before reporting success. Clean Quit drains workspace operations
+and syncs on a worker; a sync error keeps Fastrock open and reports the failure.
+Automatic checkpoints/summaries and ordinary LLM edits use the buffered policy.
+Temporary-copy ownership/recovery markers remain durable before external effects.
+A crash can lose recent buffered edits; a successful durable save includes all
+previously committed writes in that database. Goose's own SQLite history and
+configuration durability are unchanged. Disposable scrollback uses RAM journal
+buffering and can always be reconstructed from provider history.
+
 ## Migration
 
 On first use, an existing `workspaces.redb` with no active Fjall store starts a

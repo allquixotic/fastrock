@@ -728,6 +728,20 @@ impl VworkProvider {
                     return Err(WorkspaceError::NotEditable);
                 }
                 let value = self.call("files_write", json!({"workspace":workspace,"path":document.path,"expected_revision":document.revision,"mode":document.mode,"base64":base64::engine::general_purpose::STANDARD.encode(document.text.as_bytes())})).await?;
+                #[cfg(feature = "http-fixtures")]
+                let durable = !self.fixture;
+                #[cfg(not(feature = "http-fixtures"))]
+                let durable = true;
+                if durable {
+                    self.embedded
+                        .run(|store| store.with_engine(|engine| engine.db.persist()))
+                        .await
+                        .map_err(|error| {
+                            WorkspaceError::Message(format!(
+                                "Save has not reached permanent storage: {error:#}"
+                            ))
+                        })?;
+                }
                 Ok(Reply::Saved {
                     revision: string(&value, "revision")?,
                 })

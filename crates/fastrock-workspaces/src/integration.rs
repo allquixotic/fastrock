@@ -149,6 +149,7 @@ pub async fn apply(connection: &Connection, review: MergeReview) -> Result<Merge
                         "expected_revision": review.target_revision}),
                 )?;
                 if value["merged"] == true {
+                    engine.db.persist()?;
                     Ok(MergeResult::Merged {
                         revision: value["revision"]
                             .as_str()

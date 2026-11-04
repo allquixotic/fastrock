@@ -61,3 +61,7 @@ Migration acceptance checklist: docs/RALLY-INVENTORY.md. SPEC.md tracks work.
 Fjall latest stable, configured LZ4, concurrent optimistic writers; application
 Git deltas only. Preserve redb during automatic/manual validated migration with
 native progress UI; preserve deduplication, revisions, leases and history.
+
+2026-11-04: user explicitly authorizes stable 0.4.1. Ordinary Fjall writes may
+remain buffered for up to 60 seconds; explicit saves/recovery intents and clean
+shutdown sync first. Keep CI signing/verification and games memory guards.
