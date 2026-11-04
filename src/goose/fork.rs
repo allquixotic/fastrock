@@ -35,7 +35,7 @@ impl Adapter {
         }
         if let Some(task) = &delegation {
             if let Some(child) = self.delegation_index(source_id).await?.get(&task.task_id) {
-                let manager = SessionManager::new(goose_runtime::config::paths::Paths::data_dir());
+                let manager = SessionManager::instance();
                 let stored = manager
                     .get_session(child, false)
                     .await
@@ -115,7 +115,7 @@ impl Adapter {
             8 * 1024 * 1024,
         )
         .await?;
-        let manager = SessionManager::new(goose_runtime::config::paths::Paths::data_dir());
+        let manager = SessionManager::instance();
         let mut source = manager
             // Delegates need configuration, never the parent's history. Avoid
             // decoding a huge conversation just to discard it below.

@@ -15,6 +15,9 @@ pub(crate) const DEFAULT_IN_PROCESS_CHANNEL_CAPACITY: usize = 512;
 #[derive(Clone, Debug)]
 pub(crate) enum AppServerEvent {
     GooseSchedulesChanged,
+    GooseHistoryPaused {
+        thread_id: String,
+    },
     GooseRecovery {
         thread_id: String,
         recovery: crate::goose::Recovery,
@@ -80,6 +83,21 @@ impl AppServerRequestHandle {
             .map_err(|source| TypedRequestError::Deserialize { method, source })
     }
     pub async fn raw(&self, value: Value) -> io::Result<Reply> {
+        let lifecycle = matches!(
+            value["method"].as_str(),
+            Some(
+                "thread/start"
+                    | "thread/resume"
+                    | "thread/read"
+                    | "thread/fork"
+                    | "thread/items/list"
+                    | "thread/turns/list"
+                    | "fastrock/history/window"
+                    | "fastrock/project/open"
+                    | "fastrock/goose/resumeQueue"
+                    | "thread/queue/start"
+            )
+        );
         let id = value["id"].to_string();
         let (tx, rx) = oneshot::channel();
         {
@@ -111,6 +129,14 @@ impl AppServerRequestHandle {
             .send(value)
             .await
             .map_err(|_| io::Error::other("Session connection closed"))?;
+        // Slow storage/credentials are not a disconnected embedded service.
+        // Keep one waiter until completion or a real transport error, rather
+        // than orphaning work and making a retry race its first invocation.
+        if lifecycle {
+            return rx
+                .await
+                .map_err(|_| io::Error::other("Session disconnected before replying"));
+        }
         tokio::time::timeout(Duration::from_secs(90), rx)
             .await
             .map_err(|_| {
@@ -405,6 +431,46 @@ mod tests {
         task.abort();
         let _ = task.await;
         assert!(client.handle.pending.lock().unwrap().is_empty());
+    }
+    #[tokio::test(start_paused = true)]
+    async fn v100_history_and_setup_wait_past_ninety_seconds() {
+        for method in [
+            "thread/start",
+            "thread/resume",
+            "thread/read",
+            "thread/fork",
+            "thread/items/list",
+            "thread/turns/list",
+            "fastrock/history/window",
+            "fastrock/project/open",
+            "fastrock/goose/resumeQueue",
+            "thread/queue/start",
+        ] {
+            let (writer, mut requests) = mpsc::channel(4);
+            let pending = Pending::default();
+            let handle = AppServerRequestHandle {
+                writer,
+                pending: pending.clone(),
+            };
+            let waiter =
+                tokio::spawn(async move { handle.raw(json!({"id":"slow","method":method})).await });
+            let request = requests.recv().await.unwrap();
+            tokio::time::advance(Duration::from_secs(3600)).await;
+            tokio::task::yield_now().await;
+            assert!(
+                !waiter.is_finished(),
+                "{method} abandoned an active operation"
+            );
+            pending
+                .lock()
+                .unwrap()
+                .remove(&request["id"].to_string())
+                .unwrap()
+                .send(Ok(json!({"late":true})))
+                .unwrap();
+            assert_eq!(waiter.await.unwrap().unwrap().unwrap()["late"], true);
+            assert!(pending.lock().unwrap().is_empty());
+        }
     }
     #[tokio::test]
     async fn v16_oversized_frame_is_bounded_before_allocation() {

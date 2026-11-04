@@ -82,6 +82,9 @@ export global TranscriptState {
     in property <int> phase;
     in property <string> folder;
     in property <string> error-text;
+    in property <bool> opening-existing;
+    callback retry-open();
+    callback close-open();
     // Shown under the transcript while a turn runs.
     in property <string> status-text;
     in property <string> empty-hint: "Ask a question, describe a change, or paste an error.";
@@ -1738,7 +1741,7 @@ component EmptyState inherits Rectangle {
         spacing: Theme.pad-l;
         padding: Theme.pad-xl;
 
-        if root.busy: HorizontalLayout {
+        if root.busy && TranscriptState.phase != 1: HorizontalLayout {
             alignment: center;
             spacing: Theme.pad-m;
             StatusGlyph {
@@ -1821,12 +1824,14 @@ export component TranscriptView inherits Rectangle {
     property <int> scroll-top-request: TranscriptState.scroll-top-request;
     property <length> status-height: TranscriptState.status-text != "" ? 30px : 0px;
     property <length> history-height: TranscriptState.history-browsing || TranscriptState.history-loading ? 40px : 0px;
+    property <length> opening-height: TranscriptState.phase == 1 || TranscriptState.phase == 5 ? 56px : 0px;
+    property <length> content-top: root.opening-height + root.history-height;
     property <Point> position: self.absolute-position;
 
     function publish-viewport() {
         TranscriptState.viewport = { x: self.absolute-position.x / 1px,
-            y: (self.absolute-position.y + root.history-height) / 1px, width: self.width / 1px,
-            height: (self.height - root.status-height - root.history-height) / 1px };
+            y: (self.absolute-position.y + root.content-top) / 1px, width: self.width / 1px,
+            height: (self.height - root.status-height - root.content-top) / 1px };
     }
     init => { self.publish-viewport(); }
     changed position => { self.publish-viewport(); }
@@ -1834,6 +1839,21 @@ export component TranscriptView inherits Rectangle {
     changed height => { self.publish-viewport(); }
     changed status-height => { self.publish-viewport(); }
     changed history-height => { self.publish-viewport(); }
+    changed opening-height => { self.publish-viewport(); }
+
+    if root.opening-height > 0px: HorizontalLayout {
+        x: 0px; y: 0px; width: parent.width; height: root.opening-height;
+        padding: Theme.pad-s; spacing: Theme.pad-s;
+        if TranscriptState.phase == 1: StatusGlyph { status: 1; }
+        Text {
+            text: TranscriptState.phase == 5 ? "Could not open conversation: " + TranscriptState.error-text
+                : TranscriptState.opening-existing ? "Opening saved history… Waiting for storage; you can keep this tab open."
+                : "Preparing a new conversation… You can keep waiting or close this tab.";
+            color: Theme.text-muted; wrap: word-wrap; vertical-alignment: center; horizontal-stretch: 1;
+        }
+        if TranscriptState.phase == 5: FlatButton { text: "Retry"; clicked => { TranscriptState.retry-open(); } }
+        FlatButton { text: "Close"; clicked => { TranscriptState.close-open(); } }
+    }
 
     function scroll-to-bottom() {
         list.content-y = min(0px, list.visible-height - list.content-height);
@@ -1847,7 +1867,7 @@ export component TranscriptView inherits Rectangle {
     }
 
     if root.history-height > 0px: HorizontalLayout {
-        x: 0px; y: 0px; width: parent.width; height: root.history-height;
+        x: 0px; y: root.opening-height; width: parent.width; height: root.history-height;
         padding-left: Theme.pad-s; padding-right: Theme.pad-s; spacing: Theme.pad-s;
         FlatButton { text: "Oldest"; enabled: !TranscriptState.history-loading; clicked => { TranscriptState.history-action("first"); } }
         FlatButton { text: "Earlier"; enabled: TranscriptState.history-previous && !TranscriptState.history-loading; clicked => { TranscriptState.history-action("previous"); } }
@@ -1864,9 +1884,9 @@ export component TranscriptView inherits Rectangle {
 
     list := ListView {
         x: 0;
-        y: root.history-height;
+        y: root.content-top;
         width: parent.width;
-        height: parent.height - root.status-height - root.history-height;
+        height: parent.height - root.status-height - root.content-top;
         visible: !root.empty;
         horizontal-scrollbar-policy: always-off;
         content-width: self.visible-width;
@@ -1902,8 +1922,9 @@ export component TranscriptView inherits Rectangle {
     }
 
     if root.empty: EmptyState {
+        y: root.content-top;
         width: parent.width;
-        height: parent.height;
+        height: parent.height - root.content-top;
     }
 
     if !root.empty && (TranscriptState.loading-older || (TranscriptState.has-older && list.content-y > -48px)): Pill {

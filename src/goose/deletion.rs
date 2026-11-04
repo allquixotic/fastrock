@@ -2,7 +2,7 @@
 use super::*;
 use base64::Engine as _;
 use fastrock_workspaces::{checkpoints, summaries::Summaries};
-use goose_runtime::{config::paths::Paths, session::SessionManager};
+use goose_runtime::session::SessionManager;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -67,7 +67,7 @@ pub(super) async fn open(root: PathBuf) -> anyhow::Result<State> {
     .await?
 }
 fn manager() -> SessionManager {
-    SessionManager::new(Paths::data_dir())
+    SessionManager::instance()
 }
 async fn exists(manager: &SessionManager, id: &str) -> Result<bool, JSONRPCErrorError> {
     match manager.get_session(id, false).await {

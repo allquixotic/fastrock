@@ -4,10 +4,7 @@ use anyhow::Result;
 use fastrock_workspaces::{embedded::Connection, summaries::Summaries};
 use goose_context_management::ProviderModel;
 use goose_provider_types::model::ModelConfig;
-use goose_runtime::{
-    config::paths::Paths,
-    session::{SessionManager, SessionType},
-};
+use goose_runtime::session::{SessionManager, SessionType};
 use std::{
     collections::{HashSet, VecDeque},
     path::PathBuf,
@@ -126,7 +123,7 @@ impl Service {
         let worker = queue.clone();
         let summaries = Summaries(Connection::new(home.clone()));
         let task = tokio::spawn(async move {
-            let manager = SessionManager::new(Paths::data_dir());
+            let manager = SessionManager::instance();
             // Keep errors out of logs: provider errors may contain credentials.
             loop {
                 let _ = run(worker.clone(), &summaries, &manager).await;

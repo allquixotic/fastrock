@@ -155,9 +155,7 @@ impl Adapter {
             // Bindings may already exist. Never make their identity reusable.
             let safe_to_delete = !self.embedded_runtime
                 || super::id_reservation::before_delete(
-                    &goose_runtime::session::SessionManager::new(
-                        goose_runtime::config::paths::Paths::data_dir(),
-                    ),
+                    &goose_runtime::session::SessionManager::instance(),
                     id,
                 )
                 .await
@@ -335,7 +333,7 @@ impl Adapter {
             .lock()
             .await
             .get(id)
-            .is_some_and(|s| !s.loaded || s.storage_pending);
+            .is_some_and(|s| !s.loaded || s.storage_pending || s.activation_pending);
         if needs_load && !step(Phase::RestoreHistory, self.recovery_history(id)).await? {
             if self.embedded_runtime {
                 step(Phase::RestoreSettings, super::provider_policy::restored(id))
@@ -409,43 +407,41 @@ impl Adapter {
                 }
             }
             servers.extend(step(Phase::RestoreTools, self.load_vwork_servers(id, &cwd)).await?);
-            let previous = {
+            let preserve_history = {
                 let mut sessions = self.sessions.lock().await;
                 let s = sessions
                     .get_mut(id)
                     .ok_or_else(|| error("Session unavailable"))?;
                 // Keep the compressed read-only history until activation has
                 // actually succeeded; a provider error must not erase it.
-                let previous = s.storage_pending.then(|| {
-                    (
-                        std::mem::take(&mut s.turns),
-                        std::mem::take(&mut s.last_chunk),
-                    )
-                });
+                let preserve = s.loaded && (s.storage_pending || s.activation_pending);
                 s.replaying = true;
-                s.turns.clear();
-                s.last_chunk.clear();
-                previous
+                s.discard_replay = preserve;
+                if !preserve {
+                    s.turns.clear();
+                    s.last_chunk.clear();
+                }
+                preserve
             };
-            let loaded = self
-                .rpc
-                .call(
-                    "session/load",
-                    json!({"sessionId":id,"cwd":cwd,"mcpServers":servers}),
-                )
-                .await;
+            let mut args = json!({"sessionId":id,"cwd":cwd,"mcpServers":servers});
+            if preserve_history {
+                // Goose supports a tail replay. The complete saved projection
+                // remains authoritative for browsing while activation waits.
+                args["_meta"] = json!({"replayTail":1});
+            }
+            let loaded = self.rpc.call("session/load", args).await;
             let mut sessions = self.sessions.lock().await;
             let s = sessions
                 .get_mut(id)
                 .ok_or_else(|| error("Session unavailable"))?;
             s.replaying = false;
+            s.discard_replay = false;
             let response = match loaded {
                 Ok(r) => r,
                 Err(e) => {
-                    s.turns.clear();
-                    if let Some((turns, chunk)) = previous {
-                        s.turns = turns;
-                        s.last_chunk = chunk;
+                    if !preserve_history {
+                        s.turns.clear();
+                        s.last_chunk.clear();
                     }
                     return Err(e);
                 }
@@ -460,6 +456,7 @@ impl Adapter {
                 .ok_or_else(|| error("Session unavailable"))?;
             s.loaded = true;
             s.storage_pending = false;
+            s.activation_pending = false;
             s.recovery_only = false;
             self.config_event(id, s)?;
         }
@@ -618,6 +615,11 @@ impl Adapter {
                 .get(&id)
                 .filter(|s| s.loaded)
                 .ok_or_else(|| error("Open the session before sending"))?;
+            if s.activation_pending {
+                return Err(error(
+                    "Saved history is available. Choose Resume to prepare this conversation before sending.",
+                ));
+            }
             if s.recovery_only {
                 return Err(error(if s.storage_pending {
                     "Workspace recovery has not been checked. Choose Resume to retry; saved history remains read-only."
@@ -952,7 +954,11 @@ impl Adapter {
             self.emit(json!({"method":"thread/name/updated","params":{"threadId":ui_id(id),"threadName":params["name"]}}))?;
         }
         if suffix == "unarchive" {
-            return self.load_session(params, false).await;
+            return if self.embedded_runtime {
+                self.open_saved_history(params, false).await
+            } else {
+                self.load_session(params, false).await
+            };
         }
         Ok(result)
     }
@@ -1002,9 +1008,7 @@ impl Adapter {
         }
         let method = if ephemeral {
             if self.embedded_runtime {
-                let manager = goose_runtime::session::SessionManager::new(
-                    goose_runtime::config::paths::Paths::data_dir(),
-                );
+                let manager = goose_runtime::session::SessionManager::instance();
                 super::id_reservation::before_delete(&manager, id)
                     .await
                     .map_err(|_| {

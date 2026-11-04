@@ -8,8 +8,13 @@ Pending age and sync errors appear in Diagnostics; overdue or failed storage
 pauses writes. Cross-store recovery and migration retain immediate barriers.
 Goose remains unchanged, including its SQLite history/configuration durability.
 
-This changes storage latency and crash-loss policy. It does not establish the
-cause of the reported work-machine `session/load` timeout or claim to fix it.
+Build 4 separates saved-history browsing from agent activation, removes fixed
+session/history request deadlines, and keeps history visible during explicit
+Resume with retry after real errors. Shared Goose session storage avoids repeated
+SQLite pool initialization; disposable scrollback cache creation runs in the
+background. Workspace creation records Git commit references without enumerating
+files, and point reads resolve paths lazily. These address verified defects;
+the work machine's actual security-software latency remains unmeasured.
 Live work-profile validation remains user-owned; publication uses local-provider
 fixtures and the automated Windows/Mac-compile/signing gates.
 

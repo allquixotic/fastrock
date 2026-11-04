@@ -38,7 +38,7 @@ async fn persist(manager: &SessionManager, id: &str, defaults: Vec<ExtensionConf
 }
 
 pub(super) async fn prepare(id: &str) -> Result<()> {
-    let manager = SessionManager::new(goose_runtime::config::paths::Paths::data_dir());
+    let manager = SessionManager::instance();
     let session = manager.get_session(id, false).await?;
     let mut defaults = if has_selection(&session.extension_data)? {
         EnabledExtensionsState::from_extension_data(&session.extension_data)

@@ -3,7 +3,7 @@ use super::{Adapter, Reply, Session, error};
 use serde_json::{Value, json};
 
 fn manager() -> goose_runtime::session::SessionManager {
-    goose_runtime::session::SessionManager::new(goose_runtime::config::paths::Paths::data_dir())
+    goose_runtime::session::SessionManager::instance()
 }
 impl Adapter {
     pub(super) fn visible_config(&self, session: &Session) -> Vec<Value> {

@@ -64,7 +64,7 @@ try:
     assert effort('original-unchanged')=='low',read('original-unchanged')
     original_id = read('first-tab')['navigation']['openChats'][0]['id']
     peak = max(peak, run('restart', [{'wait_ready':30000}, {'wait':1000}, {'resume':original_id},
-        {'wait_idle':30000}, {'wait':400}, *dump('restored'), *new(), *dump('restart-default'),
+        {'wait_idle':30000}, {'wait':400}, {'click_text':'Resume'}, {'wait_goose':30000}, *dump('restored'), *new(), *dump('restart-default'),
         control('clear-effort'), *dump('cleared'), *new(), *dump('after-clear'),
         *choose('model',SONNET), *dump('other-default-retained'), {'quit':True}]))
     assert effort('restored')=='low',read('restored')

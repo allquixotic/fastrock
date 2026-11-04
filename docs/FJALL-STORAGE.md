@@ -39,6 +39,14 @@ summary generations have independent conflict domains. Same-workspace stale
 writes still fail the revision guard. Fjall briefly coordinates commits and
 journal durability; concurrent preparation does not imply parallel disk fsyncs.
 
+Creating a workspace writes one workspace record and one empty revision pointing
+at the existing Git commit. It does not enumerate files or create per-file links.
+A single-file read resolves revision overlays and then that path in the shared
+Git tree. Listing, searching, exporting and edits requiring collision validation
+may enumerate the tree on demand; the resulting base index is shared in RAM.
+Older persisted base manifests remain readable. Registering a new repository
+still imports its Git objects once; this is separate from creating conversations.
+
 Memory extraction remains a single idle-only worker. Its bounded memory snapshot
 and user-edit generation are intentionally serialized with each other, in their
 own keyspace; they do not lock workspace or summary transactions. Foreground
@@ -110,6 +118,21 @@ viewport cache. Provider history remains authoritative. Closed pages are removed
 normal shutdown deletes the temporary cache. Old crash leftovers are reclaimed
 only after checking age, the exact cache marker, and exclusive ownership. A cache
 write failure retains raw in-memory content rather than losing the transcript.
+Opening history publishes pages from RAM first. A dedicated worker opens and
+fills the cold cache; slow antivirus checks on cache creation cannot prevent the
+initial view from appearing.
+
+## Opening saved conversations
+
+Saved messages load through Goose's public shared session storage, independently
+of provider credentials, extension startup and virtual-workspace recovery. Resume
+explicitly activates the agent while the existing history remains readable.
+Fastrock imposes no fixed deadline on opening, creating or activating sessions,
+native workspace operations, or fetching history. Real failures remain visible with Retry controls. Recovery
+checks still finish before any work starts; uncertain tools are never replayed.
+Goose/provider/extension-specific network deadlines continue to apply.
+The singleton session manager shares SQLite connections and initialization across
+Fastrock's history, summaries, checkpoints and provider settings.
 
 ## Verification
 

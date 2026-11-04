@@ -107,6 +107,9 @@ impl Adapter {
     /// this to bypass recovery; uncertain records are never eligible here.
     pub(super) async fn start_queued(self: &Arc<Self>, params: &Value) -> Reply {
         let id = session_id(text(params, "threadId"))?.to_string();
+        // "Resume & send" is an explicit activation decision, just like Resume.
+        // Finish activation before selecting or consuming the queued message.
+        self.retry_storage_history(&id).await?;
         let gate = self.gate(&id).await;
         let _lock = gate.lock().await;
         self.deletion_ready(&id).await?;
@@ -179,21 +182,42 @@ impl Adapter {
             .ensure_deletable()
     }
     pub(super) async fn load_queue(&self, id: &str) -> Result<Recovery, JSONRPCErrorError> {
+        let inactive = self
+            .sessions
+            .lock()
+            .await
+            .get(id)
+            .is_some_and(|s| s.activation_pending || s.storage_pending || s.recovery_only);
         let mut queues = self.queue.lock().await;
         if !queues.contains_key(id) {
             let path = self.queue_path(id);
-            let state = tokio::task::spawn_blocking(move || read_queue(&path))
+            let mut state = tokio::task::spawn_blocking(move || read_queue(&path))
                 .await
                 .map_err(|e| error(e.to_string()))??;
+            state.paused |= inactive;
             queues.insert(id.to_owned(), state);
         }
-        Ok(queues[id].recovery())
+        if inactive
+            && let Some(state) = queues.get_mut(id)
+            && !state.paused
+        {
+            state.paused = true;
+        }
+        let recovery = queues[id].recovery();
+        // A newly opened tab needs the actual recovery state even if a catalog
+        // request previously hydrated this queue. Publishing a read must not
+        // announce another queue mutation and trigger an endless UI refresh.
+        self.recovery_event(id, recovery.clone());
+        Ok(recovery)
     }
-    pub(super) fn queue_event(&self, id: &str, recovery: Recovery) {
+    fn recovery_event(&self, id: &str, recovery: Recovery) {
         let _ = self.events.try_send(AppServerEvent::GooseRecovery {
             thread_id: ui_id(id),
             recovery,
         });
+    }
+    pub(super) fn queue_event(&self, id: &str, recovery: Recovery) {
+        self.recovery_event(id, recovery);
         let _ = self.emit(json!({"method":"thread/queue/changed","params":{"threadId":ui_id(id)}}));
     }
     async fn write_queue(&self, id: &str, state: &QueueState) -> Result<(), JSONRPCErrorError> {

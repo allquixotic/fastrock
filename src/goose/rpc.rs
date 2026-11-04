@@ -172,26 +172,15 @@ pub(super) struct Call {
 }
 impl Call {
     pub async fn wait(mut self) -> Reply {
-        let reply = if self.method == "session/prompt" {
+        let reply = if matches!(
+            self.method.as_str(),
+            "session/prompt" | "session/new" | "session/load"
+        ) {
             (&mut self.rx).await
         } else {
-            // Migration is an explicitly visible, resumable startup operation.
-            // Its duration is not a provider timeout and must not discard a
-            // pending session whose store is still being converted.
-            loop {
-                match tokio::time::timeout(Duration::from_secs(60), &mut self.rx).await {
-                    Ok(reply) => break reply,
-                    Err(_)
-                        if matches!(self.method.as_str(), "session/new" | "session/load")
-                            && fastrock_workspaces::migration::progress()
-                                .iter()
-                                .any(|p| p.active) =>
-                    {
-                        continue;
-                    }
-                    Err(_) => return Err(super::error(format!("{} timed out", self.method))),
-                }
-            }
+            tokio::time::timeout(Duration::from_secs(60), &mut self.rx)
+                .await
+                .map_err(|_| super::error(format!("{} timed out", self.method)))?
         };
         reply.map_err(|_| super::error("Connection closed before replying"))?
     }
@@ -200,6 +189,45 @@ impl Drop for Call {
     fn drop(&mut self) {
         if let Ok(mut pending) = self.pending.lock() {
             pending.remove(&self.key);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test(start_paused = true)]
+    async fn v100_session_lifecycle_waits_past_old_deadlines_and_cleans_up() {
+        for method in ["session/new", "session/load"] {
+            let (writer, mut requests) = mpsc::channel(4);
+            let rpc = Rpc {
+                writer,
+                pending: Default::default(),
+                next: Arc::new(AtomicU64::new(1)),
+            };
+            let call = rpc.begin(method, json!({})).await.unwrap();
+            let request = requests.recv().await.unwrap();
+            let waiter = tokio::spawn(call.wait());
+            tokio::task::yield_now().await;
+            tokio::time::advance(Duration::from_secs(3600)).await;
+            tokio::task::yield_now().await;
+            assert!(
+                !waiter.is_finished(),
+                "{method} abandoned an active operation"
+            );
+            rpc.complete(&json!({"id":request["id"],"result":{"late":true}}))
+                .unwrap();
+            assert_eq!(waiter.await.unwrap().unwrap()["late"], true);
+            assert!(rpc.pending.lock().unwrap().is_empty());
+            let call = rpc.begin(method, json!({})).await.unwrap();
+            rpc.disconnected();
+            assert!(
+                call.wait()
+                    .await
+                    .unwrap_err()
+                    .message
+                    .contains("Connection closed")
+            );
         }
     }
 }

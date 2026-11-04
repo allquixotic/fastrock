@@ -7,10 +7,10 @@ use fastrock_workspaces::{
     embedded::Connection,
 };
 use goose_provider_types::conversation::Conversation;
-use goose_runtime::{config::paths::Paths, session::SessionManager};
+use goose_runtime::session::SessionManager;
 
 fn manager() -> SessionManager {
-    SessionManager::new(Paths::data_dir())
+    SessionManager::instance()
 }
 fn capture_record(
     id: &str,

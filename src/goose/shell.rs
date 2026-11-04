@@ -1,7 +1,7 @@
 //! User-requested shell commands: durable intent, owned process, no model call.
 use super::*;
 use goose_provider_types::conversation::message::Message;
-use goose_runtime::{config::paths::Paths, session::SessionManager};
+use goose_runtime::session::SessionManager;
 use tokio::sync::watch;
 
 #[derive(Clone)]
@@ -81,7 +81,7 @@ impl Adapter {
             .map_err(|e| error(format!("Save command checkpoint: {e:#}")))?;
         self.claim_dispatch(&id, &tid, &json!({"input":input,"userCommand":true}))
             .await?;
-        let manager = SessionManager::new(Paths::data_dir());
+        let manager = SessionManager::instance();
         let intent = Message::user().with_id(&message_id).with_text(format!("User-requested shell command (not a request for the assistant to execute it):\n{command}\n\nExecution was requested. If no result follows, its outcome is uncertain; never rerun it automatically."));
         if manager.add_message(&id, &intent).await.is_err() {
             self.settle_dispatch(&id, &tid, false).await;

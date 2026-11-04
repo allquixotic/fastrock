@@ -22,7 +22,7 @@ required-features = ["http-fixtures"]
 
 [dependencies]
 anyhow.workspace = true
-vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "ee1a10b341f48c858dc4daa3c60e8608525fd08c" }
+vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "7bad2919054452a2017de64200e7f98ff2c3b453" }
 fjall = "=3.1.13"
 tempfile.workspace = true
 rayon = "1.11"
@@ -37,5 +37,6 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "rt", "sync", "time"] }
 
 [dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
 redb = "4.4"
 zstd = "0.13"

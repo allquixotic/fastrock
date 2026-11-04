@@ -92,9 +92,13 @@ try:
         preserved = database.execute('SELECT * FROM sessions WHERE id = ?', (conversation_id,)).fetchone()
         count, = database.execute('SELECT count(*) FROM sessions').fetchone()
     peak = max(peak, run([{'wait_ready': 30000}, {'resume': 'goose:' + conversation_id}, {'wait': 1200},
+                {'transcript': 'export-complete:' + str(out / 'unsupported-history.md')},
+                {'wait': 300}, {'click_text': 'Resume'}, {'wait': 1200},
                 *dump('blocked-restore'), {'quit': True}], 'blocked-restore'))
     blocked_restore = json.loads((out / 'blocked-restore.json').read_text(encoding='utf-8'))
-    assert 'External agent backends' in (blocked_restore['threadError'] or ''), blocked_restore
+    assert 'External agent backends' in blocked_restore['sessionError'], blocked_restore
+    assert blocked_restore['threadError'] is None, blocked_restore
+    assert 'Fixture answer' in (out / 'unsupported-history.md').read_text(encoding='utf-8')
     with sqlite3.connect(database_path) as database:
         assert database.execute('SELECT * FROM sessions WHERE id = ?', (conversation_id,)).fetchone() == preserved
     # Lossless edits retain both flow style and the legacy provider key. Change

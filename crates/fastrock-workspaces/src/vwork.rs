@@ -453,16 +453,23 @@ impl VworkProvider {
     }
 
     async fn call(&self, op: &str, arguments: Value) -> Result<Value, WorkspaceError> {
-        self.call_with_timeout(
-            op,
-            arguments,
-            if op == "database_compact" {
-                Duration::from_secs(3600)
-            } else {
-                Duration::from_secs(20)
-            },
-        )
-        .await
+        #[cfg(feature = "http-fixtures")]
+        if self.fixture {
+            return self
+                .fixture_call(
+                    op,
+                    arguments,
+                    Duration::from_secs(if op == "database_compact" { 3600 } else { 20 }),
+                )
+                .await;
+        }
+        // Native operations own their completion. A deadline can orphan a
+        // successful mutation and make Retry create a second workspace. Slow
+        // security software is not a lost connection to an embedded service.
+        self.embedded
+            .call(op.into(), arguments)
+            .await
+            .map_err(|e| WorkspaceError::Message(format!("{e:#}")))
     }
 
     pub async fn shared_mcp_supported(&self) -> Result<bool, WorkspaceError> {

@@ -147,24 +147,61 @@ enum Encoded {
 struct Page {
     first: usize,
     count: usize,
-    encoded: Encoded,
+    encoded: Arc<std::sync::Mutex<Encoded>>,
+}
+/// New history is readable from RAM immediately. Cache creation, stale-cache
+/// cleanup and Fjall insertion must not delay opening the conversation.
+fn spill_page(
+    page: std::sync::Weak<std::sync::Mutex<Encoded>>,
+    open: impl FnOnce() -> Result<Arc<ColdStore>>,
+) {
+    let Some(page) = page.upgrade() else {
+        return;
+    };
+    let raw = {
+        let guard = page.lock().unwrap_or_else(|e| e.into_inner());
+        let Encoded::Raw(raw) = &*guard else {
+            return;
+        };
+        raw.clone()
+    };
+    let key = PAGE_ID.fetch_add(1, Ordering::Relaxed).to_be_bytes();
+    if let Ok(store) = open().and_then(|store| {
+        store.pages.insert(key, raw.as_slice())?;
+        Ok(store)
+    }) {
+        *page.lock().unwrap_or_else(|e| e.into_inner()) = Encoded::Stored { store, key };
+    }
+}
+fn queue_page(page: &Arc<std::sync::Mutex<Encoded>>) {
+    type Work = std::sync::Weak<std::sync::Mutex<Encoded>>;
+    static WORKER: std::sync::OnceLock<Option<std::sync::mpsc::Sender<Work>>> =
+        std::sync::OnceLock::new();
+    if let Some(sender) = WORKER.get_or_init(|| {
+        let (sender, receiver) = std::sync::mpsc::channel::<Work>();
+        std::thread::Builder::new()
+            .name("fastrock-scrollback".into())
+            .spawn(move || {
+                for page in receiver {
+                    spill_page(page, ColdStore::open);
+                }
+            })
+            .ok()
+            .map(|_| sender)
+    }) {
+        // Queued entries are weak handles, never duplicate payloads or owners.
+        let _ = sender.send(Arc::downgrade(page));
+    }
 }
 impl Page {
     fn new(first: usize, items: Vec<Value>) -> Self {
         let count = items.len();
         let encoded = match serde_json::to_vec(&items) {
-            Ok(raw) => {
-                let key = PAGE_ID.fetch_add(1, Ordering::Relaxed).to_be_bytes();
-                match ColdStore::open().and_then(|store| {
-                    store.pages.insert(key, raw.as_slice())?;
-                    Ok(store)
-                }) {
-                    Ok(store) => Encoded::Stored { store, key },
-                    Err(_) => Encoded::Raw(raw),
-                }
-            }
+            Ok(raw) => Encoded::Raw(raw),
             Err(_) => Encoded::Values(items),
         };
+        let encoded = Arc::new(std::sync::Mutex::new(encoded));
+        queue_page(&encoded);
         Self {
             first,
             count,
@@ -172,7 +209,7 @@ impl Page {
         }
     }
     fn decode(&self) -> Result<Vec<Value>> {
-        match &self.encoded {
+        match &*self.encoded.lock().unwrap_or_else(|e| e.into_inner()) {
             Encoded::Stored { store, key } => {
                 let bytes = store
                     .pages
@@ -185,10 +222,10 @@ impl Page {
         }
     }
 }
-impl Drop for Page {
+impl Drop for Encoded {
     fn drop(&mut self) {
-        if let Encoded::Stored { store, key } = &self.encoded {
-            let _ = store.pages.remove(key);
+        if let Encoded::Stored { store, key } = self {
+            let _ = store.pages.remove(*key);
         }
     }
 }
@@ -570,10 +607,22 @@ mod tests {
         history.items_page(100, 3, false).unwrap();
         assert!(once <= before + 1);
         assert_eq!(history.decompressions, once);
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        while history
+            .pages
+            .iter()
+            .any(|p| matches!(&*p.encoded.lock().unwrap(), Encoded::Raw(_)))
+        {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "History cache did not spill pages"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
         let encoded: usize = history
             .pages
             .iter()
-            .map(|p| match &p.encoded {
+            .map(|p| match &*p.encoded.lock().unwrap() {
                 Encoded::Stored { .. } => 8,
                 Encoded::Raw(bytes) => bytes.len(),
                 Encoded::Values(v) => v.iter().map(value_bytes).sum(),
@@ -615,11 +664,17 @@ mod storage_tests {
     fn v95_engine_compresses_pages_and_releases_them() {
         let items = vec![json!({"id":"page","text":"repeated transcript ".repeat(50000)})];
         let page = Page::new(0, items.clone());
-        let Encoded::Stored { store, key } = &page.encoded else {
-            panic!("Fjall page storage must be available")
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        let (store, key) = loop {
+            if let Encoded::Stored { store, key } = &*page.encoded.lock().unwrap() {
+                break (store.clone(), *key);
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "Fjall page storage must become available"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
         };
-        let store = store.clone();
-        let key = *key;
         store.pages.rotate_memtable_and_wait().unwrap();
         assert_eq!(page.decode().unwrap(), items);
         assert!(
@@ -627,6 +682,45 @@ mod storage_tests {
             "Fjall LZ4 must compress repeated pages"
         );
         drop(page);
+        while store.pages.get(key).unwrap().is_some() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
         assert!(store.pages.get(key).unwrap().is_none());
+    }
+
+    #[test]
+    fn v100_slow_cold_cache_does_not_block_history_reads() {
+        let items = vec![json!({"text":"Saved answer"})];
+        let page = Page {
+            first: 0,
+            count: 1,
+            encoded: Arc::new(std::sync::Mutex::new(Encoded::Raw(
+                serde_json::to_vec(&items).unwrap(),
+            ))),
+        };
+        let weak = Arc::downgrade(&page.encoded);
+        let (started, ready) = std::sync::mpsc::channel();
+        let (resume, wait) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            spill_page(weak, || {
+                started.send(()).unwrap();
+                wait.recv().unwrap();
+                anyhow::bail!("fixture: cache disk unavailable")
+            })
+        });
+        ready
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .unwrap();
+        let page = Arc::new(page);
+        let reader_page = page.clone();
+        let (read, result) = std::sync::mpsc::channel();
+        let reader = std::thread::spawn(move || read.send(reader_page.decode()).unwrap());
+        let decoded = result.recv_timeout(std::time::Duration::from_secs(5));
+        // Always release the worker, even when the read assertion fails.
+        resume.send(()).unwrap();
+        worker.join().unwrap();
+        reader.join().unwrap();
+        assert_eq!(decoded.unwrap().unwrap(), items);
+        assert_eq!(page.decode().unwrap(), items);
     }
 }

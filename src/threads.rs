@@ -189,6 +189,7 @@ impl AppController {
         };
         thread.thread_id = None;
         thread.phase = ThreadPhase::Starting;
+        thread.last_error = None;
         thread.active_turn_id = None;
         thread.extras.started_here = true;
         thread.extras.interrupt_pending = false;
@@ -305,6 +306,24 @@ impl AppController {
         self.refresh_tabs();
     }
 
+    pub(crate) fn retry_thread_open(&mut self) {
+        let Some(index) = self.active_thread_index() else {
+            return;
+        };
+        let Some(thread) = self
+            .thread_tab(index)
+            .filter(|t| t.phase == ThreadPhase::Error)
+        else {
+            return;
+        };
+        if let Some(id) = thread.thread_id.clone() {
+            self.resume_thread_in_tab(index, id, false);
+        } else {
+            self.start_thread_in_tab(index);
+            self.refresh_tabs();
+        }
+    }
+
     fn after_thread_opened(&mut self, index: usize) {
         if self.active == Some(index) {
             self.show_active();
@@ -357,6 +376,7 @@ impl AppController {
             return;
         };
         thread.phase = ThreadPhase::Starting;
+        thread.last_error = None;
         // A turn id from before a restart is stale; `on_thread_resumed`
         // looks up the running turn again.
         thread.active_turn_id = None;
@@ -1363,7 +1383,7 @@ fn input_refusal(thread: &ThreadTab) -> Option<&'static str> {
     }
     match thread.phase {
         ThreadPhase::Error => Some(
-            "This thread could not start, so it cannot take messages. Close the tab and open the folder again.",
+            "This thread could not start. Choose Retry to open it again; your draft is preserved.",
         ),
         ThreadPhase::Closed => Some("This thread has ended. Close the tab and start a new one."),
         ThreadPhase::Starting

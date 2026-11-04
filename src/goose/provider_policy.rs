@@ -108,9 +108,7 @@ pub(super) async fn selected(requested: Option<String>) -> Result<String> {
     tokio::task::spawn_blocking(move || resolve(Config::global(), requested.as_deref())).await?
 }
 pub(super) async fn restored(id: &str) -> Result<()> {
-    let manager = goose_runtime::session::SessionManager::new(
-        goose_runtime::config::paths::Paths::data_dir(),
-    );
+    let manager = goose_runtime::session::SessionManager::instance();
     let session = manager
         .get_session(id, false)
         .await

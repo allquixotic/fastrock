@@ -86,16 +86,18 @@ try:
   ('uncertain-user','user',[dict(type='text',text='Uncertain fixture work')],True),
   ('uncertain-request','assistant',[dict(type='toolRequest',id='uncertain-tool',toolCall=dict(status='success',value=dict(name=tool_name,arguments=dict(path='src/main.rs'))))],True),
   ('uncertain-confirm','assistant',[dict(type='actionRequired',data=dict(actionType='toolConfirmation',id='uncertain-tool',toolName=tool_name,arguments=dict(path='src/main.rs'),prompt=None))],True),
-  ('uncertain-approval','user',[dict(type='actionRequired',data=dict(actionType='toolConfirmationResponse',id='uncertain-tool',permission='allow_once'))],False)]
+  ('uncertain-approval','user',[dict(type='actionRequired',data=dict(actionType='toolConfirmationResponse',id='uncertain-tool',permission='allow_once'))],False),
+  ('uncertain-steer','user',[dict(type='text',text='Steering does not settle the interrupted tool')],True)]
  with sqlite3.connect(database_path) as database:
   for mid,role,content,visible in contents:
-   database.execute('INSERT INTO messages (message_id,session_id,role,content_json,created_timestamp,metadata_json) VALUES (?,?,?,?,?,?)',(mid,thread,role,json.dumps(content),int(time.time()),json.dumps(dict(user_visible=visible,agent_visible=visible))))
+   database.execute('INSERT INTO messages (message_id,session_id,role,content_json,created_timestamp,metadata_json) VALUES (?,?,?,?,?,?)',(mid,thread,role,json.dumps(content),int(time.time()),json.dumps(dict(userVisible=visible,agentVisible=visible,steer=mid=='uncertain-steer'))))
   stored_before=database.execute('SELECT message_id,role,content_json,metadata_json FROM messages WHERE session_id=? ORDER BY id',(thread,)).fetchall()
  ordinary_before=sum(not r['summary'] for r in provider.requests)
  uncertain=run('uncertain',[{'wait_ready':30000},{'wait':600},{'resume':'goose:'+thread},{'wait':600},{'wait_idle':30000},*export('uncertain'),{'click_text':'Resume'},{'wait':500},
   {'click_text':'Checkpoints'},{'wait':500},*dump('uncertain-points'),{'key':'escape'},{'quit':True}])
  assert 'Recovery review required' in (out/'uncertain.md').read_text(encoding='utf-8')
  assert 'Uncertain fixture work' in (out/'uncertain.md').read_text(encoding='utf-8')
+ assert '[ActionRequired: ToolConfirmationResponse' not in (out/'uncertain.md').read_text(encoding='utf-8'), 'Hidden approval metadata was not decoded'
  assert sum(not r['summary'] for r in provider.requests)==ordinary_before,'Approved tool continuation activated on history load'
  with sqlite3.connect(database_path) as database:
   assert database.execute('SELECT message_id,role,content_json,metadata_json FROM messages WHERE session_id=? ORDER BY id',(thread,)).fetchall()==stored_before,'Recovery view changed stored messages'

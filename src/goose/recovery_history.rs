@@ -14,7 +14,7 @@ pub(super) fn uncertain(conversation: &Conversation) -> bool {
     let messages = conversation.messages();
     let start = messages
         .iter()
-        .rposition(|m| user(m) && m.is_user_visible() && !m.is_tool_response())
+        .rposition(|m| user(m) && m.is_user_visible() && !m.is_tool_response() && !m.metadata.steer)
         .unwrap_or(0);
     let mut requested = BTreeSet::new();
     let mut answered = BTreeSet::new();
@@ -73,23 +73,17 @@ impl Adapter {
         if !self.embedded_runtime {
             return Ok(false);
         }
-        let manager = goose_runtime::session::SessionManager::new(
-            goose_runtime::config::paths::Paths::data_dir(),
-        );
+        let manager = goose_runtime::session::SessionManager::instance();
         let conversation = super::checkpoint_storage::read(&manager, id)
             .await
             .map_err(|e| error(e.to_string()))?;
         let (reason, storage_pending) = if uncertain(&conversation) {
             (Some("This conversation contains tool calls whose outcomes are uncertain. Opening it cannot replay those calls.".to_string()), false)
         } else {
-            // A cold/recovering store is not a prerequisite for reading Goose's
-            // own saved messages. Never assume that an unavailable journal is
-            // empty: show a read-only view and require explicit Resume/recheck.
-            journal_status(
-                std::time::Duration::from_secs(2),
-                self.checkpoint_pending(id),
-            )
-            .await
+            // Browsing is already independent of activation. Explicit Resume
+            // waits for the journal without imposing an IO speed requirement;
+            // never interpret slow storage as an empty recovery journal.
+            journal_status(self.checkpoint_pending(id)).await
         };
         if let Some(reason) = reason {
             let mut sessions = self.sessions.lock().await;
@@ -122,7 +116,7 @@ impl Adapter {
             .lock()
             .await
             .get(id)
-            .is_some_and(|s| s.storage_pending);
+            .is_some_and(|s| s.storage_pending || s.activation_pending);
         if pending {
             self.load_session(&json!({"threadId":super::model::ui_id(id)}), false)
                 .await?;
@@ -143,26 +137,21 @@ impl Adapter {
 }
 
 async fn journal_status(
-    deadline: std::time::Duration,
     read: impl std::future::Future<Output = anyhow::Result<bool>>,
 ) -> (Option<String>, bool) {
-    match tokio::time::timeout(deadline, read).await {
-        Ok(Ok(false)) => (None, false),
-        Ok(Ok(true)) => (
+    match read.await {
+        Ok(false) => (None, false),
+        Ok(true) => (
             Some(
                 "A file/conversation restore was interrupted. Its retained backup needs review."
                     .into(),
             ),
             false,
         ),
-        Ok(Err(error)) => (
+        Err(error) => (
             Some(format!(
                 "Workspace recovery could not be checked: {error:#}"
             )),
-            true,
-        ),
-        Err(_) => (
-            Some("Workspace storage is still opening; recovery has not yet been checked.".into()),
             true,
         ),
     }
@@ -172,9 +161,7 @@ mod tests {
     use super::*;
     #[tokio::test]
     async fn v94_unavailable_journal_keeps_history_read_only_and_retryable() {
-        use std::time::Duration;
-        let deadline = Duration::from_millis(20);
-        let (reason, retry) = journal_status(deadline, std::future::pending()).await;
+        let (reason, retry) = journal_status(async { anyhow::bail!("store locked") }).await;
         let conversation = Conversation::new_unvalidated([
             Message::user().with_text("Existing question"),
             Message::assistant().with_text("Existing answer"),
@@ -191,14 +178,23 @@ mod tests {
                 && session.storage_pending
                 && session.active.is_none()
         );
-        assert_eq!(
-            journal_status(deadline, async { Ok(false) }).await,
-            (None, false)
-        );
-        let (reason, retry) = journal_status(deadline, async { Ok(true) }).await;
+        assert_eq!(journal_status(async { Ok(false) }).await, (None, false));
+        let (reason, retry) = journal_status(async { Ok(true) }).await;
         assert!(reason.unwrap().contains("interrupted") && !retry);
-        let (reason, retry) = journal_status(deadline, async { anyhow::bail!("locked") }).await;
+        let (reason, retry) = journal_status(async { anyhow::bail!("locked") }).await;
         assert!(reason.unwrap().contains("locked") && retry);
+    }
+    #[tokio::test(start_paused = true)]
+    async fn v100_resume_waits_for_slow_recovery_check() {
+        let (send, receive) = tokio::sync::oneshot::channel();
+        let task = tokio::spawn(journal_status(async { receive.await.unwrap() }));
+        tokio::task::yield_now().await;
+        tokio::time::advance(std::time::Duration::from_secs(3600)).await;
+        tokio::task::yield_now().await;
+        assert!(!task.is_finished());
+        send.send(Ok(true)).unwrap();
+        let (reason, retry) = task.await.unwrap();
+        assert!(reason.unwrap().contains("interrupted") && !retry);
     }
     #[test]
     fn v63_uncertain_history_is_read_only_without_activating_tools() {
@@ -224,6 +220,15 @@ mod tests {
             json!(session.turns.all_turns().unwrap())
                 .to_string()
                 .contains("No saved tools have been resumed")
+        );
+        conversation.push(
+            Message::user()
+                .with_text("Steering the interrupted turn")
+                .with_steer(),
+        );
+        assert!(
+            uncertain(&conversation),
+            "Steering must not hide an earlier uncertain tool"
         );
         conversation.push(Message::user().with_text("A later explicit question"));
         assert!(!uncertain(&conversation));

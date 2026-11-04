@@ -2747,3 +2747,41 @@ VM/host. Native evidence was archived and verified before deletion; release
 assets, CI evidence and logs remain under
 `/Users/sean/dev/codex/fastrock-release-evidence/0.4.1`. The post-crash access
 investigation and tested key selection are recorded in the tailnet skill.
+
+## Slow-storage history repair, stable 0.4.1 build 4 — 2026-11-04
+
+Saved history now loads independently through Goose's shared public session
+storage. Agent/provider/extension/workspace activation waits for explicit Resume.
+Native session, history and workspace operations have no fixed Fastrock deadline;
+errors retain readable history and expose Retry. Cold transcript pages start in
+RAM, then spill on a worker. New vwork workspaces reference a shared Git commit;
+point reads resolve just the requested path. Initial repository registration
+still imports Git objects once. Goose remains unmodified.
+
+Windows verification on games passed 856 Rust tests (809 application, one native
+renderer, 46 workspace), embedded-provider and clean-store fixtures, and all 40
+native scenarios across the broad pass and affected-case reruns. Eight affected
+native cases passed on the final fixture executable, including checkpoint
+recovery, delegation, queued Resume, provider failure and relaunch. The dedicated
+history test stalled a real configured MCP extension for 105 seconds: all 400
+saved messages remained readable, activation finished without a timeout, and a
+new turn completed without duplicate replay. An unavailable provider remained
+retryable without hiding history. Steering cannot conceal an unresolved tool;
+restored queues retain interrupted-send evidence and wait for explicit Resume.
+The pinned vwork code passed Windows/macOS hosted CI, strict lint and repeated
+lifecycle tests. Local Mac validation compiled only.
+
+The guarded full-scale games run passed with 1,000 conversations, eight concurrent
+streams and 10,000 exported messages. Observed history opening was 199.8 ms versus
+802.2 ms in the recorded build-3 run and 1,102.0 ms in the 0.3.4 baseline. Peak app
+memory was 246,493,184 bytes (about 235 MiB), comparable to build 3; scroll frame
+p95 was 9.733 ms versus 9.824 ms in build 3 and 8.422 ms in the older baseline.
+Tab-switch dispatch ranged from 0.4–0.9 ms. These are single-run fixture results,
+not measurements of the user's security software or input-to-photon latency.
+Host/guest headroom guards stayed active; no reduced-scale retry was needed.
+
+Receipts: [regressions](benchmarks/041-build4-regressions-games-2026-11-04.json),
+[scale](benchmarks/041-build4-scale-games-2026-11-04.json),
+[vwork CI](https://github.com/allquixotic/vwork/actions/runs/41932265671).
+Signed release CI must independently execute all 40 native cases on its signed
+executable before publication. Private work-profile validation remains user-owned.

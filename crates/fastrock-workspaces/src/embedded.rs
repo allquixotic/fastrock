@@ -264,6 +264,11 @@ impl Store {
         f(&engine)
     }
 
+    #[cfg(test)]
+    pub(crate) async fn block_workers(&self) -> tokio::sync::OwnedSemaphorePermit {
+        self.workers.clone().acquire_many_owned(8).await.unwrap()
+    }
+
     fn call(&self, op: &str, args: &Value) -> Result<Value> {
         ensure!(
             !QUIESCING.load(Ordering::Acquire),

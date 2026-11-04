@@ -23,7 +23,7 @@ CASES = [
     ('sidebar-policy', None), ('titles', None), ('queue', None),
     ('mentions', None), ('review', None), ('shell', None), ('console', None), ('side', None),
     ('window-recovery', None), ('relaunch', None), ('delete', None), ('history', []),
-    ('selection', []),
+    ('history-startup', []), ('selection', []),
     ('summary', ['--turns', '3', '--navigation', '--windows', '--tray']),
     ('summary-priority', None), ('memory', None),
     ('queue-recovery', ['--recovery']), ('process-recovery', ['--process-recovery']),
@@ -52,7 +52,7 @@ def main():
             script = 'summary' if name in ('queue-recovery', 'process-recovery') else name
             command = [sys.executable, str(dev/f'windows-{script}-smoke.py'), str(binary)]
             command += ['--output', str(out/name)]
-            if script == 'history' and args.seed_executable:
+            if script in ('history', 'history-startup') and args.seed_executable:
                 command += ['--seed-executable', str(args.seed_executable.resolve())]
             command += flags or []
             print(f'Native acceptance: {name}', flush=True)

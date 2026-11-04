@@ -58,8 +58,10 @@ export component GooseControls inherits Rectangle {
     VerticalLayout {
         spacing: Theme.pad-s;
         if GooseState.recovery-paused: HorizontalLayout {
-            Text { text: "Recovered work is paused · " + GooseState.recovered-pending + " queued"; color: Theme.text-muted; wrap: word-wrap; vertical-alignment: center; }
+            Text { text: GooseState.changing ? "Preparing conversation… Saved history remains available while you wait."
+                : "Saved history is available · Resume to continue · " + GooseState.recovered-pending + " queued"; color: Theme.text-muted; wrap: word-wrap; vertical-alignment: center; }
             FlatButton { text: "Resume"; enabled: !GooseState.changing && !GooseState.busy; clicked => { GooseState.resume-recovered(); } }
+            if GooseState.error != "": FlatButton { text: "Retry"; enabled: !GooseState.changing && !GooseState.busy; clicked => { GooseState.resume-recovered(); } }
         }
         if GooseState.uncertain-count > 0: VerticalLayout {
             FlatButton { text: "Review interrupted sends (" + GooseState.uncertain-count + ")"; clicked => { root.review-open = !root.review-open; } }

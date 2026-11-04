@@ -145,6 +145,7 @@ ignored = ["i-slint-common"]
 slint-build = { workspace = true, features = ["compat-1-18"] }
 
 [dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
 git2 = "0.21"
 async-trait = "0.1"
 wiremock = "0.6"

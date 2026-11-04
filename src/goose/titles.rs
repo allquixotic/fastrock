@@ -4,10 +4,7 @@ use super::*;
 use fastrock_workspaces::summaries::Summaries;
 use goose_context_management::{CompactionModel, ProviderModel};
 use goose_provider_types::{conversation::message::Message, model::ModelConfig};
-use goose_runtime::{
-    config::paths::Paths,
-    session::{Session as StoredSession, SessionManager, SessionType},
-};
+use goose_runtime::session::{Session as StoredSession, SessionManager, SessionType};
 use std::time::Duration;
 
 static GENERATIONS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
@@ -60,7 +57,7 @@ impl Adapter {
         let _permit = GENERATIONS.try_acquire().map_err(|_| {
             error("Title generation is busy; try again after the current titles finish")
         })?;
-        let manager = SessionManager::new(Paths::data_dir());
+        let manager = SessionManager::instance();
         let gate = self.gate(id).await;
         let before = {
             let _lock = gate.lock().await;

@@ -49,3 +49,28 @@ async fn v94_tool_discovery_does_not_open_a_locked_store() {
         .unwrap();
     assert_eq!(response["result"]["isError"], false, "{response}");
 }
+
+#[tokio::test(start_paused = true)]
+async fn v100_native_workspace_waits_for_completion_past_old_deadline() {
+    let temp = tempfile::tempdir().unwrap();
+    let provider = VworkProvider::new(&Installation {
+        id: "slow".into(),
+        label: "slow".into(),
+        home: temp.path().join("store"),
+    })
+    .unwrap();
+    let store = provider.embedded.store().await.unwrap();
+    let paused = store.block_workers().await;
+    let task = tokio::spawn(async move { provider.call("repo_list", json!({})).await });
+    tokio::task::yield_now().await;
+    tokio::time::advance(Duration::from_secs(3600)).await;
+    tokio::task::yield_now().await;
+    let abandoned = task.is_finished();
+    drop(paused);
+    let result = task.await.unwrap();
+    assert!(
+        !abandoned,
+        "Native operation abandoned an active workspace worker"
+    );
+    result.unwrap();
+}

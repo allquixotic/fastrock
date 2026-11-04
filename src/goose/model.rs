@@ -44,6 +44,10 @@ pub(super) struct Session {
     pub recovery_only: bool,
     /// Saved history is visible, but checkpoint ownership has not been checked.
     pub storage_pending: bool,
+    /// Public storage has been projected; agent startup waits for Resume.
+    pub activation_pending: bool,
+    /// ACP activation may replay messages already present in saved history.
+    pub discard_replay: bool,
     pub ephemeral: bool,
     pub last_chunk: String,
     pub echo_user: Option<String>,
@@ -129,6 +133,9 @@ impl Session {
             if let Some(option) = self.config.iter_mut().find(|o| o["id"] == "mode") {
                 option["currentValue"] = update["currentModeId"].clone();
             }
+            return vec![];
+        }
+        if self.replaying && self.discard_replay {
             return vec![];
         }
         let mut events = Vec::new();

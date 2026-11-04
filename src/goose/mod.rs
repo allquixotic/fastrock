@@ -29,6 +29,7 @@ mod recovery_retry_tests;
 mod restore_extensions;
 mod review;
 mod schedule;
+mod stored_history;
 pub(crate) use queue::Recovery;
 mod effort_controls;
 mod effort_defaults;
@@ -364,7 +365,9 @@ where
                 running.spawn(async move {
                     if request.get("method").is_none() { adapter.answer(request).await; return }
                     let id = request["id"].clone();
-                    let result = adapter.request(&request).await;
+                    use futures::FutureExt;
+                    let result = std::panic::AssertUnwindSafe(adapter.request(&request))
+                        .catch_unwind().await.unwrap_or_else(|_| Err(error("The conversation operation stopped unexpectedly. Retry to reopen saved history.")));
                     let reply = match result { Ok(result) => json!({"id":id,"result":result}), Err(error) => json!({"id":id,"error":error}) };
                     let _ = crate::transport::dispatch(reply,&pending,&adapter.events).await;
                 });
@@ -627,7 +630,12 @@ impl Adapter {
                 json!({"data":self.sessions.lock().await.iter().filter(|(_,s)|s.loaded).map(|(id,_)|ui_id(id)).collect::<Vec<_>>(),"nextCursor":null}),
             ),
             "thread/resume" | "thread/read" => {
-                self.load_session(params, method == "thread/resume").await
+                if self.embedded_runtime {
+                    self.open_saved_history(params, method == "thread/resume")
+                        .await
+                } else {
+                    self.load_session(params, method == "thread/resume").await
+                }
             }
             "thread/turns/list" | "thread/items/list" => self.history(params, method).await,
             "fastrock/history/window" => self.history_window(params).await,

@@ -129,6 +129,20 @@ fn phase_code(phase: ThreadPhase) -> i32 {
 impl AppController {
     pub(crate) fn transcript_bind(&mut self) {
         self.history_navigation_bind();
+        self.window
+            .global::<TranscriptState>()
+            .on_retry_open(crate::ui_thread::scoped_callback!(|| {
+                crate::ui_thread::with_app(AppController::retry_thread_open);
+            }));
+        self.window
+            .global::<TranscriptState>()
+            .on_close_open(crate::ui_thread::scoped_callback!(|| {
+                crate::ui_thread::with_app(|app| {
+                    if let Some(index) = app.active_thread_index() {
+                        app.close_tab(index);
+                    }
+                });
+            }));
         let state = self.window.global::<TranscriptState>();
         state.on_selection_pointer(crate::ui_thread::scoped_callback!(|x, y, start, extend| {
             crate::ui_thread::with_app(move |app| app.selection_pointer(x, y, start, extend))
@@ -327,6 +341,7 @@ impl AppController {
         state.set_older_failed(!history.can_auto_load());
         state.set_status_text(status_text(thread).into());
         state.set_phase(phase_code(thread.phase));
+        state.set_opening_existing(thread.thread_id.is_some());
         state.set_folder(crate::app::folder_label(&thread.cwd).into());
         state.set_base_directory(thread.cwd.to_string_lossy().as_ref().into());
         state.set_error_text(thread.last_error.clone().unwrap_or_default().into());

@@ -812,6 +812,17 @@ impl AppController {
         for event in events {
             match event {
                 AppServerEvent::GooseSchedulesChanged => self.schedules_changed(),
+                AppServerEvent::GooseHistoryPaused { thread_id } => {
+                    if self.tab_index_for_thread(&thread_id).is_some() {
+                        self.composer_shared
+                            .goose_recovery
+                            .entry(thread_id)
+                            .or_default()
+                            .paused = true;
+                        self.goose_controls_refresh();
+                        self.info_render();
+                    }
+                }
                 AppServerEvent::GooseRecovery {
                     thread_id,
                     recovery,

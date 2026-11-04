@@ -1,7 +1,7 @@
 //! Per-provider/model defaults; choices remain authoritative from unchanged Goose.
 use super::*;
 use anyhow::{Context, Result, ensure};
-use goose_runtime::config::{Config, ConfigError, paths::Paths};
+use goose_runtime::config::{Config, ConfigError};
 use goose_runtime::session::SessionManager;
 use std::{collections::BTreeMap, sync::Mutex};
 
@@ -49,9 +49,7 @@ fn write(config: &Config, provider: &str, model: &str, value: Option<&str>) -> R
 }
 
 async fn identity(id: &str) -> Result<(String, String)> {
-    let session = SessionManager::new(Paths::data_dir())
-        .get_session(id, false)
-        .await?;
+    let session = SessionManager::instance().get_session(id, false).await?;
     Ok((
         session.provider_name.context("No provider selected")?,
         session
