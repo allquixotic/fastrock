@@ -1,0 +1,47 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.15",
+  "recorded_at": "2026-11-04T16:19:39.001044+00:00",
+  "prior_storage_cleanup": "rc13-cleanup-2026-11-04.json",
+  "games": {
+    "removed_tree": "C:\\Users\\SeanMcNamara\\fastrock-rc15-verify",
+    "files": 591,
+    "bytes": 584406286,
+    "evidence_sha256": "c3d6178d2b5d7938433119823fa6bed1ee797875d202ead9b3c39ae2c5ca2705",
+    "remaining_fixture_processes": 0,
+    "free_bytes": 2889840906240
+  },
+  "temporary_windows_probes": [
+    {
+      "path": "C:\\Users\\SeanMcNamara\\fastrock-config-probe.exe",
+      "bytes": 1207808
+    },
+    {
+      "path": "C:\\Users\\SeanMcNamara\\fastrock_config_probe.exe",
+      "bytes": 49955328
+    },
+    {
+      "path": "C:\\Users\\SeanMcNamara\\fixture.yaml",
+      "bytes": 534
+    }
+  ],
+  "local_additional_removed_bytes": 2552907509,
+  "temporary_runner_removed": true,
+  "registered_temporary_runners": 0,
+  "retained": [
+    "Active Cargo incremental caches and current test executables",
+    "RC12 release, RC13/RC14 failure evidence and RC15 release evidence",
+    "All user data/configuration and installed applications",
+    "Running games VM and host"
+  ],
+  "evidence_archives": {
+    "native": "c3d6178d2b5d7938433119823fa6bed1ee797875d202ead9b3c39ae2c5ca2705",
+    "configuration_investigation": "1aeca8889393f229c8c42e37577f12f4b484fd68193af5113805c96e2d11f569"
+  },
+  "signature_verification_copies_removed": {
+    "local_bytes": 138671376,
+    "games_bytes": 138671376,
+    "application_launched": false,
+    "official_zip_and_evidence_retained": true
+  }
+}

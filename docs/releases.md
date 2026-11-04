@@ -8,22 +8,23 @@ at opt-level 0. Goose stays pinned and unmodified; embedded vwork is maintained
 with Fastrock. Release archives include their licenses. Existing 0.3.x binaries retain the
 historical settings documented below.
 
-RC15 introduces Fjall storage, engine-managed LZ4, shared Git delta objects and
+[RC15](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.15) introduces
+Fjall storage, engine-managed LZ4, shared Git delta objects and
 automatic/manual redb migration with native progress and Pause/Resume. Original
 redb files remain intact. See [migration guidance](FJALL-STORAGE.md) and
 [verification](PORT-VERIFICATION.md#fjall-storage-and-migration-rc13-2026-11-04).
 
 Binary publication is gated on feature-complete, verified release-candidate
-readiness. The RC13 candidate's local checks include 841 Windows Rust tests, native migration,
-13 storage-dependent UI regressions, and the full guarded scale benchmark. The
-pinned vwork dependency passed 80 tests on each hosted platform and repeated
-lifecycle checks. CI rebuilds, signs and tests the release executable before
-publication. RC13 stopped before publication when its capability fixture sampled
-an unfinished save after a fixed delay. RC14 waits for completion with a deadline;
-the storage implementation is unchanged. RC14 was also held when a hosted test
-reported a configuration-save failure. RC15 adds safe save-stage diagnostics and
-bounded Windows atomic-replacement retries that preserve concurrent edits.
-See [verification](PORT-VERIFICATION.md) and
+readiness. RC15 passed 846 Windows Rust tests, all 39 native acceptance cases,
+migration, catalog and scrolling checks on the signed executable. Both platforms
+compiled. The pinned vwork dependency passed 80 tests on each hosted platform
+and repeated lifecycle checks. Local acceptance also covered a 2.5 GiB migration,
+13 storage-dependent UI regressions, the full guarded scale benchmark, and
+repeated native provider-settings checks. Downloaded checksums, provenance and
+Windows publisher/timestamp verification passed independently.
+Provider-setting saves include safe failure-stage diagnostics and bounded Windows
+replacement retries that preserve observed concurrent edits.
+See [verification](PORT-VERIFICATION.md#rc15-signed-publication-and-independent-verification) and
 [memory behavior and limits](MEMORIES.md).
 
 Use **Quit** in the previous version's tray menu before launching RC15. A window

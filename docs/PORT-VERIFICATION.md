@@ -2575,3 +2575,43 @@ save/clear/restart runs, two capability runs, provider setup and named profiles.
 The repeated native runs retained a live host-memory guard and a 2 GB process-tree
 cap; peak observed process memory was 166.3 MB. Real held-file fixtures verify
 temporary and permanent sharing violations and preservation of concurrent edits.
+
+### RC15 signed publication and independent verification
+
+[Fastrock 0.4.0-rc.15](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.15)
+was published by [CI 41863273951](https://github.com/allquixotic/fastrock/actions/runs/41863273951)
+from `6b2226d5dc46cb2b414109d660ba1cb2eb2dcffe`. Windows and macOS compiled;
+all **846 Windows Rust tests** passed. Mac publication was skipped, and no Mac
+application or tests ran locally. The Windows job succeeded on its first attempt.
+GitHub's Actions incident delayed dispatch and job-status updates; the complete
+release pipeline ran without bypassing any gate.
+
+All **39 native cases** passed on the signed executable in 1,016.82 seconds,
+including effort save/clear, capabilities, workspace operations, memory, search,
+scheduling, Rally and restart recovery. The additional native migration fixture
+verified automatic/manual progress, Pause/Resume, registry discovery, thread
+handoff, byte-exact source preservation and reopening without redb. Catalog and
+scrolling checks passed; hosted p95 frame times ranged from 5.10 to 7.86 ms.
+The guarded 2.5 GiB migration/startup and full-scale games receipts above cover
+the unchanged Fjall implementation.
+
+The Windows ZIP is **139,628,217 bytes**, SHA-256
+`6d35530c2e5e5bc3822f9f167d603378d130a74712f9c20761b3b7b95e5b63b5`.
+The executable SHA-256 is
+`cdf959ccc19a02342a558bd3f9985154348ee2f1861f3353dba841aeecb0cd99`.
+Downloaded checksum, package metadata, licenses, online and bundled GitHub
+attestations matched the tag, source and release workflow. Read-only verification
+on games confirmed Valid Sean McNamara Authenticode signing and the Microsoft
+RFC 3161 timestamp. That verification did not launch the application.
+
+[CI evidence](benchmarks/rc15-release-ci-2026-11-04.json) records every native
+case, migration result, signature and artifact identity. The
+[storage cleanup](benchmarks/rc13-cleanup-2026-11-04.json) and
+[final cleanup](benchmarks/rc15-cleanup-2026-11-04.json) retain proof of removal
+of task databases, probes, transfer archives, stale test executables and completed
+CI staging copies. Active caches, user data and release evidence remain; games
+stayed running. No fixture processes or temporary runners remained.
+
+Use explicit **Quit** on the previous tray process before upgrading. Original
+redb files remain intact after migration. RC15 automated acceptance is complete;
+the user's live Bedrock profile acceptance remains required for final stable 0.4.0.
