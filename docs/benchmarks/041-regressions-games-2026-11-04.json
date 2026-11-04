@@ -1,0 +1,183 @@
+{
+  "source_commit": "c5dce68",
+  "vwork_revision": "ee1a10b341f48c858dc4daa3c60e8608525fd08c",
+  "result": "PASS",
+  "windows_rust_tests": 848,
+  "application_tests": 803,
+  "renderer_tests": 1,
+  "workspace_tests": 44,
+  "native": {
+    "binary_sha256": "48d68864a38620a61c152d3e09ac7d604eecc49a99853b84d2d1ea71ef1702bb",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 32.7,
+        "peak_tree_bytes": 158089216
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 42.33,
+        "peak_tree_bytes": 156839936
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.91,
+        "peak_tree_bytes": 156413952
+      },
+      {
+        "name": "relaunch",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.45,
+        "peak_tree_bytes": 92246016
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 36.53,
+        "peak_tree_bytes": 158851072
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 41.33,
+        "peak_tree_bytes": 155197440
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 19.27,
+        "peak_tree_bytes": 155578368
+      }
+    ]
+  },
+  "native_guard": [
+    {
+      "case": "native",
+      "result": "PASS",
+      "seconds": 232.23,
+      "peak": 158068736,
+      "peak_tree": 169816064
+    }
+  ],
+  "runs": [
+    {
+      "case": "tests-durability",
+      "result": "PASS",
+      "seconds": 1.16,
+      "peak": 11010048,
+      "peak_tree": 2527232
+    },
+    {
+      "case": "tests-review",
+      "result": "PASS",
+      "seconds": 0.86,
+      "peak": 16719872,
+      "peak_tree": 8093696
+    },
+    {
+      "case": "tests-integration",
+      "result": "PASS",
+      "seconds": 2.56,
+      "peak": 25657344,
+      "peak_tree": 9203712
+    },
+    {
+      "case": "tests-store_startup",
+      "result": "PASS",
+      "seconds": 0.69,
+      "peak": 14458880,
+      "peak_tree": 6189056
+    },
+    {
+      "case": "tests-embedded",
+      "result": "PASS",
+      "seconds": 1.88,
+      "peak": 16273408,
+      "peak_tree": 5812224
+    },
+    {
+      "case": "tests-migration",
+      "result": "PASS",
+      "seconds": 1.2,
+      "peak": 14757888,
+      "peak_tree": 8146944
+    },
+    {
+      "case": "tests-checkpoints",
+      "result": "PASS",
+      "seconds": 2.22,
+      "peak": 25915392,
+      "peak_tree": 9179136
+    },
+    {
+      "case": "tests-fastrock_workspaces",
+      "result": "PASS",
+      "seconds": 2.09,
+      "peak": 144437248,
+      "peak_tree": 139390976
+    },
+    {
+      "case": "tests-codex_gui",
+      "result": "PASS",
+      "seconds": 3.31,
+      "peak": 130113536,
+      "peak_tree": 169316352
+    },
+    {
+      "case": "window",
+      "result": "PASS",
+      "seconds": 1.12,
+      "peak": 24838144,
+      "peak_tree": 6873088
+    },
+    {
+      "case": "tests-fastrock",
+      "result": "PASS",
+      "seconds": 0.48,
+      "peak": 2347008,
+      "peak_tree": 520192
+    },
+    {
+      "case": "tests-embedded_goose",
+      "result": "PASS",
+      "seconds": 1.25,
+      "peak": 89845760,
+      "peak_tree": 59752448
+    },
+    {
+      "case": "release-policy",
+      "result": "PASS",
+      "seconds": 1.25,
+      "peak": 27537408,
+      "peak_tree": 27627520
+    },
+    {
+      "case": "scale",
+      "result": "PASS",
+      "seconds": 42.05,
+      "peak": 162230272,
+      "peak_tree": 213733376
+    }
+  ],
+  "vwork_ci": "https://github.com/allquixotic/vwork/actions/runs/41902064118",
+  "vwork_platforms": [
+    "Windows",
+    "hosted macOS"
+  ],
+  "notes": [
+    "No Mac application or tests executed locally.",
+    "Real 30-second journal worker/crash-reopen, explicit save crash recovery, deadline/failure rejection, continuous writes and shutdown drain verified.",
+    "Only fixture providers; work-machine session/load timeout cause remains unconfirmed."
+  ]
+}

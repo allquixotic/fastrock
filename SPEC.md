@@ -231,7 +231,7 @@ V98: Ordinary workspace writes ! buffered journal, OS flush cadence 1s, non-debo
 
 ## §T TASKS
 id|status|task|cites
-T71|~|Buffered workspace durability, explicit save/shutdown barriers, 60s deadline and stable 0.4.1 CI release|V98,V95,V96,V63,V47,I.vwork,I.lifecycle,I.distribution
+T71|x|Buffered workspace durability, explicit save/shutdown barriers, 60s deadline and stable 0.4.1 packaging; Windows/hosted Mac storage tests, 848 app/workspace tests, native regressions and full-scale games benchmark passed|V98,V95,V96,V63,V47,I.vwork,I.lifecycle,I.distribution
 T70|x|Fjall storage integration, engine-owned scrollback compression, automatic/manual migration GUI and concurrent workload acceptance|V95,V96,V40,V43,V92,V93,V94,I.vwork,I.memory
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
 T2|x|Recover Windows retained surface; Auto uses CPU in RDP|V2,I.paint

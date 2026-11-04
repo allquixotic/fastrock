@@ -2615,3 +2615,46 @@ stayed running. No fixture processes or temporary runners remained.
 Use explicit **Quit** on the previous tray process before upgrading. Original
 redb files remain intact after migration. RC15 automated acceptance is complete;
 the user's live Bedrock profile acceptance remains required for final stable 0.4.0.
+
+### 0.4.1 buffered journal acceptance
+
+The user explicitly authorized stable 0.4.1 with a 60-second durability window.
+Ordinary mutations now buffer in Fjall RAM, flush to OS buffers on a one-second
+cadence, and request journal sync after 30 seconds without debouncing continuous
+writes. Explicit saves and recovery intents retain durable barriers. Clean Quit
+drains admitted workspace operations and syncs all open stores before exit;
+failures leave the application open. Failed or overdue journals reject new writes.
+
+[Vwork CI](https://github.com/allquixotic/vwork/actions/runs/41902064118) passed
+Windows and hosted macOS tests and strict clippy for pinned
+`ee1a10b341f48c858dc4daa3c60e8608525fd08c`. It exercises the real 30-second
+worker followed by process termination and reopen, explicit-save crash recovery,
+sync failures, overdue rejection, concurrent-write bookkeeping and lifecycle races.
+An old crash fixture now explicitly syncs before asserting durable recovery;
+ordinary writes intentionally no longer carry that immediate guarantee.
+
+[Windows application validation](benchmarks/041-regressions-games-2026-11-04.json)
+passed all **848 Rust tests**, release-policy tests and seven native cases:
+workspace saves, checkpoints, window recovery, relaunch ownership, summaries,
+memory and process recovery. New integration tests verify durable Save, manual
+memory updates and shutdown draining an admitted write across multiple stores.
+Mac compatibility compiled; no Mac application or tests ran locally.
+
+The [guarded games benchmark](benchmarks/041-scale-games-2026-11-04.json) passed
+1,000 stored conversations, eight concurrent streams and a 10,000-message history
+without reducing scale. Peak application memory was **250,335,232 bytes**, far
+below the 32 GB ceiling. The measured p95 frame time was **18.90 ms**, switch
+dispatch **0.5–0.9 ms**, and history opening **1,106.8 ms**. First/middle/last
+history navigation and complete export preserved all messages. Host and guest
+headroom guards remained active.
+
+The retained [0.3.4 baseline](benchmarks/rc1-scale-baseline-games-2026-10-30.json)
+measured 182,415,360 application bytes, 8.422 ms p95 frames, 0.7–1.0 ms switch
+dispatch and 1,102.0 ms history opening with an external Goose process. These
+different-day/backend runs do not establish a general performance improvement;
+this run's frames were slower than both that baseline and RC13. The exact cause
+of the work-machine `session/load` timeout remains unconfirmed. Live private
+profiles remain user-validated, not represented as tested by fixtures.
+
+The stable tag is rebuilt, signed and fully tested again by release CI before
+publication. Release and cleanup evidence will be recorded after verification.
