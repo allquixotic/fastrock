@@ -2718,3 +2718,32 @@ The post-restart SSH failure was key selection: the Mac's agent no longer
 offered the previously accepted Ed25519 key, while configured RSA was rejected.
 Host and guest authorized keys/configuration were unchanged; explicitly using
 the already-authorized Ed25519 key restored access without server changes.
+
+### Stable 0.4.1 publication and cleanup
+
+[Fastrock 0.4.1](https://github.com/allquixotic/fastrock/releases/tag/v0.4.1%2Bbuild.3)
+is published as the latest **stable**, not prerelease, Windows x64 ZIP. The
+additive build tag preserves both failed tags; package/application version is
+`0.4.1`. [Release CI](https://github.com/allquixotic/fastrock/actions/runs/41920751890)
+succeeded from `624003869972b8b0721f4839551d4bf3b68f2f6a`. It compiled Windows
+and macOS, passed **849 Rust tests**, and validated the exact signed executable
+with **39 native acceptance cases**, seven migration checks, organization catalog
+acceptance and five scrolling scenarios. Mac publication was skipped; no Mac
+application or tests ran locally. Temporary runner registrations returned to zero.
+
+The [release receipt](benchmarks/041-release-ci-2026-11-04.json) records the
+independently downloaded package's checksum, source/build/license metadata,
+online and bundled GitHub attestations, and Windows Authenticode/publisher/secure
+timestamp verification on games. The executable was not launched during the
+download check. ZIP SHA-256:
+`daaf27ec1e9255e731d92d1eefb4f66b5bd2d579de5eb302607d3624275bb793`.
+Signed executable SHA-256:
+`ac92d18d1d1fa798049dd80af5c8b459e6bfb0bffe469528ab6270cebd9bdd38`.
+
+[Cleanup](benchmarks/041-cleanup-2026-11-04.json) removed **1,262,047,426 bytes**
+locally and **1,679,161,235 bytes** of test files on games. It preserved active
+incremental caches, all user data/settings, installed applications and running
+VM/host. Native evidence was archived and verified before deletion; release
+assets, CI evidence and logs remain under
+`/Users/sean/dev/codex/fastrock-release-evidence/0.4.1`. The post-crash access
+investigation and tested key selection are recorded in the tailnet skill.

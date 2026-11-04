@@ -1,0 +1,58 @@
+{
+  "result": "PASS",
+  "version": "0.4.1",
+  "recorded_at": "2026-11-04T22:30:51.620018+00:00",
+  "games": {
+    "removed_tree": "C:\\Users\\SeanMcNamara\\fastrock-041-verify",
+    "files": 1943,
+    "bytes": 1679161235,
+    "evidence_sha256": "9de9d7d65961235aebe9820ff95b00bb2441d9daf176b24d86fd4735d8a4a494",
+    "remaining_fixture_processes": 0,
+    "free_bytes": 2889330999296
+  },
+  "local": {
+    "removed": [
+      {
+        "path": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1/build3-inputs.zip",
+        "bytes": 213414556
+      },
+      {
+        "path": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1/signed-fastrock.exe",
+        "bytes": 138711824
+      },
+      {
+        "path": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1/build2-failed",
+        "bytes": 161296236
+      },
+      {
+        "path": "/Users/sean/dev/codex/fastrock-ci-build/work/fastrock/fastrock/build/release-inputs",
+        "bytes": 748624810
+      }
+    ],
+    "removed_bytes": 1262047426,
+    "retained": [
+      "Official release ZIP, checksum and attestation",
+      "Failed and successful CI evidence archives and logs",
+      "Native fixture evidence archive and benchmark receipts",
+      "Active Cargo incremental caches and current test executables",
+      "User databases, configuration and installed applications"
+    ],
+    "free_bytes": 3505654554624
+  },
+  "temporary_runner_removed": true,
+  "registered_temporary_runners": 0,
+  "evidence_location": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1",
+  "native_evidence": {
+    "archive": "C:\\Users\\SeanMcNamara\\fastrock-041-fixture-evidence.zip",
+    "sha256": "9de9d7d65961235aebe9820ff95b00bb2441d9daf176b24d86fd4735d8a4a494",
+    "files": 990,
+    "bytes": 9938288
+  },
+  "notes": [
+    "Only task-owned fixture stores, transfer archives, extracted verification copies and completed CI staging were removed.",
+    "Native evidence was recovered and SHA-256 verified before deletion; official packages, failed/successful CI evidence and logs remain in persistent storage outside /tmp.",
+    "No application or tests ran on Sean's Mac. Authenticode verification on games read the downloaded executable without launching it.",
+    "Existing Ed25519 key selection restored SSH after the Mac restart; no host/guest SSH configuration or keys changed.",
+    "User data/configuration, active incremental caches and the running games VM/host were preserved."
+  ]
+}
