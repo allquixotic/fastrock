@@ -1,12 +1,12 @@
-# Fastrock 0.4.0-rc.11
+# Fastrock 0.4.0-rc.12
 
-- Fastrock conservatively learns durable terminology, preferences and project conventions from explicit user statements after completed turns. It does not learn after individual tool calls or mine old conversations. Learning uses the configured cheap model, runs while idle, and is cancelled when foreground work starts.
-- A native in-process recall tool reads only the RAM cache and returns at most 2 KiB of relevant facts per user turn. Facts stay within their project unless explicitly shared. Goose remains unchanged; recall is model-initiated and uses an ordinary tool step.
-- Memories are compressed in vwork's existing redb, with deduplication, expiry, capacity limits and protection against stale learning results. Settings → Memories lets you inspect, edit, pin, forget or clear facts, and independently disable learning or recall.
-- Existing provider controls, Bedrock routes, speed settings, Rally boards, scheduling, workspaces and conversation features are retained. No separate backend installation is required.
+- Old conversations remain readable when workspace storage is slow or locked. After a two-second checkpoint recovery probe, unavailable storage produces a read-only history view. **Resume** retries the check before allowing work; uncertain tools and interrupted restores still require review.
+- Launching Fastrock again restores the existing Windows tray process and forwards requested folders or threads. It no longer starts a competing owner of the same profile. Explicit **Quit** releases ownership.
+- Workspace tool discovery no longer opens redb, and embedded store startup defers expired-workspace cleanup. Cleanup still preserves changed files. Database lock errors give ownership guidance instead of suggesting backup restoration.
+- Restore diagnostics identify active loading stages, and request timeout messages no longer refer to Codex. Conservative memories, provider profiles, Bedrock routes, Rally, scheduling and existing conversation features remain supported. Goose remains unchanged.
 
-See [memory behavior and limits](https://github.com/allquixotic/fastrock/blob/v0.4.0-rc.11/docs/MEMORIES.md). Forgetting a memory does not erase prior conversation/tool results. Memories maintained by previously enabled external extensions remain separate.
+When upgrading from RC11 or older, use **Quit** in the old version's tray menu before launching RC12. Closing its window alone leaves it running. Do not delete or replace a workspace database because of a lock conflict.
 
-RC10 was not published: its legacy summary fixture counted a background memory request as a conversation answer. RC11 distinguishes these requests and explicitly exercises them in the summary regression; application behavior is unchanged.
+See [memory behavior and limits](https://github.com/allquixotic/fastrock/blob/v0.4.0-rc.12/docs/MEMORIES.md) and the [user guide](https://github.com/allquixotic/fastrock/blob/v0.4.0-rc.12/docs/gui.md).
 
 Signed Windows x64 ZIP; macOS compatibility compile only. This is a release candidate; final live AWS profile acceptance remains with the user.

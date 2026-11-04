@@ -301,20 +301,23 @@ impl Adapter {
     }
 
     pub(super) async fn load_session(self: &Arc<Self>, params: &Value, resume: bool) -> Reply {
+        use super::latency::{Phase, step};
         let _foreground = self.summaries.as_ref().map(|s| s.foreground());
         let id = session_id(text(params, "threadId"))?;
         let gate = self.gate(id).await;
-        let _lock = gate.lock().await;
+        let _lock = step(Phase::RestoreGate, gate.lock()).await;
         self.deletion_ready(id).await?;
         let known = self.sessions.lock().await.contains_key(id);
         if !known {
-            let info = self
-                .rpc
-                .call("_goose/unstable/session/info", json!({"sessionId":id}))
-                .await?;
+            let info = step(
+                Phase::RestoreHistory,
+                self.rpc
+                    .call("_goose/unstable/session/info", json!({"sessionId":id})),
+            )
+            .await?;
             let mut s = Session::new(id, &self.cwd);
             s.info = info["session"].clone();
-            s.binding = self.binding_record(id).await?;
+            s.binding = step(Phase::RestoreHistory, self.binding_record(id)).await?;
             s.ephemeral = s.binding.side;
             self.sessions.lock().await.insert(id.to_string(), s);
         }
@@ -323,15 +326,18 @@ impl Adapter {
             .lock()
             .await
             .get(id)
-            .is_some_and(|s| !s.loaded);
-        if needs_load && !self.recovery_history(id).await? {
+            .is_some_and(|s| !s.loaded || s.storage_pending);
+        if needs_load && !step(Phase::RestoreHistory, self.recovery_history(id)).await? {
             if self.embedded_runtime {
-                super::provider_policy::restored(id)
+                step(Phase::RestoreSettings, super::provider_policy::restored(id))
                     .await
                     .map_err(|e| error(e.to_string()))?;
-                super::restore_extensions::prepare(id)
-                    .await
-                    .map_err(|e| error(format!("Restore tools: {e:#}")))?;
+                step(
+                    Phase::RestoreSettings,
+                    super::restore_extensions::prepare(id),
+                )
+                .await
+                .map_err(|e| error(format!("Restore tools: {e:#}")))?;
             }
             if self.capabilities.lock().await["loadSession"] != true {
                 return Err(unsupported("session/load"));
@@ -348,12 +354,12 @@ impl Adapter {
                 )
             };
             if let Some(workspace) = &workspace {
-                let resolved = workspace
-                    .selection
-                    .clone()
-                    .resolve()
-                    .await
-                    .map_err(|e| error(format!("Restore bound workspace: {e:#}")))?;
+                let resolved = step(
+                    Phase::RestoreWorkspace,
+                    workspace.selection.clone().resolve(),
+                )
+                .await
+                .map_err(|e| error(format!("Restore bound workspace: {e:#}")))?;
                 if tokio::fs::canonicalize(&cwd).await.ok().as_ref() != Some(&resolved.cwd) {
                     return Err(error(
                         "The saved conversation directory differs from its workspace; preserve the binding for recovery",
@@ -393,16 +399,25 @@ impl Adapter {
                     Err(e) => return Err(error(format!("Read session tools: {e}"))),
                 }
             }
-            servers.extend(self.load_vwork_servers(id, &cwd).await?);
-            {
+            servers.extend(step(Phase::RestoreTools, self.load_vwork_servers(id, &cwd)).await?);
+            let previous = {
                 let mut sessions = self.sessions.lock().await;
                 let s = sessions
                     .get_mut(id)
                     .ok_or_else(|| error("Session unavailable"))?;
+                // Keep the compressed read-only history until activation has
+                // actually succeeded; a provider error must not erase it.
+                let previous = s.storage_pending.then(|| {
+                    (
+                        std::mem::take(&mut s.turns),
+                        std::mem::take(&mut s.last_chunk),
+                    )
+                });
                 s.replaying = true;
                 s.turns.clear();
                 s.last_chunk.clear();
-            }
+                previous
+            };
             let loaded = self
                 .rpc
                 .call(
@@ -419,18 +434,24 @@ impl Adapter {
                 Ok(r) => r,
                 Err(e) => {
                     s.turns.clear();
+                    if let Some((turns, chunk)) = previous {
+                        s.turns = turns;
+                        s.last_chunk = chunk;
+                    }
                     return Err(e);
                 }
             };
             s.config = config_options(&response);
             drop(sessions);
-            self.restrict_native_delegation(id).await?;
-            self.refresh_speed(id).await?;
+            step(Phase::RestoreSettings, self.restrict_native_delegation(id)).await?;
+            step(Phase::RestoreSettings, self.refresh_speed(id)).await?;
             let mut sessions = self.sessions.lock().await;
             let s = sessions
                 .get_mut(id)
                 .ok_or_else(|| error("Session unavailable"))?;
             s.loaded = true;
+            s.storage_pending = false;
+            s.recovery_only = false;
             self.config_event(id, s)?;
         }
         let mut sessions = self.sessions.lock().await;
@@ -450,7 +471,7 @@ impl Adapter {
             );
         }
         drop(sessions);
-        self.queue_event(id, self.load_queue(id).await?);
+        self.queue_event(id, step(Phase::RestoreQueue, self.load_queue(id)).await?);
         Ok(result)
     }
 
@@ -589,9 +610,11 @@ impl Adapter {
                 .filter(|s| s.loaded)
                 .ok_or_else(|| error("Open the session before sending"))?;
             if s.recovery_only {
-                return Err(error(
-                    "Review the uncertain history in Checkpoints or fork before the interrupted turn before sending new work",
-                ));
+                return Err(error(if s.storage_pending {
+                    "Workspace recovery has not been checked. Choose Resume to retry; saved history remains read-only."
+                } else {
+                    "Review the uncertain history in Checkpoints or fork before the interrupted turn before sending new work"
+                }));
             }
             if s.active.is_some() {
                 return Err(error("This conversation already has an active turn"));

@@ -1,0 +1,46 @@
+use super::*;
+
+#[tokio::test]
+async fn v94_tool_discovery_does_not_open_a_locked_store() {
+    let temp = tempfile::tempdir().unwrap();
+    let home = temp.path().join("store");
+    std::fs::create_dir(&home).unwrap();
+    // Model an existing tray process, with its actual exclusive redb lock.
+    let owner = redb::Database::create(home.join("workspaces.redb")).unwrap();
+    let provider = VworkProvider::new(&Installation {
+        id: "test".into(),
+        label: "test".into(),
+        home: home.clone(),
+    })
+    .unwrap();
+    assert!(provider.shared_mcp_supported().await.unwrap());
+    for workspace in [None, Some("bound-workspace")] {
+        for method in ["initialize", "tools/list", "prompts/list", "ping"] {
+            let request = json!({"jsonrpc":"2.0","id":1,"method":method});
+            let response = tokio::time::timeout(
+                Duration::from_secs(1),
+                provider.mcp_request(workspace, request, Duration::from_secs(1)),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            assert!(response.get("result").is_some(), "{response}");
+        }
+    }
+    assert!(
+        !home.join("workspaces.redb.recovery.lock").exists(),
+        "Discovery opened storage"
+    );
+    let request = json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"vwork_repo_list","arguments":{}}});
+    let error = provider
+        .mcp_request(None, request.clone(), Duration::from_secs(1))
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("already in use"), "{error}");
+    drop(owner);
+    let response = provider
+        .mcp_request(None, request, Duration::from_secs(5))
+        .await
+        .unwrap();
+    assert_eq!(response["result"]["isError"], false, "{response}");
+}

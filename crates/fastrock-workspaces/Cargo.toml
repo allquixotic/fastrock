@@ -22,7 +22,7 @@ required-features = ["http-fixtures"]
 
 [dependencies]
 anyhow.workspace = true
-vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "6bb0b3d5baddc4300827d63d7de0f067e018f69d" }
+vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "b5facec2e5713603aac12da4770c9b5bc545ec46" }
 redb = "4.4"
 zstd = "0.13"
 rayon = "1.11"

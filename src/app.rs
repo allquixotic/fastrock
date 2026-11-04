@@ -683,7 +683,7 @@ impl AppController {
     /// Runs command-line work once the account check passed: a first run
     /// without a login asks the user to sign in instead of opening a thread
     /// whose first turn would fail.
-    fn run_startup_actions(&mut self, actions: Vec<StartupAction>) {
+    pub(crate) fn run_startup_actions(&mut self, actions: Vec<StartupAction>) {
         if actions.is_empty() {
             return;
         }

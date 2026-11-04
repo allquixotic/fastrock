@@ -22,6 +22,17 @@ impl Adapter {
             .await?;
         let gate = self.gate(source_id).await;
         let _lock = gate.lock().await;
+        if self
+            .sessions
+            .lock()
+            .await
+            .get(source_id)
+            .is_some_and(|s| s.storage_pending)
+        {
+            return Err(error(
+                "Workspace recovery has not been checked. Choose Resume before forking this history.",
+            ));
+        }
         if let Some(task) = &delegation {
             if let Some(child) = self.delegation_index(source_id).await?.get(&task.task_id) {
                 let manager = SessionManager::new(goose_runtime::config::paths::Paths::data_dir());

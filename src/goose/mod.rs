@@ -24,6 +24,8 @@ pub(crate) mod recipe_controls;
 mod recipe_storage;
 mod recipes;
 mod recovery_history;
+#[cfg(test)]
+mod recovery_retry_tests;
 mod restore_extensions;
 mod review;
 mod schedule;

@@ -8,12 +8,40 @@ import json
 from pathlib import Path
 import unittest
 from unittest.mock import patch
-from benchmark_guard import BoundedJob, GuardStopped, headroom
+from benchmark_guard import BoundedJob, GuardStopped, headroom, save_heartbeat
 from embedded_provider_fixture import ProcessGuard
 
 
 @unittest.skipUnless(os.name == 'nt', 'Windows process accounting')
 class Watchdog(unittest.TestCase):
+    def test_v45_heartbeat_writer_retry_preserves_sample_time(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder, 'host.json')
+            replace = Path.replace
+            attempts = []
+            def transient(source, target):
+                attempts.append(source)
+                if len(attempts) == 1:
+                    raise PermissionError(13, 'fixture')
+                return replace(source, target)
+            with patch.object(Path, 'replace', transient), patch('benchmark_guard.time.time', return_value=123) as clock:
+                save_heartbeat(path, dict(healthy=True, available=8_000_000_000))
+                self.assertEqual(clock.call_count, 1)
+            self.assertEqual(len(attempts), 2)
+            self.assertEqual(json.loads(path.read_text())['received_at'], 123)
+            with self.assertRaises(GuardStopped):
+                headroom(path)
+
+    def test_v45_heartbeat_writer_permanent_denial_is_bounded(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder, 'host.json')
+            with patch.object(Path, 'replace', side_effect=PermissionError(13, 'fixture')) as replace:
+                with self.assertRaises(PermissionError):
+                    save_heartbeat(path, dict(healthy=True, available=8_000_000_000))
+                self.assertEqual(replace.call_count, 5)
+            with self.assertRaises(GuardStopped):
+                headroom(path)
+
     def test_v45_heartbeat_replacement_retry_still_checks_current_data(self):
         healthy = json.dumps(dict(healthy=True, available=8_000_000_000, received_at=time.time()))
         with patch.object(Path, 'read_text', side_effect=[PermissionError(13, 'fixture'), healthy]) as read:

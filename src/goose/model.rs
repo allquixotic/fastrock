@@ -42,6 +42,8 @@ pub(super) struct Session {
     pub replaying: bool,
     pub loaded: bool,
     pub recovery_only: bool,
+    /// Saved history is visible, but checkpoint ownership has not been checked.
+    pub storage_pending: bool,
     pub ephemeral: bool,
     pub last_chunk: String,
     pub echo_user: Option<String>,

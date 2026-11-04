@@ -131,20 +131,17 @@ impl Rpc {
     }
 
     pub async fn call(&self, method: &str, params: Value) -> Reply {
-        let start = std::time::Instant::now();
-        let reply = self.begin(method, params).await?.wait().await;
         // Only fixed operation names and timings, never request bodies, IDs,
         // endpoint URLs or provider diagnostics that could contain credentials.
         use super::latency::{self, Phase};
-        if let Some(phase) = match method {
+        let _timer = match method {
             "session/new" => Some(Phase::NewSession),
             "session/load" => Some(Phase::LoadSession),
             "session/set_config_option" => Some(Phase::Configure),
             _ => None,
-        } {
-            latency::record(phase, start);
         }
-        reply
+        .map(latency::Timer::start);
+        self.begin(method, params).await?.wait().await
     }
 
     pub async fn send(

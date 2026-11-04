@@ -17,6 +17,8 @@ mod composer;
 mod connection;
 mod files;
 mod info;
+#[cfg(windows)]
+mod instance;
 mod lifecycle;
 mod newtab;
 mod notify;
@@ -177,7 +179,24 @@ fn exit_with_cli_message(err: &clap::Error) -> ! {
 /// Entry point called on the process main thread by `main.rs`.
 pub fn run_main(arg0_paths: Arg0DispatchPaths, rt: tokio::runtime::Handle) -> anyhow::Result<()> {
     let cli = parse_cli_or_exit();
-    let result = run_app(cli, arg0_paths, rt);
+    #[cfg(windows)]
+    let owner = instance::acquire(&cli, &rt);
+    #[cfg(windows)]
+    let mut owner = match owner {
+        Ok(Some(owner)) => owner,
+        Ok(None) => return Ok(()),
+        Err(error) => {
+            report_fatal(&format!("{error:#}"));
+            return Err(error);
+        }
+    };
+    let result = run_app(
+        cli,
+        arg0_paths,
+        rt,
+        #[cfg(windows)]
+        &mut owner,
+    );
     if let Err(err) = &result {
         report_fatal(&format!("{err:#}"));
     }
@@ -188,6 +207,7 @@ fn run_app(
     cli: Cli,
     arg0_paths: Arg0DispatchPaths,
     rt: tokio::runtime::Handle,
+    #[cfg(windows)] owner: &mut instance::Owner,
 ) -> anyhow::Result<()> {
     let codex_home = codex_utils_home_dir::find_codex_home()
         .ok()
@@ -276,6 +296,21 @@ fn run_app(
     perf::mark_first_frame(window.window());
     // The window system knows the OS light/dark setting only now.
     ui_thread::with_app_now(|app| app.sync_system_dark());
+    #[cfg(windows)]
+    owner.listen(&rt, |launch| {
+        slint::invoke_from_event_loop(move || {
+            lifecycle::restore(false);
+            ui_thread::with_app_now(|app| {
+                let actions = startup_actions(launch.folder, launch.resume);
+                if app.config.is_some() {
+                    app.run_startup_actions(actions);
+                } else {
+                    app.startup_actions.extend(actions);
+                }
+            });
+        })
+        .map_err(|e| anyhow::anyhow!(e.to_string()))
+    });
     slint::run_event_loop_until_quit().context("event loop failed")?;
     lifecycle::stop();
     let _ = window.hide();

@@ -37,6 +37,21 @@ processes; closing the last window to the tray keeps them running. Restart never
 replays a shell or command automatically. Windows terminals start `cmd.exe /D /Q`;
 PowerShell and other interactive tools can be launched from it.
 
+On Windows, launching Fastrock again restores the existing window for that
+profile. Use **New window** to open another window in the same process, and
+**Quit** in the tray menu to stop the process. When upgrading from RC11 or older,
+explicitly Quit the old version before starting the new executable. A workspace
+database ownership error means another process still holds its lock; it is not
+evidence of corruption and does not call for replacing the database.
+
+Opening conversation history allows at most two seconds for the workspace
+checkpoint recovery check. If storage is busy or unavailable, saved messages
+remain readable in a read-only view. **Resume** retries the check; uncertain tools
+or an interrupted restore still require review in Checkpoints. Workspace tool
+discovery itself does not open the database. Actual operations still require
+exclusive ownership and normal workspace validation. Settings diagnostics show
+active restoration stages if loading stalls.
+
 Open **Checkpoints** in the conversation header or command palette. Fastrock
 captures the conversation boundary and virtual source revision before and after
 completed turns. **Save checkpoint** adds a named manual snapshot. Select a row

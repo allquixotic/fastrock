@@ -1,0 +1,93 @@
+{
+  "host": "GAMES",
+  "hard_cap_bytes": 32000000000,
+  "attempts": [
+    {
+      "mib": 1280,
+      "repositories": 24,
+      "runs": {
+        "candidate": {
+          "binary_sha256": "85acd8a0c3db834626bff5921a1b9d8a3bd23488a4b6446b9bdaea7a09f5ec28",
+          "cap_bytes": 1163147264,
+          "io": {
+            "read_operations": 1581,
+            "write_operations": 1122,
+            "other_operations": 12549,
+            "read_bytes": 2808079,
+            "write_bytes": 1287416,
+            "other_bytes": 229425
+          },
+          "elapsed_ms": 5203.0,
+          "peak_app_bytes": 141234176,
+          "peak_tree_commit_bytes": 86142976,
+          "exit_code": 0,
+          "thread_ready_ms": [
+            682.3,
+            200.5,
+            96.7
+          ],
+          "startup_ready_ms": 100.6,
+          "runtime": {
+            "timings": [
+              [
+                "Session creation",
+                "last 28 ms; peak 462 ms this run"
+              ],
+              [
+                "Turn setup",
+                "last 57 ms; peak 57 ms this run"
+              ],
+              [
+                "Send to first response",
+                "last 83 ms; peak 263 ms this run"
+              ],
+              [
+                "Complete thread setup",
+                "last 67 ms; peak 524 ms this run"
+              ],
+              [
+                "Provider selection",
+                "last 0 ms; peak 2 ms this run"
+              ],
+              [
+                "Workspace selection",
+                "last 0 ms; peak 0 ms this run"
+              ],
+              [
+                "Workspace tools and hooks",
+                "last 2 ms; peak 3 ms this run"
+              ],
+              [
+                "Workspace store initialization",
+                "opens 1; clean 1; recovered 0; new 0; last 2162 ms; peak 2162 ms this run"
+              ]
+            ],
+            "summaries": "ready=true, active=false, pending=0, foreground=0, retry=false, stage=commit, storage=ok"
+          },
+          "result": "PASS"
+        }
+      },
+      "seed": {
+        "cap_bytes": 3087566848,
+        "io": {
+          "read_operations": 4357,
+          "write_operations": 5011,
+          "other_operations": 45741,
+          "read_bytes": 2027563378,
+          "write_bytes": 4717512470,
+          "other_bytes": 292544
+        },
+        "elapsed_ms": 9031.0,
+        "peak_app_bytes": 43708416,
+        "peak_tree_commit_bytes": 36913152,
+        "exit_code": 0
+      },
+      "database_bytes": 2686455808,
+      "result": "PASS"
+    }
+  ],
+  "notes": [
+    "Isolated RC12 fixtures on the signed-in games desktop via asuser -e; live host/guest memory guards and 32 GB hard cap. No user data or live inference.",
+    "Source working tree before release commit; exact signed tag is separately rebuilt and tested by CI."
+  ]
+}

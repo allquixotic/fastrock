@@ -1,0 +1,162 @@
+{
+  "binary_sha256": "ef7b554cd23bd72dc14cf6c051de2cd9244d931b17e8c6ffc861fa423a4a7a55",
+  "seed_sha256": "3d83184d613f26f34956aa20ca1ba7100dc8097db9691daba8bb09933f4abd2c",
+  "host": "GAMES",
+  "os": "Windows-11-10.0.26100-SP0",
+  "backend": "embedded Goose 1.57.0",
+  "hard_cap_bytes": 32000000000,
+  "attempts": [
+    {
+      "divisor": 1,
+      "stored_conversations": 1000,
+      "history_messages": 10000,
+      "concurrent_streams": 8,
+      "phases": {
+        "seed": {
+          "cap_bytes": 1461364736,
+          "peak_app_bytes": 106651648,
+          "peak_tree_commit_bytes": 102084608
+        },
+        "app": {
+          "cap_bytes": 1411643392,
+          "peak_app_bytes": 224919552,
+          "peak_tree_commit_bytes": 172326912
+        }
+      },
+      "result": "PASS",
+      "peak_concurrent_streams": 8,
+      "history_open_observed_ms": 501.5,
+      "switch_dispatch_ms": [
+        0.3,
+        0.6,
+        0.3,
+        0.5,
+        0.4
+      ],
+      "frame": {
+        "p50_ms": 4.497,
+        "p95_ms": 8.817,
+        "p99_ms": 10.83
+      },
+      "render": {
+        "p50_ms": 3.627,
+        "p95_ms": 7.005,
+        "p99_ms": 9.221
+      },
+      "event_loop": {
+        "p50_ms": 16.437,
+        "p95_ms": 19.992,
+        "p99_ms": 22.277
+      },
+      "history_export_messages": 10000,
+      "current_summaries_preserved": true,
+      "history_navigation": {
+        "first": {
+          "browsing": true,
+          "loading": false,
+          "start": 0,
+          "end": 100,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 5.1516,
+          "rows": 100,
+          "bytes": 285990
+        },
+        "middle": {
+          "browsing": true,
+          "loading": false,
+          "start": 5000,
+          "end": 5100,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 3.8924,
+          "rows": 100,
+          "bytes": 292500
+        },
+        "last": {
+          "browsing": true,
+          "loading": false,
+          "start": 9900,
+          "end": 10000,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 6.482,
+          "rows": 100,
+          "bytes": 292569
+        },
+        "middle_frame": {
+          "p50_ms": 4.428,
+          "p95_ms": 5.433,
+          "p99_ms": 5.889
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Isolated RC12 fixtures on the signed-in games desktop via asuser -e; live host/guest memory guards and 32 GB hard cap. No user data or live inference.",
+    "Source working tree before release commit; exact signed tag is separately rebuilt and tested by CI.",
+    "Retained 0.3.4 comparison: rc1-scale-baseline-games-2026-10-30.json; different-day results do not establish general speed improvements.",
+    "Final source after activation-failure hardening. Earlier run stopped on stale heartbeat after a Windows sharing violation in the monitor receiver; fixed with bounded writer retry and seven passing watchdog tests."
+  ],
+  "monitor_failure": {
+    "binary_sha256": "ef7b554cd23bd72dc14cf6c051de2cd9244d931b17e8c6ffc861fa423a4a7a55",
+    "seed_sha256": "3d83184d613f26f34956aa20ca1ba7100dc8097db9691daba8bb09933f4abd2c",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1457022976,
+            "peak_app_bytes": 106291200,
+            "peak_tree_commit_bytes": 101699584
+          },
+          "app": {
+            "cap_bytes": 1457948672,
+            "peak_app_bytes": 227360768,
+            "peak_tree_commit_bytes": 173481984
+          }
+        },
+        "result": "ABORTED",
+        "reason": "Hypervisor memory heartbeat unavailable or stale",
+        "next_divisor": 10
+      },
+      {
+        "divisor": 10,
+        "stored_conversations": 100,
+        "history_messages": 1000,
+        "concurrent_streams": 1,
+        "phases": {},
+        "result": "ABORTED",
+        "reason": "Hypervisor memory heartbeat unavailable or stale",
+        "next_divisor": 100
+      },
+      {
+        "divisor": 100,
+        "stored_conversations": 10,
+        "history_messages": 100,
+        "concurrent_streams": 1,
+        "phases": {},
+        "result": "ABORTED",
+        "reason": "Hypervisor memory heartbeat unavailable or stale",
+        "next_divisor": 1000
+      },
+      {
+        "divisor": 1000,
+        "stored_conversations": 1,
+        "history_messages": 10,
+        "concurrent_streams": 1,
+        "phases": {},
+        "result": "ABORTED",
+        "reason": "Hypervisor memory heartbeat unavailable or stale",
+        "next_divisor": 10000
+      }
+    ]
+  }
+}

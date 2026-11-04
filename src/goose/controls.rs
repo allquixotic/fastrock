@@ -275,7 +275,10 @@ impl AppController {
                 .goose_request(method, params)
                 .await
                 .and_then(|value| {
-                    serde_json::from_value::<super::Recovery>(value).map_err(|e| e.to_string())
+                    let reload = value["reloadHistory"] == true;
+                    serde_json::from_value::<super::Recovery>(value)
+                        .map(|recovery| (recovery, reload))
+                        .map_err(|e| e.to_string())
                 });
             crate::ui_thread::post(move |app| {
                 app.window.global::<GooseState>().set_changing(false);
@@ -283,8 +286,11 @@ impl AppController {
                 // snapshot can arrive after the resumed queue advances.
                 match result {
                     Err(error) => app.window.global::<GooseState>().set_error(error.into()),
-                    Ok(_) if method == "fastrock/goose/resumeQueue" => {
+                    Ok((_, reload)) if method == "fastrock/goose/resumeQueue" => {
                         if let Some(index) = app.tab_index_for_thread(&id) {
+                            if reload {
+                                app.resume_thread_in_tab(index, id.clone(), false);
+                            }
                             app.resume_local_inputs(app.tabs[index].id);
                         }
                     }

@@ -2406,3 +2406,50 @@ All 144 local-fixture evidence files were archived and hash-verified before
 deletion. Active incremental/dependency caches, current build outputs, sources,
 user data, baselines and signed release evidence remain. Games stayed running.
 [Cleanup receipt](benchmarks/rc11-cleanup-2026-11-03.json).
+
+
+### 2026-11-03 — RC12 storage-independent history and tray ownership
+
+The locked-store fixture reproduced old-history loading being blocked by the
+checkpoint recovery probe. History now waits at most two seconds for that probe,
+then remains readable with work paused until explicit Resume successfully
+rechecks storage and activates the session. Failed activation preserves the
+read-only history and retry protection. No uncertain tool calls are replayed.
+Static workspace tool discovery no longer opens redb; embedded store opening
+defers expired-workspace cleanup. Windows relaunch activates the existing profile
+owner, and lock errors give ownership guidance rather than corruption advice.
+The exact work-PC timeout path remains unconfirmed without its timing evidence.
+
+Mac compatibility compilation and Windows cross-compilation passed; no app or
+Rust tests ran on Sean's Mac. On games, all **838 Rust tests**, embedded
+provider/store harnesses, seven watchdog tests, and native relaunch passed.
+The native fixture reads an old conversation under a real database lock, closes
+to tray, relaunches into the same process, releases the lock, resumes normally,
+and verifies explicit Quit releases ownership. Eight related native suites also
+passed before the final activation-failure hardening. The tagged release will
+receive the full 39-case signed-binary CI suite.
+[Regression receipt](benchmarks/rc12-regressions-games-2026-11-03.json).
+
+Final-source guarded scale passed at 1,000 conversations, 10,000 history messages
+and eight concurrent streams: peak app memory 224,919,552 bytes, observed history
+open 501.5 ms, p95 frame 8.817 ms, thread-switch dispatch 0.3–0.6 ms. All 10,000
+messages survived export; bounded first/middle/last history navigation passed.
+Retained 0.3.4 baseline recorded 1,102 ms history open and p95 frame 8.422 ms;
+different-day fixtures are comparison evidence, not general speed guarantees.
+A prior run stopped safely after a Windows file-sharing race killed the heartbeat
+writer. Bounded retry fixes that fixture race without refreshing stale samples;
+permanent monitoring failure still stops the workload.
+[Scale receipt](benchmarks/rc12-scale-games-2026-11-03.json).
+
+The large-store fixture passed with a real **2.50 GiB redb**, 24 repositories and
+96 workspaces. App startup read 2,808,079 bytes, wrote 1,287,416 bytes, peaked at
+141,234,176 bytes, and opened threads in 682.3/200.5/96.7 ms. Store initialization
+was one clean 2,162 ms open, without repair, snapshot or full scan. This ran
+before the final recovery-activation hardening, which leaves storage opening
+unchanged. Both workloads retained the 32 GB hard cap and live host/guest reserve
+guards; neither successful run reduced its scale. No work-PC data or live model
+calls were used. [Startup receipt](benchmarks/rc12-startup-games-2026-11-03.json).
+
+Vwork commit `b5facec2e5713603aac12da4770c9b5bc545ec46` passed hosted Windows and
+macOS CI, including lock classification, deferred cleanup with preserved edits,
+and repeated lifecycle races. Goose source remains unchanged.

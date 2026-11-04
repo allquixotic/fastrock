@@ -100,7 +100,7 @@ impl Store {
         let _opening = timing::Opening::start();
         let config = vwork_engine::transport::load_config(&home)?;
         let interval = std::time::Duration::from_secs(config.compact_interval_seconds);
-        let engine = Engine::open(&home, config)?;
+        let engine = Engine::open_embedded(&home, config)?;
         timing::opened(&engine.recovery);
         let store = Arc::new(Self {
             engine: Some(RwLock::new(engine)),

@@ -1,4 +1,7 @@
 //! Existing vwork configuration and file operations, backed by the embedded owner.
+#[cfg(test)]
+#[path = "vwork_startup_tests.rs"]
+mod startup_tests;
 use super::*;
 use base64::Engine;
 use serde_json::{Value, json};
@@ -410,10 +413,17 @@ impl VworkProvider {
     }
 
     pub async fn shared_mcp_supported(&self) -> Result<bool, WorkspaceError> {
-        Ok(self
-            .call_with_timeout("health", json!({}), Duration::from_secs(3))
-            .await?["capabilities"]["shared_mcp"]
-            == true)
+        #[cfg(feature = "http-fixtures")]
+        if self.fixture {
+            return Ok(self
+                .call_with_timeout("health", json!({}), Duration::from_secs(3))
+                .await?["capabilities"]["shared_mcp"]
+                == true);
+        }
+        // This capability belongs to the linked implementation. Probing the
+        // database here made opening ANY old chat wait for store recovery and
+        // cleanup, even though no workspace operation had been requested.
+        Ok(true)
     }
 
     pub async fn mcp_request(
@@ -422,6 +432,26 @@ impl VworkProvider {
         request: Value,
         timeout: Duration,
     ) -> Result<Value, WorkspaceError> {
+        #[cfg(feature = "http-fixtures")]
+        if self.fixture {
+            return self
+                .call_with_timeout(
+                    "mcp",
+                    json!({"workspace":workspace,"request":request}),
+                    timeout,
+                )
+                .await;
+        }
+        // MCP discovery is static. Do not open a multi-gigabyte database just
+        // to advertise tools, or make history depend on its availability.
+        if request["method"] != "tools/call" {
+            return Ok(
+                vwork_engine::protocol::mcp_response(&request, workspace, |_, _| {
+                    anyhow::bail!("Discovery cannot execute workspace operations")
+                })
+                .unwrap_or(Value::Null),
+            );
+        }
         self.call_with_timeout(
             "mcp",
             json!({"workspace":workspace,"request":request}),

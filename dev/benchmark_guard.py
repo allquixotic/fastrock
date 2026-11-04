@@ -114,22 +114,34 @@ class BoundedJob:
             self.handle = None
 
 
+def save_heartbeat(path, value):
+    """Publish atomically; a Windows reader may briefly block replacement."""
+    path = Path(path)
+    value = dict(value, received_at=time.time())
+    temporary = path.with_suffix('.tmp')
+    temporary.write_text(json.dumps(value), encoding='utf-8')
+    for attempt in range(5):
+        try:
+            temporary.replace(path)
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            # Keep the original receipt time: retries cannot refresh stale data.
+            time.sleep(.02)
+
+
 def receive(path):
     """SSH stdin receiver: timestamp in the guest to avoid cross-host clock skew."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    def save(value):
-        value['received_at'] = time.time()
-        temporary = path.with_suffix('.tmp')
-        temporary.write_text(json.dumps(value), encoding='utf-8')
-        temporary.replace(path)
     try:
         for line in sys.stdin:
             value = json.loads(line)
             assert isinstance(value['available'], int) and isinstance(value['healthy'], bool)
-            save(value)
+            save_heartbeat(path, value)
     finally:
-        save(dict(healthy=False, available=0))
+        save_heartbeat(path, dict(healthy=False, available=0))
 
 
 if __name__ == '__main__':

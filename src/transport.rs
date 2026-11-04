@@ -88,7 +88,7 @@ impl AppServerRequestHandle {
                 .lock()
                 .map_err(|_| io::Error::other("request registry unavailable"))?;
             if pending.contains_key(&id) {
-                return Err(io::Error::other("Duplicate Codex request id"));
+                return Err(io::Error::other("Duplicate session request id"));
             }
             pending.insert(id.clone(), tx);
         }
@@ -110,11 +110,21 @@ impl AppServerRequestHandle {
         self.writer
             .send(value)
             .await
-            .map_err(|_| io::Error::other("Codex connection closed"))?;
+            .map_err(|_| io::Error::other("Session connection closed"))?;
         tokio::time::timeout(Duration::from_secs(90), rx)
             .await
-            .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "Codex request timed out"))?
-            .map_err(|_| io::Error::other("Codex disconnected before replying"))
+            .map_err(|_| {
+                let active = crate::goose::latency::active();
+                io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    if active.is_empty() {
+                        "Session request timed out".to_string()
+                    } else {
+                        format!("Session request timed out. Still running: {active}")
+                    },
+                )
+            })?
+            .map_err(|_| io::Error::other("Session disconnected before replying"))
     }
 }
 pub(crate) struct AppServerClient {

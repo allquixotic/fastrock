@@ -205,6 +205,11 @@ impl Adapter {
     }
     pub(super) async fn queue_request(self: &Arc<Self>, params: &Value, method: &str) -> Reply {
         let id = session_id(text(params, "threadId"))?.to_string();
+        let reload_history = if method == "fastrock/goose/resumeQueue" {
+            self.retry_storage_history(&id).await?
+        } else {
+            false
+        };
         let gate = self.gate(&id).await;
         let lock = gate.lock().await;
         self.deletion_ready(&id).await?;
@@ -235,7 +240,9 @@ impl Adapter {
             "fastrock/goose/recovery" => return Ok(json!(state.recovery())),
             "fastrock/goose/resumeQueue" => {
                 state.paused = false;
-                json!(state.recovery())
+                let mut response = json!(state.recovery());
+                response["reloadHistory"] = json!(reload_history);
+                response
             }
             "fastrock/goose/dismissRecovery" => {
                 let ids = params["ids"]

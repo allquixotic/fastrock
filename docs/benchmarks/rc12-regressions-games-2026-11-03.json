@@ -1,0 +1,247 @@
+{
+  "version": "0.4.0-rc.12",
+  "result": "PASS",
+  "rust": {
+    "result": "PASS",
+    "targets": [
+      {
+        "name": "embedded",
+        "phase": "unit",
+        "passed": 7,
+        "exit_code": 0,
+        "seconds": 0.73,
+        "peak_bytes": 15044608
+      },
+      {
+        "name": "embedded",
+        "phase": "window",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 0.11,
+        "peak_bytes": 446464
+      },
+      {
+        "name": "checkpoints",
+        "phase": "unit",
+        "passed": 7,
+        "exit_code": 0,
+        "seconds": 1.23,
+        "peak_bytes": 32387072
+      },
+      {
+        "name": "checkpoints",
+        "phase": "window",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 0.11,
+        "peak_bytes": 442368
+      },
+      {
+        "name": "integration",
+        "phase": "unit",
+        "passed": 7,
+        "exit_code": 0,
+        "seconds": 1.02,
+        "peak_bytes": 20197376
+      },
+      {
+        "name": "integration",
+        "phase": "window",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 0.11,
+        "peak_bytes": 442368
+      },
+      {
+        "name": "store_startup",
+        "phase": "unit",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 0.48,
+        "peak_bytes": 6807552
+      },
+      {
+        "name": "store_startup",
+        "phase": "window",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 0.11,
+        "peak_bytes": 458752
+      },
+      {
+        "name": "review",
+        "phase": "unit",
+        "passed": 3,
+        "exit_code": 0,
+        "seconds": 0.38,
+        "peak_bytes": 3457024
+      },
+      {
+        "name": "review",
+        "phase": "window",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 0.11,
+        "peak_bytes": 442368
+      },
+      {
+        "name": "fastrock_workspaces",
+        "phase": "unit",
+        "passed": 15,
+        "exit_code": 0,
+        "seconds": 0.84,
+        "peak_bytes": 97370112
+      },
+      {
+        "name": "fastrock_workspaces",
+        "phase": "window",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 0.11,
+        "peak_bytes": 454656
+      },
+      {
+        "name": "codex_gui",
+        "phase": "unit",
+        "passed": 798,
+        "exit_code": 0,
+        "seconds": 2.91,
+        "peak_bytes": 155533312
+      },
+      {
+        "name": "codex_gui",
+        "phase": "window",
+        "passed": 1,
+        "exit_code": 0,
+        "seconds": 1.12,
+        "peak_bytes": 7045120
+      },
+      {
+        "name": "fastrock",
+        "phase": "unit",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 0.45,
+        "peak_bytes": 487424
+      },
+      {
+        "name": "fastrock",
+        "phase": "window",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 0.11,
+        "peak_bytes": 475136
+      },
+      {
+        "name": "embedded_goose",
+        "phase": "unit",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 1.02,
+        "peak_bytes": 60452864
+      },
+      {
+        "name": "embedded_goose",
+        "phase": "window",
+        "passed": 0,
+        "exit_code": 0,
+        "seconds": 0.09,
+        "peak_bytes": 1028096
+      }
+    ],
+    "passed": 838
+  },
+  "native": {
+    "binary_sha256": "85acd8a0c3db834626bff5921a1b9d8a3bd23488a4b6446b9bdaea7a09f5ec28",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.08,
+        "peak_tree_bytes": 157331456
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 29.08,
+        "peak_tree_bytes": 154337280
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 41.11,
+        "peak_tree_bytes": 156012544
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.44,
+        "peak_tree_bytes": 153862144
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.3,
+        "peak_tree_bytes": 155717632
+      },
+      {
+        "name": "summary-priority",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.22,
+        "peak_tree_bytes": 153481216
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 40.91,
+        "peak_tree_bytes": 154779648
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.05,
+        "peak_tree_bytes": 154890240
+      }
+    ]
+  },
+  "relaunch": {
+    "result": "PASS",
+    "peak_bytes": 143908864,
+    "binary_sha256": "ef7b554cd23bd72dc14cf6c051de2cd9244d931b17e8c6ffc861fa423a4a7a55",
+    "relaunch_seconds": 0.030999999959021807,
+    "checks": [
+      "old thread while store locked",
+      "close to tray",
+      "relaunch restores original window",
+      "secondary process exits",
+      "Resume rechecks storage and restores normal history",
+      "explicit quit releases ownership"
+    ]
+  },
+  "mac": "Compatibility compilation passed; no application or tests executed on Sean's Mac.",
+  "vwork": {
+    "commit": "b5facec2e5713603aac12da4770c9b5bc545ec46",
+    "ci": "https://github.com/allquixotic/vwork/actions/runs/41755877388",
+    "result": "Both hosted Windows and macOS tests and repeated lifecycle regressions passed."
+  },
+  "notes": [
+    "Native fixture first exposed another blocking store dependency in checkpoint recovery; fixed with bounded probe, readable fail-closed history and explicit Resume recheck.",
+    "The subsequent native test needed time for its asynchronous transcript export before Quit; rerun passed without further application changes.",
+    "cargo xwin test --no-run also relinked the non-test binary. Native receipts identify the tested earlier dev-build hash; CI independently verifies the exact signed release executable.",
+    "Final recovery-activation hardening adds one regression (838 Rust tests total); final relaunch rerun passes. The eight broader native cases preceded that hardening; exact tagged source receives full signed-binary CI acceptance."
+  ],
+  "watchdog": {
+    "passed": 7,
+    "host": "games",
+    "notes": "Transient heartbeat writer denial retries within 80 ms without refreshing the original sample time; persistent denial stays fail-closed."
+  }
+}

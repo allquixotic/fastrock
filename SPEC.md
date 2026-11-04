@@ -219,6 +219,8 @@ V92: Automatic memory ! completed non-ephemeral, non-delegated user turns only; 
 
 V93: Memories ! dedicated zstd-compressed state in owning vwork redb, <=512 facts/96 per scope, revision guards, evidence/source provenance, pinned manual edits, deterministic expiry/eviction and deduplication. Forget ! durable hashed tombstones; stale learners cannot resurrect; clear ! generation invalidation. Native settings ! independent learning/recall controls, inspect/edit/pin/forget/reset. No source-table scans, Goose config edits or mandatory memory availability. Verify: memory store lifecycle/concurrency/restart tests and native memory controls.
 
+V94: Windows relaunch ! activate existing profile owner and forward folder/resume requests; explicit Quit ! release ownership; helpers ! bypass GUI ownership. MCP registration/discovery ! no redb open, recovery or cleanup; actual workspace tools ! exclusive owner and normal validation. Embedded open ! defer expired-tree cleanup; lock conflict ! no backup/corruption advice. Checkpoint recovery probe on history open ! bounded to two seconds; unavailable journal ! read-only saved history, paused queues and explicit Resume recheck before work. Restore timeout ! backend-neutral label and active stage diagnostics. Verify `v94_failed_activation_preserves_read_only_history_and_retry`, `v94_unavailable_journal_keeps_history_read_only_and_retryable`, `v94_relaunch_forwards_and_quit_releases_profile`, `v94_tool_discovery_does_not_open_a_locked_store`, vwork V31 and native relaunch/old-thread fixtures.
+
 ## §T TASKS
 id|status|task|cites
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
@@ -300,6 +302,7 @@ T65|x|Add persisted support-aware Bedrock Speed through public session APIs|V90
 T66|x|Content-sized native model controls and remove app-owned Goose branding|V91
 T67|x|RC9 Windows/Mac compile, fixture/native/scale acceptance and signed-CI publication gate|V39,V44,V45,V89,V90,V91
 T68|x|Conservative automatic memories, bounded recall tool, redb maintenance and native controls; 834 Rust tests, embedded fixtures, native memory/capabilities and Mac compile pass; docs/benchmarks/memory-games-2026-11-03.json|V38,V40,V44,V82,V92,V93,I.goose,I.vwork
+T69|x|Repair old-thread restoration and tray ownership; verify 838 Rust tests, native recovery fixtures, guarded scale/startup and Mac compatibility; prepare RC12 signed-CI inputs|V38,V40,V44,V87,V94
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -837,3 +840,7 @@ B279|2026-11-03|Release benchmark launched in SSH service session; scrolling dis
 B280|2026-11-03|Legacy summary fixture classified idle memory extraction as a foreground answer, breaking request counts/numbering; priority/console fixtures shared assumption|Separate memory accounting and valid empty extraction response, force learning during summary regression; retain failed RC10 tag and publish corrected fixtures under RC11; V44,V92
 
 B281|2026-11-03|RC11 hosted Windows runner failed PowerShell Gallery registration with missing NuGet -source value after Rust tests passed|Retry failed Windows job on fresh runner with identical source/build inputs; repository setup and signing passed on attempt 2; all publication gates retained; no application change
+
+B282|2026-11-03|Every thread restore opened redb to inspect the checkpoint journal before displaying history; static MCP registration also probed redb; embedded open waited for expired-tree cleanup; relaunch could create a second process beside the tray owner; lock conflicts falsely advised backup restoration|V94; bounded checkpoint probe with fail-closed readable history and explicit Resume recheck, lazy static discovery, deferred cleanup, profile activation pipe, typed ownership guidance and active restore diagnostics. These are verified code defects; precise work-PC timeout cause still requires its timing evidence.
+
+B283|2026-11-03|Windows heartbeat reader briefly denied atomic file replacement; receiver exited and guarded benchmark correctly stopped on stale heartbeat|V45; bounded writer retry keeps original receipt time, persistent denial still fails closed; deterministic transient/permanent denial tests

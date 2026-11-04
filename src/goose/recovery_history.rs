@@ -58,7 +58,12 @@ fn project(session: &mut Session, conversation: &Conversation, reason: &str) {
         let is_user = user(message) && message.is_user_visible() && !message.is_tool_response();
         session.update(&json!({"sessionUpdate":if is_user{"user_message_chunk"}else{"agent_message_chunk"},"messageId":message.id.clone().unwrap_or_else(||format!("recovery-{index}")),"content":{"type":"text","text":text}}));
     }
-    session.update(&json!({"sessionUpdate":"agent_message_chunk","messageId":"fastrock-recovery-notice","content":{"type":"text","text":format!("\n**Recovery review required**\n\n{reason}\n\nOpen Checkpoints to restore a completed boundary, or fork before the interrupted turn. No saved tools have been resumed.")}}));
+    let action = if session.storage_pending {
+        "Saved history is available read-only. When workspace storage is available, choose Resume to retry loading. No saved tools have been resumed."
+    } else {
+        "Open Checkpoints to restore a completed boundary, or fork before the interrupted turn. No saved tools have been resumed."
+    };
+    session.update(&json!({"sessionUpdate":"agent_message_chunk","messageId":"fastrock-recovery-notice","content":{"type":"text","text":format!("\n**Recovery review required**\n\n{reason}\n\n{action}")}}));
     session.replaying = false;
     session.loaded = true;
     session.recovery_only = true;
@@ -74,38 +79,127 @@ impl Adapter {
         let conversation = super::checkpoint_storage::read(&manager, id)
             .await
             .map_err(|e| error(e.to_string()))?;
-        let reason = if self
-            .checkpoint_pending(id)
-            .await
-            .map_err(|e| error(e.to_string()))?
-        {
-            Some("A file/conversation restore was interrupted. Its retained backup needs review.")
-        } else if uncertain(&conversation) {
-            Some(
-                "This conversation contains tool calls whose outcomes are uncertain. Opening it cannot replay those calls.",
-            )
+        let (reason, storage_pending) = if uncertain(&conversation) {
+            (Some("This conversation contains tool calls whose outcomes are uncertain. Opening it cannot replay those calls.".to_string()), false)
         } else {
-            None
+            // A cold/recovering store is not a prerequisite for reading Goose's
+            // own saved messages. Never assume that an unavailable journal is
+            // empty: show a read-only view and require explicit Resume/recheck.
+            journal_status(
+                std::time::Duration::from_secs(2),
+                self.checkpoint_pending(id),
+            )
+            .await
         };
         if let Some(reason) = reason {
             let mut sessions = self.sessions.lock().await;
             if let Some(s) = sessions.get_mut(id) {
-                project(s, &conversation, reason);
+                s.storage_pending = storage_pending;
+                project(s, &conversation, &reason);
             }
             drop(sessions);
             self.pause_agent_queue(id).await?;
             Ok(true)
         } else {
             if let Some(s) = self.sessions.lock().await.get_mut(id) {
-                s.recovery_only = false;
+                // A provisional view stays protected until ACP activation also
+                // succeeds. A provider/extension error must remain retryable.
+                if !s.storage_pending {
+                    s.recovery_only = false;
+                }
             }
             Ok(false)
         }
+    }
+
+    /// Only an explicit Resume can leave a provisional read-only history view.
+    pub(super) async fn retry_storage_history(
+        self: &Arc<Self>,
+        id: &str,
+    ) -> Result<bool, JSONRPCErrorError> {
+        let pending = self
+            .sessions
+            .lock()
+            .await
+            .get(id)
+            .is_some_and(|s| s.storage_pending);
+        if pending {
+            self.load_session(&json!({"threadId":super::model::ui_id(id)}), false)
+                .await?;
+            if self
+                .sessions
+                .lock()
+                .await
+                .get(id)
+                .is_some_and(|s| s.storage_pending)
+            {
+                return Err(error(
+                    "Workspace storage is still unavailable. Saved history remains read-only; retry Resume once the other instance has quit or storage has finished opening.",
+                ));
+            }
+        }
+        Ok(pending)
+    }
+}
+
+async fn journal_status(
+    deadline: std::time::Duration,
+    read: impl std::future::Future<Output = anyhow::Result<bool>>,
+) -> (Option<String>, bool) {
+    match tokio::time::timeout(deadline, read).await {
+        Ok(Ok(false)) => (None, false),
+        Ok(Ok(true)) => (
+            Some(
+                "A file/conversation restore was interrupted. Its retained backup needs review."
+                    .into(),
+            ),
+            false,
+        ),
+        Ok(Err(error)) => (
+            Some(format!(
+                "Workspace recovery could not be checked: {error:#}"
+            )),
+            true,
+        ),
+        Err(_) => (
+            Some("Workspace storage is still opening; recovery has not yet been checked.".into()),
+            true,
+        ),
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn v94_unavailable_journal_keeps_history_read_only_and_retryable() {
+        use std::time::Duration;
+        let deadline = Duration::from_millis(20);
+        let (reason, retry) = journal_status(deadline, std::future::pending()).await;
+        let conversation = Conversation::new_unvalidated([
+            Message::user().with_text("Existing question"),
+            Message::assistant().with_text("Existing answer"),
+        ]);
+        let mut session = Session::new("old", "C:\\fixture");
+        session.storage_pending = retry;
+        project(&mut session, &conversation, &reason.unwrap());
+        let history = json!(session.turns.all_turns().unwrap()).to_string();
+        assert!(history.contains("Existing question") && history.contains("Existing answer"));
+        assert!(history.contains("choose Resume"));
+        assert!(
+            session.loaded
+                && session.recovery_only
+                && session.storage_pending
+                && session.active.is_none()
+        );
+        assert_eq!(
+            journal_status(deadline, async { Ok(false) }).await,
+            (None, false)
+        );
+        let (reason, retry) = journal_status(deadline, async { Ok(true) }).await;
+        assert!(reason.unwrap().contains("interrupted") && !retry);
+        let (reason, retry) = journal_status(deadline, async { anyhow::bail!("locked") }).await;
+        assert!(reason.unwrap().contains("locked") && retry);
+    }
     #[test]
     fn v63_uncertain_history_is_read_only_without_activating_tools() {
         let request = Message::assistant().with_content(Block::ActionRequired(

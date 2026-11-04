@@ -13,8 +13,14 @@ pub(super) enum Phase {
     ProviderSelection,
     WorkspaceSelection,
     ToolSetup,
+    RestoreGate,
+    RestoreHistory,
+    RestoreSettings,
+    RestoreWorkspace,
+    RestoreTools,
+    RestoreQueue,
 }
-const LABELS: [&str; 9] = [
+const LABELS: [&str; 15] = [
     "Session creation",
     "Session loading",
     "Model configuration",
@@ -24,11 +30,18 @@ const LABELS: [&str; 9] = [
     "Provider selection",
     "Workspace selection",
     "Workspace tools and hooks",
+    "Waiting for an earlier thread operation",
+    "Reading saved conversation",
+    "Restoring saved model and tool settings",
+    "Resolving saved workspace",
+    "Registering saved workspace tools",
+    "Reading saved message queue",
 ];
 #[derive(Default)]
 struct Measurement {
     last: AtomicU64,
     peak: AtomicU64,
+    active: AtomicU64,
 }
 impl Measurement {
     fn record(&self, milliseconds: u64) {
@@ -43,23 +56,45 @@ impl Measurement {
         Some(format!("last {last} ms; peak {peak} ms this run"))
     }
 }
-static MEASUREMENTS: [Measurement; 9] = [const {
+static MEASUREMENTS: [Measurement; 15] = [const {
     Measurement {
         last: AtomicU64::new(0),
         peak: AtomicU64::new(0),
+        active: AtomicU64::new(0),
     }
-}; 9];
+}; 15];
 
 pub(super) struct Timer(Phase, Instant);
 impl Timer {
     pub fn start(phase: Phase) -> Self {
+        MEASUREMENTS[phase as usize]
+            .active
+            .fetch_add(1, Ordering::Relaxed);
         Self(phase, Instant::now())
     }
 }
 impl Drop for Timer {
     fn drop(&mut self) {
         record(self.0, self.1);
+        MEASUREMENTS[self.0 as usize]
+            .active
+            .fetch_sub(1, Ordering::Relaxed);
     }
+}
+
+pub(super) async fn step<T>(phase: Phase, future: impl std::future::Future<Output = T>) -> T {
+    let _timer = Timer::start(phase);
+    future.await
+}
+
+pub(crate) fn active() -> String {
+    LABELS
+        .iter()
+        .zip(&MEASUREMENTS)
+        .filter(|(_, value)| value.active.load(Ordering::Relaxed) > 0)
+        .map(|(label, _)| *label)
+        .collect::<Vec<_>>()
+        .join("; ")
 }
 
 pub(super) fn record(phase: Phase, start: Instant) {
@@ -76,7 +111,21 @@ pub(crate) fn facts() -> Vec<(&'static str, String)> {
     LABELS
         .iter()
         .zip(&MEASUREMENTS)
-        .filter_map(|(label, value)| value.display().map(|value| (*label, value)))
+        .filter_map(|(label, value)| {
+            let count = value.active.load(Ordering::Relaxed);
+            let finished = value.display();
+            if count > 0 {
+                Some((
+                    *label,
+                    format!(
+                        "{count} in progress; {}",
+                        finished.unwrap_or_else(|| "no completed sample".into())
+                    ),
+                ))
+            } else {
+                finished.map(|value| (*label, value))
+            }
+        })
         .chain(std::iter::once((
             "Workspace store initialization",
             fastrock_workspaces::embedded::diagnostic(),
