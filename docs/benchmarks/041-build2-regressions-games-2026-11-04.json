@@ -1,0 +1,165 @@
+{
+  "result": "PASS",
+  "source_commit": "06caaf874cede67e2666cb0d10c3f633ac387fa9",
+  "binary_sha256": "46899636ca2a5bb515f9e8189b56efcddcec8e84a1d6080a73d9e8812d45d056",
+  "windows_rust_tests": 849,
+  "application_tests": 804,
+  "renderer_tests": 1,
+  "workspace_tests": 44,
+  "native": {
+    "binary_sha256": "46899636ca2a5bb515f9e8189b56efcddcec8e84a1d6080a73d9e8812d45d056",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 26.09,
+        "peak_tree_bytes": 159535104
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 64.81,
+        "peak_tree_bytes": 156786688
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 83.86,
+        "peak_tree_bytes": 155766784
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.05,
+        "peak_tree_bytes": 153919488
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.67,
+        "peak_tree_bytes": 155648000
+      }
+    ]
+  },
+  "native_guard": [
+    {
+      "case": "binding-native",
+      "result": "PASS",
+      "seconds": 210.17,
+      "peak": 158097408,
+      "peak_tree": 170635264
+    }
+  ],
+  "runs": [
+    {
+      "case": "binding-tests-embedded",
+      "result": "PASS",
+      "seconds": 1.53,
+      "peak": 15376384,
+      "peak_tree": 5660672
+    },
+    {
+      "case": "binding-tests-durability",
+      "result": "PASS",
+      "seconds": 1.06,
+      "peak": 10272768,
+      "peak_tree": 2486272
+    },
+    {
+      "case": "binding-tests-checkpoints",
+      "result": "PASS",
+      "seconds": 1.8,
+      "peak": 18354176,
+      "peak_tree": 9027584
+    },
+    {
+      "case": "binding-tests-integration",
+      "result": "PASS",
+      "seconds": 1.95,
+      "peak": 17338368,
+      "peak_tree": 8146944
+    },
+    {
+      "case": "binding-tests-review",
+      "result": "PASS",
+      "seconds": 0.77,
+      "peak": 15818752,
+      "peak_tree": 7557120
+    },
+    {
+      "case": "binding-tests-store_startup",
+      "result": "PASS",
+      "seconds": 0.62,
+      "peak": 13660160,
+      "peak_tree": 6094848
+    },
+    {
+      "case": "binding-tests-migration",
+      "result": "PASS",
+      "seconds": 1.11,
+      "peak": 14438400,
+      "peak_tree": 9170944
+    },
+    {
+      "case": "binding-tests-fastrock_workspaces",
+      "result": "PASS",
+      "seconds": 2.19,
+      "peak": 135077888,
+      "peak_tree": 135077888
+    },
+    {
+      "case": "binding-tests-fastrock",
+      "result": "PASS",
+      "seconds": 0.62,
+      "peak": 12476416,
+      "peak_tree": 7487488
+    },
+    {
+      "case": "binding-tests-codex_gui",
+      "result": "PASS",
+      "seconds": 4.28,
+      "peak": 12734464,
+      "peak_tree": 162828288
+    },
+    {
+      "case": "binding-window",
+      "result": "PASS",
+      "seconds": 1.62,
+      "peak": 12705792,
+      "peak_tree": 14376960
+    },
+    {
+      "case": "binding-tests-embedded_goose",
+      "result": "PASS",
+      "seconds": 1.94,
+      "peak": 12722176,
+      "peak_tree": 67432448
+    },
+    {
+      "case": "release-policy",
+      "result": "PASS",
+      "seconds": 1.23,
+      "peak": 12673024,
+      "peak_tree": 35000320
+    },
+    {
+      "case": "binding-scale",
+      "result": "PASS",
+      "seconds": 41.98,
+      "peak": 12673024,
+      "peak_tree": 222822400
+    }
+  ],
+  "notes": [
+    "New-bound-store journal barrier; existing-session restore stays lazy.",
+    "Existing native delegation fixture passed forced crash with child binding/workspace preserved and interrupted send held for human review.",
+    "A zero-test launcher exited before task-local guard attachment; delayed contained launcher resumed remaining checks without changing product or dropping containment.",
+    "No Mac application or tests executed locally; all providers are fixtures."
+  ]
+}

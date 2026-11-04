@@ -2675,3 +2675,13 @@ remain lazy; ordinary edits keep the 60-second policy. A new unit regression
 checks the barrier, missing-workspace rejection and unopened unbound stores;
 the unchanged native forced-crash test covers end-to-end recovery. The original
 tag remains intact; the corrected stable package uses an additive build tag.
+
+The [corrected-source regressions](benchmarks/041-build2-regressions-games-2026-11-04.json)
+passed all **849 Windows Rust tests** and native delegation, schedules, webhook,
+projects and side-chat cases, including the unchanged forced-crash boundary.
+The [repeated guarded benchmark](benchmarks/041-build2-scale-games-2026-11-04.json)
+passed the full 1,000/8/10,000 workload with 251,674,624 peak application bytes,
+20.51 ms p95 frames, 0.3–1.1 ms switch dispatch and 1,307.4 ms history opening.
+Historical navigation/export and all eight simultaneous streams passed. These
+measurements retain the comparison limitations above; no work-machine speedup
+or resolution of its session-load timeout is claimed.

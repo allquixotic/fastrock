@@ -1,0 +1,102 @@
+{
+  "binary_sha256": "46899636ca2a5bb515f9e8189b56efcddcec8e84a1d6080a73d9e8812d45d056",
+  "seed_sha256": "630d7770c93dd6434573eabfc667f5f9a854508ffb456def4c65ee547199a141",
+  "host": "GAMES",
+  "os": "Windows-11-10.0.26100-SP0",
+  "backend": "embedded Goose 1.57.0",
+  "hard_cap_bytes": 32000000000,
+  "attempts": [
+    {
+      "divisor": 1,
+      "stored_conversations": 1000,
+      "history_messages": 10000,
+      "concurrent_streams": 8,
+      "phases": {
+        "seed": {
+          "cap_bytes": 7250855936,
+          "peak_app_bytes": 106274816,
+          "peak_tree_commit_bytes": 101552128
+        },
+        "app": {
+          "cap_bytes": 7217133568,
+          "peak_app_bytes": 251674624,
+          "peak_tree_commit_bytes": 197804032
+        }
+      },
+      "result": "PASS",
+      "peak_concurrent_streams": 8,
+      "history_open_observed_ms": 1307.4,
+      "switch_dispatch_ms": [
+        0.9,
+        1.1,
+        0.8,
+        0.6,
+        0.3
+      ],
+      "frame": {
+        "p50_ms": 8.521,
+        "p95_ms": 20.51,
+        "p99_ms": 22.441
+      },
+      "render": {
+        "p50_ms": 6.758,
+        "p95_ms": 18.452,
+        "p99_ms": 20.175
+      },
+      "event_loop": {
+        "p50_ms": 16.753,
+        "p95_ms": 50.335,
+        "p99_ms": 58.967
+      },
+      "history_export_messages": 10000,
+      "current_summaries_preserved": true,
+      "history_navigation": {
+        "first": {
+          "browsing": true,
+          "loading": false,
+          "start": 0,
+          "end": 100,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 8.2392,
+          "rows": 100,
+          "bytes": 285990
+        },
+        "middle": {
+          "browsing": true,
+          "loading": false,
+          "start": 5000,
+          "end": 5100,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 9.362499999999999,
+          "rows": 100,
+          "bytes": 292500
+        },
+        "last": {
+          "browsing": true,
+          "loading": false,
+          "start": 9900,
+          "end": 10000,
+          "total": 10000,
+          "activity": false,
+          "fetch_ms": 13.380700000000001,
+          "rows": 100,
+          "bytes": 292569
+        },
+        "middle_frame": {
+          "p50_ms": 8.187,
+          "p95_ms": 9.966,
+          "p99_ms": 10.779
+        }
+      }
+    }
+  ],
+  "source_commit": "06caaf874cede67e2666cb0d10c3f633ac387fa9",
+  "vwork_revision": "ee1a10b341f48c858dc4daa3c60e8608525fd08c",
+  "notes": [
+    "Full 1000/8/10000 workload; isolated native Windows fixtures via asuser, live host/guest reserves and 32 GB cap.",
+    "Corrected new-binding durability source after initial CI forced-crash failure.",
+    "0.3.4 baseline remains rc1-scale-baseline-games-2026-10-30.json. Different-day/backend results show slower frame times here and do not establish a speed improvement."
+  ]
+}
