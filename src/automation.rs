@@ -46,6 +46,8 @@ pub(crate) enum Step {
     WaitIdle(u64),
     /// Wait for session provider/model/effort controls to finish their request.
     WaitGoose(u64),
+    /// Wait for native capability input and asynchronous load/save to settle.
+    WaitCapabilities(u64),
     /// Native migration panel state; no filesystem polling on the UI thread.
     WaitMigration {
         active: bool,
@@ -305,6 +307,7 @@ impl AppController {
                 | Step::WaitReady(_)
                 | Step::WaitIdle(_)
                 | Step::WaitGoose(_)
+                | Step::WaitCapabilities(_)
                 | Step::WaitMigration { .. }
                 | Step::WaitProject { .. }
                 | Step::WaitRally { .. }
@@ -1134,6 +1137,13 @@ impl AppController {
                     && !state.get_setup_loading()
                     && state.get_options().row_count() > 0;
                 ready || timed_out(elapsed, *timeout, "Session controls ready")
+            }
+            Step::WaitCapabilities(timeout) => {
+                let state = self.window.global::<crate::ui::CapabilityState>();
+                // Preserve the fixture's native input settling interval, but
+                // never mistake an elapsed delay for a completed async save.
+                (elapsed >= Duration::from_millis(800) && !state.get_busy())
+                    || timed_out(elapsed, *timeout, "Capability controls ready")
             }
             Step::WaitProject { open, timeout_ms } => {
                 let state = self.window.global::<crate::ui::ProjectState>();

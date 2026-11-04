@@ -2534,3 +2534,19 @@ The [13 storage UI regressions](benchmarks/rc13-regressions-games-2026-11-04.jso
 passed on the same candidate: workspace edits, delegation, project defaults,
 checkpoints, compaction, review/merge, relaunch ownership, history, search summaries,
 foreground prioritization, memories, and both queue/process recovery paths.
+
+### RC13 held before publication; RC14 fixture correction
+
+[RC13 release CI](https://github.com/allquixotic/fastrock/actions/runs/41852433232)
+compiled both platforms, passed all 841 Windows Rust tests, signed the executable,
+and passed the first ten native cases. The capability fixture then sampled an
+extension-default save after a fixed 800 ms while `busy=true`; its next snapshot
+shows the requested default correctly saved. Packaging and publication did not run.
+
+RC14 replaces that fixed-delay assumption with a bounded native completion wait
+before dependent capability actions and assertions. The Fjall implementation and
+pinned vwork dependency are unchanged, so the guarded games migration/startup/
+scale evidence above remains applicable. The entire signed CI matrix will run
+again; no acceptance or signing gate is bypassed. Failed RC13 evidence remains
+archived with SHA-256
+`4461620569a736b5270125e7982e06db454a55e8ad943be2cb0e14a4b20685d5`.

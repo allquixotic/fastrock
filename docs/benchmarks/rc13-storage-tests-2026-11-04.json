@@ -103,7 +103,7 @@
       "passed": 0
     }
   ],
-  "mac_compile": "cargo check --locked --workspace --all-targets: PASS; no local tests or GUI",
+  "mac_compile": "PASS: workspace check plus final release CI macOS compatibility build from 47a21619c745a6634e3f1e0b363d06b3fca1ee93; no local tests or GUI",
   "notes": [
     "Strict vwork clippy and formatting passed. Optional strict Fastrock lint identified small touched-code simplifications; two existing session.rs collapsible-if warnings were left unchanged.",
     "The duplicate-publication regression failed before the fix and passes afterward; no release was published with that interim implementation."

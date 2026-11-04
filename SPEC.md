@@ -851,3 +851,5 @@ B282|2026-11-03|Every thread restore opened redb to inspect the checkpoint journ
 B283|2026-11-03|Windows heartbeat reader briefly denied atomic file replacement; receiver exited and guarded benchmark correctly stopped on stale heartbeat|V45; bounded writer retry keeps original receipt time, persistent denial still fails closed; deterministic transient/permanent denial tests
 
 B284|2026-11-04|Optional strict lint found redundant borrow/conditions in Fjall integration; two older session.rs collapsible-if warnings remain outside this change|Simplify touched code, retain compile/native suite gates; no behavior invariant needed
+
+B285|2026-11-04|Signed RC13 capabilities fixture sampled extension-default save after fixed 800ms while busy=true; subsequent snapshot showed correctly saved default|Bounded native capability-completion wait before dependent actions/assertions; retain failed RC13 tag/evidence, publish corrected fixture under RC14; V23

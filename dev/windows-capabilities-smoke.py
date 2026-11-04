@@ -19,7 +19,7 @@ helper.write_text('import json,sys\nfrom pathlib import Path\nv=json.load(sys.st
 command=' '.join("'"+str(path).replace('\\','/').replace("'","'\"'\"'")+"'" for path in (Path(sys.executable),helper,marker))
 new_hooks=json.dumps({'hooks':{'Stop':[{'hooks':[{'type':'command','command':command,'timeout':10}]}]}})
 def c(*args):return {'settings':['capabilities',*args]}
-def wait():return {'wait':800}
+def wait():return {'wait_capabilities':30000}
 def dump(name):return [c('dump',str(out/(name+'.json'))),{'wait':180}]
 def read(name):return json.loads((out/(name+'.json')).read_text(encoding='utf-8'))
 def run(name,steps):

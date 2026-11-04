@@ -1,0 +1,39 @@
+{
+  "result": "PASS",
+  "version": "0.4.0-rc.13",
+  "recorded_at": "2026-11-04T15:12:39.299010+00:00",
+  "games": {
+    "removed_tree": "C:\\Users\\SeanMcNamara\\fastrock-fjall-verify",
+    "files": 5660,
+    "logical_bytes": 81582398373,
+    "remaining_bytes_on_retry": 78098562625,
+    "evidence_sha256": "a8b7febb0e81082f7ae92bf4d9498dd58fb8ccdebc2badc5a89e482995467eb9",
+    "remaining_fixture_processes": 0,
+    "free_bytes": 2889841414144
+  },
+  "local": {
+    "removed_bytes": 2850727685,
+    "stale_test_exes": 36,
+    "temporary_task_directory_removed": "/tmp/fastrock-fjall-native",
+    "temporary_runner_removed": true
+  },
+  "evidence": {
+    "archive": "fastrock-rc13-fixture-evidence.zip",
+    "sha256": "a8b7febb0e81082f7ae92bf4d9498dd58fb8ccdebc2badc5a89e482995467eb9",
+    "files": 1276,
+    "local_logs_archive": "local-verification-logs.zip",
+    "local_logs_sha256": "143e24a194d06c4e6463c1e86e7e8536872df4ae710de1bcb70489c8a524d83d",
+    "location": "/tmp/fastrock-rc13-release"
+  },
+  "preserved": [
+    "Original user databases, configuration and installed applications",
+    "Active Cargo incremental caches",
+    "RC12 and RC13 release/verification evidence",
+    "Running games VM and host"
+  ],
+  "notes": [
+    "Only identified task fixtures, transferred binaries, stale test executables and completed CI staging binaries were removed.",
+    "Readonly Git fixture objects were cleared only inside the owned test directory on retry.",
+    "The temporary Mac build runner deregistered; no Mac GUI or tests ran."
+  ]
+}
