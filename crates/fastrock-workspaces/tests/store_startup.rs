@@ -1,11 +1,11 @@
-//! Isolated large-redb seed for native startup/I/O acceptance. Never user data.
+//! Isolated large-Fjall seed for native startup/I/O acceptance. Never user data.
 use anyhow::{Context, Result, ensure};
-use redb::{ReadableDatabase, TableDefinition};
 use serde_json::json;
 use std::path::Path;
+use vwork_engine::kv::{Database, TableDefinition};
 use vwork_engine::{engine::Engine, model::Config};
 
-const FILLER: TableDefinition<u64, &[u8]> = TableDefinition::new("startup_fixture_payload");
+const FILLER: TableDefinition<&str, &[u8]> = TableDefinition::new("records_v1");
 
 fn seed(root: &Path, mib: usize, repositories: usize) -> Result<()> {
     ensure!(
@@ -16,11 +16,7 @@ fn seed(root: &Path, mib: usize, repositories: usize) -> Result<()> {
     let home = root.join("store");
     let engine = Engine::open(&home, Config::default())?;
     drop(engine);
-    // Bulk fixture generation must not fill redb's default 1 GiB cache and
-    // consume the hypervisor's remaining reserve before the app is measured.
-    let db = redb::Database::builder()
-        .set_cache_size(32 * 1024 * 1024)
-        .open(home.join("workspaces.redb"))?;
+    let db = Database::open(&home.join("workspaces.fjall"))?;
     // Valid, incompressible payload isolates database-size overhead from repo
     // enumeration. Actual registered Git repos/workspaces exercise that too.
     // Each transaction holds at most 16 MiB; never allocate the full DB in RAM.
@@ -37,7 +33,10 @@ fn seed(root: &Path, mib: usize, repositories: usize) -> Result<()> {
         {
             let mut table = tx.open_table(FILLER)?;
             for index in batch..(batch + 16).min(mib) {
-                table.insert(index as u64, bytes.as_slice())?;
+                table.insert(
+                    format!("fixture_payload/{index:06}").as_str(),
+                    bytes.as_slice(),
+                )?;
             }
         }
         tx.commit()?;
@@ -64,6 +63,7 @@ fn seed(root: &Path, mib: usize, repositories: usize) -> Result<()> {
             )?;
         }
     }
+    let database_bytes = engine.db.disk_space()?;
     drop(engine);
     std::fs::write(
         root.join("fixture.json"),
@@ -73,7 +73,7 @@ fn seed(root: &Path, mib: usize, repositories: usize) -> Result<()> {
     )?;
     println!(
         "{}",
-        json!({"database_bytes":std::fs::metadata(home.join("workspaces.redb"))?.len(),"payload_mib":mib,"repositories":repositories,"workspaces":repositories*4})
+        json!({"database_bytes":database_bytes,"payload_mib":mib,"repositories":repositories,"workspaces":repositories*4})
     );
     Ok(())
 }
@@ -92,7 +92,7 @@ fn verify(root: &Path) -> Result<()> {
             .db
             .begin_read()?
             .open_table(FILLER)?
-            .get(0)?
+            .get("fixture_payload/000000")?
             .context("Missing payload")?
             .value()
             .len()
@@ -107,14 +107,69 @@ fn verify(root: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Test-only legacy export. This is the only writer of Zstd/redb here and is
+/// never linked into the product. Both formats carry identical logical data.
+fn legacy_copy(root: &Path) -> Result<()> {
+    let db = Database::open(&root.join("store/workspaces.fjall"))?;
+    let read = db.begin_read()?;
+    let destination = root.join("legacy-store");
+    std::fs::create_dir(&destination)?;
+    let legacy = redb::Database::builder()
+        .set_cache_size(32 * 1024 * 1024)
+        .create(destination.join("workspaces.redb"))?;
+    for (source, name) in [
+        (FILLER, "records_v1"),
+        (vwork_engine::git_store::OBJECTS, "git_objects_v1"),
+        (vwork_engine::git_store::MEMBERS, "git_members_v1"),
+        (vwork_engine::git_store::OVERLAYS, "git_members_v1"),
+    ] {
+        let records = read.open_table(source)?;
+        let mut tx = legacy.begin_write()?;
+        let mut count = 0;
+        let mut bytes = 0;
+        for row in records.iter()? {
+            let (key, value) = row?;
+            let value = if name == "git_objects_v1" {
+                let (kind, raw) =
+                    vwork_engine::git_store::read(&db, git2::Oid::from_str(key.value())?)?;
+                let mut record = vec![kind.raw() as u8];
+                record.extend_from_slice(&(raw.len() as u64).to_le_bytes());
+                record.extend(zstd::encode_all(raw.as_slice(), 3)?);
+                record
+            } else {
+                value.value().to_vec()
+            };
+            tx.open_table(redb::TableDefinition::<&str, &[u8]>::new(name))?
+                .insert(key.value(), value.as_slice())?;
+            count += 1;
+            bytes += value.len();
+            if count >= 128 || bytes >= 16 * 1024 * 1024 {
+                tx.commit()?;
+                tx = legacy.begin_write()?;
+                count = 0;
+                bytes = 0;
+            }
+        }
+        tx.commit()?;
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let args: Vec<_> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some("window_runtime::tests") {
         return Ok(());
     }
-    if args.get(1).map(String::as_str) == Some("--seed") {
+    if matches!(
+        args.get(1).map(String::as_str),
+        Some("--seed" | "--seed-both")
+    ) {
         ensure!(args.len() == 5, "Usage: --seed NEW_ROOT MIB REPOSITORIES");
-        return seed(Path::new(&args[2]), args[3].parse()?, args[4].parse()?);
+        seed(Path::new(&args[2]), args[3].parse()?, args[4].parse()?)?;
+        if args[1] == "--seed-both" {
+            legacy_copy(Path::new(&args[2]))?;
+        }
+        return Ok(());
     }
     let temp = tempfile::tempdir()?;
     let root = temp.path().join("fixture");

@@ -1,16 +1,20 @@
 # Embedded workspaces in Fastrock 0.4.0
 
-The development branch links vwork 0.3.5 at
-`6bb0b3d5baddc4300827d63d7de0f067e018f69d`, with the clean-startup optimization. Existing stores use the same Engine,
-redb schema, compression settings, revisions and leases. Fastrock holds one owner
-per canonical store path. Core services retain that owner; concurrent callers share
-a cancellation-safe open. Clean startup validates redb metadata without copying
-or scanning the entire database. Crash repair retains a pre-repair snapshot and
-full integrity verification. Workspace I/O runs on bounded blocking workers;
-compaction excludes active readers and writers. No vwork installation or daemon
+Fastrock links vwork 0.4.0 at
+`e1793df58bef6fbeacaf0b311f3f7858d54be7a5`, using Fjall 3.1.13 with engine-managed
+LZ4 and bounded Git deltas. Existing redb stores migrate automatically on first
+use, with native progress and Pause/Resume controls; the original file remains
+intact. See [storage and migration](FJALL-STORAGE.md) for manual imports, recovery,
+backup guidance and concurrency details.
+
+Fastrock holds one owner per canonical store path. Core services retain that
+owner; concurrent callers share a cancellation-safe open. Subsequent startup
+opens Fjall directly without scanning the old redb. Workspace I/O runs on bounded
+blocking workers. Fjall manages incremental compaction; explicit whole-store
+maintenance excludes active workspace operations. No vwork installation or daemon
 is required. Fresh installations receive a default local store.
 
-Current search summaries have a separate compressed table inside that same redb.
+Current search summaries have a separate keyspace inside that same Fjall store.
 Replacement is atomic and checks the requested turn revision; stale background
 results cannot overwrite a newer request. Background generation and deterministic
 search are integrated. The hook helper uses the original vwork policy.

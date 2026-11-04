@@ -55,7 +55,6 @@ pub struct Store {
     slot: Arc<OwnerSlot>,
     failed: AtomicBool,
     workers: Arc<Semaphore>,
-    next_compact: Mutex<std::time::Instant>,
 }
 
 impl Drop for Store {
@@ -99,7 +98,6 @@ impl Store {
         }
         let _opening = timing::Opening::start();
         let config = vwork_engine::transport::load_config(&home)?;
-        let interval = std::time::Duration::from_secs(config.compact_interval_seconds);
         let engine = Engine::open_embedded(&home, config)?;
         timing::opened(&engine.recovery);
         let store = Arc::new(Self {
@@ -107,7 +105,6 @@ impl Store {
             slot: slot.clone(),
             failed: AtomicBool::new(false),
             workers: Arc::new(Semaphore::new(8)),
-            next_compact: Mutex::new(std::time::Instant::now() + interval),
         });
         *owner = Some(Arc::downgrade(&store));
         drop(owner);
@@ -127,26 +124,9 @@ impl Store {
                 };
                 let _ = tokio::task::spawn_blocking(move || {
                     let _permit = permit;
-                    let config = store.with_engine(|engine| {
-                        engine.reap_temporary()?;
-                        Ok(engine.config.clone())
-                    })?;
-                    let now = std::time::Instant::now();
-                    let mut next = store
-                        .next_compact
-                        .lock()
-                        .map_err(|_| anyhow::anyhow!("Maintenance schedule unavailable"))?;
-                    if now < *next {
-                        return Ok::<_, anyhow::Error>(());
-                    }
-                    *next = now + std::time::Duration::from_secs(config.compact_interval_seconds);
-                    if config.auto_compact
-                        && vwork_engine::maintenance::idle_time()
-                            .is_some_and(|idle| idle.as_secs() > config.compact_idle_seconds)
-                    {
-                        store.call("database_compact", &json!({}))?;
-                    }
-                    Ok(())
+                    // Fjall's own bounded background workers compact incrementally.
+                    // Never take the whole-store gate for periodic compaction.
+                    store.with_engine(|engine| engine.reap_temporary())
                 })
                 .await;
             }
@@ -434,7 +414,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let owner = Store::open(temp.path()).unwrap();
         // Deterministically model the last Arc reaching zero before its Engine
-        // destructor has released redb's OS file lock.
+        // destructor has released Fjall's OS file lock.
         let closing = Arc::try_unwrap(owner).unwrap_or_else(|_| panic!("unexpected owner"));
         let connection = Connection::new(temp.path().to_owned());
         let mut reopen = tokio::spawn(async move { connection.store().await });

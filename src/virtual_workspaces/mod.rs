@@ -29,6 +29,27 @@ impl AppController {
             return;
         };
         match command {
+            "migrate" => {
+                if let (Some(source), Some(destination)) = (args.get(1), args.get(2)) {
+                    self.storage_migration_start(source.into(), destination.into());
+                }
+            }
+            "migration-pause" | "migration-resume" => {
+                self.menu_action(&format!("storage-{command}"))
+            }
+            "migration-dump" => {
+                if let Some(path) = args.get(1) {
+                    let progress = fastrock_workspaces::migration::progress();
+                    let path = path.clone();
+                    self.backend.spawn(async move {
+                        let _ = tokio::fs::write(
+                            path,
+                            serde_json::to_vec(&progress).unwrap_or_default(),
+                        )
+                        .await;
+                    });
+                }
+            }
             "open" => self.virtual_workspaces_open(),
             "action" => {
                 if let Some(action) = args.get(1) {

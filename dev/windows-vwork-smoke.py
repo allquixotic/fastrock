@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native edits/revision conflicts against embedded vwork and its real redb.
+"""Native edits/revision conflicts against embedded vwork and its real Fjall store.
 
 The local model requests actual vwork tools to seed and edit the workspace.
 No daemon, fake storage service, or installed Goose/vwork.
@@ -126,7 +126,7 @@ try:
     assert base64.b64decode(inspected[0]['base64']) == b'edited\r\n', inspected
     assert inspected[1]['entries'][0]['mode'] == '100755', inspected
     assert (repo / 'src/main.rs').read_bytes() == original, 'Virtual edits changed the source checkout'
-    assert (state / 'workspaces.redb').is_file() and not (state / 'connection.json').exists()
+    assert (state / 'workspaces.fjall').is_dir() and not (state / 'connection.json').exists()
     assert not missing_vwork.exists(), 'Fixture unexpectedly installed vwork'
     assert (out / 'virtual.png').stat().st_size > 1000
     review, merged = load('merge-review'), load('merged')

@@ -2486,3 +2486,51 @@ baselines and signed release/provenance evidence remain. Games stayed running.
 Use explicit **Quit** on an old RC11 tray process before upgrading. RC12 automated
 acceptance is complete; live Bedrock profile acceptance remains required for
 final stable 0.4.0.
+
+## Fjall storage and migration, RC13 (2026-11-04)
+
+Fjall 3.1.13 replaces the live redb store through vwork 0.4.0. LZ4 runs in the
+engine; application storage transforms are limited to bounded Git deltas and
+legacy decoding. Git object IDs deduplicate content across repositories and
+workspaces. First publication is conflict-checked so competing imports cannot
+replace a delta base with another encoding. Workspace heads, private refs and
+conversation summary generations use independent keys; ordinary writes do not
+maintain shared object counters. Git headers, delta-base links and encoded sizes
+are separate immutable records; header lookups, deduplication, key scans and GC
+do not inflate object payloads. Both records publish atomically, and object
+reconstruction checks their consistency.
+
+The pinned [vwork CI run](https://github.com/allquixotic/vwork/actions/runs/41849790981)
+passed 80 tests on each of hosted Windows and macOS, plus repeated lifecycle
+regressions. All 841 Fastrock tests passed natively on games. The Mac workspace
+compiled without running tests or a GUI. See [test evidence](benchmarks/rc13-storage-tests-2026-11-04.json).
+
+The [2.5 GiB native migration fixture](benchmarks/rc13-migration-games-2026-11-04.json)
+verified automatic detection, visible progress, native Pause/Resume, manual
+registration, first-thread handoff, byte-exact preservation of the original redb,
+and clean restart after removing the original from the expected source path.
+Unit fixtures additionally cover interrupted delta repacking, dirty-source repair
+on a private copy, changed/locked/corrupt sources and existing destinations.
+
+The [2.5 GiB startup fixture](benchmarks/rc13-startup-games-2026-11-04.json)
+registered 24 repositories and 96 workspaces. The candidate read 53.65 MB and
+wrote 0.80 MB of logical process I/O, with 142.4 MB peak working set; it did not
+copy or scan the entire store. Fjall startup can replay its bounded journal.
+Thread setup measured 502, 100 and 99 ms; the RC12 baseline measured 525, 101
+and 100 ms. The candidate UI became ready in 100 ms versus 368 ms for that
+baseline run. These are individual fixture runs,
+not a general speed comparison or reproduction of the work PC's repository mix.
+
+The [full scale fixture](benchmarks/rc13-scale-games-2026-11-04.json) passed with
+1,000 stored conversations, eight simultaneous streams and 10,000 history
+messages. Peak application working set was 247.6 MB, p95 rendered frame time
+8.81 ms, and synchronous tab-switch dispatch 0.3–0.5 ms. Indexed history windows
+retained 100 entries and loaded in 4–12 ms. The retained
+[0.3.4 baseline](benchmarks/rc1-scale-baseline-games-2026-10-30.json) is from a
+different day and backend arrangement. All runs retained the 32 GB hard cap and
+live host/guest memory reserves; no workload reduction was needed.
+
+The [13 storage UI regressions](benchmarks/rc13-regressions-games-2026-11-04.json)
+passed on the same candidate: workspace edits, delegation, project defaults,
+checkpoints, compaction, review/merge, relaunch ownership, history, search summaries,
+foreground prioritization, memories, and both queue/process recovery paths.

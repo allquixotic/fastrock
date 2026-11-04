@@ -190,3 +190,10 @@ conversations keep their stored recipe snapshot when the library file changes.
 Goose's ACP API renders supplied recipes again. Fastrock checks that this second
 render leaves the prepared recipe unchanged; parameter text that would introduce
 another template expansion is rejected before providers or extensions activate.
+
+## Storage migration
+
+Existing redb workspace stores migrate automatically to Fjall on first use. The
+progress panel offers Pause and Resume; the original redb remains intact. Use
+**File → Migrate legacy storage…** to import another legacy database into an
+unused workspace home. See [storage and migration](FJALL-STORAGE.md) for details.

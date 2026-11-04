@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "peakBytes": 266706944,
+  "sha256": "dd36c8b9d1ef65632969db5a5384340d28a9665e6ddd938be970bbf595f71ba0",
+  "sourceSha256": "e0c9ae7ce639204d2bc6c3fffec7339dad9e784d4cab8aba8a1baa05891cd56f",
+  "checks": [
+    "manual native progress",
+    "native Pause and Resume",
+    "registry discovery",
+    "automatic detection",
+    "first thread handoff",
+    "byte-exact source preservation",
+    "clean reopen without redb"
+  ],
+  "notes": [
+    "Isolated native Windows fixtures on games via asuser -e; no user data or live model calls.",
+    "Final source candidate before release commit; CI rebuilds and verifies the signed executable.",
+    "32 GB hard cap plus live 4 GB host/guest reserves; full workload completed."
+  ],
+  "vwork_revision": "e1793df58bef6fbeacaf0b311f3f7858d54be7a5",
+  "payload_mib": 2560
+}

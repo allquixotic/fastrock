@@ -1,0 +1,120 @@
+{
+  "host": "GAMES",
+  "hard_cap_bytes": 32000000000,
+  "attempts": [
+    {
+      "mib": 2560,
+      "repositories": 24,
+      "runs": {
+        "baseline": {
+          "binary_sha256": "824bf1cd4e3747cde9371b19eb01f844e0701caff3d68557725a50e615f279d1",
+          "cap_bytes": 1046071296,
+          "io": {
+            "read_operations": 1571,
+            "write_operations": 1045,
+            "other_operations": 12455,
+            "read_bytes": 3162359,
+            "write_bytes": 1682205,
+            "other_bytes": 230508
+          },
+          "elapsed_ms": 4797.0,
+          "peak_app_bytes": 141234176,
+          "peak_tree_commit_bytes": 86061056,
+          "exit_code": 0,
+          "thread_ready_ms": [
+            524.5,
+            100.5,
+            100.3
+          ],
+          "startup_ready_ms": 367.8,
+          "result": "PASS"
+        },
+        "candidate": {
+          "binary_sha256": "dd36c8b9d1ef65632969db5a5384340d28a9665e6ddd938be970bbf595f71ba0",
+          "cap_bytes": 973039616,
+          "io": {
+            "read_operations": 2282,
+            "write_operations": 1198,
+            "other_operations": 14310,
+            "read_bytes": 53648102,
+            "write_bytes": 802606,
+            "other_bytes": 288403
+          },
+          "elapsed_ms": 3235.0,
+          "peak_app_bytes": 142401536,
+          "peak_tree_commit_bytes": 83800064,
+          "exit_code": 0,
+          "thread_ready_ms": [
+            501.8,
+            100.1,
+            98.9
+          ],
+          "startup_ready_ms": 99.9,
+          "runtime": {
+            "timings": [
+              [
+                "Session creation",
+                "last 46 ms; peak 374 ms this run"
+              ],
+              [
+                "Turn setup",
+                "last 43 ms; peak 87 ms this run"
+              ],
+              [
+                "Send to first response",
+                "last 62 ms; peak 570 ms this run"
+              ],
+              [
+                "Complete thread setup",
+                "last 87 ms; peak 453 ms this run"
+              ],
+              [
+                "Provider selection",
+                "last 0 ms; peak 0 ms this run"
+              ],
+              [
+                "Workspace selection",
+                "last 0 ms; peak 0 ms this run"
+              ],
+              [
+                "Workspace tools and hooks",
+                "last 2 ms; peak 3 ms this run"
+              ],
+              [
+                "Workspace store initialization",
+                "opens 1; clean 1; recovered 0; new 0; migrated 0; last 728 ms; peak 728 ms this run"
+              ]
+            ],
+            "summaries": "ready=true, active=false, pending=0, foreground=0, retry=false, stage=commit, storage=ok"
+          },
+          "result": "PASS"
+        }
+      },
+      "seed": {
+        "cap_bytes": 1025992704,
+        "io": {
+          "read_operations": 12018,
+          "write_operations": 16527,
+          "other_operations": 55864,
+          "read_bytes": 6848243274,
+          "write_bytes": 14812748719,
+          "other_bytes": 403892
+        },
+        "elapsed_ms": 34828.0,
+        "peak_app_bytes": 333852672,
+        "peak_tree_commit_bytes": 327553024,
+        "exit_code": 0
+      },
+      "database_bytes": 2746141041,
+      "result": "PASS"
+    }
+  ],
+  "notes": [
+    "Isolated native Windows fixtures on games via asuser -e; no user data or live model calls.",
+    "Final source candidate before release commit; CI rebuilds and verifies the signed executable.",
+    "32 GB hard cap plus live 4 GB host/guest reserves; full workload completed.",
+    "Filler records isolate database-size cost; 24 small registered repositories and 96 workspaces exercise metadata. This is not the work PC repository mix.",
+    "RC12 signed release baseline; logical process IO counters do not measure physical disk traffic. Single-run timings are not a general speed guarantee."
+  ],
+  "vwork_revision": "e1793df58bef6fbeacaf0b311f3f7858d54be7a5"
+}

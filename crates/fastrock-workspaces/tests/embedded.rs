@@ -130,7 +130,7 @@ async fn v40_one_owner_and_no_daemon_credentials() {
     let b = Connection::new(home.clone());
     let (a, b) = tokio::join!(a.store(), b.store());
     assert!(Arc::ptr_eq(&a.unwrap(), &b.unwrap()));
-    assert!(home.join("workspaces.redb").exists());
+    assert!(home.join("workspaces.fjall").is_dir());
     assert!(!home.join("connection.json").exists());
 }
 

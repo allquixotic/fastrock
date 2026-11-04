@@ -5,6 +5,7 @@ Fastrock 0.4.0: stable T3 UI/orchestration in native Slint/Rust, unmodified embe
 Broader GUI contract: repository `GUI.md`.
 
 ## §C CONSTRAINTS
+- 2026-11-04: latest stable Fjall 3.1.13 replaces vwork redb; configure LZ4 in engine, no direct entropy compression in Fastrock/vwork except legacy migration decoding. Git delta support, shared immutable objects, independent workspace/conversation transaction keys. Automatic preserved-source migration, native progress, explicit migration menu; no source loss or silent overwrite.
 - Fastrock derives from pinned allquixotic/codex-gui; Apache-2.0 and Slint attribution preserved.
 - 2026-10-29 authorization supersedes external-backend rules: Goose/vwork/core orchestration in-process; configured MCPs/hooks/credential helpers and user/LLM tools may spawn. No Goose fork, Codex backend or remote agent servers.
 - Preserve Goose configuration/OS credentials. Bedrock/direct OpenAI/direct Anthropic, tools/hooks/recipes/code mode; no local inference or voice. Required model routes block final release; unsupported effort levels do not.
@@ -221,8 +222,12 @@ V93: Memories ! dedicated zstd-compressed state in owning vwork redb, <=512 fact
 
 V94: Windows relaunch ! activate existing profile owner and forward folder/resume requests; explicit Quit ! release ownership; helpers ! bypass GUI ownership. MCP registration/discovery ! no redb open, recovery or cleanup; actual workspace tools ! exclusive owner and normal validation. Embedded open ! defer expired-tree cleanup; lock conflict ! no backup/corruption advice. Checkpoint recovery probe on history open ! bounded to two seconds; unavailable journal ! read-only saved history, paused queues and explicit Resume recheck before work. Restore timeout ! backend-neutral label and active stage diagnostics. Verify `v94_failed_activation_preserves_read_only_history_and_retry`, `v94_unavailable_journal_keeps_history_read_only_and_retryable`, `v94_relaunch_forwards_and_quit_releases_profile`, `v94_tool_discovery_does_not_open_a_locked_store`, vwork V31 and native relaunch/old-thread fixtures.
 
+V95: Fjall ! sole live virtual-workspace/search/memory/checkpoint store; LZ4 configured in engine including cold scrollback, no direct application entropy compression. Legacy decoding migration-only; no Goose changes. Verify vwork V32–V36, summary/checkpoint/memory regressions and `v95_engine_compresses_pages_and_releases_them`.
+V96: Existing redb ! automatic resumable migration on worker with native determinate stage progress; UI remains responsive, requests wait for migration rather than short startup timeout. Original retained; validation/durable activation before service; explicit menu migrates selected legacy store into unused destination, never overwrites active work. Verify `v96_migration_progress_and_manual_destination`, native migration/restart/cancel fixtures and full games acceptance.
+
 ## §T TASKS
 id|status|task|cites
+T70|x|Fjall storage integration, engine-owned scrollback compression, automatic/manual migration GUI and concurrent workload acceptance|V95,V96,V40,V43,V92,V93,V94,I.vwork,I.memory
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
 T2|x|Recover Windows retained surface; Auto uses CPU in RDP|V2,I.paint
 T3|x|Shared link menus and hover tooltips|V3,V4,I.links
@@ -844,3 +849,5 @@ B281|2026-11-03|RC11 hosted Windows runner failed PowerShell Gallery registratio
 B282|2026-11-03|Every thread restore opened redb to inspect the checkpoint journal before displaying history; static MCP registration also probed redb; embedded open waited for expired-tree cleanup; relaunch could create a second process beside the tray owner; lock conflicts falsely advised backup restoration|V94; bounded checkpoint probe with fail-closed readable history and explicit Resume recheck, lazy static discovery, deferred cleanup, profile activation pipe, typed ownership guidance and active restore diagnostics. These are verified code defects; precise work-PC timeout cause still requires its timing evidence.
 
 B283|2026-11-03|Windows heartbeat reader briefly denied atomic file replacement; receiver exited and guarded benchmark correctly stopped on stale heartbeat|V45; bounded writer retry keeps original receipt time, persistent denial still fails closed; deterministic transient/permanent denial tests
+
+B284|2026-11-04|Optional strict lint found redundant borrow/conditions in Fjall integration; two older session.rs collapsible-if warnings remain outside this change|Simplify touched code, retain compile/native suite gates; no behavior invariant needed

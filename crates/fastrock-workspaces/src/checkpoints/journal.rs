@@ -20,15 +20,12 @@ fn load(engine: &Engine, session: &str, id: &str) -> Result<Journal> {
     let value = table
         .get(k.as_str())?
         .context("Restore backup is unavailable")?;
-    let mut bytes = Vec::new();
-    zstd::stream::Decoder::new(value.value())?
-        .take(MAX_BACKUP + 1)
-        .read_to_end(&mut bytes)?;
+    let bytes = value.value();
     ensure!(
         bytes.len() as u64 <= MAX_BACKUP,
         "Restore backup exceeds limit"
     );
-    let journal: Journal = serde_json::from_slice(&bytes)?;
+    let journal: Journal = serde_json::from_slice(bytes)?;
     ensure!(
         journal.backup.capture.session == session && journal.backup.capture.id == id,
         "Restore backup identity mismatch"
@@ -40,7 +37,7 @@ fn pending_id(engine: &Engine, session: &str) -> Result<Option<String>> {
     let txn = engine.db.begin_read()?;
     let table = match txn.open_table(PENDING) {
         Ok(t) => t,
-        Err(redb::TableError::TableDoesNotExist(_)) => return Ok(None),
+        Err(vwork_engine::kv::TableError::TableDoesNotExist(_)) => return Ok(None),
         Err(e) => return Err(e.into()),
     };
     Ok(table.get(session)?.map(|v| v.value().to_owned()))
@@ -51,7 +48,6 @@ fn save(engine: &Engine, journal: &Journal) -> Result<()> {
         bytes.len() as u64 <= MAX_BACKUP,
         "Restore backup exceeds 256 MiB; files and conversation unchanged"
     );
-    let bytes = zstd::stream::encode_all(bytes.as_slice(), engine.config.compression_level)?;
     let k = key(&journal.backup.capture.session, &journal.backup.capture.id)?;
     let txn = engine.db.begin_write()?;
     {
@@ -70,7 +66,10 @@ fn save(engine: &Engine, journal: &Journal) -> Result<()> {
     txn.commit()?;
     Ok(())
 }
-pub(super) fn forget_records(transaction: &redb::WriteTransaction, session: &str) -> Result<()> {
+pub(super) fn forget_records(
+    transaction: &vwork_engine::kv::WriteTransaction,
+    session: &str,
+) -> Result<()> {
     ensure!(
         transaction.open_table(PENDING)?.get(session)?.is_none(),
         "Resolve the pending restore before deleting its conversation"

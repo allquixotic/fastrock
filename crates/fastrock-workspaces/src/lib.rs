@@ -16,6 +16,7 @@ pub mod search;
 pub mod session;
 pub mod summaries;
 pub mod vwork;
+pub use vwork_engine::migration;
 
 pub const PAGE_SIZE: usize = 200;
 pub const MAX_TEXT_BYTES: usize = 2 * 1024 * 1024;

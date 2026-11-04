@@ -1,14 +1,17 @@
 //! Lossless, indexed cold transcript pages; call from a background runtime.
 //!
-//! Like Ghostty's cold scrollback, completed content is compressed only when
-//! that saves space, and restored on demand. GUI values need no fixed virtual
-//! address: retain their IDs/order and bound the decoded LRU instead.
+//! Completed content is stored in a bounded-cache Fjall database with LZ4
+//! configured in the engine. Indexed pages and a decoded LRU bound residency;
+//! Fastrock performs no compression or decompression itself.
 use anyhow::Result;
 use serde_json::{Value, json};
 use std::{
     collections::{HashMap, VecDeque},
     ops::Range,
-    sync::Arc,
+    sync::{
+        Arc, Mutex, OnceLock, Weak,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 const PAGE_ITEMS: usize = 64;
@@ -24,10 +27,119 @@ pub struct Window {
     pub turns: Vec<Value>,
 }
 
+// Shared across histories, bounded independently of the decoded viewport cache.
+// Creation, reads and writes happen on the existing background runtime.
+struct ColdStore {
+    pages: fjall::Keyspace,
+    _db: fjall::Database,
+    _lease: std::fs::File,
+    _directory: tempfile::TempDir,
+}
+static COLD: OnceLock<Mutex<Weak<ColdStore>>> = OnceLock::new();
+static PAGE_ID: AtomicU64 = AtomicU64::new(1);
+impl ColdStore {
+    fn open() -> Result<Arc<Self>> {
+        let mut shared = COLD
+            .get_or_init(Default::default)
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        if let Some(store) = shared.upgrade() {
+            return Ok(store);
+        }
+        cleanup_cold_stores();
+        let directory = tempfile::Builder::new()
+            .prefix("fastrock-scrollback-")
+            .tempdir()?;
+        let lease = std::fs::OpenOptions::new()
+            .create_new(true)
+            .read(true)
+            .write(true)
+            .open(directory.path().join("owner"))?;
+        lease.try_lock()?;
+        std::io::Write::write_all(&mut &lease, b"fastrock-transcript-cache-v1")?;
+        let db = fjall::Database::builder(directory.path().join("data"))
+            .cache_size(16 * 1024 * 1024)
+            .max_journaling_size(64 * 1024 * 1024)
+            .worker_threads(1)
+            .journal_compression(fjall::CompressionType::Lz4)
+            .open()?;
+        let pages = db.keyspace("pages", || {
+            fjall::KeyspaceCreateOptions::default()
+                .max_memtable_size(4 * 1024 * 1024)
+                .data_block_compression_policy(fjall::config::CompressionPolicy::all(
+                    fjall::CompressionType::Lz4,
+                ))
+        })?;
+        let store = Arc::new(Self {
+            pages,
+            _db: db,
+            _lease: lease,
+            _directory: directory,
+        });
+        *shared = Arc::downgrade(&store);
+        Ok(store)
+    }
+}
+/// Crash leftovers are disposable cache only. Bound enumeration and skip live
+/// owners, recent directories, symlinks and anything without our exact marker.
+fn cleanup_cold_stores() {
+    use std::io::Read;
+    let Ok(entries) = std::fs::read_dir(std::env::temp_dir()) else {
+        return;
+    };
+    for entry in entries.take(4096).flatten() {
+        if !entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with("fastrock-scrollback-")
+        {
+            continue;
+        }
+        let Ok(meta) = std::fs::symlink_metadata(entry.path()) else {
+            continue;
+        };
+        if !meta.is_dir() || meta.file_type().is_symlink() {
+            continue;
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::MetadataExt;
+            if meta.file_attributes() & 0x400 != 0 {
+                continue;
+            }
+        }
+        if meta
+            .modified()
+            .ok()
+            .and_then(|t| t.elapsed().ok())
+            .is_none_or(|d| d.as_secs() <= 86400)
+        {
+            continue;
+        }
+        let Ok(file) = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(entry.path().join("owner"))
+        else {
+            continue;
+        };
+        if file.try_lock().is_err() {
+            continue;
+        }
+        let mut marker = Vec::new();
+        if (&file).take(64).read_to_end(&mut marker).is_err()
+            || marker != b"fastrock-transcript-cache-v1"
+        {
+            continue;
+        }
+        let _ = std::fs::remove_dir_all(entry.path());
+    }
+}
 enum Encoded {
-    Lz4 { bytes: Vec<u8>, original: usize },
+    Stored { store: Arc<ColdStore>, key: [u8; 8] },
+    // Storage failure must never discard conversation content. Retain raw data
+    // in memory; authoritative conversation history remains with the provider.
     Raw(Vec<u8>),
-    // Serialization failure must never discard conversation content.
     Values(Vec<Value>),
 }
 struct Page {
@@ -40,14 +152,13 @@ impl Page {
         let count = items.len();
         let encoded = match serde_json::to_vec(&items) {
             Ok(raw) => {
-                let bytes = lz4_flex::block::compress(&raw);
-                if bytes.len().saturating_add(16) < raw.len() {
-                    Encoded::Lz4 {
-                        bytes,
-                        original: raw.len(),
-                    }
-                } else {
-                    Encoded::Raw(raw)
+                let key = PAGE_ID.fetch_add(1, Ordering::Relaxed).to_be_bytes();
+                match ColdStore::open().and_then(|store| {
+                    store.pages.insert(key, raw.as_slice())?;
+                    Ok(store)
+                }) {
+                    Ok(store) => Encoded::Stored { store, key },
+                    Err(_) => Encoded::Raw(raw),
                 }
             }
             Err(_) => Encoded::Values(items),
@@ -60,12 +171,22 @@ impl Page {
     }
     fn decode(&self) -> Result<Vec<Value>> {
         match &self.encoded {
-            Encoded::Lz4 { bytes, original } => {
-                let raw = lz4_flex::block::decompress(bytes, *original)?;
-                Ok(serde_json::from_slice(&raw)?)
+            Encoded::Stored { store, key } => {
+                let bytes = store
+                    .pages
+                    .get(key)?
+                    .ok_or_else(|| anyhow::anyhow!("Scrollback page missing"))?;
+                Ok(serde_json::from_slice(&bytes)?)
             }
             Encoded::Raw(bytes) => Ok(serde_json::from_slice(bytes)?),
             Encoded::Values(items) => Ok(items.clone()),
+        }
+    }
+}
+impl Drop for Page {
+    fn drop(&mut self) {
+        if let Encoded::Stored { store, key } = &self.encoded {
+            let _ = store.pages.remove(key);
         }
     }
 }
@@ -197,12 +318,12 @@ impl History {
             result.extend(items[start..end].iter().cloned());
             page += 1;
         }
-        if range.end > self.cold_items {
-            if let Some(items) = self.hot.as_ref().and_then(|t| t["items"].as_array()) {
-                let start = range.start.saturating_sub(self.cold_items).min(items.len());
-                let end = (range.end - self.cold_items).min(items.len());
-                result.extend(items[start..end].iter().cloned());
-            }
+        if range.end > self.cold_items
+            && let Some(items) = self.hot.as_ref().and_then(|t| t["items"].as_array())
+        {
+            let start = range.start.saturating_sub(self.cold_items).min(items.len());
+            let end = (range.end - self.cold_items).min(items.len());
+            result.extend(items[start..end].iter().cloned());
         }
         Ok(result)
     }
@@ -451,7 +572,8 @@ mod tests {
             .pages
             .iter()
             .map(|p| match &p.encoded {
-                Encoded::Lz4 { bytes, .. } | Encoded::Raw(bytes) => bytes.len(),
+                Encoded::Stored { .. } => 8,
+                Encoded::Raw(bytes) => bytes.len(),
                 Encoded::Values(v) => v.iter().map(value_bytes).sum(),
             })
             .sum();
@@ -481,5 +603,28 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
+    }
+}
+
+#[cfg(test)]
+mod storage_tests {
+    use super::*;
+    #[test]
+    fn v95_engine_compresses_pages_and_releases_them() {
+        let items = vec![json!({"id":"page","text":"repeated transcript ".repeat(50000)})];
+        let page = Page::new(0, items.clone());
+        let Encoded::Stored { store, key } = &page.encoded else {
+            panic!("Fjall page storage must be available")
+        };
+        let store = store.clone();
+        let key = *key;
+        store.pages.rotate_memtable_and_wait().unwrap();
+        assert_eq!(page.decode().unwrap(), items);
+        assert!(
+            store.pages.disk_space() < 600_000,
+            "Fjall LZ4 must compress repeated pages"
+        );
+        drop(page);
+        assert!(store.pages.get(key).unwrap().is_none());
     }
 }

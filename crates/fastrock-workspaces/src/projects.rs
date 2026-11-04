@@ -4,12 +4,12 @@ use crate::{
     session::{Selection, WorkspaceSession},
 };
 use anyhow::{Context, Result, ensure};
-use redb::{ReadableDatabase, TableDefinition};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use vwork_engine::engine::Engine;
+use vwork_engine::kv::TableDefinition;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Project {
@@ -120,7 +120,7 @@ pub async fn reference(connection: &Connection, workspace: String) -> Result<Str
                             return Ok(value.value().to_owned());
                         }
                     }
-                    Err(redb::TableError::TableDoesNotExist(_)) => {}
+                    Err(vwork_engine::kv::TableError::TableDoesNotExist(_)) => {}
                     Err(error) => return Err(error.into()),
                 }
                 Ok(revision.base)
@@ -132,7 +132,7 @@ fn settings(engine: &Engine, repo: &str) -> Result<Settings> {
     let transaction = engine.db.begin_read()?;
     let table = match transaction.open_table(SETTINGS) {
         Ok(table) => table,
-        Err(redb::TableError::TableDoesNotExist(_)) => return Ok(Settings::default()),
+        Err(vwork_engine::kv::TableError::TableDoesNotExist(_)) => return Ok(Settings::default()),
         Err(error) => return Err(error.into()),
     };
     table

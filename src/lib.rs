@@ -43,6 +43,7 @@ mod vault;
 pub fn credential_helper(id: &str) -> anyhow::Result<()> {
     vault::credential_helper(id)
 }
+mod storage_migration;
 mod virtual_workspaces;
 mod window_runtime;
 mod xtab;

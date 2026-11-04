@@ -1,0 +1,111 @@
+{
+  "vwork_revision": "e1793df58bef6fbeacaf0b311f3f7858d54be7a5",
+  "vwork_ci": "https://github.com/allquixotic/vwork/actions/runs/41849790981",
+  "vwork_windows_tests": 80,
+  "vwork_macos_tests": 80,
+  "vwork_repeated_lifecycle_tests": "PASS",
+  "fastrock_windows_tests": 841,
+  "fastrock_test_targets": [
+    {
+      "name": "migration",
+      "phase": "unit",
+      "code": 0,
+      "seconds": 1.55,
+      "peak": 7413760,
+      "passed": 2
+    },
+    {
+      "name": "fastrock_workspaces",
+      "phase": "unit",
+      "code": 0,
+      "seconds": 3.0,
+      "peak": 126271488,
+      "passed": 16
+    },
+    {
+      "name": "embedded",
+      "phase": "unit",
+      "code": 0,
+      "seconds": 1.66,
+      "peak": 4616192,
+      "passed": 7
+    },
+    {
+      "name": "checkpoints",
+      "phase": "unit",
+      "code": 0,
+      "seconds": 2.47,
+      "peak": 6660096,
+      "passed": 7
+    },
+    {
+      "name": "review",
+      "phase": "unit",
+      "code": 0,
+      "seconds": 0.75,
+      "peak": 8921088,
+      "passed": 3
+    },
+    {
+      "name": "store_startup",
+      "phase": "unit",
+      "code": 0,
+      "seconds": 0.73,
+      "peak": 6070272,
+      "passed": 0
+    },
+    {
+      "name": "integration",
+      "phase": "unit",
+      "code": 0,
+      "seconds": 2.28,
+      "peak": 6463488,
+      "passed": 7
+    },
+    {
+      "name": "fastrock",
+      "phase": "unit",
+      "code": 0,
+      "seconds": 0.5,
+      "peak": 1159168,
+      "passed": 0
+    },
+    {
+      "name": "fastrock",
+      "phase": "window",
+      "code": 0,
+      "seconds": 0.11,
+      "peak": 532480,
+      "passed": 0
+    },
+    {
+      "name": "codex_gui",
+      "phase": "unit",
+      "code": 0,
+      "seconds": 4.62,
+      "peak": 102584320,
+      "passed": 798
+    },
+    {
+      "name": "codex_gui",
+      "phase": "window",
+      "code": 0,
+      "seconds": 1.12,
+      "peak": 6885376,
+      "passed": 1
+    },
+    {
+      "name": "embedded_goose",
+      "phase": "unit",
+      "code": 0,
+      "seconds": 1.31,
+      "peak": 59887616,
+      "passed": 0
+    }
+  ],
+  "mac_compile": "cargo check --locked --workspace --all-targets: PASS; no local tests or GUI",
+  "notes": [
+    "Strict vwork clippy and formatting passed. Optional strict Fastrock lint identified small touched-code simplifications; two existing session.rs collapsible-if warnings were left unchanged.",
+    "The duplicate-publication regression failed before the fix and passes afterward; no release was published with that interim implementation."
+  ]
+}

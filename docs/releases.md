@@ -8,18 +8,22 @@ at opt-level 0. Goose stays pinned and unmodified; embedded vwork is maintained
 with Fastrock. Release archives include their licenses. Existing 0.3.x binaries retain the
 historical settings documented below.
 
-Binary publication is gated on feature-complete, verified release-candidate
-readiness. [RC12 is published](https://github.com/allquixotic/fastrock/releases/tag/v0.4.0-rc.12)
-with bounded old-thread recovery, safe Resume retries and Windows tray-instance
-activation. All 838 Rust tests and 39 native acceptance cases passed on its exact
-signed executable. The downloaded ZIP's checksum, source/tag/workflow attestations
-and Windows signature were independently verified. See the
-[release receipt](benchmarks/rc12-release-ci-2026-11-03.json),
-[verification](PORT-VERIFICATION.md), and [memory behavior and limits](MEMORIES.md).
+RC13 introduces Fjall storage, engine-managed LZ4, shared Git delta objects and
+automatic/manual redb migration with native progress and Pause/Resume. Original
+redb files remain intact. See [migration guidance](FJALL-STORAGE.md) and
+[verification](PORT-VERIFICATION.md#fjall-storage-and-migration-rc13-2026-11-04).
 
-When upgrading from RC11 or older, use **Quit** in its tray menu before launching
-RC12. A window close leaves the old process running. Preserve the existing
-workspace database; a lock conflict is an ownership issue.
+Binary publication is gated on feature-complete, verified release-candidate
+readiness. RC13's local checks include 841 Windows Rust tests, native migration,
+13 storage-dependent UI regressions, and the full guarded scale benchmark. The
+pinned vwork dependency passed 80 tests on each hosted platform and repeated
+lifecycle checks. CI rebuilds, signs and tests the release executable before
+publication. See [verification](PORT-VERIFICATION.md) and
+[memory behavior and limits](MEMORIES.md).
+
+Use **Quit** in the previous version's tray menu before launching RC13. A window
+close leaves the old process running. The original redb is preserved during
+migration; back up the complete new Fjall directory while Fastrock is stopped.
 
 Development source is committed and pushed to main; local fixture builds are not
 releases. Mac builds check compatibility without publishing Mac assets. Final

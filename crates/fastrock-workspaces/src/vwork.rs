@@ -286,6 +286,38 @@ fn expand(path: &str, user_home: &Path) -> PathBuf {
     }
 }
 /// Read existing vwork configuration without requiring an installed executable.
+/// Manual migrations register new homes without rewriting provider configuration.
+pub fn register_imported_store(home: &Path) -> anyhow::Result<()> {
+    use std::io::{Read, Write};
+    static REGISTRY: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
+    let home = home.canonicalize()?;
+    let root = DiscoveryPaths::current().default_vwork_home;
+    std::fs::create_dir_all(&root)?;
+    let path = root.join("fastrock-imported-stores.json");
+    let mut homes: Vec<PathBuf> = match std::fs::File::open(&path) {
+        Ok(file) => {
+            let mut bytes = Vec::new();
+            file.take(1024 * 1024 + 1).read_to_end(&mut bytes)?;
+            anyhow::ensure!(
+                bytes.len() <= 1024 * 1024,
+                "Imported storage registry exceeds limit"
+            );
+            serde_json::from_slice(&bytes)?
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => vec![],
+        Err(e) => return Err(e.into()),
+    };
+    if !homes.contains(&home) {
+        anyhow::ensure!(homes.len() < 128, "Imported storage registry is full");
+        homes.push(home);
+    }
+    let mut output = tempfile::NamedTempFile::new_in(&root)?;
+    output.write_all(&serde_json::to_vec(&homes)?)?;
+    output.as_file().sync_all()?;
+    output.persist(path)?;
+    Ok(())
+}
 pub async fn discover(paths: &DiscoveryPaths) -> Result<Vec<Installation>, WorkspaceError> {
     let mut result = Vec::new();
     let mut seen = BTreeSet::new();
@@ -340,6 +372,27 @@ pub async fn discover(paths: &DiscoveryPaths) -> Result<Vec<Installation>, Works
     }
     if result.is_empty() {
         result.push(McpBinding::default_for(paths).installation());
+    }
+    let registry = paths
+        .default_vwork_home
+        .join("fastrock-imported-stores.json");
+    if let Ok(bytes) = limited_file(&registry, 1024 * 1024).await
+        && let Ok(homes) = serde_json::from_slice::<Vec<PathBuf>>(&bytes)
+    {
+        for home in homes.into_iter().filter(|p| p.is_absolute()).take(128) {
+            let home = tokio::fs::canonicalize(&home).await.unwrap_or(home);
+            if result.iter().any(|i| i.home == home) || !seen.insert(home.clone()) {
+                continue;
+            }
+            result.push(Installation {
+                id: home.to_string_lossy().into(),
+                label: format!(
+                    "Imported · {}",
+                    home.file_name().unwrap_or_default().to_string_lossy()
+                ),
+                home,
+            });
+        }
     }
     Ok(result)
 }

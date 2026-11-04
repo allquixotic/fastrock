@@ -10,6 +10,7 @@ struct Timings {
     clean: AtomicU64,
     recovered: AtomicU64,
     created: AtomicU64,
+    migrated: AtomicU64,
     last_ms: AtomicU64,
     peak_ms: AtomicU64,
 }
@@ -18,6 +19,7 @@ static TIMINGS: Timings = Timings {
     clean: AtomicU64::new(0),
     recovered: AtomicU64::new(0),
     created: AtomicU64::new(0),
+    migrated: AtomicU64::new(0),
     last_ms: AtomicU64::new(0),
     peak_ms: AtomicU64::new(0),
 };
@@ -29,11 +31,12 @@ impl Timings {
     fn display(&self) -> String {
         let read = |v: &AtomicU64| v.load(Ordering::Relaxed);
         format!(
-            "opens {}; clean {}; recovered {}; new {}; last {} ms; peak {} ms this run",
+            "opens {}; clean {}; recovered {}; new {}; migrated {}; last {} ms; peak {} ms this run",
             read(&self.attempts),
             read(&self.clean),
             read(&self.recovered),
             read(&self.created),
+            read(&self.migrated),
             read(&self.last_ms),
             read(&self.peak_ms)
         )
@@ -55,6 +58,7 @@ pub(super) fn opened(report: &serde_json::Value) {
     let counter = match report["state"].as_str() {
         Some("clean") => &TIMINGS.clean,
         Some("recovered") => &TIMINGS.recovered,
+        Some("migrated") => &TIMINGS.migrated,
         _ => &TIMINGS.created,
     };
     counter.fetch_add(1, Ordering::Relaxed);
@@ -73,7 +77,7 @@ mod tests {
         timings.elapsed(3);
         assert_eq!(
             timings.display(),
-            "opens 0; clean 0; recovered 0; new 0; last 3 ms; peak 90000 ms this run"
+            "opens 0; clean 0; recovered 0; new 0; migrated 0; last 3 ms; peak 90000 ms this run"
         );
     }
 }

@@ -3,11 +3,10 @@
 pub mod journal;
 use crate::embedded::Connection;
 use anyhow::{Context, Result, ensure};
-use redb::{ReadableDatabase, ReadableTable, TableDefinition};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::io::Read;
 use vwork_engine::engine::Engine;
+use vwork_engine::kv::TableDefinition;
 
 const POINTS: TableDefinition<&str, &[u8]> = TableDefinition::new("fastrock_checkpoints_v1");
 const MAX_RECORD_BYTES: usize = 64 * 1024;
@@ -62,34 +61,28 @@ fn key(session: &str, id: &str) -> Result<String> {
     }
     Ok(format!("{session}\0{id}"))
 }
-fn encode<T: Serialize>(engine: &Engine, value: &T) -> Result<Vec<u8>> {
+fn encode<T: Serialize>(_engine: &Engine, value: &T) -> Result<Vec<u8>> {
     let bytes = serde_json::to_vec(value)?;
     ensure!(
         bytes.len() <= MAX_RECORD_BYTES,
         "Checkpoint metadata exceeds limit"
     );
-    Ok(zstd::stream::encode_all(
-        bytes.as_slice(),
-        engine.config.compression_level,
-    )?)
+    Ok(bytes)
 }
 fn decode(bytes: &[u8]) -> Result<Checkpoint> {
-    let mut output = Vec::new();
-    zstd::stream::Decoder::new(bytes)?
-        .take(MAX_RECORD_BYTES as u64 + 1)
-        .read_to_end(&mut output)?;
     ensure!(
-        output.len() <= MAX_RECORD_BYTES,
+        bytes.len() <= MAX_RECORD_BYTES,
         "Stored checkpoint exceeds limit"
     );
-    Ok(serde_json::from_slice(&output)?)
+    Ok(serde_json::from_slice(bytes)?)
 }
+
 fn read(engine: &Engine, session: &str, id: &str) -> Result<Option<Checkpoint>> {
     let key = key(session, id)?;
     let txn = engine.db.begin_read()?;
     let table = match txn.open_table(POINTS) {
         Ok(table) => table,
-        Err(redb::TableError::TableDoesNotExist(_)) => return Ok(None),
+        Err(vwork_engine::kv::TableError::TableDoesNotExist(_)) => return Ok(None),
         Err(e) => return Err(e.into()),
     };
     let point = table
@@ -173,7 +166,7 @@ pub async fn forget(connection: &Connection, session: String) -> Result<()> {
         .await
 }
 fn remove_records(
-    transaction: &redb::WriteTransaction,
+    transaction: &vwork_engine::kv::WriteTransaction,
     definition: TableDefinition<&str, &[u8]>,
     session: &str,
 ) -> Result<()> {
@@ -218,7 +211,7 @@ pub async fn list(
                 let txn = engine.db.begin_read()?;
                 let table = match txn.open_table(POINTS) {
                     Ok(table) => table,
-                    Err(redb::TableError::TableDoesNotExist(_)) => {
+                    Err(vwork_engine::kv::TableError::TableDoesNotExist(_)) => {
                         return Ok(Page {
                             points: Vec::new(),
                             before: None,

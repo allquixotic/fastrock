@@ -10,7 +10,7 @@ import { CheckpointPanel, CheckpointState, CheckpointRow } from "checkpoints.sli
 
 import { TerminalPane, TerminalState, TerminalCell, TerminalTab } from "terminal.slint";
 import { CommandPalette, CommandPaletteState, CommandPaletteRow } from "command-palette.slint";
-import { LineEdit, ListView, Palette, AboutSlint } from "std-widgets.slint";
+import { LineEdit, ListView, Palette, AboutSlint, ProgressIndicator, Button } from "std-widgets.slint";
 import { Theme, FlatButton, LinkButton, Badge, Divider } from "theme.slint";
 import { TranscriptView, TranscriptState, BlockData } from "transcript.slint";
 import { ComposerView, ComposerState } from "composer.slint";
@@ -107,6 +107,14 @@ export global AppState {
     in property <bool> server-can-use-embedded;
     in property <[string]> warnings;
     in property <string> toast;
+    in property <bool> storage-migration-visible;
+    in property <bool> storage-migration-active;
+    in property <bool> storage-migration-retryable;
+    in property <string> storage-migration-source;
+    in property <bool> storage-migration-indeterminate;
+    in property <float> storage-migration-progress;
+    in property <string> storage-migration-message;
+    in property <string> storage-migration-destination;
     in property <string> window-title: "Fastrock";
     // Docked panes (saved preferences).
     in-out property <bool> sidebar-visible: true;
@@ -1128,6 +1136,10 @@ export component MainWindow inherits Window {
                 title: "Settings…";
                 activated => { AppState.menu-action("settings"); }
             }
+            MenuItem {
+                title: "Migrate legacy storage…";
+                activated => { AppState.menu-action("storage-migrate"); }
+            }
             MenuSeparator { }
             MenuItem {
                 title: "Quit";
@@ -1240,6 +1252,30 @@ export component MainWindow inherits Window {
         VerticalLayout {
             strip := WorkspaceHeader { brand-width: AppState.sidebar-visible && AppState.sidebar-fits ? root.sidebar-pane-width : 36px; }
             banner := WarningsBanner { }
+            if AppState.storage-migration-visible: Rectangle {
+                vertical-stretch: 0;
+                background: Theme.surface-alt;
+                VerticalLayout {
+                    padding: Theme.pad-m;
+                    spacing: Theme.pad-s;
+                    HorizontalLayout {
+                        Text { text: AppState.storage-migration-message; color: Theme.text; wrap: word-wrap; horizontal-stretch: 1; }
+                        if AppState.storage-migration-active || AppState.storage-migration-retryable: Button {
+                            text: AppState.storage-migration-active ? "Pause" : "Resume";
+                            clicked => { AppState.menu-action(AppState.storage-migration-active ? "storage-migration-pause" : "storage-migration-resume"); }
+                        }
+                        if !AppState.storage-migration-active: Button {
+                            text: "Dismiss";
+                            clicked => { AppState.menu-action("storage-migration-dismiss"); }
+                        }
+                    }
+                    ProgressIndicator {
+                        progress: AppState.storage-migration-progress;
+                        indeterminate: AppState.storage-migration-indeterminate && AppState.storage-migration-active;
+                    }
+                    Text { text: AppState.storage-migration-destination; color: Theme.text-muted; overflow: elide; }
+                }
+            }
 
             HorizontalLayout {
                 vertical-stretch: 1;

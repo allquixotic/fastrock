@@ -53,9 +53,9 @@ try:
         {'wait_idle':30000},{'send':'Remember the old history fixture'}, {'wait_idle':30000},
         {'wait_summaries':30000},{'wait':1000},{'quit':True}])
     peak = ProcessGuard(prepare, timeout=90).wait()
-    db = home/'workspaces.redb'
+    db = home/'workspaces.fjall/lock'
     assert db.exists(), 'Preparation did not create a database'
-    # Real byte-range lock, as held by another redb owner. Never user data.
+    # Real byte-range lock, as held by another Fjall owner. Never user data.
     with db.open('r+b') as locked:
         msvcrt.locking(locked.fileno(), msvcrt.LK_NBLCK, 1)
         history = out/'restored.md'

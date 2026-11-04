@@ -62,8 +62,8 @@ def main():
     parser.add_argument('--seed-executable', type=Path, required=True)
     parser.add_argument('--host-guard', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    # redb's page allocation leaves a file about twice the logical payload.
-    parser.add_argument('--mib', type=int, default=1280)
+    # Fjall stores incompressible fixture values near their logical size.
+    parser.add_argument('--mib', type=int, default=2560)
     parser.add_argument('--repositories', type=int, default=24)
     args = parser.parse_args()
     assert 1 <= args.mib <= 4096 and 1 <= args.repositories <= 64
@@ -80,9 +80,9 @@ def main():
         receipt['attempts'].append(attempt)
         try:
             seed = folder / 'seed'
-            bounded([str(args.seed_executable.resolve()), '--seed', str(seed), str(attempt['mib']), str(attempt['repositories'])],
+            bounded([str(args.seed_executable.resolve()), '--seed-both' if args.baseline else '--seed', str(seed), str(attempt['mib']), str(attempt['repositories'])],
                     os.environ.copy(), folder, 'seed', args.host_guard, attempt.setdefault('seed', {}))
-            database_bytes = (seed / 'store/workspaces.redb').stat().st_size
+            database_bytes = sum(p.stat().st_size for p in (seed/'store/workspaces.fjall').rglob('*') if p.is_file())
             attempt['database_bytes'] = database_bytes
             binaries = ([('baseline', args.baseline)] if args.baseline else []) + [('candidate', args.candidate)]
             for name, binary in binaries:
@@ -92,7 +92,7 @@ def main():
                 attempt['runs'][name] = record
                 provider = ProviderFixture()
                 env = provider.environment(run)
-                shutil.copytree(seed / 'store', run / 'local/vwork')
+                shutil.copytree(seed / ('legacy-store' if name=='baseline' else 'store'), run / 'local/vwork')
                 env['CODEX_GUI_PERF'] = '1'
                 steps = [{'mark': 'startup-begin'}, {'wait_ready': 90000}, {'mark': 'startup-ready'}]
                 for index in range(3):

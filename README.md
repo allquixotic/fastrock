@@ -95,3 +95,5 @@ baseline. `upstream.json` and Cargo.lock pin the Codex protocol/config utility
 crates retained as presentation/configuration types, without a Codex agent runtime. The original Go
 app remains recoverable in Git history. Apache-2.0; see LICENSE and NOTICE.
 This is an independent community app, not an official OpenAI product.
+
+Workspace storage and one-time redb migration: [Fjall storage](docs/FJALL-STORAGE.md).

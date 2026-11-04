@@ -17,8 +17,8 @@ until forgotten. Other facts expire 180 days after their last update. The collec
 holds at most 512 facts overall and 96 per repository; oldest unpinned facts make
 room. There are at most five candidate facts per completed turn.
 
-The dedicated memory state is zstd-compressed in the same redb owned by embedded
-vwork. It does not enumerate source blobs or worktrees. Stable repository identity
+The dedicated memory state is stored in the same Fjall database owned by embedded
+vwork. Fjall applies LZ4; Fastrock writes ordinary serialized values. It does not enumerate source blobs or worktrees. Stable repository identity
 shares memories among isolated vwork workspaces. Ordinary directory chats use a
 normalized directory identity. Search summaries remain separate and unchanged.
 
@@ -47,7 +47,7 @@ with search summaries, and is cancelled when any foreground conversation starts.
 It debounces idle work, bounds its queue at 64 turns, and retries unavailable
 providers at most once a minute. Optional learning may be skipped under overload.
 An idle worker warms the small cache once; it does not repeatedly scan the database.
-Background writes use redb's non-fsync durability; a crash can lose the newest
+Background writes use Fjall's buffered journal durability; a crash can lose the newest
 learned facts. User edits/forget/settings use durable transactions. An already
 committing OS write cannot be forcibly cancelled; brief shared-store contention
 remains possible. Send has no dependency on the memory worker, and queued writes

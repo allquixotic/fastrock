@@ -22,12 +22,12 @@ Copyright Block, Inc. and Goose contributors
 Licensed under Apache-2.0. Unmodified dependency pinned in Cargo.lock.
 https://github.com/aaif-goose/goose
 
-Embedded vwork 0.3.5
+Embedded vwork 0.4.0
 Copyright (c) 2026 Sean McNamara
-Licensed under the MIT License. Unmodified dependency pinned in Cargo.lock.
+Licensed under the MIT License. Maintained storage integration pinned in Cargo.lock.
 https://github.com/allquixotic/vwork
 
-LZ4 Flex 0.14.0
+LZ4 Flex 0.13.1
 Copyright (c) 2020 Pascal Seitz
 Licensed under the MIT License. License included in licenses/lz4-flex/LICENSE.
 https://github.com/PSeitz/lz4_flex
@@ -43,3 +43,11 @@ Jelmer Vernooĳ and contributors
 Licensed under Apache-2.0; license included in licenses/yaml-edit/LICENSE.
 Unmodified lossless YAML editor pinned in Cargo.lock.
 https://github.com/jelmer/yaml-edit
+
+Fjall 3.1.13 and lsm-tree 3.1.10
+Copyright (c) 2024 fjall-rs
+Licensed under MIT OR Apache-2.0; licenses included in licenses/fjall and licenses/lsm-tree.
+https://github.com/fjall-rs/fjall
+https://github.com/fjall-rs/lsm-tree
+
+Additional Fjall dependency license texts: licenses/fjall-dependencies.txt.

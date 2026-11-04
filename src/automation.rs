@@ -46,6 +46,13 @@ pub(crate) enum Step {
     WaitIdle(u64),
     /// Wait for session provider/model/effort controls to finish their request.
     WaitGoose(u64),
+    /// Native migration panel state; no filesystem polling on the UI thread.
+    WaitMigration {
+        active: bool,
+        #[serde(default)]
+        failed: bool,
+        timeout_ms: u64,
+    },
     /// Wait for the project editor's asynchronous load/save or close to settle.
     WaitProject {
         open: bool,
@@ -298,6 +305,7 @@ impl AppController {
                 | Step::WaitReady(_)
                 | Step::WaitIdle(_)
                 | Step::WaitGoose(_)
+                | Step::WaitMigration { .. }
                 | Step::WaitProject { .. }
                 | Step::WaitRally { .. }
                 | Step::WaitPurpose(_)
@@ -1031,6 +1039,17 @@ impl AppController {
             }
             Step::WaitPurpose(timeout) => {
                 self.purpose_idle_for_test() || timed_out(elapsed, *timeout, "purpose cache")
+            }
+            Step::WaitMigration {
+                active,
+                failed,
+                timeout_ms,
+            } => {
+                let state = self.window.global::<crate::ui::AppState>();
+                (state.get_storage_migration_visible()
+                    && state.get_storage_migration_active() == *active
+                    && state.get_storage_migration_retryable() == *failed)
+                    || timed_out(elapsed, *timeout_ms, "storage migration panel")
             }
             Step::WaitPending { open, timeout_ms } => {
                 let state = self.window.global::<crate::ui::PendingMessageState>();

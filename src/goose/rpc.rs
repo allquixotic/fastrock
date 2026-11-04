@@ -175,9 +175,23 @@ impl Call {
         let reply = if self.method == "session/prompt" {
             (&mut self.rx).await
         } else {
-            tokio::time::timeout(Duration::from_secs(60), &mut self.rx)
-                .await
-                .map_err(|_| super::error(format!("{} timed out", self.method)))?
+            // Migration is an explicitly visible, resumable startup operation.
+            // Its duration is not a provider timeout and must not discard a
+            // pending session whose store is still being converted.
+            loop {
+                match tokio::time::timeout(Duration::from_secs(60), &mut self.rx).await {
+                    Ok(reply) => break reply,
+                    Err(_)
+                        if matches!(self.method.as_str(), "session/new" | "session/load")
+                            && fastrock_workspaces::migration::progress()
+                                .iter()
+                                .any(|p| p.active) =>
+                    {
+                        continue;
+                    }
+                    Err(_) => return Err(super::error(format!("{} timed out", self.method))),
+                }
+            }
         };
         reply.map_err(|_| super::error("Connection closed before replying"))?
     }

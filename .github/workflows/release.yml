@@ -117,6 +117,8 @@ jobs:
           python dev/windows-rc-acceptance.py build/release-inputs/fastrock.exe --output build/rc-acceptance
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $targets = Get-Content build/release-inputs/TEST-TARGETS.json | ConvertFrom-Json
+          python dev/windows-migration-smoke.py build/release-inputs/fastrock.exe --seed-executable "build/release-inputs/$($targets.store_startup)" --ci --output build/migration-smoke
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-organization-catalog-smoke.py build/release-inputs/fastrock.exe --seed-executable "build/release-inputs/$($targets.embedded_goose)" --output build/organization-catalog-smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python dev/windows-scroll-benchmark.py build/release-inputs/fastrock.exe --output build/scroll-smoke --frames 120
@@ -138,10 +140,14 @@ jobs:
             build/windows-tests.log
             build/windows-signing.json
             build/scroll-smoke/
+            build/migration-smoke/
             build/selection-smoke/
             build/summary-smoke/
             build/queue-recovery-smoke/
             build/process-recovery-smoke/
+            !build/**/workspaces.fjall/**
+            !build/**/workspaces.fjall.migrating/**
+            !build/**/*.redb
           compression-level: 0
           if-no-files-found: ignore
       - name: Package signed binary and matching symbols

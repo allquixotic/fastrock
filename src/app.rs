@@ -470,6 +470,7 @@ impl AppController {
     }
 
     fn bind_chrome(&self) {
+        self.storage_migration_bind();
         let state = self.window.global::<AppState>();
         state.on_select_tab(crate::ui_thread::scoped_callback!(|index| {
             crate::ui_thread::with_app(move |app| {
@@ -1643,6 +1644,28 @@ impl AppController {
 
     pub(crate) fn menu_action(&mut self, action: &str) {
         match action {
+            "storage-migrate" => self.storage_migration_pick(),
+            "storage-migration-resume" => {
+                let state = self.window.global::<AppState>();
+                let source = PathBuf::from(state.get_storage_migration_source().as_str());
+                let destination = PathBuf::from(state.get_storage_migration_destination().as_str());
+                if let Some(home) = destination.parent() {
+                    self.storage_migration_start(source, home.to_path_buf());
+                }
+            }
+            "storage-migration-dismiss" => self
+                .window
+                .global::<AppState>()
+                .set_storage_migration_visible(false),
+            "storage-migration-pause" => {
+                let destination = PathBuf::from(
+                    self.window
+                        .global::<AppState>()
+                        .get_storage_migration_destination()
+                        .as_str(),
+                );
+                fastrock_workspaces::migration::cancel(&destination);
+            }
             "rally-search" => self.rally_action("focus-search"),
             "rally-board" => self.rally_set_view("mode", "board"),
             "rally-list" => self.rally_set_view("mode", "list"),

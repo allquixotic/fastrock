@@ -22,11 +22,10 @@ required-features = ["http-fixtures"]
 
 [dependencies]
 anyhow.workspace = true
-vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "b5facec2e5713603aac12da4770c9b5bc545ec46" }
-redb = "4.4"
-zstd = "0.13"
+vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "e1793df58bef6fbeacaf0b311f3f7858d54be7a5" }
+fjall = "=3.1.13"
+tempfile.workspace = true
 rayon = "1.11"
-lz4_flex = { version = "0.14", default-features = false, features = ["std", "safe-encode", "safe-decode"] }
 base64.workspace = true
 sha2 = "0.10"
 git2 = "0.21"
@@ -38,4 +37,5 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "rt", "sync", "time"] }
 
 [dev-dependencies]
-tempfile.workspace = true
+redb = "4.4"
+zstd = "0.13"

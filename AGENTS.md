@@ -57,3 +57,7 @@ Agentlocks retired. Delegate only when requested; one writer per shared file.
 Check Mac and games free space before builds. If low, remove only identified stale,
 regenerable build outputs; preserve active incremental caches and release evidence.
 Migration acceptance checklist: docs/RALLY-INVENTORY.md. SPEC.md tracks work.
+2026-11-04 storage authorization supersedes redb/application compression clauses:
+Fjall latest stable, configured LZ4, concurrent optimistic writers; application
+Git deltas only. Preserve redb during automatic/manual validated migration with
+native progress UI; preserve deduplication, revisions, leases and history.

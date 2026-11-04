@@ -518,7 +518,7 @@ else:
 assert 'ObsidianNeedle' not in transcript, 'Search summary leaked into the source history'
 saved = (out / 'goose/config/config.yaml').read_text(encoding='utf-8')
 assert 'FASTROCK_CHEAP_PROFILE:' in saved and 'Bedrock Luna' in saved
-assert (out / 'local/vwork/workspaces.redb').exists()
+assert (out / 'local/vwork/workspaces.fjall').exists()
 if args.navigation:
     navigation = {name: json.loads((out / (name + '.json')).read_text(encoding='utf-8'))['navigation']
                   for name in ('rally-two', 'rally-bulk-blocked', 'rally-bulk-closed', 'rally-two-final', 'conversation-nav', 'rally-return', 'rally-closed', 'rally-reopened')}

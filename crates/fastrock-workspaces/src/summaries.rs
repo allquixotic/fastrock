@@ -1,9 +1,8 @@
-//! One replaceable, lossless search summary in vwork's existing redb database.
+//! One replaceable, lossless search summary in vwork's Fjall database.
 use crate::embedded::Connection;
 use anyhow::{Result, ensure};
-use redb::{ReadableDatabase, ReadableTable, TableDefinition};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
+use vwork_engine::kv::TableDefinition;
 
 const CURRENT: TableDefinition<&str, &[u8]> = TableDefinition::new("fastrock_search_current_v1");
 const REQUESTED: TableDefinition<&str, u64> = TableDefinition::new("fastrock_search_requested_v1");
@@ -16,12 +15,6 @@ pub fn failure_kind(error: &anyhow::Error) -> &'static str {
             "database is owned by another process" => return "database closing or externally owned",
             "database startup/recovery already in progress" => return "database startup busy",
             _ => {}
-        }
-        if let Some(error) = cause.downcast_ref::<redb::DatabaseError>() {
-            return match error {
-                redb::DatabaseError::DatabaseAlreadyOpen => "database already open",
-                _ => "database open",
-            };
         }
         if cause.to_string() == "Workspace maintenance is in progress" {
             return "workspace busy";
@@ -110,10 +103,6 @@ impl Summaries {
                         bytes.len() <= MAX_SUMMARY_BYTES,
                         "Search summary exceeds storage limit"
                     );
-                    let compressed = zstd::stream::encode_all(
-                        bytes.as_slice(),
-                        engine.config.compression_level,
-                    )?;
                     let transaction = engine.db.begin_write()?;
                     {
                         let requested = transaction.open_table(REQUESTED)?;
@@ -124,7 +113,7 @@ impl Summaries {
                             return Ok(false);
                         }
                         let mut current = transaction.open_table(CURRENT)?;
-                        current.insert(id.as_str(), compressed.as_slice())?;
+                        current.insert(id.as_str(), bytes.as_slice())?;
                     }
                     transaction.commit()?;
                     Ok(true)
@@ -160,7 +149,7 @@ impl Summaries {
                     let transaction = engine.db.begin_read()?;
                     let table = match transaction.open_table(CURRENT) {
                         Ok(table) => table,
-                        Err(redb::TableError::TableDoesNotExist(_)) => return Ok(None),
+                        Err(vwork_engine::kv::TableError::TableDoesNotExist(_)) => return Ok(None),
                         Err(error) => return Err(error.into()),
                     };
                     table
@@ -184,7 +173,9 @@ impl Summaries {
                     let transaction = engine.db.begin_read()?;
                     let table = match transaction.open_table(CURRENT) {
                         Ok(table) => table,
-                        Err(redb::TableError::TableDoesNotExist(_)) => return Ok(vec![]),
+                        Err(vwork_engine::kv::TableError::TableDoesNotExist(_)) => {
+                            return Ok(vec![]);
+                        }
                         Err(error) => return Err(error.into()),
                     };
                     let start = after.as_deref().unwrap_or("");
@@ -207,13 +198,9 @@ impl Summaries {
 }
 
 fn decode(bytes: &[u8]) -> Result<Summary> {
-    let mut decoded = Vec::new();
-    zstd::stream::Decoder::new(bytes)?
-        .take(MAX_SUMMARY_BYTES as u64 + 1)
-        .read_to_end(&mut decoded)?;
     ensure!(
-        decoded.len() <= MAX_SUMMARY_BYTES,
+        bytes.len() <= MAX_SUMMARY_BYTES,
         "Stored search summary exceeds limit"
     );
-    Ok(serde_json::from_slice(&decoded)?)
+    Ok(serde_json::from_slice(bytes)?)
 }

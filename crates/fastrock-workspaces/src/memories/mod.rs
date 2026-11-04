@@ -1,16 +1,13 @@
 //! Small, independent memory records in the existing vwork database. No source scan.
 use crate::embedded::Connection;
 use anyhow::{Result, ensure};
-use redb::{ReadableDatabase, ReadableTable, TableDefinition};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{
-    io::Read,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
 };
+use vwork_engine::kv::TableDefinition;
 
 mod recall;
 pub use recall::recall;
@@ -138,12 +135,8 @@ pub fn valid_candidate(candidate: &Candidate, input: &str) -> bool {
         && !sensitive(input)
 }
 fn decode(bytes: &[u8]) -> Result<Snapshot> {
-    let mut decoded = Vec::new();
-    zstd::stream::Decoder::new(bytes)?
-        .take(MAX_STATE as u64 + 1)
-        .read_to_end(&mut decoded)?;
-    ensure!(decoded.len() <= MAX_STATE, "Memory state exceeds limit");
-    let state: Snapshot = serde_json::from_slice(&decoded)?;
+    ensure!(bytes.len() <= MAX_STATE, "Memory state exceeds limit");
+    let state: Snapshot = serde_json::from_slice(bytes)?;
     ensure!(
         state.facts.len() <= MAX_FACTS,
         "Memory collection exceeds limit"
@@ -218,7 +211,7 @@ impl Memories {
                     let read = engine.db.begin_read()?;
                     let table = match read.open_table(STATE) {
                         Ok(table) => table,
-                        Err(redb::TableError::TableDoesNotExist(_)) => {
+                        Err(vwork_engine::kv::TableError::TableDoesNotExist(_)) => {
                             return Ok(Snapshot::default());
                         }
                         Err(error) => return Err(error.into()),
@@ -232,7 +225,7 @@ impl Memories {
             })
             .await
     }
-    /// Cancellation is checked after obtaining redb's writer too: dropping a
+    /// Cancellation is checked before commit too: dropping a
     /// spawn_blocking future alone cannot cancel a queued transaction. Learned
     /// facts use non-fsync commits; explicit user edits/forget remain durable.
     pub async fn edit(
@@ -246,7 +239,7 @@ impl Memories {
             let mut write = engine.db.begin_write()?;
             if cancelled.load(Ordering::Acquire) { return Ok(None); }
             let background = matches!(&edit, Edit::Learn(_) | Edit::Maintain(_));
-            if background { write.set_durability(redb::Durability::None)?; }
+            if background { write.set_durability(vwork_engine::kv::Durability::None)?; }
             let mut state = {
                 let table = write.open_table(STATE)?;
                 table.get("current")?.map(|v| decode(v.value())).transpose()?.unwrap_or_default()
@@ -305,8 +298,7 @@ impl Memories {
             state.revision = state.revision.checked_add(1).ok_or_else(|| anyhow::anyhow!("Memory revision exhausted"))?;
             let bytes = serde_json::to_vec(&state)?;
             ensure!(bytes.len() <= MAX_STATE, "Memory state exceeds limit");
-            let compressed = zstd::stream::encode_all(bytes.as_slice(), engine.config.compression_level)?;
-            write.open_table(STATE)?.insert("current", compressed.as_slice())?;
+            write.open_table(STATE)?.insert("current", bytes.as_slice())?;
             if cancelled.load(Ordering::Acquire) { return Ok(None); }
             write.commit()?;
             Ok(Some(state))

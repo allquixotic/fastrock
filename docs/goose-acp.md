@@ -154,7 +154,8 @@ need no tracing subscriber or file I/O. These distinguish local setup
 from the wait after a prompt reaches embedded Goose; they do not establish a live
 provider's rate limits or response latency.
 
-The transcript adapter stores older items in lossless LZ4 pages and retains at
+The transcript adapter stores older items in a disposable Fjall cache configured
+for lossless LZ4 and retains at
 most 16 decoded pages within an 8 MiB estimated allocation budget. Oversized items
 are restored without admission to that cache. Metadata and item ordinals support
 direct page lookup; scrolling no longer clones the whole conversation for each

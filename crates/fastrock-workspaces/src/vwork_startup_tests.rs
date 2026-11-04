@@ -5,8 +5,10 @@ async fn v94_tool_discovery_does_not_open_a_locked_store() {
     let temp = tempfile::tempdir().unwrap();
     let home = temp.path().join("store");
     std::fs::create_dir(&home).unwrap();
-    // Model an existing tray process, with its actual exclusive redb lock.
-    let owner = redb::Database::create(home.join("workspaces.redb")).unwrap();
+    // Model an existing tray process, with its actual exclusive Fjall lock.
+    let owner =
+        vwork_engine::engine::Engine::open_embedded(&home, vwork_engine::model::Config::default())
+            .unwrap();
     let provider = VworkProvider::new(&Installation {
         id: "test".into(),
         label: "test".into(),
@@ -28,7 +30,7 @@ async fn v94_tool_discovery_does_not_open_a_locked_store() {
         }
     }
     assert!(
-        !home.join("workspaces.redb.recovery.lock").exists(),
+        !home.join("workspaces.fjall.migrating").exists(),
         "Discovery opened storage"
     );
     let request = json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"vwork_repo_list","arguments":{}}});
@@ -36,7 +38,10 @@ async fn v94_tool_discovery_does_not_open_a_locked_store() {
         .mcp_request(None, request.clone(), Duration::from_secs(1))
         .await
         .unwrap_err();
-    assert!(error.to_string().contains("already in use"), "{error}");
+    assert!(
+        error.to_string().contains("another running instance"),
+        "{error}"
+    );
     drop(owner);
     let response = provider
         .mcp_request(None, request, Duration::from_secs(5))

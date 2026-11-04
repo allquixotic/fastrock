@@ -127,11 +127,8 @@ async fn v93_lifecycle_compression_revision_tombstones_and_restart() {
                 let r = engine.db.begin_read()?;
                 let table = r.open_table(STATE)?;
                 let value = table.get("current")?.unwrap();
-                assert_eq!(
-                    &value.value()[..4],
-                    &[0x28, 0xb5, 0x2f, 0xfd],
-                    "zstd in same redb"
-                );
+                let saved: Snapshot = serde_json::from_slice(value.value())?;
+                assert!(saved.facts.is_empty(), "Fjall owns the compression codec");
                 Ok(())
             })
         })
@@ -262,7 +259,7 @@ fn v92_recall_is_bounded_relevant_scoped_and_escaped() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn v93_cancelled_queued_writer_never_commits_after_foreground_arrives() {
+async fn v95_memory_commit_does_not_wait_for_unrelated_writer() {
     let dir = tempfile::tempdir().unwrap();
     let store = Memories(Connection::new(dir.path().into()));
     let connection = store.0.clone();
@@ -300,10 +297,18 @@ async fn v93_cancelled_queued_writer_never_commits_after_foreground_arrives() {
             .await
             .unwrap()
     });
-    tokio::time::sleep(std::time::Duration::from_millis(30)).await;
-    cancelled.store(true, Ordering::Release);
+    let result = tokio::time::timeout(std::time::Duration::from_secs(5), waiting).await;
     barrier.wait();
     writer.await.unwrap();
-    assert!(waiting.await.unwrap().is_none());
-    assert!(store.load().await.unwrap().facts.is_empty());
+    let saved = result.unwrap().unwrap().unwrap();
+    assert_eq!(saved.facts.len(), 1);
+    cancelled.store(true, Ordering::Release);
+    assert!(
+        store
+            .edit(saved.revision, Edit::Clear, cancelled)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(store.load().await.unwrap().facts.len(), 1);
 }

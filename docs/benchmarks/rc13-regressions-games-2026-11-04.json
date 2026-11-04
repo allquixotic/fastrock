@@ -1,0 +1,102 @@
+{
+  "binary_sha256": "dd36c8b9d1ef65632969db5a5384340d28a9665e6ddd938be970bbf595f71ba0",
+  "result": "PASS",
+  "cases": [
+    {
+      "name": "vwork",
+      "result": "PASS",
+      "error": null,
+      "seconds": 31.48,
+      "peak_tree_bytes": 158035968
+    },
+    {
+      "name": "delegation",
+      "result": "PASS",
+      "error": null,
+      "seconds": 23.88,
+      "peak_tree_bytes": 159170560
+    },
+    {
+      "name": "projects",
+      "result": "PASS",
+      "error": null,
+      "seconds": 10.44,
+      "peak_tree_bytes": 73109504
+    },
+    {
+      "name": "checkpoints",
+      "result": "PASS",
+      "error": null,
+      "seconds": 41.11,
+      "peak_tree_bytes": 156815360
+    },
+    {
+      "name": "compaction",
+      "result": "PASS",
+      "error": null,
+      "seconds": 11.23,
+      "peak_tree_bytes": 154435584
+    },
+    {
+      "name": "review",
+      "result": "PASS",
+      "error": null,
+      "seconds": 15.25,
+      "peak_tree_bytes": 154980352
+    },
+    {
+      "name": "relaunch",
+      "result": "PASS",
+      "error": null,
+      "seconds": 24.67,
+      "peak_tree_bytes": 154185728
+    },
+    {
+      "name": "history",
+      "result": "PASS",
+      "error": null,
+      "seconds": 13.84,
+      "peak_tree_bytes": 156610560
+    },
+    {
+      "name": "summary",
+      "result": "PASS",
+      "error": null,
+      "seconds": 35.3,
+      "peak_tree_bytes": 159334400
+    },
+    {
+      "name": "summary-priority",
+      "result": "PASS",
+      "error": null,
+      "seconds": 8.44,
+      "peak_tree_bytes": 154071040
+    },
+    {
+      "name": "memory",
+      "result": "PASS",
+      "error": null,
+      "seconds": 40.91,
+      "peak_tree_bytes": 155455488
+    },
+    {
+      "name": "queue-recovery",
+      "result": "PASS",
+      "error": null,
+      "seconds": 15.84,
+      "peak_tree_bytes": 114532352
+    },
+    {
+      "name": "process-recovery",
+      "result": "PASS",
+      "error": null,
+      "seconds": 19.06,
+      "peak_tree_bytes": 155656192
+    }
+  ],
+  "notes": [
+    "13 storage-dependent native UI regressions on games; foreground fixture matrix additionally contained by live host/guest reserves and a 2 GB process-tree limit.",
+    "No live provider/Rally requests or user data. CI runs the full matrix on the signed release binary."
+  ],
+  "vwork_revision": "e1793df58bef6fbeacaf0b311f3f7858d54be7a5"
+}
