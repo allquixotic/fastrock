@@ -24,6 +24,10 @@ pub(super) fn parameter(value: &impl serde::Serialize) -> Result<serde_yaml::Val
 /// This function is for non-secret parameters only; credential APIs still use
 /// the user's actual Config/vault and must never be called on the draft.
 pub(super) fn edit<T>(config: &Config, change: impl FnOnce(&Config) -> Result<T>) -> Result<T> {
+    stage("edit", edit_inner(config, change))
+}
+
+fn edit_inner<T>(config: &Config, change: impl FnOnce(&Config) -> Result<T>) -> Result<T> {
     let _guard = EDIT
         .lock()
         .map_err(|_| anyhow::anyhow!("Provider settings unavailable"))?;
@@ -46,9 +50,12 @@ pub(super) fn edit<T>(config: &Config, change: impl FnOnce(&Config) -> Result<T>
     // Goose setters migrate legacy provider keys too. Normalize only the draft
     // first, so unrelated edits do not remove commented provider settings.
     let marker = format!("fastrock-draft-{}", uuid::Uuid::new_v4());
-    draft.delete(&marker)?;
+    stage(
+        "draft normalization",
+        draft.delete(&marker).map_err(Into::into),
+    )?;
     let baseline: serde_yaml::Mapping = serde_yaml::from_slice(&std::fs::read(&draft_path)?)?;
-    let result = change(&draft)?;
+    let result = stage("parameter update", change(&draft))?;
     let desired: serde_yaml::Mapping = serde_yaml::from_slice(&std::fs::read(&draft_path)?)?;
     let mut planned: serde_yaml::Value = serde_yaml::from_slice(source)?;
     apply_delta(
@@ -56,20 +63,26 @@ pub(super) fn edit<T>(config: &Config, change: impl FnOnce(&Config) -> Result<T>
         &baseline.clone().into(),
         &desired.clone().into(),
     );
-    let rendered = merge_format(source, serde_yaml::to_string(&planned)?.as_bytes())?;
+    let rendered = stage(
+        "format preservation",
+        merge_format(source, serde_yaml::to_string(&planned)?.as_bytes()),
+    )?;
     if rendered == source {
         return Ok(result);
     }
     // Verify effective values using Goose itself before replacing anything.
     std::fs::write(&draft_path, &rendered)?;
-    draft.delete(&marker)?;
+    stage(
+        "draft verification",
+        draft.delete(&marker).map_err(Into::into),
+    )?;
     let effective: serde_yaml::Mapping = serde_yaml::from_slice(&std::fs::read(&draft_path)?)?;
     ensure!(
         effective == desired,
         "Cannot preserve provider configuration semantics; original file kept"
     );
     ensure!(
-        std::fs::read(path).ok() == original,
+        read_original(path)? == original,
         "Provider settings changed during editing; reload before saving"
     );
     let parent = path
@@ -83,12 +96,86 @@ pub(super) fn edit<T>(config: &Config, change: impl FnOnce(&Config) -> Result<T>
     }
     file.write_all(&rendered)?;
     file.as_file().sync_all()?;
-    file.persist(path)
-        .map_err(|_| anyhow::anyhow!("Cannot save provider configuration"))?;
+    stage(
+        "atomic replacement",
+        persist_unchanged(file, path, &original),
+    )?;
     // Public invalidation also advances Goose's config generation. Ordinary
     // parameter reads already reload the file; provider caches observe this.
     config.invalidate_secrets_cache();
     Ok(result)
+}
+
+/// Public Goose errors may contain configuration values. Report the failed
+/// stage and numeric OS error only; never forward parser lines or credentials.
+#[derive(Debug)]
+struct EditFailure {
+    stage: &'static str,
+    code: Option<i32>,
+}
+
+impl std::fmt::Display for EditFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "Provider configuration {} failed", self.stage)?;
+        if let Some(code) = self.code {
+            write!(formatter, " (OS error {code})")?;
+        }
+        write!(formatter, "; original file kept. Reload before retrying")
+    }
+}
+
+impl std::error::Error for EditFailure {}
+
+fn stage<T>(name: &'static str, result: Result<T>) -> Result<T> {
+    result.map_err(|error| {
+        if error.is::<EditFailure>() {
+            return error;
+        }
+        let code = error
+            .chain()
+            .find_map(|cause| cause.downcast_ref::<std::io::Error>())
+            .and_then(std::io::Error::raw_os_error);
+        EditFailure { stage: name, code }.into()
+    })
+}
+
+fn read_original(path: &Path) -> Result<Option<Vec<u8>>> {
+    match std::fs::read(path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(_) => anyhow::bail!("Cannot recheck provider configuration; original file kept"),
+    }
+}
+
+fn persist_unchanged(
+    mut file: tempfile::NamedTempFile,
+    path: &Path,
+    original: &Option<Vec<u8>>,
+) -> Result<()> {
+    // Windows scanners/readers can briefly deny replacement even though our
+    // private draft is complete. Retry only this atomic filesystem operation,
+    // never the public Goose mutation callback or credential/tool operations.
+    for attempt in 0..=6 {
+        ensure!(
+            &read_original(path)? == original,
+            "Provider settings changed during editing; reload before saving"
+        );
+        match file.persist(path) {
+            Ok(_) => return Ok(()),
+            Err(error)
+                if cfg!(windows)
+                    && attempt < 6
+                    && matches!(error.error.raw_os_error(), Some(5 | 32 | 33)) =>
+            {
+                file = error.file;
+                std::thread::sleep(std::time::Duration::from_millis(
+                    (50_u64 << attempt).min(200),
+                ));
+            }
+            Err(error) => return Err(error.error.into()),
+        }
+    }
+    unreachable!()
 }
 
 /// Preserve original fields that Goose's typed normalization does not know
@@ -224,6 +311,92 @@ pub(super) fn validate(config: &Config) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn v97_config_edit_errors_expose_stage_without_values() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.yaml");
+        let original = b"GOOSE_MODEL: preserved\n";
+        std::fs::write(&path, original).unwrap();
+        let config =
+            Config::new_with_file_secrets(&path, directory.path().join("secrets")).unwrap();
+        let error = edit(&config, |draft| -> Result<()> {
+            draft.set_param("intermediate", true)?;
+            anyhow::bail!("parser line containing fixture-secret-value")
+        })
+        .unwrap_err();
+        assert!(error.to_string().contains("parameter update"));
+        assert!(!format!("{error:#}").contains("fixture-secret-value"));
+        assert_eq!(std::fs::read(&path).unwrap(), original);
+        let error = stage::<()>(
+            "draft normalization",
+            Err(std::io::Error::from_raw_os_error(32).into()),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("OS error 32"));
+    }
+
+    #[cfg(windows)]
+    fn locked_target() -> (
+        tempfile::TempDir,
+        std::path::PathBuf,
+        tempfile::NamedTempFile,
+        std::fs::File,
+    ) {
+        use std::os::windows::fs::OpenOptionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.yaml");
+        std::fs::write(&path, b"original").unwrap();
+        // Permit reads/writes but deny DELETE sharing, as a Windows scanner can.
+        let reader = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(1 | 2)
+            .open(&path)
+            .unwrap();
+        let mut replacement = tempfile::NamedTempFile::new_in(directory.path()).unwrap();
+        replacement.write_all(b"replacement").unwrap();
+        replacement.as_file().sync_all().unwrap();
+        (directory, path, replacement, reader)
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn v97_windows_temporary_reader_allows_bounded_atomic_save() {
+        let (_directory, path, replacement, reader) = locked_target();
+        let release = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            drop(reader);
+        });
+        let result = persist_unchanged(replacement, &path, &Some(b"original".to_vec()));
+        release.join().unwrap();
+        result.unwrap();
+        assert_eq!(std::fs::read(path).unwrap(), b"replacement");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn v97_windows_persistent_reader_retains_original() {
+        let (_directory, path, replacement, _reader) = locked_target();
+        assert!(persist_unchanged(replacement, &path, &Some(b"original".to_vec())).is_err());
+        assert_eq!(std::fs::read(path).unwrap(), b"original");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn v97_windows_retry_preserves_concurrent_external_edit() {
+        let (_directory, path, replacement, reader) = locked_target();
+        let changed_path = path.clone();
+        let external = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            std::fs::write(changed_path, b"external edit").unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            drop(reader);
+        });
+        let result = persist_unchanged(replacement, &path, &Some(b"original".to_vec()));
+        external.join().unwrap();
+        assert!(result.unwrap_err().to_string().contains("changed"));
+        assert_eq!(std::fs::read(path).unwrap(), b"external edit");
+    }
+
     #[test]
     fn v83_goose_edits_preserve_comments_scalars_and_unknown_settings() {
         let temp = tempfile::tempdir().unwrap();

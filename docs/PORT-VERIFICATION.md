@@ -2550,3 +2550,28 @@ scale evidence above remains applicable. The entire signed CI matrix will run
 again; no acceptance or signing gate is bypassed. Failed RC13 evidence remains
 archived with SHA-256
 `4461620569a736b5270125e7982e06db454a55e8ad943be2cb0e14a4b20685d5`.
+
+### RC14 held before publication; configuration-save investigation
+
+[RC14 CI](https://github.com/allquixotic/fastrock/actions/runs/41856056824)
+compiled both platforms and passed all 841 Windows Rust tests, then stopped in
+the native effort fixture when clearing a default returned a generic save error.
+The configuration was preserved. Its exact YAML transformation and 200 complete
+edits through the unchanged Goose/config-guard APIs passed on games. The hosted
+failure's underlying stage is therefore unconfirmed; it is not evidence of a
+Fjall storage failure. Failed artifact SHA-256:
+`993ea8d4d55f4de9609b75eee84e12fe3e20792134dc3990f961ec5650b3af16`.
+
+RC15 reports safe save-stage names and numeric OS errors without configuration
+values. Windows atomic replacement retries access/sharing violations for at most
+950 ms of backoff, checking original bytes before every attempt. Permanent locks
+and concurrent external edits preserve the existing file. This retries only the
+filesystem replacement, never Goose mutation callbacks, credentials or tools.
+Goose remains unmodified. The Fjall implementation is unchanged.
+
+The [RC15 settings regressions](benchmarks/rc15-config-tests-games-2026-11-04.json)
+passed on games: 803 application tests, one renderer test, three native effort
+save/clear/restart runs, two capability runs, provider setup and named profiles.
+The repeated native runs retained a live host-memory guard and a 2 GB process-tree
+cap; peak observed process memory was 166.3 MB. Real held-file fixtures verify
+temporary and permanent sharing violations and preservation of concurrent edits.

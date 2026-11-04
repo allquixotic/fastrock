@@ -4999,7 +4999,7 @@ dependencies = [
 
 [[package]]
 name = "fastrock"
-version = "0.4.0-rc.14"
+version = "0.4.0-rc.15"
 dependencies = [
  "anyhow",
  "arboard",

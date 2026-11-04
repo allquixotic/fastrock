@@ -43,9 +43,8 @@ fn write(config: &Config, provider: &str, model: &str, value: Option<&str>) -> R
         defaults.values().map(BTreeMap::len).sum::<usize>() <= 4096,
         "Too many saved reasoning defaults"
     );
-    super::config_guard::edit(config, |config| Ok(config.set_param(KEY, defaults)?)).map_err(
-        |_| anyhow::anyhow!("Could not save reasoning defaults in provider configuration"),
-    )?;
+    super::config_guard::edit(config, |config| Ok(config.set_param(KEY, defaults)?))
+        .map_err(|error| anyhow::anyhow!("Could not save reasoning defaults: {error}"))?;
     Ok(())
 }
 
@@ -167,6 +166,35 @@ impl Adapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn v83_clearing_flow_default_preserves_other_colon_model_ids() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.yaml");
+        let opus = "us.anthropic.claude-opus-5-5-v1:0";
+        let sonnet = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+        std::fs::write(
+            &path,
+            format!(
+                "# retained user explanation\n{}\n",
+                json!({"GOOSE_PROVIDER":"aws_bedrock","GOOSE_MODEL":opus,
+                    "extensions":{},"FASTROCK_EFFORT_DEFAULTS":{"aws_bedrock":{opus:"high"}}})
+            ),
+        )
+        .unwrap();
+        let config =
+            Config::new_with_file_secrets(&path, directory.path().join("secrets")).unwrap();
+        assert_eq!(read(&config).unwrap()["aws_bedrock"][opus], "high");
+        write(&config, "aws_bedrock", sonnet, Some("medium")).unwrap();
+        write(&config, "aws_bedrock", opus, None).unwrap();
+        let defaults = read(&config).unwrap();
+        assert!(!defaults["aws_bedrock"].contains_key(opus));
+        assert_eq!(defaults["aws_bedrock"][sonnet], "medium");
+        assert!(
+            std::fs::read_to_string(path)
+                .unwrap()
+                .contains("# retained user explanation")
+        );
+    }
     #[test]
     fn v59_effort_defaults_isolate_models_profiles_and_preserve_goose_settings() {
         let dir = tempfile::tempdir().unwrap();

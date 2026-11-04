@@ -1,0 +1,84 @@
+{
+  "result": "PASS",
+  "date": "2026-11-04T15:59:19.424247+00:00",
+  "version": "0.4.0-rc.15",
+  "candidate": {
+    "sha256": "99aacef8bf5ab0bf2268cef64ac441f8c2deaab07fe1a5da2d2a7d1c45ed2637",
+    "version": "0.4.0-rc.15"
+  },
+  "application_tests": 803,
+  "renderer_tests": 1,
+  "unit_phases": [
+    {
+      "phase": "unit",
+      "result": "PASS",
+      "seconds": 3.75,
+      "peak": 151900160
+    },
+    {
+      "phase": "window",
+      "result": "PASS",
+      "seconds": 1.12,
+      "peak": 24817664
+    }
+  ],
+  "new_regressions": [
+    "Safe stage/OS errors without configuration values",
+    "Temporary Windows reader permits bounded atomic save",
+    "Persistent Windows reader preserves original",
+    "External edit during retry is preserved",
+    "Clearing flow-style colon-containing model IDs retains other defaults"
+  ],
+  "native": {
+    "sha256": "99aacef8bf5ab0bf2268cef64ac441f8c2deaab07fe1a5da2d2a7d1c45ed2637",
+    "cases": [
+      {
+        "case": "effort-1",
+        "result": "PASS",
+        "seconds": 13.62,
+        "peak": 164827136
+      },
+      {
+        "case": "effort-2",
+        "result": "PASS",
+        "seconds": 12.0,
+        "peak": 164978688
+      },
+      {
+        "case": "effort-3",
+        "result": "PASS",
+        "seconds": 11.38,
+        "peak": 164827136
+      },
+      {
+        "case": "capabilities-1",
+        "result": "PASS",
+        "seconds": 32.28,
+        "peak": 165326848
+      },
+      {
+        "case": "capabilities-2",
+        "result": "PASS",
+        "seconds": 32.05,
+        "peak": 165351424
+      },
+      {
+        "case": "setup",
+        "result": "PASS",
+        "seconds": 15.05,
+        "peak": 166240256
+      },
+      {
+        "case": "profiles",
+        "result": "PASS",
+        "seconds": 29.08,
+        "peak": 166342656
+      }
+    ]
+  },
+  "notes": [
+    "Native tests executed through asuser on games with a live hypervisor heartbeat and 2 GB process-tree cap.",
+    "Existing Fjall storage/migration/startup/scale receipts remain applicable; no storage changes since RC13.",
+    "The initial hosted configuration-save failure remains unattributed; added diagnostics identify the stage if it recurs."
+  ]
+}

@@ -224,6 +224,7 @@ V94: Windows relaunch ! activate existing profile owner and forward folder/resum
 
 V95: Fjall ! sole live virtual-workspace/search/memory/checkpoint store; LZ4 configured in engine including cold scrollback, no direct application entropy compression. Legacy decoding migration-only; no Goose changes. Verify vwork V32–V36, summary/checkpoint/memory regressions and `v95_engine_compresses_pages_and_releases_them`.
 V96: Existing redb ! automatic resumable migration on worker with native determinate stage progress; UI remains responsive, requests wait for migration rather than short startup timeout. Original retained; validation/durable activation before service; explicit menu migrates selected legacy store into unused destination, never overwrites active work. Verify `v96_migration_progress_and_manual_destination`, native migration/restart/cancel fixtures and full games acceptance.
+V97: Windows provider-config replacement ! bounded retry for access/sharing violations only, recheck original bytes before each attempt; persistent lock/concurrent edit ! preserve existing file. Mutation callbacks, credentials/tools ! never replayed. Errors ! safe stage/numeric OS code, no configuration values. Verify `v97_*` config guard tests and native effort/capability fixtures.
 
 ## §T TASKS
 id|status|task|cites
@@ -853,3 +854,5 @@ B283|2026-11-03|Windows heartbeat reader briefly denied atomic file replacement;
 B284|2026-11-04|Optional strict lint found redundant borrow/conditions in Fjall integration; two older session.rs collapsible-if warnings remain outside this change|Simplify touched code, retain compile/native suite gates; no behavior invariant needed
 
 B285|2026-11-04|Signed RC13 capabilities fixture sampled extension-default save after fixed 800ms while busy=true; subsequent snapshot showed correctly saved default|Bounded native capability-completion wait before dependent actions/assertions; retain failed RC13 tag/evidence, publish corrected fixture under RC14; V23
+
+B286|2026-11-04|RC14 hosted effort clear reported generic save failure; exact YAML transform and 200 complete save cycles passed on games, so underlying hosted cause remains unconfirmed. Error discarded failed stage; atomic replacement lacked transient Windows sharing handling|V97; bounded replacement-only retry with source rechecks, safe stage/OS diagnostics, real temporary/permanent reader and concurrent-edit regressions; preserve RC14 failure evidence, no publication

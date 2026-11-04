@@ -8,7 +8,7 @@ at opt-level 0. Goose stays pinned and unmodified; embedded vwork is maintained
 with Fastrock. Release archives include their licenses. Existing 0.3.x binaries retain the
 historical settings documented below.
 
-RC14 introduces Fjall storage, engine-managed LZ4, shared Git delta objects and
+RC15 introduces Fjall storage, engine-managed LZ4, shared Git delta objects and
 automatic/manual redb migration with native progress and Pause/Resume. Original
 redb files remain intact. See [migration guidance](FJALL-STORAGE.md) and
 [verification](PORT-VERIFICATION.md#fjall-storage-and-migration-rc13-2026-11-04).
@@ -20,10 +20,13 @@ pinned vwork dependency passed 80 tests on each hosted platform and repeated
 lifecycle checks. CI rebuilds, signs and tests the release executable before
 publication. RC13 stopped before publication when its capability fixture sampled
 an unfinished save after a fixed delay. RC14 waits for completion with a deadline;
-the storage implementation is unchanged. See [verification](PORT-VERIFICATION.md) and
+the storage implementation is unchanged. RC14 was also held when a hosted test
+reported a configuration-save failure. RC15 adds safe save-stage diagnostics and
+bounded Windows atomic-replacement retries that preserve concurrent edits.
+See [verification](PORT-VERIFICATION.md) and
 [memory behavior and limits](MEMORIES.md).
 
-Use **Quit** in the previous version's tray menu before launching RC14. A window
+Use **Quit** in the previous version's tray menu before launching RC15. A window
 close leaves the old process running. The original redb is preserved during
 migration; back up the complete new Fjall directory while Fastrock is stopped.
 
