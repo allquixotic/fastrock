@@ -66,6 +66,10 @@ the journal before reporting success. Clean Quit drains workspace operations
 and syncs on a worker; a sync error keeps Fastrock open and reports the failure.
 Automatic checkpoints/summaries and ordinary LLM edits use the buffered policy.
 Temporary-copy ownership/recovery markers remain durable before external effects.
+New conversation and fork workspaces sync before their bindings and agent
+dispatch are published outside Fjall. This prevents durable recovery records
+from referring to a workspace lost during the buffered-write window. Existing
+conversation restore remains lazy and does not add this creation-time barrier.
 A crash can lose recent buffered edits; a successful durable save includes all
 previously committed writes in that database. Goose's own SQLite history and
 configuration durability are unchanged. Disposable scrollback uses RAM journal

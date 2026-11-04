@@ -227,11 +227,13 @@ V95: Fjall ! sole live virtual-workspace/search/memory/checkpoint store; LZ4 con
 V96: Existing redb ! automatic resumable migration on worker with native determinate stage progress; UI remains responsive, requests wait for migration rather than short startup timeout. Original retained; validation/durable activation before service; explicit menu migrates selected legacy store into unused destination, never overwrites active work. Verify `v96_migration_progress_and_manual_destination`, native migration/restart/cancel fixtures and full games acceptance.
 V97: Windows provider-config replacement ! bounded retry for access/sharing violations only, recheck original bytes before each attempt; persistent lock/concurrent edit ! preserve existing file. Mutation callbacks, credentials/tools ! never replayed. Errors ! safe stage/numeric OS code, no configuration values. Verify `v97_*` config guard tests and native effort/capability fixtures.
 V98: Ordinary workspace writes ! buffered journal, OS flush cadence 1s, non-debounced durable sync target 30s with 60s maximum healthy-storage age; dedicated worker independent of tool/runtime pool. Failure/overdue ! reject writes, preserve readable state, expose diagnostics. Explicit Save, manual memory/project edits, restore intent, migration activation and clean Quit ! durable barrier before success. Dispose-only scrollback may buffer without permanent guarantee. Verify vwork `v37_*`, native save/quit/restore and `v98_*` integration tests.
+V99: New session/fork bindings ! sync every referenced workspace store before durable session identity/dispatch; absent workspace fails before publication. Deduplicate by canonical home; unbound stores and existing-session restore stay lazy. Verify `v99_new_session_binding_syncs_workspace_and_skips_unbound_stores` + native delegation forced-crash recovery with no replay.
 
 
 ## §T TASKS
 id|status|task|cites
 T71|x|Buffered workspace durability, explicit save/shutdown barriers, 60s deadline and stable 0.4.1 packaging; Windows/hosted Mac storage tests, 848 app/workspace tests, native regressions and full-scale games benchmark passed|V98,V95,V96,V63,V47,I.vwork,I.lifecycle,I.distribution
+T72|x|Durable new-session/fork workspace references before cross-store identity publication; lazy restore retained; 849 Windows Rust tests, five native cases including forced crash, full-scale guarded benchmark passed|V99,V98,V35,I.vwork,I.goose
 T70|x|Fjall storage integration, engine-owned scrollback compression, automatic/manual migration GUI and concurrent workload acceptance|V95,V96,V40,V43,V92,V93,V94,I.vwork,I.memory
 T1|x|Fix small-scroll tail feedback|V1,I.scroll
 T2|x|Recover Windows retained surface; Auto uses CPU in RDP|V2,I.paint
@@ -860,3 +862,7 @@ B284|2026-11-04|Optional strict lint found redundant borrow/conditions in Fjall 
 B285|2026-11-04|Signed RC13 capabilities fixture sampled extension-default save after fixed 800ms while busy=true; subsequent snapshot showed correctly saved default|Bounded native capability-completion wait before dependent actions/assertions; retain failed RC13 tag/evidence, publish corrected fixture under RC14; V23
 
 B286|2026-11-04|RC14 hosted effort clear reported generic save failure; exact YAML transform and 200 complete save cycles passed on games, so underlying hosted cause remains unconfirmed. Error discarded failed stage; atomic replacement lacked transient Windows sharing handling|V97; bounded replacement-only retry with source rechecks, safe stage/OS diagnostics, real temporary/permanent reader and concurrent-edit regressions; preserve RC14 failure evidence, no publication
+
+B287|2026-11-04|Stable 0.4.1 CI killed a delegated agent before background sync; durable child binding survived but RAM-only fork workspace did not, so restore failed before uncertain-send review|V99; sync bound stores before publishing new session/fork identities. Preserve failed v0.4.1 tag/evidence; no binaries published. Corrected stable build uses additive tag without rewriting history.
+
+B288|2026-11-04|Task-local Windows validation launched a zero-test executable that exited before memory-job assignment|Keep guard fail-closed; compute budget before launch and use an owned delayed launcher so containment attaches before tests; resume remaining checks. No product change or weakened memory limit.

@@ -9,7 +9,8 @@ reduce foreground disk I/O on machines with expensive file operations.
   Continuous writes do not postpone the oldest pending write's deadline.
 - Explicit editor Save, manual memory/project edits, merges, restores and manual
   checkpoints sync the journal before reporting success. Recovery intents and
-  migration activation retain their immediate durability barriers.
+  migration activation retain their immediate durability barriers. New
+  conversation and fork workspaces sync before their recovery bindings are saved.
 - Quit drains workspace operations and syncs pending changes without blocking the
   interface. A sync error keeps Fastrock open. Diagnostics shows pending journal
   work and failures; failed or overdue storage pauses further writes.

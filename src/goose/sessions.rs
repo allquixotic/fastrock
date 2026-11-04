@@ -98,6 +98,15 @@ impl Adapter {
                 return Err(error);
             }
         }
+        if self.embedded_runtime
+            && let Err(error) =
+                super::vwork::persist_new_workspace_bindings(&self.stores, &bindings).await
+        {
+            if let Some(registration) = &registration {
+                self.mcp.remove(&registration.key).await;
+            }
+            return Err(error);
+        }
         let reply = self.rpc.call("session/new", args).await;
         let response = match reply {
             Ok(r) => r,

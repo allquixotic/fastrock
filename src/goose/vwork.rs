@@ -2,6 +2,39 @@
 use super::*;
 use fastrock_workspaces::vwork::{McpBinding, discover_mcp};
 
+/// A durable session/dispatch must never refer to a RAM-only workspace. Sync
+/// once per bound store before publishing a NEW session or fork. Restoring an
+/// existing binding stays lazy; ordinary tool edits retain buffered durability.
+pub(super) async fn persist_new_workspace_bindings(
+    stores: &fastrock_workspaces::embedded::Pool,
+    bindings: &[McpBinding],
+) -> Result<(), JSONRPCErrorError> {
+    let mut homes = std::collections::HashMap::<_, Vec<String>>::new();
+    for binding in bindings {
+        if let Some(workspace) = &binding.workspace {
+            let home = tokio::fs::canonicalize(&binding.home)
+                .await
+                .map_err(|e| error(format!("Resolve new workspace store: {e}")))?;
+            homes.entry(home).or_default().push(workspace.clone());
+        }
+    }
+    for (home, workspaces) in homes {
+        stores
+            .connection(home)
+            .run(move |store| {
+                store.with_engine(|engine| {
+                    for workspace in workspaces {
+                        engine.workspace(&workspace)?;
+                    }
+                    engine.db.persist()
+                })
+            })
+            .await
+            .map_err(|e| error(format!("Save conversation workspace recovery: {e:#}")))?;
+    }
+    Ok(())
+}
+
 impl Adapter {
     pub(super) async fn new_vwork_servers(
         &self,
@@ -214,6 +247,60 @@ fn local_shared_server(server: &Value) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn v99_new_session_binding_syncs_workspace_and_skips_unbound_stores() {
+        let temp = tempfile::tempdir().unwrap();
+        let repo_path = temp.path().join("repo");
+        let repo = git2::Repository::init(&repo_path).unwrap();
+        let tree = repo
+            .find_tree(repo.index().unwrap().write_tree().unwrap())
+            .unwrap();
+        let author = git2::Signature::now("Fixture", "fixture@example.invalid").unwrap();
+        repo.commit(Some("HEAD"), &author, &author, "Fixture", &tree, &[])
+            .unwrap();
+        let stores = fastrock_workspaces::embedded::Pool::default();
+        let home = temp.path().join("bound");
+        let connection = stores.connection(home.clone());
+        fastrock_workspaces::projects::open(&connection, repo_path, "new-chat".into())
+            .await
+            .unwrap();
+        let pending = || {
+            connection.run(|store| {
+                store.with_engine(|engine| Ok(engine.db.durability_status().pending_transactions))
+            })
+        };
+        assert!(pending().await.unwrap() > 0);
+        let bound = McpBinding {
+            name: "vwork".into(),
+            executable: Default::default(),
+            command: String::new(),
+            args: vec![],
+            home,
+            workspace: Some("new-chat".into()),
+            auto_start: false,
+            timeout_seconds: 900,
+        };
+        let unbound = McpBinding {
+            home: temp.path().join("unopened"),
+            workspace: None,
+            ..bound.clone()
+        };
+        persist_new_workspace_bindings(&stores, &[bound.clone(), bound.clone(), unbound.clone()])
+            .await
+            .unwrap();
+        assert_eq!(pending().await.unwrap(), 0);
+        assert!(!unbound.home.exists());
+        let missing = McpBinding {
+            workspace: Some("missing".into()),
+            ..bound
+        };
+        assert!(
+            persist_new_workspace_bindings(&stores, &[missing])
+                .await
+                .is_err()
+        );
+    }
+
     #[test]
     fn v35_restore_only_local_shared_routes() {
         let path = uuid::Uuid::new_v4();

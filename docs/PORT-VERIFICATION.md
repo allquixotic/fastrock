@@ -2658,3 +2658,20 @@ profiles remain user-validated, not represented as tested by fixtures.
 
 The stable tag is rebuilt, signed and fully tested again by release CI before
 publication. Release and cleanup evidence will be recorded after verification.
+
+### 0.4.1 initial publication held on crash recovery
+
+[Initial stable CI](https://github.com/allquixotic/fastrock/actions/runs/41904332445)
+passed compilation, 848 Rust tests and signing, then failed forced-crash
+delegation recovery before publication. The saved child binding survived while
+its new Fjall workspace was still buffered; the native error was
+`Restore bound workspace: not found`. The recovery test correctly rejected it.
+Failed artifact SHA-256:
+`9b0447cdfe186680753f22e96484a87808898b92b616bcec1d00ce4ecb4e2957`.
+
+New session and fork creation now sync each referenced store before publishing
+durable identities or dispatching agents. Unbound stores and ordinary restores
+remain lazy; ordinary edits keep the 60-second policy. A new unit regression
+checks the barrier, missing-workspace rejection and unopened unbound stores;
+the unchanged native forced-crash test covers end-to-end recovery. The original
+tag remains intact; the corrected stable package uses an additive build tag.

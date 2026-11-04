@@ -207,6 +207,7 @@ impl Adapter {
                 "Source workspace binding does not match its saved tools",
             ));
         }
+        super::vwork::persist_new_workspace_bindings(&self.stores, &bindings).await?;
         let cwd = match &primary {
             Some(workspace) => workspace.cwd.clone(),
             None => {
