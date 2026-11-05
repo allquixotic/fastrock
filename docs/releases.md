@@ -8,7 +8,8 @@ Pending age and sync errors appear in Diagnostics; overdue or failed storage
 pauses writes. Cross-store recovery and migration retain immediate barriers.
 Goose remains unchanged, including its SQLite history/configuration durability.
 
-Build 4 separates saved-history browsing from agent activation, removes fixed
+[Build 4](https://github.com/allquixotic/fastrock/releases/tag/v0.4.1%2Bbuild.4)
+separates saved-history browsing from agent activation, removes fixed
 session/history request deadlines, and keeps history visible during explicit
 Resume with retry after real errors. Shared Goose session storage avoids repeated
 SQLite pool initialization; disposable scrollback cache creation runs in the

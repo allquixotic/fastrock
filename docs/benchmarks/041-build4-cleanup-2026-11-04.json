@@ -1,0 +1,187 @@
+{
+  "result": "PASS",
+  "verified_at": "2026-11-05T00:41:23.144263+00:00",
+  "release_tag": "v0.4.1+build.4",
+  "removed_logical_bytes": 8313394265,
+  "cleanup": {
+    "local-cleanup": {
+      "removed": [
+        {
+          "path": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1-build4/fixture-source.zip",
+          "bytes": 3942683
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1-build4/test-executables.zip",
+          "bytes": 156649044
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1-build4/fixture-binary.zip",
+          "bytes": 57321768
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1-build4/final-tests.zip",
+          "bytes": 156664629
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1-build4/final-app.zip",
+          "bytes": 57322984
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1-build4/final-source.zip",
+          "bytes": 3945020
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock-release-evidence/0.4.1-build4/signed-fastrock.exe",
+          "bytes": 139150608
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock-ci-build/work/fastrock/fastrock",
+          "bytes": 779626432
+        }
+      ],
+      "removed_bytes": 1354623168,
+      "retained": [
+        "Official release ZIP, checksum and attestation",
+        "Failed and successful CI evidence archives and logs",
+        "Native fixture evidence archive and benchmark receipts",
+        "Active Cargo incremental caches and current test executables",
+        "User databases, configuration and installed applications"
+      ],
+      "free_bytes": 3466783285248
+    },
+    "stale-cleanup": {
+      "removed": [
+        {
+          "path": "/Users/sean/dev/codex/fastrock-ci-build/work/fastrock-target",
+          "bytes": 4033121039,
+          "kind": "Inactive Cargo cache; last compiler metadata October 29"
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock/build/ci-fix-codex.test.exe",
+          "bytes": 13920768,
+          "sha256": "c1128096a3d88ca519100ded4e63ef30f4f6b89d2b1ca0aa6769431ffb28870e"
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock/build/ci-fix-ui.test.exe",
+          "bytes": 26156032,
+          "sha256": "0031f0b4a39e6e74e5e4036adaa84553e96f49ff4e4392695ef9c2117da477a6"
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock/build/codex-startup-diagnostic-windows.test.exe",
+          "bytes": 13931520,
+          "sha256": "545a67e466170d15bd4f8fec2768cdb096bf53c5ef2e01a37cac495c29215c73"
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock/build/rally-windows.test.exe",
+          "bytes": 10954752,
+          "sha256": "b7e87083d364420adcf95cfd8b6df22c9f81557130bfd42a124d03036ef7311e"
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock/build/signature-module-regression.test.exe",
+          "bytes": 14287872,
+          "sha256": "82b3376083e14b6b11574b973fa231d1bbbc346ec40cd9a7c16de060f4d2cfac"
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock/build/ui-windows.test.exe",
+          "bytes": 7882752,
+          "sha256": "c598cbd4d67d3a4d27e5da5c51cb4a9114845b0f58a51ff0e28630107fc4dd7b"
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock/build/ui.test.exe",
+          "bytes": 18605568,
+          "sha256": "be53c804923e9f67df5c5c226359e3119acab01df07b273c40c60bbf141be50c"
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock/build/update-signature.test.exe",
+          "bytes": 13812224,
+          "sha256": "cb5292566994b048949fa5fe3980fe16579c912fe54d567a7c652a7bf7cdc009"
+        },
+        {
+          "path": "/Users/sean/dev/codex/fastrock/build/update.test.exe",
+          "bytes": 13006336,
+          "sha256": "1b46eda6ec28201047267177ac26e86d5c4abc662b634f4f6729da2b3e9bde41"
+        }
+      ],
+      "bytes": 4165678863,
+      "active_cache_preserved": "/Users/sean/dev/codex/fastrock/target"
+    },
+    "games-cleanup": {
+      "removed_tree": "C:\\Users\\SeanMcNamara\\fastrock-041-build4-verify",
+      "files": 5229,
+      "bytes": 1915698859,
+      "evidence_sha256": "b759620f1b0d83510524d69e28be70a02c75cdaf737753123b8d0fd7d259db7a",
+      "remaining_fixture_processes": 0,
+      "free_bytes": 2889588453376
+    },
+    "cache-cleanup": {
+      "removed": [
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-9Qwcgz",
+          "bytes": 67112444
+        },
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-bQsxD9",
+          "bytes": 67112444
+        },
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-DL4KEv",
+          "bytes": 67112444
+        },
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-ep61sx",
+          "bytes": 67112444
+        },
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-gTZ8IH",
+          "bytes": 67112444
+        },
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-IarvkO",
+          "bytes": 67112444
+        },
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-nK4NY8",
+          "bytes": 67112444
+        },
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-nMr9L5",
+          "bytes": 67112444
+        },
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-rJbAAi",
+          "bytes": 67112444
+        },
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-SgMgs7",
+          "bytes": 67112444
+        },
+        {
+          "path": "C:\\Users\\SEANMC~1\\AppData\\Local\\Temp\\fastrock-scrollback-UU23oU",
+          "bytes": 67112444
+        }
+      ],
+      "bytes": 738236884,
+      "skipped": [],
+      "kind": "Disposable marked scrollback caches; exclusive owner lock verified"
+    },
+    "games-helper-cleanup": {
+      "files": [
+        "fastrock-041-build4-signed.exe",
+        "fastrock-041-build4-archive.py",
+        "fastrock-041-build4-cleanup.py",
+        "fastrock-041-build4-inspect-caches.py",
+        "fastrock-041-build4-cleanup-caches.py",
+        "fastrock-041-build4-cleanup.json",
+        "fastrock-041-build4-cache-cleanup.json"
+      ],
+      "bytes": 139156491
+    }
+  },
+  "evidence_archive_sha256": "b759620f1b0d83510524d69e28be70a02c75cdaf737753123b8d0fd7d259db7a",
+  "notes": [
+    "Removed task fixture data, transfer archives and signature-check executable from games after evidence was copied and verified.",
+    "Removed eleven marked disposable transcript caches after checking exclusive Windows ownership locks.",
+    "Removed local transfer copies, the completed CI checkout, an unused October 29 compiler cache and nine unused October 9 test executables.",
+    "Retained the active Cargo cache, released ZIP/checksums/attestations, CI/native evidence, user databases and historical release evidence. Logical byte totals are not a physical freed-space measurement."
+  ]
+}

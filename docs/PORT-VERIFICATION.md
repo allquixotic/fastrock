@@ -2783,5 +2783,16 @@ Host/guest headroom guards stayed active; no reduced-scale retry was needed.
 Receipts: [regressions](benchmarks/041-build4-regressions-games-2026-11-04.json),
 [scale](benchmarks/041-build4-scale-games-2026-11-04.json),
 [vwork CI](https://github.com/allquixotic/vwork/actions/runs/41932265671).
-Signed release CI must independently execute all 40 native cases on its signed
-executable before publication. Private work-profile validation remains user-owned.
+[Signed CI](https://github.com/allquixotic/fastrock/actions/runs/41937699294)
+passed 856 Rust tests, all 40 native cases, migration, catalog and scrolling
+checks on the signed executable and published
+[stable build 4](https://github.com/allquixotic/fastrock/releases/tag/v0.4.1%2Bbuild.4).
+The downloaded ZIP's checksum, source provenance (online and bundled), publisher
+signature and secure timestamp were independently verified. Windows signature
+verification ran on games without launching the downloaded application. The
+Mac signing/release job was skipped; its temporary build runner unregistered.
+See [CI receipt](benchmarks/041-build4-release-ci-2026-11-04.json) and
+[cleanup receipt](benchmarks/041-build4-cleanup-2026-11-04.json). Temporary fixtures,
+transfer copies, unused build outputs and marked abandoned transcript caches
+were removed; active incremental caches and release evidence remain available.
+Private work-profile validation remains user-owned.
