@@ -2838,3 +2838,27 @@ The repeated SSH failure was fixed in the Mac client configuration: both games
 and aorus-ubuntu now explicitly select the existing authorized Ed25519 key.
 Fresh-shell checks passed with the agent disabled, removing the dependence on
 terminal-specific agent state. Server authorization and VM lifecycle were unchanged.
+
+## AccessKit focus crash — stable 0.4.3 (2026-11-09)
+
+Source inspection confirmed the reported Slint accessibility defect remained
+in 0.4.2. The original focus policy reproduced AccessKit 0.38.0's `tree.rs:75`
+panic in deterministic Windows consumer tests; all four tests pass after the
+fix. Deferred structural rebuilds preserve reentrant registration/destruction,
+and every focus update is constrained to published/current-tree nodes.
+
+Games passed 861 Rust tests, four relevant native cases and the full
+1,000-conversation/eight-stream/10,000-message comparison with 0.3.4. Host and
+guest memory guards remained active; no memory limit triggered. One SSH
+interruption stopped the first unit-suite attempt; the complete retry passed.
+Mac compilation passed without running the application or tests.
+
+[Release CI 42700164850](https://github.com/allquixotic/fastrock/actions/runs/42700164850)
+passed both platform builds, 861 Rust tests, all 41 native cases, migration,
+catalog and scrolling checks on the exact signed executable. The accessibility
+case completed 334 focus requests across eight distinct controls. Stable
+[v0.4.3](https://github.com/allquixotic/fastrock/releases/tag/v0.4.3) is the latest
+Windows x64 ZIP. Downloaded checksum, online/bundled provenance, publisher and
+secure timestamp were independently verified; no Mac assets were published,
+and no temporary runners remain. Evidence: [local tests](benchmarks/043-games-2026-11-09.json),
+[release](benchmarks/043-release-ci-2026-11-09.json), [analysis](ACCESSIBILITY-043.md).

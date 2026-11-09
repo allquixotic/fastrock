@@ -238,7 +238,7 @@ V103: Accessibility focus ! node present in published tree or current full rebui
 
 ## §T TASKS
 id|status|task|cites
-T76|x|0.4.3 AccessKit focus/structure repair; four red/green consumer tests, 861 games Rust tests, four native cases and full-scale 0.3.4 comparison passed; Mac compile only, workflow lint passed. Ready for explicitly authorized signed CI release; docs/ACCESSIBILITY-043.md|V103,V45,I.distribution
+T76|x|0.4.3 AccessKit focus/structure repair; four red/green consumer tests, 861 games Rust tests, four native cases and full-scale 0.3.4 comparison passed; Mac compile only, workflow lint passed. Signed CI 42700164850 passed 861 Rust tests, 41 native cases and migration/catalog/scroll checks; stable v0.4.3 published, downloaded checksum/provenance/signature verified. docs/ACCESSIBILITY-043.md|V103,V45,I.distribution
 
 T75|x|0.4.2 explicit Git frontier, packed materialization, reserved worker capacity and phase diagnostics; upstream Windows/macOS CI, 857 games Rust tests, nine native regressions, virtual cold/warm starts and full-scale 1,000/eight/10,000 comparison passed; Mac compile only. Signed CI 42681807135 passed 857 tests and 40 native cases; stable v0.4.2 published, download/provenance/signature verified; docs/PERFORMANCE-042.md|V102,V101,V99,V45,I.vwork,I.distribution
 T74|x|Show history independently of agent startup; unbounded lifecycle waits, native retry, shared session storage and lazy workspace files|V100,V101,V94,V99,V63,I.goose,I.vwork,I.ui

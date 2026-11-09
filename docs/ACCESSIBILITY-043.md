@@ -48,4 +48,12 @@ Automation client triggered the original incident.
   on 0.3.4; this fix makes no general performance improvement claim.
 - Windows and Mac compilation, formatting and workflow lint passed. No Mac
   application or tests were run. [Local receipt](benchmarks/043-games-2026-11-09.json).
-- Signed release CI: pending.
+- [Signed release CI](https://github.com/allquixotic/fastrock/actions/runs/42700164850)
+  passed 861 Rust tests, all 41 native cases, migration, catalog and scrolling
+  checks. The signed accessibility fixture completed 40 page changes and 334
+  focus requests across eight controls.
+- [0.4.3](https://github.com/allquixotic/fastrock/releases/tag/v0.4.3) was published
+  as the latest stable Windows x64 ZIP. Downloaded checksum, package metadata,
+  online and bundled attestations, Windows publisher and timestamp were verified.
+  No Mac assets were published; no Mac application/tests ran. The temporary
+  runner removed its registration. [Release receipt](benchmarks/043-release-ci-2026-11-09.json).

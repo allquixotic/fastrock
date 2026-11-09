@@ -1,7 +1,22 @@
+# Fastrock 0.4.3 stable
+
+[Fastrock 0.4.3](https://github.com/allquixotic/fastrock/releases/tag/v0.4.3)
+is the latest stable Windows x64 ZIP, explicitly authorized 2026-11-09. It fixes
+the Slint/AccessKit crash when focus moves to newly created controls while UI
+Automation or assistive technology is active. Accessibility remains enabled;
+Goose and workspace storage are unchanged. See [cause and verification](ACCESSIBILITY-043.md).
+
+[Signed release CI](https://github.com/allquixotic/fastrock/actions/runs/42700164850)
+passed 861 Rust tests, all 41 native cases, migration, catalog and scrolling
+checks on the published executable. Windows and Mac compiled; Mac publication
+was skipped. The downloaded ZIP's checksum, online and bundled provenance,
+Windows publisher and secure timestamp were independently verified. See the
+[release receipt](benchmarks/043-release-ci-2026-11-09.json).
+
 # Fastrock 0.4.2 stable
 
 [Fastrock 0.4.2](https://github.com/allquixotic/fastrock/releases/tag/v0.4.2)
-is the latest stable Windows x64 ZIP, explicitly authorized 2026-11-09. Short
+is the preceding stable Windows x64 ZIP, explicitly authorized 2026-11-09. Short
 Git logs traverse a bounded history frontier, temporary checkouts export packed
 Git objects, and heavy workspace operations leave worker capacity for small
 commands. Diagnostics identifies admission, worker, execution and persistence
