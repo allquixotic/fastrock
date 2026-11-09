@@ -1,3 +1,25 @@
+# Fastrock 0.4.2 stable
+
+[Fastrock 0.4.2](https://github.com/allquixotic/fastrock/releases/tag/v0.4.2)
+is the latest stable Windows x64 ZIP, explicitly authorized 2026-11-09. Short
+Git logs traverse a bounded history frontier, temporary checkouts export packed
+Git objects, and heavy workspace operations leave worker capacity for small
+commands. Diagnostics identifies admission, worker, execution and persistence
+waits. Embedded Goose remains unchanged.
+
+On the synthetic games workload, temporary checkout fell from 28.9 to 6.3 seconds,
+three-entry history lookup from 23.8 to 0.6 milliseconds, and process write volume
+from 206.5 to 8.4 MB. Initial repository import still takes roughly 15 seconds.
+These measurements do not establish work-machine security-software latency.
+See [performance evidence](PERFORMANCE-042.md).
+
+[Signed release CI](https://github.com/allquixotic/fastrock/actions/runs/42681807135)
+passed 857 Rust tests, all 40 native acceptance cases, migration, catalog and
+scrolling checks on the published executable. Windows and Mac compiled; Mac
+publication was skipped. The downloaded ZIP's checksum, online and bundled
+provenance, expected publisher and secure timestamp were independently verified.
+See the [release receipt](benchmarks/042-release-ci-2026-11-09.json).
+
 # Fastrock 0.4.1 stable
 
 Explicitly authorized 2026-11-04. Ordinary virtual-workspace changes use bounded

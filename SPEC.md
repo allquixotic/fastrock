@@ -236,7 +236,7 @@ V102: Bulk workspace calls ! admission before general workers, at most four of e
 
 ## §T TASKS
 id|status|task|cites
-T75|x|0.4.2 explicit Git frontier, packed materialization, reserved worker capacity and phase diagnostics; upstream Windows/macOS CI, 857 games Rust tests, nine native regressions, virtual cold/warm starts and full-scale 1,000/eight/10,000 comparison passed; Mac compile only. Signed CI publication remains final distribution gate; docs/PERFORMANCE-042.md|V102,V101,V99,V45,I.vwork,I.distribution
+T75|x|0.4.2 explicit Git frontier, packed materialization, reserved worker capacity and phase diagnostics; upstream Windows/macOS CI, 857 games Rust tests, nine native regressions, virtual cold/warm starts and full-scale 1,000/eight/10,000 comparison passed; Mac compile only. Signed CI 42681807135 passed 857 tests and 40 native cases; stable v0.4.2 published, download/provenance/signature verified; docs/PERFORMANCE-042.md|V102,V101,V99,V45,I.vwork,I.distribution
 T74|x|Show history independently of agent startup; unbounded lifecycle waits, native retry, shared session storage and lazy workspace files|V100,V101,V94,V99,V63,I.goose,I.vwork,I.ui
 T71|x|Buffered workspace durability, explicit save/shutdown barriers, 60s deadline and stable 0.4.1 packaging; Windows/hosted Mac storage tests, 848 app/workspace tests, native regressions and full-scale games benchmark passed|V98,V95,V96,V63,V47,I.vwork,I.lifecycle,I.distribution
 T72|x|Durable new-session/fork workspace references before cross-store identity publication; lazy restore retained; 849 Windows Rust tests, five native cases including forced crash, full-scale guarded benchmark passed|V99,V98,V35,I.vwork,I.goose

@@ -2796,3 +2796,45 @@ See [CI receipt](benchmarks/041-build4-release-ci-2026-11-04.json) and
 transfer copies, unused build outputs and marked abandoned transcript caches
 were removed; active incremental caches and release evidence remain available.
 Private work-profile validation remains user-owned.
+
+## Workspace performance, stable 0.4.2 — 2026-11-09
+
+Bounded Git history previews and packed temporary checkouts remove full-history
+sorting and loose-object file amplification. Heavy operations acquire a separate
+four-slot limit before the shared eight-slot worker pool; cancellation preserves
+running work's permits. Diagnostics separates admission, execution and recovery
+state persistence. Goose remains unmodified. See
+[implementation and measured comparisons](PERFORMANCE-042.md).
+
+The games comparison used 2,000 files and 4,000 commits, including merges and an
+annotated historical tag. Temporary checkout improved from 28,867.7 to 6,258.0 ms,
+three-entry logs from 23.8 to 0.6 ms, and whole-process write bytes from
+206,474,690 to 8,400,309. Both histories passed `git fsck`; object files fell from
+14,040 to 12. Initial import remains expensive. Native cold/warm virtual-project
+starts, nine affected native cases and 857 Rust tests passed on games. The fresh
+0.3.4 and candidate scale runs both passed 1,000 conversations, eight streams and
+10,000 history messages with headroom/memory guards active and no scale reduction.
+Candidate peak memory was 248,135,680 bytes; history opening was 208.1 ms and
+scroll frame p95 was 7.989 ms. These are synthetic measurements, not work-PC
+security-software or live private-provider validation.
+
+[Stable 0.4.2](https://github.com/allquixotic/fastrock/releases/tag/v0.4.2) published
+from `e84f42b5d53b6b529406fff087364bb33e1d9384` through
+[CI run 42681807135](https://github.com/allquixotic/fastrock/actions/runs/42681807135).
+CI passed 857 Rust tests, all 40 native acceptance cases, seven migration checks,
+organization catalog acceptance and five scrolling scenarios on the signed
+executable. Windows and macOS compiled; Mac publication was skipped. No local
+Mac application or tests executed. Temporary runner registrations returned to zero.
+
+The [release receipt](benchmarks/042-release-ci-2026-11-09.json) records independent
+public-download verification: ZIP checksum, source/build/license metadata,
+online and bundled provenance, and Windows publisher/timestamp checks on games.
+The downloaded application was not launched. ZIP SHA-256:
+`37a97e5b4b57ed2e156b0751c65e588504f8ba66c0cf80d48c138fc58b7e3c57`.
+Signed executable SHA-256:
+`d7e9a20afdd94bc2047085e8098295a3adb69959d8571709f32c5748b64e7a4e`.
+
+The repeated SSH failure was fixed in the Mac client configuration: both games
+and aorus-ubuntu now explicitly select the existing authorized Ed25519 key.
+Fresh-shell checks passed with the agent disabled, removing the dependence on
+terminal-specific agent state. Server authorization and VM lifecycle were unchanged.

@@ -112,7 +112,7 @@ history-open observation 208.1 ms (baseline 1,405.8), and scroll frame p95
 7.989 ms (baseline 8.123). Host/guest reserves and the 32 GB stop limit remained
 active. Receipt: `docs/benchmarks/042-scale-games-2026-11-09.json`.
 
-Acceptance checklist (steps 1–4 complete; step 5 is publication):
+Acceptance checklist (all five steps complete):
 
 1. Execute vwork's full suite on Windows and hosted macOS, including `v39_*`:
    a short preview succeeds when a distant commit is unavailable, merge parents
@@ -135,6 +135,22 @@ Acceptance checklist (steps 1–4 complete; step 5 is publication):
    then tag `v0.4.2`. The existing Actions
    pipeline must build, sign, verify and publish the Windows x64 ZIP. Verify
    release assets and CI acceptance before reporting publication.
+
+### Stable publication
+
+[Fastrock 0.4.2](https://github.com/allquixotic/fastrock/releases/tag/v0.4.2)
+published as the latest stable Windows x64 ZIP on 2026-11-09 from
+`e84f42b5d53b6b529406fff087364bb33e1d9384`.
+[CI run 42681807135](https://github.com/allquixotic/fastrock/actions/runs/42681807135)
+passed Windows/macOS compilation, 857 Windows Rust tests, all 40 native cases,
+seven migration checks, organization catalog acceptance and five scrolling
+scenarios. Native CI checks used the exact signed executable. Mac publication
+was skipped; the temporary build runner unregistered.
+
+Independent downloads passed ZIP checksum, build/source/license metadata,
+online and bundled GitHub provenance, and Windows Authenticode publisher and
+timestamp checks on games. The downloaded application was not launched.
+Receipt: `docs/benchmarks/042-release-ci-2026-11-09.json`.
 
 ## Environment blockers
 
