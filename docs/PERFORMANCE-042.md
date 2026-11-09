@@ -2,7 +2,8 @@
 
 Requested 2026-11-09 after workspace tools took approximately eight to nine
 minutes on the work PC. Windows x64 publication through signed GitHub Actions
-is authorized. T75 remains incomplete until runtime acceptance passes.
+is authorized. T75 runtime acceptance is complete; signed CI publication and
+independent asset verification are the final distribution gates.
 
 ## Confirmed code paths
 
@@ -75,7 +76,43 @@ I/O counters, peak memory, object-file counts, store sizes and `git fsck` result
 are preserved. I/O counters cover whole processes because concurrent calls
 overlap. Fixtures contain no private source or provider calls.
 
-Before completing T75 and tagging:
+The full-size games comparison passed: temporary checkout 28,867.7 → 6,258.0 ms,
+three-entry log 23.8 → 0.6 ms, Git object files 14,040 → 12, and process-wide
+write bytes 206,474,690 → 8,400,309. Candidate peak process memory was
+33,054,720 bytes; both histories passed `git fsck`. Initial repository import
+remains substantial (13.7 seconds baseline, 15.2 seconds candidate); these fixes
+target subsequent commands and do not eliminate first-import work. This is one
+synthetic comparison, not a work-PC latency measurement. See
+`docs/benchmarks/042-workspace-games-2026-11-09.json`.
+
+Fastrock Windows validation passed 857 Rust tests, the standalone embedded
+Goose and clean-store fixtures, release-policy checks and watchdog checks.
+Receipt: `docs/benchmarks/042-tests-games-2026-11-09.json`. The Mac application
+compiled successfully; no application or tests executed on Sean's Mac.
+
+Nine native cases passed: vwork, projects, checkpoints, compaction, relaunch,
+history, stalled history startup, queue recovery and forced process recovery.
+The final local executable SHA-256 is
+`64f2d7d33cdf6d82bc4133d6fb53ae48a7d172acf535d5baf0cf6b51aa331272`.
+Receipt: `docs/benchmarks/042-native-games-2026-11-09.json`.
+
+The native virtual-project New chat path passed against stable 0.4.1 build 4:
+baseline cold/warm/warm 14,758.9/802.3/803.5 ms; candidate
+13,864.3/802.3/603.5 ms. These include explicit fixture waits, project opening
+and 100 ms idle observation; the cold case imports the repository. Ordinary
+folder observations are preserved separately. The initial virtual fixture
+failed Git ownership validation because SSH and the desktop use different
+accounts; only the generated repository root/.git ownership was corrected.
+Receipt: `docs/benchmarks/042-sessions-games-2026-11-09.json`.
+
+A fresh 0.3.4 baseline and candidate both passed 1,000 conversations, eight
+simultaneous streams and 10,000 history messages, with no reduced-scale retry.
+Candidate peak process memory was 248,135,680 bytes (baseline 183,173,120),
+history-open observation 208.1 ms (baseline 1,405.8), and scroll frame p95
+7.989 ms (baseline 8.123). Host/guest reserves and the 32 GB stop limit remained
+active. Receipt: `docs/benchmarks/042-scale-games-2026-11-09.json`.
+
+Acceptance checklist (steps 1–4 complete; step 5 is publication):
 
 1. Execute vwork's full suite on Windows and hosted macOS, including `v39_*`:
    a short preview succeeds when a distant commit is unavailable, merge parents

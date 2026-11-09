@@ -236,7 +236,7 @@ V102: Bulk workspace calls ! admission before general workers, at most four of e
 
 ## §T TASKS
 id|status|task|cites
-T75|~|0.4.2 vwork performance: explicit Git frontier, packed materialization, reserved worker capacity and phase diagnostics; upstream fixes pushed/pinned, strict lint passed; Windows regressions, guarded games benchmarks and signed release pending; docs/PERFORMANCE-042.md|V102,V101,V99,V45,I.vwork,I.distribution
+T75|x|0.4.2 explicit Git frontier, packed materialization, reserved worker capacity and phase diagnostics; upstream Windows/macOS CI, 857 games Rust tests, nine native regressions, virtual cold/warm starts and full-scale 1,000/eight/10,000 comparison passed; Mac compile only. Signed CI publication remains final distribution gate; docs/PERFORMANCE-042.md|V102,V101,V99,V45,I.vwork,I.distribution
 T74|x|Show history independently of agent startup; unbounded lifecycle waits, native retry, shared session storage and lazy workspace files|V100,V101,V94,V99,V63,I.goose,I.vwork,I.ui
 T71|x|Buffered workspace durability, explicit save/shutdown barriers, 60s deadline and stable 0.4.1 packaging; Windows/hosted Mac storage tests, 848 app/workspace tests, native regressions and full-scale games benchmark passed|V98,V95,V96,V63,V47,I.vwork,I.lifecycle,I.distribution
 T72|x|Durable new-session/fork workspace references before cross-store identity publication; lazy restore retained; 849 Windows Rust tests, five native cases including forced crash, full-scale guarded benchmark passed|V99,V98,V35,I.vwork,I.goose
@@ -890,3 +890,7 @@ B295|2026-11-04|Native selected Resume & send bypassed new explicit activation p
 B296|2026-11-04|Checkpoint SQL fixture wrote snake_case metadata but Goose requires camelCase, so upstream defaulted visibility and discarded the injected steer flag|V63,V100; seed actual public metadata shape, assert hidden approval stays hidden and steering cannot bypass recovery review.
 
 B297|2026-11-09|Standalone workspace benchmark requested Tokio multithread scheduler without crate feature; full-workspace feature unification hid missing API|V102; current-thread async scheduler with existing parallel blocking-worker pool; compile fixture independently against both revisions.
+
+B298|2026-11-09|Conversation timing fixture used ordinary new_thread automation, bypassing virtual project import/binding|V102; drive native project editor New chat and assert loaded repository; retain ordinary-folder observations separately, require virtual-path rerun.
+
+B299|2026-11-09|Synthetic Git repository seeded by elevated SSH account then opened by unelevated Entra desktop; libgit2 rejected ownership before import|V102; assign only generated fixture root/.git ownership to desktop user, preserve Git ownership checks and failed baseline evidence; use same identity for future seeds.

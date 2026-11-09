@@ -1,0 +1,117 @@
+{
+  "result": "PASS",
+  "source_commit": "0ced4e3",
+  "binary_sha256": "64f2d7d33cdf6d82bc4133d6fb53ae48a7d172acf535d5baf0cf6b51aa331272",
+  "rust_tests": 857,
+  "counts": {
+    "unit-fastrock_workspaces": 20,
+    "unit-embedded_goose": 0,
+    "unit-integration": 7,
+    "unit-durability": 1,
+    "unit-review": 3,
+    "unit-embedded": 7,
+    "test-fixture-watchdog.py": 0,
+    "unit-store_startup": 0,
+    "unit-checkpoints": 7,
+    "test-release-policy.py": 0,
+    "unit-fastrock": 0,
+    "unit-codex_gui": 809,
+    "unit-migration": 2,
+    "renderer": 1
+  },
+  "embedded_goose_fixture": "PASS",
+  "clean_store_fixture": "PASS",
+  "suites": [
+    {
+      "name": "unit-durability",
+      "result": "PASS",
+      "seconds": 1.5256098000099882,
+      "peak_tree_bytes": 10514432
+    },
+    {
+      "name": "unit-review",
+      "result": "PASS",
+      "seconds": 1.2240469999378547,
+      "peak_tree_bytes": 16093184
+    },
+    {
+      "name": "unit-store_startup",
+      "result": "PASS",
+      "seconds": 1.2237289999611676,
+      "peak_tree_bytes": 13942784
+    },
+    {
+      "name": "unit-integration",
+      "result": "PASS",
+      "seconds": 3.2531202000100166,
+      "peak_tree_bytes": 14397440
+    },
+    {
+      "name": "unit-migration",
+      "result": "PASS",
+      "seconds": 1.6271092999959365,
+      "peak_tree_bytes": 15548416
+    },
+    {
+      "name": "unit-checkpoints",
+      "result": "PASS",
+      "seconds": 3.0422696999739856,
+      "peak_tree_bytes": 14397440
+    },
+    {
+      "name": "unit-embedded",
+      "result": "PASS",
+      "seconds": 2.664510599919595,
+      "peak_tree_bytes": 12328960
+    },
+    {
+      "name": "unit-fastrock_workspaces",
+      "result": "PASS",
+      "seconds": 4.063515100046061,
+      "peak_tree_bytes": 132673536
+    },
+    {
+      "name": "unit-fastrock",
+      "result": "PASS",
+      "seconds": 1.0220738999778405,
+      "peak_tree_bytes": 7716864
+    },
+    {
+      "name": "unit-codex_gui",
+      "result": "PASS",
+      "seconds": 5.58632719994057,
+      "peak_tree_bytes": 109285376
+    },
+    {
+      "name": "unit-embedded_goose",
+      "result": "PASS",
+      "seconds": 1.8286615000106394,
+      "peak_tree_bytes": 67338240
+    },
+    {
+      "name": "renderer",
+      "result": "PASS",
+      "seconds": 1.6330378000857309,
+      "peak_tree_bytes": 14651392
+    },
+    {
+      "name": "test-release-policy.py",
+      "result": "PASS",
+      "seconds": 1.5239397999830544,
+      "peak_tree_bytes": 39837696
+    },
+    {
+      "name": "test-fixture-watchdog.py",
+      "result": "PASS",
+      "seconds": 1.223426099983044,
+      "peak_tree_bytes": 36593664
+    }
+  ],
+  "host_memory_heartbeat": true,
+  "private_provider_calls": false,
+  "macos_compatibility": {
+    "result": "PASS",
+    "command": "cargo build --locked --bin fastrock",
+    "executed_application_or_tests": false
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "baseline": {
+    "binary_sha256": "dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9",
+    "seed_sha256": "a90d136b33388eb49171e08259a2d346cf09994c71dc07cb4d4f461a163d5b47",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "external Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1895614464,
+            "peak_app_bytes": 106835968,
+            "peak_tree_commit_bytes": 102227968
+          },
+          "app": {
+            "cap_bytes": 1845598208,
+            "peak_app_bytes": 183173120,
+            "peak_tree_commit_bytes": 219869184
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 1405.8,
+        "switch_dispatch_ms": [
+          1.0,
+          1.0,
+          0.9,
+          0.7,
+          0.7
+        ],
+        "frame": {
+          "p50_ms": 6.529,
+          "p95_ms": 8.123,
+          "p99_ms": 13.457
+        },
+        "render": {
+          "p50_ms": 5.544,
+          "p95_ms": 6.599,
+          "p99_ms": 8.485
+        },
+        "event_loop": {
+          "p50_ms": 16.851,
+          "p95_ms": 31.419,
+          "p99_ms": 34.675
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ],
+    "goose_sha256": "89d5849587586765fa335f664fac0a9ed0e466d0f3717dd609ca04ebdffa64e2"
+  },
+  "candidate": {
+    "binary_sha256": "64f2d7d33cdf6d82bc4133d6fb53ae48a7d172acf535d5baf0cf6b51aa331272",
+    "seed_sha256": "a90d136b33388eb49171e08259a2d346cf09994c71dc07cb4d4f461a163d5b47",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1821399040,
+            "peak_app_bytes": 106369024,
+            "peak_tree_commit_bytes": 101748736
+          },
+          "app": {
+            "cap_bytes": 1794885632,
+            "peak_app_bytes": 248135680,
+            "peak_tree_commit_bytes": 196706304
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 208.1,
+        "switch_dispatch_ms": [
+          0.4,
+          0.3,
+          0.4,
+          0.2,
+          0.3
+        ],
+        "frame": {
+          "p50_ms": 4.514,
+          "p95_ms": 7.989,
+          "p99_ms": 10.008
+        },
+        "render": {
+          "p50_ms": 3.51,
+          "p95_ms": 5.407,
+          "p99_ms": 8.945
+        },
+        "event_loop": {
+          "p50_ms": 16.458,
+          "p95_ms": 19.255,
+          "p99_ms": 25.7
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "binary_sha256": "64f2d7d33cdf6d82bc4133d6fb53ae48a7d172acf535d5baf0cf6b51aa331272",
+  "result": "PASS",
+  "cases": [
+    {
+      "name": "vwork",
+      "result": "PASS",
+      "error": null,
+      "seconds": 32.29,
+      "peak_tree_bytes": 162619392
+    },
+    {
+      "name": "projects",
+      "result": "PASS",
+      "error": null,
+      "seconds": 10.43,
+      "peak_tree_bytes": 157884416
+    },
+    {
+      "name": "checkpoints",
+      "result": "PASS",
+      "error": null,
+      "seconds": 31.08,
+      "peak_tree_bytes": 160104448
+    },
+    {
+      "name": "compaction",
+      "result": "PASS",
+      "error": null,
+      "seconds": 11.23,
+      "peak_tree_bytes": 160423936
+    },
+    {
+      "name": "relaunch",
+      "result": "PASS",
+      "error": null,
+      "seconds": 24.66,
+      "peak_tree_bytes": 158789632
+    },
+    {
+      "name": "history",
+      "result": "PASS",
+      "error": null,
+      "seconds": 13.84,
+      "peak_tree_bytes": 160976896
+    },
+    {
+      "name": "history-startup",
+      "result": "PASS",
+      "error": null,
+      "seconds": 115.89,
+      "peak_tree_bytes": 161484800
+    },
+    {
+      "name": "queue-recovery",
+      "result": "PASS",
+      "error": null,
+      "seconds": 15.84,
+      "peak_tree_bytes": 160501760
+    },
+    {
+      "name": "process-recovery",
+      "result": "PASS",
+      "error": null,
+      "seconds": 18.65,
+      "peak_tree_bytes": 160452608
+    }
+  ]
+}

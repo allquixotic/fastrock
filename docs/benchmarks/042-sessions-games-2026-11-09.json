@@ -1,0 +1,63 @@
+{
+  "baseline": {
+    "result": "PASS",
+    "binary_sha256": "d0632d0d9a40744210f362128b652202e4c37c474c3d07e37eeb4e7a26a2b5ff",
+    "measurement": "native project open and New chat to idle observation, 100 ms polling; includes explicit fixture waits and first repository import",
+    "peak_process_bytes": 110780416,
+    "peak_tree_commit_bytes": 72495104,
+    "cap_bytes": 1765394432,
+    "creation_observed_ms": {
+      "cold": 14758.9,
+      "warm": 802.3,
+      "warm_again": 803.5
+    },
+    "no_provider_turn": true,
+    "native_virtual_project_route": true
+  },
+  "candidate": {
+    "result": "PASS",
+    "binary_sha256": "64f2d7d33cdf6d82bc4133d6fb53ae48a7d172acf535d5baf0cf6b51aa331272",
+    "measurement": "native project open and New chat to idle observation, 100 ms polling; includes explicit fixture waits and first repository import",
+    "peak_process_bytes": 111972352,
+    "peak_tree_commit_bytes": 72536064,
+    "cap_bytes": 1768298496,
+    "creation_observed_ms": {
+      "cold": 13864.3,
+      "warm": 802.3,
+      "warm_again": 603.5
+    },
+    "no_provider_turn": true,
+    "native_virtual_project_route": true
+  },
+  "ordinary_folder_observations": {
+    "baseline": {
+      "result": "PASS",
+      "binary_sha256": "d0632d0d9a40744210f362128b652202e4c37c474c3d07e37eeb4e7a26a2b5ff",
+      "measurement": "ordinary folder conversation, no virtual project binding; native dispatch to idle with 100 ms polling",
+      "peak_process_bytes": 102342656,
+      "peak_tree_commit_bytes": 54784000,
+      "cap_bytes": 1906411520,
+      "creation_observed_ms": {
+        "cold": 197.8,
+        "warm": 100.6,
+        "warm_again": 100.5
+      },
+      "no_provider_turn": true
+    },
+    "candidate": {
+      "result": "PASS",
+      "binary_sha256": "64f2d7d33cdf6d82bc4133d6fb53ae48a7d172acf535d5baf0cf6b51aa331272",
+      "measurement": "ordinary folder conversation, no virtual project binding; native dispatch to idle with 100 ms polling",
+      "peak_process_bytes": 91570176,
+      "peak_tree_commit_bytes": 55074816,
+      "cap_bytes": 1903892480,
+      "creation_observed_ms": {
+        "cold": 198.0,
+        "warm": 100.3,
+        "warm_again": 100.4
+      },
+      "no_provider_turn": true
+    }
+  },
+  "setup_correction": "Initial virtual baseline rejected synthetic repository ownership. Assigned fixture root/.git ownership to the same Entra user as the GUI; no Git safety checks disabled. Failed run retained on games."
+}
