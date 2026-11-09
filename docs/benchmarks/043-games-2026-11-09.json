@@ -1,0 +1,314 @@
+{
+  "result": "PASS",
+  "version": "0.4.3",
+  "verified_at": "2026-11-09T21:11:17.764984+00:00",
+  "source_base": "ec90c05a569fff2bead3cc4fdc4b43962ef6ad1d",
+  "source": "0.4.3 working tree committed together with this receipt; exact fixture binary hashes below",
+  "regression": {
+    "original_policy": {
+      "expected_panic_passed": 1,
+      "safety_cases_failed": 3,
+      "exact_panic": "Focused ID #3 is not in the node list",
+      "location": "accesskit_consumer-0.38.0/src/tree.rs:75"
+    },
+    "fixed_policy": {
+      "passed": 4,
+      "failed": 0
+    }
+  },
+  "windows_rust": {
+    "total": 861,
+    "by_target": {
+      "fastrock_workspaces": 20,
+      "embedded_goose": 0,
+      "integration": 7,
+      "durability": 1,
+      "review": 3,
+      "embedded": 7,
+      "store_startup": 0,
+      "checkpoints": 7,
+      "fastrock": 0,
+      "codex_gui": 809,
+      "migration": 2,
+      "accesskit_focus": 4,
+      "renderer": 1
+    },
+    "standalone_embedded_goose": "PASS",
+    "release_policy": "PASS",
+    "fixture_watchdog": "PASS",
+    "guarded_runs": [
+      {
+        "name": "unit-checkpoints",
+        "result": "PASS",
+        "seconds": 2.7437297999858856,
+        "peak_tree_bytes": 14450688
+      },
+      {
+        "name": "unit-durability",
+        "result": "PASS",
+        "seconds": 1.5314424000680447,
+        "peak_tree_bytes": 10489856
+      },
+      {
+        "name": "unit-review",
+        "result": "PASS",
+        "seconds": 1.3210681000491604,
+        "peak_tree_bytes": 15757312
+      },
+      {
+        "name": "unit-store_startup",
+        "result": "PASS",
+        "seconds": 1.2277904000366107,
+        "peak_tree_bytes": 13881344
+      },
+      {
+        "name": "unit-embedded",
+        "result": "PASS",
+        "seconds": 2.440586300101131,
+        "peak_tree_bytes": 12345344
+      },
+      {
+        "name": "unit-migration",
+        "result": "PASS",
+        "seconds": 1.7351981999818236,
+        "peak_tree_bytes": 15015936
+      },
+      {
+        "name": "unit-integration",
+        "result": "PASS",
+        "seconds": 3.0579917000140995,
+        "peak_tree_bytes": 13946880
+      },
+      {
+        "name": "unit-fastrock_workspaces",
+        "result": "PASS",
+        "seconds": 2.955970700015314,
+        "peak_tree_bytes": 119496704
+      },
+      {
+        "name": "unit-accesskit_focus",
+        "result": "PASS",
+        "seconds": 0.7168041000841185,
+        "peak_tree_bytes": 8757248
+      },
+      {
+        "name": "unit-fastrock",
+        "result": "PASS",
+        "seconds": 0.915314199985005,
+        "peak_tree_bytes": 7712768
+      },
+      {
+        "name": "unit-embedded_goose",
+        "result": "PASS",
+        "seconds": 1.8313677000114694,
+        "peak_tree_bytes": 67829760
+      },
+      {
+        "name": "unit-codex_gui",
+        "result": "PASS",
+        "seconds": 5.682779200025834,
+        "peak_tree_bytes": 110448640
+      },
+      {
+        "name": "renderer",
+        "result": "PASS",
+        "seconds": 1.6288159000687301,
+        "peak_tree_bytes": 14594048
+      },
+      {
+        "name": "test-release-policy.py",
+        "result": "PASS",
+        "seconds": 1.534346800064668,
+        "peak_tree_bytes": 40439808
+      },
+      {
+        "name": "test-fixture-watchdog.py",
+        "result": "PASS",
+        "seconds": 1.2223960999399424,
+        "peak_tree_bytes": 36900864
+      }
+    ]
+  },
+  "native": {
+    "binary_sha256": "c0771cf5b7bcd0b06386a62764dde056e026d5e1b1d97ca17cab627da4069b70",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.44,
+        "peak_tree_bytes": 158015488
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.84,
+        "peak_tree_bytes": 160899072
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.06,
+        "peak_tree_bytes": 127369216
+      },
+      {
+        "name": "accessibility",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.26,
+        "peak_tree_bytes": 167272448
+      }
+    ]
+  },
+  "accessibility": {
+    "result": "PASS",
+    "binary_sha256": "c0771cf5b7bcd0b06386a62764dde056e026d5e1b1d97ca17cab627da4069b70",
+    "peak_process_bytes": 98910208,
+    "state_changes": 40,
+    "focus_targets": 8,
+    "focuses": 327,
+    "queries": 327,
+    "max_nodes": 76
+  },
+  "scale_baseline": {
+    "binary_sha256": "dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9",
+    "seed_sha256": "a90d136b33388eb49171e08259a2d346cf09994c71dc07cb4d4f461a163d5b47",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "external Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1148229632,
+            "peak_app_bytes": 106500096,
+            "peak_tree_commit_bytes": 101851136
+          },
+          "app": {
+            "cap_bytes": 1194797056,
+            "peak_app_bytes": 189210624,
+            "peak_tree_commit_bytes": 229523456
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 1008.4,
+        "switch_dispatch_ms": [
+          1.0,
+          0.8,
+          0.8,
+          1.0,
+          0.9
+        ],
+        "frame": {
+          "p50_ms": 6.58,
+          "p95_ms": 8.681,
+          "p99_ms": 16.688
+        },
+        "render": {
+          "p50_ms": 5.579,
+          "p95_ms": 7.112,
+          "p99_ms": 15.725
+        },
+        "event_loop": {
+          "p50_ms": 16.686,
+          "p95_ms": 31.435,
+          "p99_ms": 35.853
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ],
+    "goose_sha256": "89d5849587586765fa335f664fac0a9ed0e466d0f3717dd609ca04ebdffa64e2"
+  },
+  "scale_candidate": {
+    "binary_sha256": "c0771cf5b7bcd0b06386a62764dde056e026d5e1b1d97ca17cab627da4069b70",
+    "seed_sha256": "a90d136b33388eb49171e08259a2d346cf09994c71dc07cb4d4f461a163d5b47",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1193293824,
+            "peak_app_bytes": 106213376,
+            "peak_tree_commit_bytes": 101662720
+          },
+          "app": {
+            "cap_bytes": 1174259712,
+            "peak_app_bytes": 252391424,
+            "peak_tree_commit_bytes": 197398528
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 200.8,
+        "switch_dispatch_ms": [
+          0.4,
+          0.5,
+          0.5,
+          0.5,
+          0.4
+        ],
+        "frame": {
+          "p50_ms": 4.572,
+          "p95_ms": 9.388,
+          "p99_ms": 10.712
+        },
+        "render": {
+          "p50_ms": 3.577,
+          "p95_ms": 8.253,
+          "p99_ms": 9.445
+        },
+        "event_loop": {
+          "p50_ms": 16.413,
+          "p95_ms": 18.94,
+          "p99_ms": 25.54
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ]
+  },
+  "memory_guards": {
+    "native-candidate": {
+      "cap_bytes": 1140238336,
+      "peak_tree_bytes": 189300736,
+      "elapsed_seconds": 76.51246030000038,
+      "exit_code": 0
+    },
+    "scale-baseline": {
+      "cap_bytes": 1149978624,
+      "peak_tree_bytes": 259866624,
+      "elapsed_seconds": 34.14169750001747,
+      "exit_code": 0
+    },
+    "scale-candidate": {
+      "cap_bytes": 1205020672,
+      "peak_tree_bytes": 227360768,
+      "elapsed_seconds": 31.959861000068486,
+      "exit_code": 0
+    }
+  },
+  "macos": "PASS: compile only; no app or tests executed",
+  "workflow_lint": "PASS",
+  "notes": [
+    "Native pre-fix race did not reproduce: 40 state changes and 322 focus requests across eight controls passed; deterministic consumer tests reproduce the fault.",
+    "First full Windows suite was interrupted by SSH transport loss after checkpoints. No fixture processes remained; full guarded retry passed. Interrupted evidence preserved on games.",
+    "Full workload completed at divisor 1; no memory limit triggered. Candidate frame p95 9.388 ms versus 0.3.4 8.681 ms; no general performance improvement claim."
+  ]
+}

@@ -23,12 +23,14 @@ class ReleasePolicy(unittest.TestCase):
         assert_publishable('0.4.0-rc.1', live_pending)
         assert_publishable('0.4.1', live_pending)
         assert_publishable('0.4.2', live_pending)
+        assert_publishable('0.4.3', live_pending)
         for version, spec in [('0.4.0-alpha.4', complete), ('0.4.0-beta.1', complete),
                               ('0.4.0', live_pending), ('0.4.0-rc.1', ''),
                               ('0.4.0-rc.1', complete.replace('T39|x|', 'T39|~|')),
                               ('0.4.0-rc.1', complete + '\nT46|.|new feature'),
                               ('0.4.1', complete + '\nT71|~|buffered writes'),
                               ('0.4.2', complete + '\nT75|~|performance acceptance'),
+                              ('0.4.3', complete + '\nT76|~|accessibility acceptance'),
                               ('0.4.0-rc.1', complete + '\nT39|x|duplicate')]:
             with self.assertRaises(AssertionError):
                 assert_publishable(version, spec)
@@ -46,7 +48,7 @@ class ReleasePolicy(unittest.TestCase):
         self.assertEqual(build_plan('0.3.2')['rendering_dependencies']['parley'], {'opt-level': 2})
         self.assertEqual(build_plan('0.3.3')['lto'], 'off')
         self.assertEqual(build_plan('0.3.4')['lto'], 'off')
-        for version in ('0.4.0-alpha.1', '0.4.0-beta.2', '0.4.0-rc.1', '0.4.0', '0.4.1', '0.4.2'):
+        for version in ('0.4.0-alpha.1', '0.4.0-beta.2', '0.4.0-rc.1', '0.4.0', '0.4.1', '0.4.2', '0.4.3'):
             plan = build_plan(version)
             self.assertEqual(plan['opt_level'], 2)
             self.assertEqual(plan['lto'], 'off')
@@ -57,7 +59,8 @@ class ReleasePolicy(unittest.TestCase):
             self.assertEqual(suffix(plan), '')
         self.assertFalse(build_plan('0.4.1')['prerelease'])
         self.assertFalse(build_plan('0.4.2')['prerelease'])
-        for version in ('0.2.1', '0.3.5', '0.4.3', '0.2.0-arbitrary'):
+        self.assertFalse(build_plan('0.4.3')['prerelease'])
+        for version in ('0.2.1', '0.3.5', '0.4.4', '0.2.0-arbitrary'):
             with self.assertRaises(AssertionError):
                 build_plan(version)
 

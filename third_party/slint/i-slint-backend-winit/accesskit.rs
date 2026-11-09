@@ -204,6 +204,15 @@ impl AccessKitAdapter {
             .map(|item| DeferredAccessKitAction::InvokeAccessibleAction(item, a))
     }
 
+    pub fn reload_tree_after_deferred_changes(&mut self, component_destroyed: bool) {
+        if component_destroyed {
+            // Inner TextInputs can belong to components without an accessible
+            // node identity. Their pointer-keyed cache must also be invalidated.
+            self.nodes.text_state.clear_all();
+        }
+        self.reload_tree();
+    }
+
     pub fn reload_tree(&mut self) {
         if self.pending_update {
             return;
@@ -388,7 +397,7 @@ struct NodeCollection {
 
 impl NodeCollection {
     fn focus_node(&mut self, window_adapter_weak: &Weak<WinitWindowAdapter>) -> NodeId {
-        window_adapter_weak
+        let requested = window_adapter_weak
             .upgrade()
             .filter(|window_adapter| {
                 window_adapter.winit_window().is_some_and(|winit_window| winit_window.has_focus())
@@ -417,7 +426,15 @@ impl NodeCollection {
                     .or_else(|| window_inner.try_component().map(ItemRc::new_root))
                     .map(|focus_item| self.find_node_id_by_item_rc(focus_item))
             })
-            .unwrap_or(self.root_node_id)
+            .unwrap_or(self.root_node_id);
+        // Focus/delegate evaluation can instantiate a component before its deferred
+        // tree update. AccessKit requires focus to name a node in the published tree
+        // (or in this full rebuild), even for a dirty-node or focus-only update.
+        crate::accesskit_focus::published_focus(
+            requested,
+            self.root_node_id,
+            self.all_nodes.iter().map(|node| node.id),
+        )
     }
 
     fn item_rc_for_node_id(&self, id: NodeId) -> Option<ItemRc> {
@@ -625,6 +642,23 @@ impl NodeCollection {
             };
         };
         let root_item = ItemRc::new_root(component);
+
+        // Destruction can re-enter while the adapter is borrowed. A deferred
+        // rebuild cannot retain the dying ItemTreeRef, so sweep expired identities
+        // here before allocating new IDs. Live component identities remain stable.
+        let previous_components = self.components_by_id.len();
+        self.components_by_id.retain(|id, component| {
+            if component.upgrade().is_some() {
+                true
+            } else {
+                self.free_component_ids.push(*id);
+                false
+            }
+        });
+        if self.components_by_id.len() != previous_components {
+            self.text_state.clear_all();
+        }
+        self.component_ids.retain(|_, id| self.components_by_id.contains_key(id));
 
         let popups = window_inner
             .active_popups()

@@ -31,3 +31,13 @@ False buffer-age reports after RDP surface loss therefore need no full text redr
 `software_metrics.rs` exposes bounded, opt-in, in-memory frame measurements used by
 `dev/windows-scroll-benchmark.py`; it performs no rendering-thread I/O or polling.
 Other platforms retain upstream presentation behavior.
+
+`accesskit.rs`, `accesskit_focus.rs` and `winitwindowadapter.rs`: preserve
+re-entrant structural notifications during accessibility updates and defer one
+full rebuild after the adapter borrow ends. Focus-only, partial and full updates
+use only nodes already in the published/current tree; otherwise they temporarily
+focus the root until rebuilding publishes the requested control. Deferred
+destruction prunes dead component identities/text caches. Regression coverage:
+`tests/accesskit_focus.rs` (real AccessKit consumer) and
+`dev/windows-accessibility-smoke.py` (active Windows UI Automation). Tracks
+[upstream Slint #10269](https://github.com/slint-ui/slint/issues/10269).

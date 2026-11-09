@@ -234,8 +234,12 @@ V101: New virtual workspace ! commit/revision references only, no full tree enum
 V102: Bulk workspace calls ! admission before general workers, at most four of eight slots; cancellation retains permits until started work completes. Diagnostics ! fixed operation categories separating store/admission/worker waits from execution, plus new-session recovery persistence; no arguments/paths/results. Limited Git logs ! incremental traversal; temporary Git history ! bounded streamed packs with full refs/objects and independent leases. Verify `v102_*`, vwork `v39_*`, Windows monorepo comparison and existing recovery/isolation acceptance.
 
 
+V103: Accessibility focus ! node present in published tree or current full rebuild; new/delegated focus waits at root until structure published. Reentrant item registration/destruction ! coalesced deferred rebuild, no dropped notification or retained dying ItemTreeRef. Preserve accessibility and stable live identities. Verify `v103_*` real AccessKit consumer regressions and native UI Automation state-change/focus fixture on Windows.
+
 ## §T TASKS
 id|status|task|cites
+T76|x|0.4.3 AccessKit focus/structure repair; four red/green consumer tests, 861 games Rust tests, four native cases and full-scale 0.3.4 comparison passed; Mac compile only, workflow lint passed. Ready for explicitly authorized signed CI release; docs/ACCESSIBILITY-043.md|V103,V45,I.distribution
+
 T75|x|0.4.2 explicit Git frontier, packed materialization, reserved worker capacity and phase diagnostics; upstream Windows/macOS CI, 857 games Rust tests, nine native regressions, virtual cold/warm starts and full-scale 1,000/eight/10,000 comparison passed; Mac compile only. Signed CI 42681807135 passed 857 tests and 40 native cases; stable v0.4.2 published, download/provenance/signature verified; docs/PERFORMANCE-042.md|V102,V101,V99,V45,I.vwork,I.distribution
 T74|x|Show history independently of agent startup; unbounded lifecycle waits, native retry, shared session storage and lazy workspace files|V100,V101,V94,V99,V63,I.goose,I.vwork,I.ui
 T71|x|Buffered workspace durability, explicit save/shutdown barriers, 60s deadline and stable 0.4.1 packaging; Windows/hosted Mac storage tests, 848 app/workspace tests, native regressions and full-scale games benchmark passed|V98,V95,V96,V63,V47,I.vwork,I.lifecycle,I.distribution
@@ -894,3 +898,9 @@ B297|2026-11-09|Standalone workspace benchmark requested Tokio multithread sched
 B298|2026-11-09|Conversation timing fixture used ordinary new_thread automation, bypassing virtual project import/binding|V102; drive native project editor New chat and assert loaded repository; retain ordinary-folder observations separately, require virtual-path rerun.
 
 B299|2026-11-09|Synthetic Git repository seeded by elevated SSH account then opened by unelevated Entra desktop; libgit2 rejected ownership before import|V102; assign only generated fixture root/.git ownership to desktop user, preserve Git ownership checks and failed baseline evidence; use same identity for future seeds.
+
+B300|2026-11-09|Slint dropped item registration while adapter borrowed during partial accessibility update; focus/delegate resolution named unbuilt nodes, AccessKit consumer panicked under abort profile; unchanged in 0.4.2|V103; defer/coalesce structural rebuild, prune expired identities and constrain all focus paths to published nodes; real consumer and native Windows fixture.
+
+B301|2026-11-09|Regression harness initially imported private AccessKit ChangeHandler name and used SSH-account Python from Entra desktop|Use exported TreeChangeHandler and desktop account Python; no production behavior change.
+
+B302|2026-11-09|Games SSH transport interruption ended first Windows suite after checkpoints; heartbeat became unhealthy and no fixture processes remained|Preserve interrupted evidence; verify VM/headroom, restart guard and full suite with SSH keepalives; no application change.

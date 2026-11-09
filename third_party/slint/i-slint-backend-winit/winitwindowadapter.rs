@@ -381,6 +381,10 @@ pub struct WinitWindowAdapter {
     window: corelib::api::Window,
     pub(crate) self_weak: Weak<Self>,
     pending_redraw: Cell<bool>,
+    #[cfg(enable_accesskit)]
+    accesskit_reload_deferred: Cell<bool>,
+    #[cfg(enable_accesskit)]
+    accesskit_destruction_deferred: Cell<bool>,
     constraints: Cell<corelib::window::LayoutConstraints>,
     /// Indicates if the window is shown, from the perspective of the API user.
     shown: Cell<WindowVisibility>,
@@ -478,6 +482,10 @@ impl WinitWindowAdapter {
             window: corelib::api::Window::new(self_weak.clone() as _),
             self_weak: self_weak.clone(),
             pending_redraw: Default::default(),
+            #[cfg(enable_accesskit)]
+            accesskit_reload_deferred: Cell::new(false),
+            #[cfg(enable_accesskit)]
+            accesskit_destruction_deferred: Cell::new(false),
             constraints: Default::default(),
             shown: Default::default(),
             window_level: Default::default(),
@@ -1170,6 +1178,25 @@ impl WinitWindowAdapter {
             },
         )
         .ok()
+    }
+
+    #[cfg(enable_accesskit)]
+    fn defer_accesskit_reload(&self) {
+        // This flag is outside the adapter RefCell so re-entrant notifications
+        // can coalesce without borrowing the adapter that is building nodes.
+        if self.accesskit_reload_deferred.replace(true) {
+            return;
+        }
+        let weak = self.self_weak.clone();
+        corelib::timers::Timer::single_shot(Default::default(), move || {
+            let Some(window) = weak.upgrade() else { return };
+            window.accesskit_reload_deferred.set(false);
+            if let Some(adapter) = window.accesskit_adapter() {
+                adapter.borrow_mut().reload_tree_after_deferred_changes(
+                    window.accesskit_destruction_deferred.replace(false),
+                );
+            }
+        });
     }
 
     #[cfg(enable_accesskit)]
@@ -2230,9 +2257,12 @@ impl WindowAdapterInternal for WinitWindowAdapter {
     #[cfg(enable_accesskit)]
     fn register_item_tree(&self, _: ItemTreeRefPin) {
         let Some(accesskit_adapter_cell) = self.accesskit_adapter() else { return };
-        // If the accesskit_adapter is already borrowed, this means the new items were created when the tree was built and there is no need to re-visit them
         if let Ok(mut a) = accesskit_adapter_cell.try_borrow_mut() {
             a.reload_tree();
+        } else {
+            // Visibility/focus evaluation can instantiate a repeater during a
+            // partial update too. Do not lose that structural notification.
+            self.defer_accesskit_reload();
         };
     }
 
@@ -2245,6 +2275,11 @@ impl WindowAdapterInternal for WinitWindowAdapter {
         let Some(accesskit_adapter_cell) = self.accesskit_adapter() else { return };
         if let Ok(mut a) = accesskit_adapter_cell.try_borrow_mut() {
             a.unregister_item_tree(component);
+        } else {
+            // The component cannot outlive this callback; the full rebuild
+            // prunes dead weak identities without retaining its borrowed ref.
+            self.accesskit_destruction_deferred.set(true);
+            self.defer_accesskit_reload();
         };
     }
 

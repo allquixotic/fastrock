@@ -120,6 +120,8 @@ mod renderer {
 
 #[cfg(enable_accesskit)]
 mod accesskit;
+#[cfg(enable_accesskit)]
+mod accesskit_focus;
 #[cfg(muda)]
 mod muda;
 #[cfg(xdg_desktop_settings)]

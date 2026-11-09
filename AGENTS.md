@@ -68,3 +68,6 @@ shutdown sync first. Keep CI signing/verification and games memory guards.
 
 2026-11-09: user explicitly authorizes stable Fastrock 0.4.2 for the vwork
 performance fixes, Windows x64 ZIP via GitHub Actions after verification.
+
+2026-11-09: user explicitly authorizes stable Fastrock 0.4.3 to fix the confirmed
+Slint/AccessKit focus crash, Windows x64 ZIP via GitHub Actions after verification.
