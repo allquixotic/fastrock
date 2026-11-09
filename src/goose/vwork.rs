@@ -9,6 +9,7 @@ pub(super) async fn persist_new_workspace_bindings(
     stores: &fastrock_workspaces::embedded::Pool,
     bindings: &[McpBinding],
 ) -> Result<(), JSONRPCErrorError> {
+    let _timing = super::latency::Timer::start(super::latency::Phase::WorkspacePersistence);
     let mut homes = std::collections::HashMap::<_, Vec<String>>::new();
     for binding in bindings {
         if let Some(workspace) = &binding.workspace {

@@ -1,9 +1,25 @@
-# Fastrock 0.4.1 — build 4
+# Fastrock 0.4.2
 
-Fastrock 0.4.1 is a stable Windows release with buffered workspace storage to
-reduce foreground disk I/O on machines with expensive file operations.
+Fastrock 0.4.2 improves workspace commands on repositories with long Git history
+and many objects.
 
-Build 4 repairs conversation opening on slow storage:
+Changes in this release:
+
+- Short Git logs traverse only the needed history frontier instead of sorting
+  all reachable history before returning the first result. Previews use commit
+  date order and retain both parents of merge commits.
+- Temporary checkouts export Git history in bounded, streamed packs instead of
+  creating a separate loose file for every historical object. Full history,
+  tags, revision guards and isolated checkout ownership remain available.
+  Creating a new temporary checkout still reads and exports repository history.
+- Heavy workspace commands use at most four of eight worker slots, leaving
+  capacity for small commands. Cancellation retains a running worker's slot
+  until its work completes.
+- Diagnostics separates workspace store, admission, worker and execution waits,
+  and measures saving new-workspace recovery state. Measurements contain fixed
+  operation categories, never paths or command contents.
+
+Retains the conversation-opening improvements from 0.4.1 build 4:
 
 - Saved history opens independently of agent activation. Credentials, extension
   startup and workspace recovery no longer gate reading old messages.
@@ -41,13 +57,13 @@ worker starts early to allow for slow I/O; a stalled device, suspended process
 or failed storage cannot be given an absolute wall-clock guarantee. Explicit
 successful durable saves include earlier committed changes in that store.
 
-The reported work machine is not available for direct reproduction. This build
-addresses the verified activation/deadline and eager-indexing defects; it does
-not claim to measure that machine's security-software overhead. Goose remains
+The reported work machine is not available for direct reproduction. This release
+addresses verified history traversal, file amplification and worker admission
+defects; it does not measure that machine's security-software overhead. Goose remains
 unmodified, including its provider and extension network deadlines. Live private
 provider profiles remain user-validated; automated acceptance uses local fixtures.
 
-Use **Quit** in the previous version's tray menu before launching 0.4.1. Back up
+Use **Quit** in the previous version's tray menu before launching 0.4.2. Back up
 the complete Fjall directory while Fastrock is stopped. No separate backend
 installation is required.
 

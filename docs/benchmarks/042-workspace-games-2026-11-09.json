@@ -1,0 +1,180 @@
+{
+  "result": "PASS",
+  "attempts": [
+    {
+      "divisor": 1,
+      "files": 2000,
+      "commits": 4000,
+      "seed": {
+        "cap_bytes": 3036895232,
+        "io": {
+          "read_operations": 64050,
+          "write_operations": 58052,
+          "other_operations": 1430179,
+          "read_bytes": 200378900,
+          "write_bytes": 199912378,
+          "other_bytes": 5869304
+        },
+        "events": [
+          {
+            "commits": 4000,
+            "files": 2001,
+            "merge_every": 100,
+            "seeded": true
+          }
+        ],
+        "elapsed_seconds": 91.92931040003896,
+        "peak_process_bytes": 14733312,
+        "peak_tree_commit_bytes": 6737920
+      },
+      "baseline": {
+        "cap_bytes": 2782058496,
+        "io": {
+          "read_operations": 18293,
+          "write_operations": 49106,
+          "other_operations": 1309456,
+          "read_bytes": 198701127,
+          "write_bytes": 206474690,
+          "other_bytes": 18391442
+        },
+        "events": [
+          {
+            "elapsed_ms": 13659.7646,
+            "operation": "register",
+            "success": true
+          },
+          {
+            "elapsed_ms": 0.2014,
+            "operation": "create_cold",
+            "success": true
+          },
+          {
+            "elapsed_ms": 0.398,
+            "operation": "concurrent_create_one",
+            "success": true
+          },
+          {
+            "elapsed_ms": 0.8128000000000001,
+            "operation": "concurrent_create_two",
+            "success": true
+          },
+          {
+            "elapsed_ms": 23.7992,
+            "operation": "concurrent_log_three",
+            "success": true
+          },
+          {
+            "elapsed_ms": 28867.6554,
+            "operation": "concurrent_temporary",
+            "success": true
+          },
+          {
+            "elapsed_ms": 28867.8557,
+            "operation": "concurrent_group"
+          },
+          {
+            "fsck": "PASS",
+            "object_bytes": 198509007,
+            "object_files": 14040,
+            "store_bytes": 67142233,
+            "store_files": 34
+          },
+          {
+            "elapsed_ms": 21.1775,
+            "operation": "warm_log_three",
+            "success": true
+          },
+          {
+            "elapsed_ms": 0.4657,
+            "operation": "create_warm",
+            "success": true
+          },
+          {
+            "elapsed_ms": 3287.0368000000003,
+            "operation": "release",
+            "success": true
+          }
+        ],
+        "elapsed_seconds": 50.60621789994184,
+        "peak_process_bytes": 35119104,
+        "peak_tree_commit_bytes": 27791360
+      },
+      "candidate": {
+        "cap_bytes": 2587719680,
+        "io": {
+          "read_operations": 14301,
+          "write_operations": 37207,
+          "other_operations": 352295,
+          "read_bytes": 198542253,
+          "write_bytes": 8400309,
+          "other_bytes": 19515092
+        },
+        "events": [
+          {
+            "elapsed_ms": 15175.8781,
+            "operation": "register",
+            "success": true
+          },
+          {
+            "elapsed_ms": 0.5323,
+            "operation": "create_cold",
+            "success": true
+          },
+          {
+            "elapsed_ms": 0.6501,
+            "operation": "concurrent_create_two",
+            "success": true
+          },
+          {
+            "elapsed_ms": 0.5976,
+            "operation": "concurrent_log_three",
+            "success": true
+          },
+          {
+            "elapsed_ms": 0.7076,
+            "operation": "concurrent_create_one",
+            "success": true
+          },
+          {
+            "elapsed_ms": 6257.9642,
+            "operation": "concurrent_temporary",
+            "success": true
+          },
+          {
+            "elapsed_ms": 6258.1622,
+            "operation": "concurrent_group"
+          },
+          {
+            "fsck": "PASS",
+            "object_bytes": 1756333,
+            "object_files": 12,
+            "store_bytes": 67142233,
+            "store_files": 34
+          },
+          {
+            "elapsed_ms": 0.6015,
+            "operation": "warm_log_three",
+            "success": true
+          },
+          {
+            "elapsed_ms": 0.2054,
+            "operation": "create_warm",
+            "success": true
+          },
+          {
+            "elapsed_ms": 246.88160000000002,
+            "operation": "release",
+            "success": true
+          }
+        ],
+        "elapsed_seconds": 22.954611200024374,
+        "peak_process_bytes": 33054720,
+        "peak_tree_commit_bytes": 27500544
+      },
+      "result": "PASS"
+    }
+  ],
+  "baseline_sha256": "77bb6a0cc259caca4555041a2fdef877c085210d2b6af2511424bf01001cbfb6",
+  "candidate_sha256": "e50eca47b26bd505df6600c87f481f5d2efa68fd841a2099fa7c97b5f496668a",
+  "io_scope": "whole process; includes registration and fsck, concurrent calls overlap"
+}

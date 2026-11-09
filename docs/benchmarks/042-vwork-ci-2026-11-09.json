@@ -1,0 +1,27 @@
+{
+  "result": "PASS",
+  "source_commit": "77b688a80e06fd05a630058dce043adbf445d5a4",
+  "url": "https://github.com/allquixotic/vwork/actions/runs/42678235015",
+  "jobs": [
+    {
+      "name": "test (windows-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/allquixotic/vwork/actions/runs/42678235015/job/129365345098"
+    },
+    {
+      "name": "test (macos-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/allquixotic/vwork/actions/runs/42678235015/job/129365345378"
+    }
+  ],
+  "regressions": [
+    "v39_short_log_does_not_read_distant_history",
+    "v39_incremental_log_keeps_both_merge_parents",
+    "v39_temporary_git_history_is_packed_and_complete"
+  ],
+  "initial_failure": {
+    "run": "https://github.com/allquixotic/vwork/actions/runs/42677218736",
+    "cause": "libgit2 TIME sorting also preprocesses complete history",
+    "fix": "77b688a explicit date-prioritized parent frontier"
+  }
+}

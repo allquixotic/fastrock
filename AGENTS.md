@@ -65,3 +65,6 @@ native progress UI; preserve deduplication, revisions, leases and history.
 2026-11-04: user explicitly authorizes stable 0.4.1. Ordinary Fjall writes may
 remain buffered for up to 60 seconds; explicit saves/recovery intents and clean
 shutdown sync first. Keep CI signing/verification and games memory guards.
+
+2026-11-09: user explicitly authorizes stable Fastrock 0.4.2 for the vwork
+performance fixes, Windows x64 ZIP via GitHub Actions after verification.

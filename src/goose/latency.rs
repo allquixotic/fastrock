@@ -19,8 +19,9 @@ pub(super) enum Phase {
     RestoreWorkspace,
     RestoreTools,
     RestoreQueue,
+    WorkspacePersistence,
 }
-const LABELS: [&str; 15] = [
+const LABELS: [&str; 16] = [
     "Session creation",
     "Session loading",
     "Model configuration",
@@ -36,6 +37,7 @@ const LABELS: [&str; 15] = [
     "Resolving saved workspace",
     "Registering saved workspace tools",
     "Reading saved message queue",
+    "Saving new workspace recovery",
 ];
 #[derive(Default)]
 struct Measurement {
@@ -56,13 +58,13 @@ impl Measurement {
         Some(format!("last {last} ms; peak {peak} ms this run"))
     }
 }
-static MEASUREMENTS: [Measurement; 15] = [const {
+static MEASUREMENTS: [Measurement; 16] = [const {
     Measurement {
         last: AtomicU64::new(0),
         peak: AtomicU64::new(0),
         active: AtomicU64::new(0),
     }
-}; 15];
+}; 16];
 
 pub(super) struct Timer(Phase, Instant);
 impl Timer {
@@ -130,6 +132,7 @@ pub(crate) fn facts() -> Vec<(&'static str, String)> {
             "Workspace store initialization",
             fastrock_workspaces::embedded::diagnostic(),
         )))
+        .chain(fastrock_workspaces::embedded::operation_diagnostics())
         .collect()
 }
 

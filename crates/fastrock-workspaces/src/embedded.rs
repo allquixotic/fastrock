@@ -13,6 +13,9 @@ use tokio::sync::{Semaphore, watch};
 use vwork_engine::engine::Engine;
 mod timing;
 pub use timing::diagnostic;
+mod operations;
+pub use operations::diagnostics as operation_diagnostics;
+use operations::{Operation, Phase, Timer};
 
 type Registry = Mutex<HashMap<PathBuf, Weak<OwnerSlot>>>;
 static STORES: OnceLock<Registry> = OnceLock::new();
@@ -116,6 +119,7 @@ pub struct Store {
     slot: Arc<OwnerSlot>,
     failed: AtomicBool,
     workers: Arc<Semaphore>,
+    bulk_workers: Arc<Semaphore>,
 }
 
 impl Drop for Store {
@@ -174,6 +178,9 @@ impl Store {
             slot: slot.clone(),
             failed: AtomicBool::new(false),
             workers: Arc::new(Semaphore::new(8)),
+            // Admit bulk jobs before they acquire general worker slots. Jobs
+            // queued on one repository's build lock cannot occupy all eight.
+            bulk_workers: Arc::new(Semaphore::new(4)),
         });
         *owner = Some(Arc::downgrade(&store));
         drop(owner);
@@ -394,18 +401,50 @@ impl Connection {
     }
 
     pub async fn call(&self, op: String, args: Value) -> Result<Value> {
-        self.run(move |store| store.call(&op, &args)).await
+        let command = if op == "mcp" {
+            args["request"]["params"]["name"]
+                .as_str()
+                .and_then(|name| name.strip_prefix("vwork_"))
+                .unwrap_or("")
+        } else {
+            &op
+        };
+        self.run_operation(Operation::classify(command), move |store| {
+            store.call(&op, &args)
+        })
+        .await
     }
 
     pub async fn run<T: Send + 'static>(
         &self,
         work: impl FnOnce(&Store) -> Result<T> + Send + 'static,
     ) -> Result<T> {
+        self.run_operation(Operation::Native, work).await
+    }
+
+    async fn run_operation<T: Send + 'static>(
+        &self,
+        operation: Operation,
+        work: impl FnOnce(&Store) -> Result<T> + Send + 'static,
+    ) -> Result<T> {
+        let opening = Timer::start(operation, Phase::Store);
         let store = self.store().await?;
+        drop(opening);
+        let admission = Timer::start(operation, Phase::Admission);
+        let bulk = if operation.bulk() {
+            Some(Arc::clone(&store.bulk_workers).acquire_owned().await?)
+        } else {
+            None
+        };
         let permit = Arc::clone(&store.workers).acquire_owned().await?;
+        drop(admission);
+        let queued = Timer::start(operation, Phase::Worker);
         // Own the permit inside the blocking worker: cancellation must not let
         // another call bypass the bound while a mutation is still committing.
         tokio::task::spawn_blocking(move || {
+            drop(queued);
+            let _execution = Timer::start(operation, Phase::Execution);
+            let _bulk = bulk;
             let _permit = permit;
             work(&store)
         })
@@ -437,6 +476,76 @@ pub fn run_hook(input: impl std::io::Read, mut output: impl std::io::Write) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn v102_bulk_queue_leaves_capacity_and_cancellation_retains_permits() {
+        let temp = tempfile::tempdir().unwrap();
+        let connection = Connection::new(temp.path().into());
+        let store = connection.store().await.unwrap();
+        let (started, mut ready) = tokio::sync::mpsc::unbounded_channel();
+        let mut releases = Vec::new();
+        let mut jobs = Vec::new();
+        for _ in 0..4 {
+            let (release, wait) = std::sync::mpsc::channel::<()>();
+            releases.push(release);
+            let started = started.clone();
+            let connection = connection.clone();
+            jobs.push(tokio::spawn(async move {
+                connection
+                    .run_operation(Operation::Temporary, move |_| {
+                        started.send(()).unwrap();
+                        // Dropping all senders also releases workers on test failure.
+                        let _ = wait.recv();
+                        Ok(())
+                    })
+                    .await
+            }));
+        }
+        for _ in 0..4 {
+            tokio::time::timeout(std::time::Duration::from_secs(5), ready.recv())
+                .await
+                .unwrap()
+                .unwrap();
+        }
+        let queued = connection.clone();
+        let mut fifth = tokio::spawn(async move {
+            queued
+                .call(
+                    "mcp".into(),
+                    json!({"request":{"jsonrpc":"2.0","id":1,"method":"tools/call",
+                        "params":{"name":"vwork_workspace_temporary","arguments":{}}}}),
+                )
+                .await
+        });
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(50), &mut fifth)
+                .await
+                .is_err()
+        );
+        jobs[0].abort();
+        // Caller cancellation cannot free a started mutation's capacity.
+        assert_eq!(store.bulk_workers.available_permits(), 0);
+        assert_eq!(store.workers.available_permits(), 4);
+        tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            connection.call("health".into(), json!({})),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        drop(releases);
+        for job in jobs {
+            match job.await {
+                Ok(result) => result.unwrap(),
+                Err(error) => assert!(error.is_cancelled()),
+            }
+        }
+        let result = fifth.await.unwrap().unwrap();
+        assert_eq!(
+            result["result"]["isError"], true,
+            "admitted request reaches argument validation"
+        );
+    }
 
     #[tokio::test]
     async fn v87_cancelled_open_is_shared() {
