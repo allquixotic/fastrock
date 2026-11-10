@@ -250,6 +250,8 @@ V107: Conversation restart ! no review/Resume gate. Browse ! no agent activation
 
 V108: Composer ! text/cursor/undo/redo persisted per chat across process death/restart, tab/window switch and clean Quit; UTF-8 edits, selection replacement, paste, deletion and Send clearing undoable. Bounded 512-edit/2MiB delta history (one oversized last edit retained); background atomic sync within 200ms coalescing plus IO, no UI-thread disk IO. Cursor-only changes ! no undo edit; new edit after Undo ! discard redo; stale malformed deltas ! never alter unrelated text. Verify v108 state/disk tests and native draft-history crash/restart fixture.
 
+V109: Repository fetch ! upstream vwork packed negotiation refs and metadata-only duplicate reuse; preserve full branch/tag history, private commits and pinned workspaces. Successful tool result ! phase timings and decoded/reused object counts. Verify upstream V40/V26 tests plus independent identical-source Windows fetch comparison under host/guest/process guards; no work-PC speed claim from synthetic fixtures.
+
 ## §T TASKS
 id|status|task|cites
 T77|x|Update direct dependencies to latest stable; adapt unchanged Goose 1.58.0 public services, preserve credentials/storage/provider routes and Slint patches|V38,V39,V95,V103,V104,V106,I.goose,I.vwork
@@ -346,6 +348,7 @@ T68|x|Conservative automatic memories, bounded recall tool, redb maintenance and
 T69|x|Repair old-thread restoration and tray ownership; verify 838 Rust tests, native recovery fixtures, guarded scale/startup and Mac compatibility; prepare RC12 signed-CI inputs|V38,V40,V44,V87,V94
 
 T81|x|0.5.1 prepublication acceptance passed: remove recovery gates, persist draft undo/redo, 869 Windows Rust tests, 43-case native coverage with corrected-case reruns, migration/catalog, full guarded 1,000/eight/10,000 comparison and Mac compile-only; signed CI 42883853934 passed 869 Rust tests and 43 native cases plus migration/catalog/scroll; stable v0.5.1 published, downloaded checksum/provenance/publisher/timestamp verified; docs/benchmarks/051-games-2026-11-10.json; docs/benchmarks/051-release-ci-2026-11-10.json|V107,V108,V39,V45,I.composer-history,I.lifecycle
+T82|x|Upstream 9b5c268 fetch bounds/diagnostics pinned; guarded games unchanged/update/repeat 2332/5432/4006ms→148/970/228ms, 49 native tests and Mac compile passed; CI 42893961204 Windows/macOS strict lint/full tests/repeated races passed; docs/benchmarks/fetch-games-2026-11-10.json; unreleased source update|V109,V39,I.vwork
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -947,3 +950,6 @@ B312|2026-11-10|Failed thread/side setup retained local submissions behind remov
 B313|2026-11-10|Delegation/schedule fixtures expected child chats paused after restart; ad-hoc unit runner omitted fixture Python path|V107; chats reopen without review, old child work never replays, new follow-up runs once; schedules retain own pause; use configured full-suite runner
 
 B314|2026-11-10|Sidebar fixture checked scope before asynchronous project catalog returned; later snapshots already correct|V23,V67; bounded wait for resolved scope before assertions; preserve nonblocking project loading
+B315|2026-11-10|Fetch recreated saved refs as loose files and decoded already stored incoming objects before deduplication; existing diagnostics hid transfer/import/lock phases|V109; upstream V40 packed refs, metadata reuse, phase timings and bounded Windows comparison
+B316|2026-11-10|Reusing benchmark source after resetting its branch retained unreachable update objects; candidate registration imported them before fetch and invalidated update timing|V109; independent newly seeded source per binary, one-use fixture marker and assert three decoded update objects; discard contaminated comparison
+B317|2026-11-10|Fetch fixture passed ambiguous home.into() to generic Engine::open|Pass Path directly; compile-only correction, V109 fixture retained

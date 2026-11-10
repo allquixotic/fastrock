@@ -316,3 +316,5 @@ for idle settings, recovery snapshots and startup integrity validation.
 To refresh imported Git history, Goose can use `vwork_repo_fetch` on the existing
 registration. Fetch updates stored refs and keeps current workspaces pinned;
 create a workspace from the updated branch to start on newer source.
+See [fetch performance](PERFORMANCE-FETCH.md) for what the operation does,
+phase timings, the post-0.5.1 optimizations and guarded Windows measurements.

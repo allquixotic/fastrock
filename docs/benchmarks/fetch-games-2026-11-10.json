@@ -1,0 +1,281 @@
+{
+  "result": "PASS",
+  "attempts": [
+    {
+      "divisor": 1,
+      "files": 400,
+      "branches": 2001,
+      "baseline_seed": {
+        "cap_bytes": 2084714496,
+        "events": [
+          {
+            "branches": 2001,
+            "files": 400,
+            "seeded": true
+          }
+        ],
+        "elapsed_seconds": 5.077999999979511,
+        "peak_tree_commit_bytes": 10096640,
+        "exit_code": 0
+      },
+      "baseline": {
+        "cap_bytes": 2064144384,
+        "events": [
+          {
+            "elapsed_ms": 267.3332,
+            "operation": "register",
+            "result": {
+              "registered": true
+            }
+          },
+          {
+            "elapsed_ms": 2332.4189,
+            "operation": "unchanged_fetch",
+            "result": {
+              "head": "ef0bb13b5464fcc803b97124fac504293cba277a",
+              "note": "Existing workspaces stay pinned; create a workspace from the fetched reference to use the updated source",
+              "received_bytes": 0,
+              "received_objects": 0,
+              "repo": "fixture",
+              "storage": "Fjall",
+              "workspaces_changed": false
+            }
+          },
+          {
+            "elapsed_ms": 5431.592799999999,
+            "operation": "updated_fetch",
+            "result": {
+              "head": "8f4badd3e22368c5e63959269215e45af32fd67d",
+              "note": "Existing workspaces stay pinned; create a workspace from the fetched reference to use the updated source",
+              "received_bytes": 947813,
+              "received_objects": 406,
+              "repo": "fixture",
+              "storage": "Fjall",
+              "workspaces_changed": false
+            }
+          },
+          {
+            "elapsed_ms": 4006.1574,
+            "operation": "repeat_fetch",
+            "result": {
+              "head": "8f4badd3e22368c5e63959269215e45af32fd67d",
+              "note": "Existing workspaces stay pinned; create a workspace from the fetched reference to use the updated source",
+              "received_bytes": 0,
+              "received_objects": 0,
+              "repo": "fixture",
+              "storage": "Fjall",
+              "workspaces_changed": false
+            }
+          },
+          {
+            "old_workspace_unchanged": true,
+            "verified": true
+          }
+        ],
+        "elapsed_seconds": 13.077999999979511,
+        "peak_tree_commit_bytes": 55312384,
+        "exit_code": 0
+      },
+      "candidate_seed": {
+        "cap_bytes": 2052253696,
+        "events": [
+          {
+            "branches": 2001,
+            "files": 400,
+            "seeded": true
+          }
+        ],
+        "elapsed_seconds": 4.265000000130385,
+        "peak_tree_commit_bytes": 10231808,
+        "exit_code": 0
+      },
+      "candidate": {
+        "cap_bytes": 2065577984,
+        "events": [
+          {
+            "elapsed_ms": 260.37300000000005,
+            "operation": "register",
+            "result": {
+              "registered": true
+            }
+          },
+          {
+            "elapsed_ms": 147.853,
+            "operation": "unchanged_fetch",
+            "result": {
+              "head": "ef0bb13b5464fcc803b97124fac504293cba277a",
+              "import": {
+                "decoded_bytes": 0,
+                "decoded_objects": 0,
+                "reused_objects": 0,
+                "visited_objects": 0
+              },
+              "note": "Existing workspaces stay pinned; create a workspace from the fetched reference to use the updated source",
+              "received_bytes": 0,
+              "received_objects": 0,
+              "repo": "fixture",
+              "storage": "Fjall",
+              "timings_ms": {
+                "cleanup": 3.9991000000000003,
+                "import": 1.6383,
+                "prepare": 27.072499999999998,
+                "publish": 4.5952,
+                "repository_wait": 0.0017000000000000001,
+                "source": 0.48569999999999997,
+                "total": 147.64,
+                "transfer_wait": 9.999999999999999e-05,
+                "transport": 109.2003
+              },
+              "workspaces_changed": false
+            }
+          },
+          {
+            "elapsed_ms": 969.6139000000001,
+            "operation": "updated_fetch",
+            "result": {
+              "head": "8f4badd3e22368c5e63959269215e45af32fd67d",
+              "import": {
+                "decoded_bytes": 17077,
+                "decoded_objects": 3,
+                "reused_objects": 403,
+                "visited_objects": 406
+              },
+              "note": "Existing workspaces stay pinned; create a workspace from the fetched reference to use the updated source",
+              "received_bytes": 947813,
+              "received_objects": 406,
+              "repo": "fixture",
+              "storage": "Fjall",
+              "timings_ms": {
+                "cleanup": 4.2752,
+                "import": 2.5826,
+                "prepare": 22.3624,
+                "publish": 5.1177,
+                "repository_wait": 0.0023,
+                "source": 1.0675000000000001,
+                "total": 969.1442,
+                "transfer_wait": 0.0,
+                "transport": 932.9913
+              },
+              "workspaces_changed": false
+            }
+          },
+          {
+            "elapsed_ms": 227.9936,
+            "operation": "repeat_fetch",
+            "result": {
+              "head": "8f4badd3e22368c5e63959269215e45af32fd67d",
+              "import": {
+                "decoded_bytes": 0,
+                "decoded_objects": 0,
+                "reused_objects": 0,
+                "visited_objects": 0
+              },
+              "note": "Existing workspaces stay pinned; create a workspace from the fetched reference to use the updated source",
+              "received_bytes": 0,
+              "received_objects": 0,
+              "repo": "fixture",
+              "storage": "Fjall",
+              "timings_ms": {
+                "cleanup": 3.8091000000000004,
+                "import": 1.6051,
+                "prepare": 23.4395,
+                "publish": 4.984,
+                "repository_wait": 0.0013,
+                "source": 1.0594999999999999,
+                "total": 227.6183,
+                "transfer_wait": 9.999999999999999e-05,
+                "transport": 191.9792
+              },
+              "workspaces_changed": false
+            }
+          },
+          {
+            "old_workspace_unchanged": true,
+            "verified": true
+          }
+        ],
+        "elapsed_seconds": 2.530999999959022,
+        "peak_tree_commit_bytes": 51900416,
+        "exit_code": 0
+      },
+      "result": "PASS"
+    }
+  ],
+  "baseline_sha256": "23c75eec18f5868650f00e275460124d310859dc8a0415c9dd70cb4422d2fc97",
+  "candidate_sha256": "086105a4f7f8dd90e371b2a87743300651f67354c116bef9c5f23303af3bdd61",
+  "date": "2026-11-10",
+  "host": "games",
+  "baseline_vwork": "fb523be0efd118adc819fd6cc4159f97d67dd5f0",
+  "candidate_vwork": "9b5c268d184da81eaa2c54533761bc1256b837d5",
+  "scope": "Synthetic local Git transport, independent identical sources; no work-machine latency capture",
+  "workload": {
+    "files": 400,
+    "branches": 2001,
+    "commits_before": 1,
+    "commits_after": 2,
+    "annotated_tags": 1
+  },
+  "validation": {
+    "native_windows": {
+      "vwork_library": 17,
+      "vwork_git_performance": 4,
+      "vwork_fetch": 3,
+      "vwork_storage": 5,
+      "fastrock_workspaces": 20,
+      "total": 49
+    },
+    "baseline_regression": "v40_duplicate_import_links_membership_without_reading_source_payloads fails with failed to inflate loose object; candidate passes",
+    "mac": "compile/check only on Sean Mac; upstream hosted CI runs tests",
+    "ci_run": 42893961204,
+    "ci_status": "success",
+    "ci_url": "https://github.com/allquixotic/vwork/actions/runs/42893961204",
+    "ci_jobs": [
+      {
+        "name": "test (windows-latest)",
+        "conclusion": "success",
+        "url": "https://github.com/allquixotic/vwork/actions/runs/42893961204/job/130102047275",
+        "checks": [
+          {
+            "name": "Formatting",
+            "conclusion": "success"
+          },
+          {
+            "name": "Lint",
+            "conclusion": "success"
+          },
+          {
+            "name": "Tests",
+            "conclusion": "success"
+          },
+          {
+            "name": "Repeat lifecycle race regressions",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "name": "test (macos-latest)",
+        "conclusion": "success",
+        "url": "https://github.com/allquixotic/vwork/actions/runs/42893961204/job/130102048318",
+        "checks": [
+          {
+            "name": "Formatting",
+            "conclusion": "success"
+          },
+          {
+            "name": "Lint",
+            "conclusion": "success"
+          },
+          {
+            "name": "Tests",
+            "conclusion": "success"
+          },
+          {
+            "name": "Repeat lifecycle race regressions",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  }
+}

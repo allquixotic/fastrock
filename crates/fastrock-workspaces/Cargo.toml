@@ -22,7 +22,7 @@ required-features = ["http-fixtures"]
 
 [dependencies]
 anyhow.workspace = true
-vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "fb523be0efd118adc819fd6cc4159f97d67dd5f0" }
+vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "9b5c268d184da81eaa2c54533761bc1256b837d5" }
 fjall = "=3.1.13"
 tempfile.workspace = true
 rayon = "1.12.0"

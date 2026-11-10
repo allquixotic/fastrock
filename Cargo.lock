@@ -15949,7 +15949,7 @@ dependencies = [
 [[package]]
 name = "vwork"
 version = "0.4.1"
-source = "git+https://github.com/allquixotic/vwork?rev=fb523be0efd118adc819fd6cc4159f97d67dd5f0#fb523be0efd118adc819fd6cc4159f97d67dd5f0"
+source = "git+https://github.com/allquixotic/vwork?rev=9b5c268d184da81eaa2c54533761bc1256b837d5#9b5c268d184da81eaa2c54533761bc1256b837d5"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
