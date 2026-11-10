@@ -22,6 +22,7 @@ out.mkdir(parents=True, exist_ok=False)
 receipt = dict(result='RUNNING', attempts=[],
                baseline_sha256=hashlib.sha256(args.baseline.read_bytes()).hexdigest(),
                candidate_sha256=hashlib.sha256(args.candidate.read_bytes()).hexdigest())
+assert receipt['baseline_sha256'] != receipt['candidate_sha256'], 'Comparison needs distinct binaries'
 
 
 def save():

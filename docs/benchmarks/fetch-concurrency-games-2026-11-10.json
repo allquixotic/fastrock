@@ -1,0 +1,186 @@
+{
+  "date": "2026-11-10",
+  "host": "games",
+  "result": "PASS",
+  "candidate_vwork": "649ace65c89eafd8b401be7d34355071293f0d73",
+  "data_scope": "Generated Git repositories and loopback HTTP only; no external repository data, URLs, account details or credentials.",
+  "unchanged_http": {
+    "branches": 25,
+    "tags": 12,
+    "binary_bytes": 16777216,
+    "fault": "stored binary payload unreadable, source moved offline",
+    "assertions": [
+      "exactly two reference advertisement GETs",
+      "no pack request",
+      "zero received objects/bytes",
+      "pinned workspace unchanged"
+    ],
+    "baseline_vwork": "fb523be0efd118adc819fd6cc4159f97d67dd5f0",
+    "baseline_binary_sha256": "cb4b6865e2e9271e9a1462eac53c8706f13805755d1e1f8bd88df566e2c8a97d",
+    "initial_candidate_binary_sha256": "daec3621c446aa3411e7ab64dbfdd3541680c1453a741c47f144c0e7fa29c102",
+    "baseline": [
+      {
+        "iteration": 0,
+        "elapsed_ms": 98.64630000000001,
+        "received_objects": 0,
+        "received_bytes": 0
+      },
+      {
+        "iteration": 1,
+        "elapsed_ms": 97.80160000000001,
+        "received_objects": 0,
+        "received_bytes": 0
+      }
+    ],
+    "final_candidate": [
+      {
+        "iteration": 0,
+        "elapsed_ms": 72.80069999999999,
+        "received_objects": 0,
+        "received_bytes": 0
+      },
+      {
+        "iteration": 1,
+        "elapsed_ms": 40.435199999999995,
+        "received_objects": 0,
+        "received_bytes": 0
+      }
+    ],
+    "limits": "HTTP protocol fixture; does not model HTTPS/TLS, proxy/authentication or real server/network latency"
+  },
+  "overlap": {
+    "before": [
+      {
+        "active_after_cleanup": 1,
+        "active_before_cleanup": 1,
+        "requests_before_release": 1
+      }
+    ],
+    "after": [
+      {
+        "active_after_cleanup": 4,
+        "active_before_cleanup": 4,
+        "requests_before_release": 4
+      },
+      {
+        "active_after_cleanup": 2,
+        "active_before_cleanup": 2,
+        "requests_before_release": 2
+      },
+      {
+        "active_after_cleanup": 1,
+        "active_before_cleanup": 1,
+        "requests_before_release": 1
+      },
+      {
+        "active_after_cleanup": 4,
+        "active_before_cleanup": 4,
+        "requests_before_release": 4
+      }
+    ],
+    "case_order": [
+      "four independent repositories",
+      "configured capacity two",
+      "same repository",
+      "hard capacity four with configured limit eight"
+    ],
+    "assertion": "server holds responses until arrivals measured; reaping during held responses preserves all active receivers",
+    "baseline_binary_sha256": "b573592e551fdcebe2654fdfd974a06bb2aa32ab3456739f58befe5895c58dbd",
+    "candidate_binary_sha256": "a66a9a020da37f67546b104ae81ee41c7afed44bbc1adf2bd70e16a020667bdd"
+  },
+  "native_windows_tests": {
+    "http": 3,
+    "library": 18,
+    "git_performance_and_concurrent_import": 5,
+    "fjall_storage": 7,
+    "fetch_regressions": 3,
+    "fastrock_workspaces": 20,
+    "total": 56,
+    "vwork_revision": "a1abaf20a9a631bb7411de8d1567e00c958b232f"
+  },
+  "compile_checks": {
+    "mac": "Fastrock all-target compile and upstream strict Clippy; no tests/app executed on Sean Mac",
+    "windows": "native x64 fixtures executed on games",
+    "formatting": "PASS"
+  },
+  "guards": {
+    "final-http": {
+      "cap_bytes": 1964922880,
+      "peak_tree_bytes": 81678336,
+      "elapsed_seconds": 12.563000000081956,
+      "exit_code": 0
+    },
+    "final-lib": {
+      "cap_bytes": 1970567168,
+      "peak_tree_bytes": 46292992,
+      "elapsed_seconds": 31.686999999918044,
+      "exit_code": 0
+    },
+    "fastrock": {
+      "cap_bytes": 1963833344,
+      "peak_tree_bytes": 134434816,
+      "elapsed_seconds": 4.609999999869615,
+      "exit_code": 0
+    },
+    "import": {
+      "cap_bytes": 1986684928,
+      "peak_tree_bytes": 20250624,
+      "elapsed_seconds": 10.562999999849126,
+      "exit_code": 0
+    },
+    "storage": {
+      "cap_bytes": 1986684928,
+      "peak_tree_bytes": 20414464,
+      "elapsed_seconds": 6.483999999938533,
+      "exit_code": 0
+    },
+    "http-recovery": {
+      "cap_bytes": 1979934720,
+      "peak_tree_bytes": 81002496,
+      "elapsed_seconds": 12.406000000191852,
+      "exit_code": 0
+    },
+    "http-recovery-guard": {
+      "cap_bytes": 1979934720,
+      "peak_tree_bytes": 9515008,
+      "elapsed_seconds": 1.625,
+      "exit_code": 0
+    },
+    "http-pinned-fastrock": {
+      "cap_bytes": 1941436416,
+      "peak_tree_bytes": 148058112,
+      "elapsed_seconds": 4.063000000081956,
+      "exit_code": 0
+    }
+  },
+  "ci": {
+    "run": 42906549113,
+    "vwork_revision": "649ace65c89eafd8b401be7d34355071293f0d73",
+    "status": "success",
+    "url": "https://github.com/allquixotic/vwork/actions/runs/42906549113",
+    "platforms": [
+      "windows-latest",
+      "macos-latest"
+    ],
+    "checks": [
+      "formatting",
+      "strict lint",
+      "full test suite",
+      "repeated lifecycle race regressions"
+    ]
+  },
+  "final_revision_native_windows_tests": {
+    "vwork_revision": "649ace65c89eafd8b401be7d34355071293f0d73",
+    "http": 3,
+    "abandoned_transfer_recovery": 1,
+    "fastrock_workspaces": 20,
+    "total": 24,
+    "fastrock_binary_sha256": "bc586108d8ab187cf1c029de1d590bd83e5dcd25ebe8103f5a45e9872c2f8b45"
+  },
+  "prior_concurrency_ci": {
+    "run": 42904817653,
+    "vwork_revision": "a1abaf20a9a631bb7411de8d1567e00c958b232f",
+    "status": "success",
+    "url": "https://github.com/allquixotic/vwork/actions/runs/42904817653"
+  }
+}
