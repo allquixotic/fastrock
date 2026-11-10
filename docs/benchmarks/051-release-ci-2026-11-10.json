@@ -1,0 +1,611 @@
+{
+  "result": "PASS",
+  "version": "0.5.1",
+  "verified_at": "2026-11-10T19:53:24.324557+00:00",
+  "source_commit": "59d820c3889296928655da995040a72e7b6f639c",
+  "release": {
+    "url": "https://github.com/allquixotic/fastrock/releases/tag/v0.5.1",
+    "tag": "v0.5.1",
+    "published_at": "2026-11-10T19:51:19Z",
+    "prerelease": false,
+    "latest": true,
+    "windows_x64_zip": "fastrock-0.5.1-windows-x64.zip",
+    "zip_sha256": "4f100ea45975b36a5fd275fe5b7217b8af6dddc43b531e62291680ca4f217032",
+    "zip_bytes": 142732109,
+    "binary_sha256": "dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878",
+    "macos_assets": false
+  },
+  "ci": {
+    "url": "https://github.com/allquixotic/fastrock/actions/runs/42883853934",
+    "run_id": 42883853934,
+    "conclusion": "success",
+    "evidence_artifact_id": 13796533640,
+    "evidence_artifact_sha256": "sha256:8eedca3ff966376d0f7540cb74cfec413a0a9fbfc1254b80d813085a5fc404dd",
+    "build": "PASS: Windows and macOS compile",
+    "macos_release_job": "skipped; no Mac app or tests executed",
+    "registered_temporary_runners_afterward": 0
+  },
+  "windows_rust": {
+    "total": 869,
+    "application_tests": 817,
+    "renderer_tests": 1,
+    "workspace_tests": 47,
+    "accesskit_tests": 4
+  },
+  "native_matrix": {
+    "binary_sha256": "dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 49.7,
+        "peak_tree_bytes": 157954048
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 3.81,
+        "peak_tree_bytes": 156823552
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 30.88,
+        "peak_tree_bytes": 161583104
+      },
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.66,
+        "peak_tree_bytes": 162852864
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 63.33,
+        "peak_tree_bytes": 160002048
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 82.77,
+        "peak_tree_bytes": 158892032
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.23,
+        "peak_tree_bytes": 157396992
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 28.27,
+        "peak_tree_bytes": 158253056
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.62,
+        "peak_tree_bytes": 156876800
+      },
+      {
+        "name": "model-options",
+        "result": "PASS",
+        "error": null,
+        "seconds": 9.22,
+        "peak_tree_bytes": 156950528
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 43.09,
+        "peak_tree_bytes": 157368320
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.08,
+        "peak_tree_bytes": 158658560
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.22,
+        "peak_tree_bytes": 156848128
+      },
+      {
+        "name": "commands",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.44,
+        "peak_tree_bytes": 156975104
+      },
+      {
+        "name": "palette",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.83,
+        "peak_tree_bytes": 157028352
+      },
+      {
+        "name": "terminal",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.06,
+        "peak_tree_bytes": 157245440
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.67,
+        "peak_tree_bytes": 159633408
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 9.62,
+        "peak_tree_bytes": 109838336
+      },
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.42,
+        "peak_tree_bytes": 157040640
+      },
+      {
+        "name": "organization",
+        "result": "PASS",
+        "error": null,
+        "seconds": 43.09,
+        "peak_tree_bytes": 158715904
+      },
+      {
+        "name": "sidebar-drag",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.67,
+        "peak_tree_bytes": 157179904
+      },
+      {
+        "name": "sidebar-policy",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.45,
+        "peak_tree_bytes": 157077504
+      },
+      {
+        "name": "titles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.27,
+        "peak_tree_bytes": 157708288
+      },
+      {
+        "name": "queue",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.84,
+        "peak_tree_bytes": 157085696
+      },
+      {
+        "name": "mentions",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.44,
+        "peak_tree_bytes": 156889088
+      },
+      {
+        "name": "review",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.03,
+        "peak_tree_bytes": 158167040
+      },
+      {
+        "name": "shell",
+        "result": "PASS",
+        "error": null,
+        "seconds": 19.84,
+        "peak_tree_bytes": 157802496
+      },
+      {
+        "name": "console",
+        "result": "PASS",
+        "error": null,
+        "seconds": 5.22,
+        "peak_tree_bytes": 156995584
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.66,
+        "peak_tree_bytes": 158793728
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.08,
+        "peak_tree_bytes": 160026624
+      },
+      {
+        "name": "draft-history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.42,
+        "peak_tree_bytes": 156954624
+      },
+      {
+        "name": "relaunch",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.66,
+        "peak_tree_bytes": 157204480
+      },
+      {
+        "name": "delete",
+        "result": "PASS",
+        "error": null,
+        "seconds": 42.88,
+        "peak_tree_bytes": 159674368
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.62,
+        "peak_tree_bytes": 159727616
+      },
+      {
+        "name": "history-startup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 114.23,
+        "peak_tree_bytes": 159830016
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.03,
+        "peak_tree_bytes": 117403648
+      },
+      {
+        "name": "accessibility",
+        "result": "PASS",
+        "error": null,
+        "seconds": 25.45,
+        "peak_tree_bytes": 167903232
+      },
+      {
+        "name": "context",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.62,
+        "peak_tree_bytes": 157073408
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 35.27,
+        "peak_tree_bytes": 160956416
+      },
+      {
+        "name": "summary-priority",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.03,
+        "peak_tree_bytes": 157143040
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 40.08,
+        "peak_tree_bytes": 158543872
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.83,
+        "peak_tree_bytes": 110739456
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 17.64,
+        "peak_tree_bytes": 109252608
+      }
+    ]
+  },
+  "draft_history": {
+    "result": "PASS",
+    "binary_sha256": "dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878",
+    "peak_process_bytes": 138326016,
+    "forced_crash": true,
+    "durable_undo_redo": true,
+    "unicode": true,
+    "tab_isolation": true,
+    "ordinary_send_after_restart": true,
+    "undo_send": true,
+    "redo_branch": true,
+    "clean_restart": true,
+    "no_replay": true
+  },
+  "checkpoints": {
+    "binary_sha256": "dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878",
+    "peak_bytes": 159395840,
+    "turn_checkpoints": 4,
+    "checks": [
+      "manual/turn capture",
+      "native diff",
+      "file + exact conversation restore",
+      "retained backup",
+      "draft retention",
+      "stale review guard",
+      "original checkout unchanged",
+      "durable interrupted restore",
+      "automatic keep current",
+      "retained backup restore",
+      "files-only restore",
+      "conversation-only restore",
+      "approved uncertain tools never activated",
+      "failed tool response persisted before normal Send"
+    ]
+  },
+  "context": {
+    "result": "PASS",
+    "binary_sha256": "dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878",
+    "peak_process_bytes": 157196288,
+    "native_report": true,
+    "previews": true,
+    "no_inference": true,
+    "thinking_opt_in": true,
+    "manual_expansion": true,
+    "export_preserved": true,
+    "persisted_restart": true,
+    "restored_lazy_activation": true,
+    "conversation_switch_clears_report": true
+  },
+  "hooks": {
+    "result": "PASS",
+    "binary_sha256": "dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878",
+    "peak_process_bytes": 154234880,
+    "native_extensions": true,
+    "custom_workspace_alias_protected": true,
+    "code_mode_tool_executed": true,
+    "tool_permissions_persisted": true,
+    "idle_mutation_guard": true,
+    "defaults_only_affect_new_chats": true,
+    "hook_validation_backup_execution": true,
+    "project_hooks_isolated": true,
+    "credentials_preserved": true,
+    "restart_no_replay": true
+  },
+  "migration": {
+    "passed": true,
+    "peakBytes": 450859008,
+    "sha256": "dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878",
+    "sourceSha256": "87c91223e66cb1d0b9b2b8236b2491506fb16fd13ac3f5c1edbba50dc82818ac",
+    "checks": [
+      "manual native progress",
+      "native Pause and Resume",
+      "registry discovery",
+      "automatic detection",
+      "first thread handoff",
+      "byte-exact source preservation",
+      "clean reopen without redb"
+    ]
+  },
+  "organization_catalog": {
+    "result": "PASS",
+    "binary_sha256": "dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878",
+    "peak_process_bytes": 70963200,
+    "stored_conversations": 100,
+    "first_page": 50,
+    "pinned_outside_first_page": "goose:benchmark-0000",
+    "provider_activation": false
+  },
+  "scroll": {
+    "backend": "embedded-goose",
+    "peak_process_bytes": 168251392,
+    "binary_sha256": "dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878",
+    "host": "runnervmm7ud1",
+    "os": "Windows-2025Server-10.0.26100-SP0",
+    "requested_frames": 120,
+    "input": "Slint native wheel events, 16.667 ms timer; tick latency includes event-loop work",
+    "scenarios": {
+      "prose": {
+        "frames": 119,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 6.232,
+          "p95_ms": 7.004,
+          "p99_ms": 7.302
+        },
+        "present": {
+          "p50_ms": 0.558,
+          "p95_ms": 0.648,
+          "p99_ms": 0.928
+        },
+        "frame": {
+          "p50_ms": 6.807,
+          "p95_ms": 7.561,
+          "p99_ms": 7.929
+        },
+        "event_loop": {
+          "p50_ms": 16.263,
+          "p95_ms": 22.018,
+          "p99_ms": 22.485
+        },
+        "dirty_fraction": 0.4583
+      },
+      "table": {
+        "frames": 110,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 3.995,
+          "p95_ms": 4.884,
+          "p99_ms": 5.241
+        },
+        "present": {
+          "p50_ms": 0.575,
+          "p95_ms": 0.656,
+          "p99_ms": 0.775
+        },
+        "frame": {
+          "p50_ms": 4.589,
+          "p95_ms": 5.518,
+          "p99_ms": 5.871
+        },
+        "event_loop": {
+          "p50_ms": 16.19,
+          "p95_ms": 16.919,
+          "p99_ms": 17.227
+        },
+        "dirty_fraction": 0.5194
+      },
+      "code": {
+        "frames": 118,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 3.873,
+          "p95_ms": 4.825,
+          "p99_ms": 5.011
+        },
+        "present": {
+          "p50_ms": 0.582,
+          "p95_ms": 0.691,
+          "p99_ms": 0.996
+        },
+        "frame": {
+          "p50_ms": 4.463,
+          "p95_ms": 5.498,
+          "p99_ms": 5.621
+        },
+        "event_loop": {
+          "p50_ms": 16.289,
+          "p95_ms": 19.45,
+          "p99_ms": 20.309
+        },
+        "dirty_fraction": 0.4709
+      },
+      "tools": {
+        "frames": 114,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.53,
+          "p95_ms": 5.196,
+          "p99_ms": 5.642
+        },
+        "present": {
+          "p50_ms": 0.571,
+          "p95_ms": 0.714,
+          "p99_ms": 0.894
+        },
+        "frame": {
+          "p50_ms": 5.113,
+          "p95_ms": 5.809,
+          "p99_ms": 6.27
+        },
+        "event_loop": {
+          "p50_ms": 16.284,
+          "p95_ms": 17.188,
+          "p99_ms": 20.71
+        },
+        "dirty_fraction": 0.492
+      },
+      "streaming": {
+        "frames": 122,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 6.562,
+          "p95_ms": 7.686,
+          "p99_ms": 8.023
+        },
+        "present": {
+          "p50_ms": 0.577,
+          "p95_ms": 0.705,
+          "p99_ms": 0.879
+        },
+        "frame": {
+          "p50_ms": 7.157,
+          "p95_ms": 8.267,
+          "p99_ms": 8.757
+        },
+        "event_loop": {
+          "p50_ms": 16.174,
+          "p95_ms": 20.259,
+          "p99_ms": 21.912
+        },
+        "dirty_fraction": 0.4723
+      }
+    }
+  },
+  "independent_download_verification": {
+    "checksum": "PASS",
+    "package_metadata_and_licenses": "PASS",
+    "online_and_bundled_attestation": "PASS",
+    "signer_workflow": "allquixotic/fastrock/.github/workflows/release.yml",
+    "source_ref": "refs/tags/v0.5.1",
+    "source_digest": "59d820c3889296928655da995040a72e7b6f639c",
+    "windows_authenticode_on_games": {
+      "certificate_sha1": "80095953F61EA13DBF101BB47CA3733DEBC23236",
+      "publisher": "CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US",
+      "timestamp_publisher": "CN=Microsoft Public RSA Time Stamping Authority, OU=nShield TSS ESN:A500-05E0-D947, OU=Microsoft America Operations, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+      "binary_sha256": "dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878",
+      "workflow_run": "42883853934",
+      "source_commit": "59d820c3889296928655da995040a72e7b6f639c",
+      "status": "Valid"
+    },
+    "application_launched": false
+  },
+  "notes": [
+    "Direct dependency audit: 050-dependencies-2026-11-09.json; Goose 1.58.0 remains unmodified.",
+    "Full games native acceptance and guarded 1,000/eight/10,000 benchmark against 0.3.4: 051-games-2026-11-10.json.",
+    "Conversation recovery review/Resume removed; interrupted tools fail without replay. Per-chat composer text, cursor and bounded undo/redo history survive crash and restart.",
+    "All model/Rally/tool acceptance used isolated local fixtures; private live-profile feedback remains user-owned.",
+    "Packaged license and dependency-receipt text matches source after normalizing Windows checkout CRLF line endings."
+  ]
+}

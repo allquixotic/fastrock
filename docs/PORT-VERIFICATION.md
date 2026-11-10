@@ -2956,5 +2956,15 @@ all 10,000 messages and preserved current summaries. Migration preserved the
 legacy source bytes; catalog checks passed. All model, tool and Rally requests
 used isolated local fixtures.
 
-Signed CI must repeat the complete native matrix on the release executable before
-publication. The local candidate is not a release asset.
+[Release CI 42883853934](https://github.com/allquixotic/fastrock/actions/runs/42883853934) passed both platform builds, 869
+Rust tests, all 43 native cases, migration, catalog and scrolling checks on the
+exact signed executable. Stable [v0.5.1](https://github.com/allquixotic/fastrock/releases/tag/v0.5.1) was published as a Windows x64 ZIP.
+The downloaded checksum, build/source metadata, online and bundled provenance,
+expected Windows publisher and secure timestamp were independently verified.
+No Mac assets were published and no temporary runners remain. Evidence:
+[release receipt](benchmarks/051-release-ci-2026-11-10.json).
+
+Published ZIP SHA-256:
+`4f100ea45975b36a5fd275fe5b7217b8af6dddc43b531e62291680ca4f217032`.
+Signed executable SHA-256:
+`dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878`.

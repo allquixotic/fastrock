@@ -1,3 +1,21 @@
+# Fastrock 0.5.1 stable
+
+Explicitly authorized 2026-11-10. Saved conversations accept normal Send without
+checkpoint review or Resume. Interrupted tool calls fail without replay; original
+messages and retained checkpoint backups remain available. The composer saves each
+chat's text, cursor and bounded undo/redo history to disk, including Undo after
+Send. Ctrl+Z undoes; Ctrl+Y or Ctrl+Shift+Z redoes. See the [usage guide](gui.md).
+
+[Fastrock 0.5.1](https://github.com/allquixotic/fastrock/releases/tag/v0.5.1) is the latest stable Windows x64 ZIP.
+[Signed release CI](https://github.com/allquixotic/fastrock/actions/runs/42883853934) passed 869 Rust tests, all 43 native cases,
+migration, catalog and scrolling checks on the signed executable. Windows and
+Mac compiled; Mac publication was skipped. The downloaded ZIP's checksum, online
+and bundled provenance, expected publisher and secure timestamp were independently
+verified. See the [release receipt](benchmarks/051-release-ci-2026-11-10.json) and
+[guarded games comparison](benchmarks/051-games-2026-11-10.json).
+
+Use **Quit** in the previous version's tray menu before launching 0.5.1.
+
 # Fastrock 0.5.0 stable
 
 Explicitly authorized 2026-11-09. This release updates the direct Rust dependencies,
@@ -11,8 +29,8 @@ are retained. The default cheap model uses `us.openai.gpt-6-luna` on Bedrock Run
 Goose now routes bare closed-weight GPT IDs to Mantle. Explicit saved model choices
 remain intact. See [dependency details](DEPENDENCIES-050.md).
 
-[Fastrock 0.5.0](https://github.com/allquixotic/fastrock/releases/tag/v0.5.0) is the
-latest stable Windows x64 ZIP. [Signed release CI](https://github.com/allquixotic/fastrock/actions/runs/42726340065)
+[Fastrock 0.5.0](https://github.com/allquixotic/fastrock/releases/tag/v0.5.0) is a
+preceding stable Windows x64 ZIP. [Signed release CI](https://github.com/allquixotic/fastrock/actions/runs/42726340065)
 passed 868 Rust tests, all 42 native cases, migration, catalog and scrolling checks
 on the signed executable. Windows and Mac compiled; Mac publication was skipped.
 The downloaded ZIP's checksum, online and bundled provenance, expected Windows

@@ -43,7 +43,7 @@ available, without selecting a more expensive model.
 
 ## Releases
 
-[Fastrock **0.5.0**](https://github.com/allquixotic/fastrock/releases/tag/v0.5.0)
+[Fastrock **0.5.1**](https://github.com/allquixotic/fastrock/releases/tag/v0.5.1)
 is distributed as a signed Windows x64 ZIP. Extract it and run `fastrock.exe`;
 no separate Goose or vwork installation is needed. Use **Quit** in an older
 version's tray menu before launching the new version. See
