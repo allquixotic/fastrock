@@ -19,7 +19,7 @@ def run(name,steps):
   process=subprocess.Popen([str(binary)],env=dict(env,CODEX_GUI_AUTOMATION=str(script)),stdout=log,stderr=log)
   return ProcessGuard(process,timeout=120).wait()
 try:
- peak=run('live',[{'wait_ready':30000},{'resize':[1440,1000]},{'open_folder':str(repo)},{'wait':1000},{'wait_idle':30000},*dump('new'),
+ peak=run('live',[{'wait_ready':30000},{'resize':[1440,1000]},{'open_folder':str(repo)},{'wait_idle':30000},{'wait_scope':{'scope':'project','timeout_ms':30000}},*dump('new'),
   {'send':'hold sidebar first stream'},{'wait':900},*dump('streaming'),{'snapshot':str(out/'sidebar.png')},
   {'click_text':'Archived'},{'wait':900},*dump('archived'),{'click_text':'Show active'},{'wait':900},*dump('active'),
   {'sidebar':['search','NoSuchThread987']},{'wait':700},*dump('filtered'),{'sidebar':['search','']},{'wait':700},*dump('restored'),
@@ -43,7 +43,7 @@ try:
  assert 'catalog' in read('capabilities') and not read('capabilities')['busy'],read('capabilities')
  assert read('draft')['draft']=='Keep sidebar draft',read('draft')
  before=sum(not r['summary'] for r in provider.requests)
- peak=max(peak,run('restart',[{'wait_ready':30000},{'wait':1500},*dump('restart'),{'quit':True}]))
+ peak=max(peak,run('restart',[{'wait_ready':30000},{'wait_scope':{'scope':'project','timeout_ms':30000}},*dump('restart'),{'quit':True}]))
  assert read('restart')['navigation']['activeScope']=='project',read('restart')
  assert sum(not r['summary'] for r in provider.requests)==before,'Restart prompted provider'
  assert not provider.errors,provider.errors

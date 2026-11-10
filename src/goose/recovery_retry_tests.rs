@@ -81,12 +81,12 @@ async fn v94_failed_activation_preserves_read_only_history_and_retry() {
     .unwrap();
     for _ in 0..2 {
         let state = adapter.load_queue("session").await.unwrap();
-        assert!(state.paused);
-        assert_eq!(state.uncertain.len(), 1);
+        assert!(!state.paused);
+        assert!(state.uncertain.is_empty());
         let AppServerEvent::GooseRecovery { recovery, .. } = events_rx.recv().await.unwrap() else {
             panic!("Queue read must publish recovery, not a mutation notification");
         };
-        assert_eq!(recovery.uncertain[0]["id"], "interrupted");
+        assert!(recovery.uncertain.is_empty());
         assert!(
             events_rx.try_recv().is_err(),
             "Queue read triggered another UI fetch"

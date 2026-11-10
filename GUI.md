@@ -14,7 +14,8 @@ preferences. New tokens are stored only in the OS credential vault.
 
 Projects represent registered repositories; conversations bind to isolated vwork
 workspaces. Keep compressed source, explicit integration, durable coordination,
-and restart recovery requiring Resume. The permanent Rally sidebar project holds
+and restart recovery without review/Resume. Interrupted tools fail without replay;
+composer text, cursor and undo/redo persist across crashes. The permanent Rally sidebar project holds
 independent, closable horizontal documents and boards. Its optional temporary AI
 assistant proposes changes for human Apply. The Rally migration requirements and
 acceptance evidence are in docs/RALLY-INVENTORY.md.

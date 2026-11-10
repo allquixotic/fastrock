@@ -93,7 +93,7 @@ try:
         count, = database.execute('SELECT count(*) FROM sessions').fetchone()
     peak = max(peak, run([{'wait_ready': 30000}, {'resume': 'goose:' + conversation_id}, {'wait': 1200},
                 {'transcript': 'export-complete:' + str(out / 'unsupported-history.md')},
-                {'wait': 300}, {'click_text': 'Resume'}, {'wait': 1200},
+                {'wait': 300}, {'click_text':'Model options  ▾'}, {'wait_goose':30000},
                 *dump('blocked-restore'), {'quit': True}], 'blocked-restore'))
     blocked_restore = json.loads((out / 'blocked-restore.json').read_text(encoding='utf-8'))
     assert 'External agent backends' in blocked_restore['sessionError'], blocked_restore

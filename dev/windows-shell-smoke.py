@@ -49,8 +49,8 @@ try:
   *shell('echo SHELL_NATIVE & echo quoted> "named file.txt" & type "named file.txt" & exit /b 7',True),*finished(),*export('local'),
   *shell(command('output')),*finished(),*export('bounded'),
   {'open_folder':str(repo)},{'wait':1000},{'wait_idle':30000},*shell('type src\\main.rs & echo shell-recovery-edit> src\\main.rs'),*finished(),*export('virtual'),
-  *shell(command('child',out/'stop-child')),{'wait':900},*shell('echo forbidden> busy-must-not-run.txt'),{'palette':['dump',str(out/'busy-draft.json')]},{'wait':200},{'snapshot':str(out/'running.png')},{'shortcut':'escape'},*finished(),*export('stopped'),*shell('echo forbidden> paused-must-not-run.txt'),{'wait':400},{'palette':['dump',str(out/'paused-draft.json')]},{'wait':200},
-  {'click_text':'Resume'},{'wait':300},*shell(command('child',out/'quit-child')),{'wait':900},{'quit':True}])
+  *shell(command('child',out/'stop-child')),{'wait':900},*shell('echo forbidden> busy-must-not-run.txt'),{'palette':['dump',str(out/'busy-draft.json')]},{'wait':200},{'snapshot':str(out/'running.png')},{'shortcut':'escape'},*finished(),*export('stopped'),*shell('echo CONTINUE_AFTER_STOP'),*finished(),{'palette':['dump',str(out/'paused-draft.json')]},{'wait':200},
+  {'wait':300},*shell(command('child',out/'quit-child')),{'wait':900},{'quit':True}])
  assert not (repo/'never.txt').exists()
  assert json.loads((out/'canceled.json').read_text(encoding='utf-8'))['draft']=='!echo canceled> never.txt'
  assert 'SHELL_NATIVE' in read('local') and 'quoted' in read('local'),read('local')
@@ -60,7 +60,7 @@ try:
  assert (repo/'src/main.rs').read_bytes()==original
  assert 'Command stopped' in read('stopped'),read('stopped')
  assert json.loads((out/'busy-draft.json').read_text(encoding='utf-8'))['draft']=='!echo forbidden> busy-must-not-run.txt'
- assert json.loads((out/'paused-draft.json').read_text(encoding='utf-8'))['draft']=='!echo forbidden> paused-must-not-run.txt'
+ assert json.loads((out/'paused-draft.json').read_text(encoding='utf-8'))['draft']==''
  assert not list((out/'local/vwork').rglob('*must-not-run.txt'))
  assert not provider.requests,'Executing commands called an LLM'
  for name in ('stop-child','quit-child'):assert not alive((out/(name+'.pid')).read_text()),name+' survived'

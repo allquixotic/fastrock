@@ -29,7 +29,7 @@ try:
  peak=max(peak,run('configure',[{'wait_ready':30000},{'wait':1200},{'resize':[1440,1100]},
   {'open_settings':'appearance'},{'wait':600},{'snapshot':str(out/'settings.png')},
   *click(1340,192),*dump('flat'),*click(1340,254),*click(1268,330),{'key':'ctrl+a'},{'key':'7'},{'key':'return'},{'wait':700},*action(id,'auto-settle-off'),*dump('configured'),
-  {'resume':id},{'wait':400},{'click_text':'Resume'},{'wait':400},{'send':'hold sidebar policy fixture'},{'wait':1000},*dump('running-flat'),
+  {'resume':id},{'wait':400},{'wait':400},{'send':'hold sidebar policy fixture'},{'wait':1000},*dump('running-flat'),
   *policy('working-section',1),*dump('running-grouped'),{'shortcut':'escape'},{'wait_idle':15000},{'wait':700},
   *policy('auto-settle-days',366),*dump('invalid'),*policy('auto-settle-days',7),*policy('working-section',0),{'quit':True}]))
  assert not read('flat')['projectFolders'],read('flat')

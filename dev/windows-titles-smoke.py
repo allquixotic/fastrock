@@ -56,7 +56,7 @@ try:
  assert not read('batch')['regeneratingTitles'] and '0 failed' in read('batch')['titleGenerationStatus'],read('batch')
  assert sum(not r['summary'] for r in provider.requests)==foreground,'Title batch activated an agent'
  mode='summary-hold';before=len(titles)
- peak=max(peak,run('pending-summary',[{'wait_ready':30000},{'wait':1200},{'resume':first},{'wait':400},{'click_text':'Resume'},{'wait':400},
+ peak=max(peak,run('pending-summary',[{'wait_ready':30000},{'wait':1200},{'resume':first},{'wait':400},{'wait':400},
   {'send':'New context for the title'},{'wait':300},{'wait_idle':30000},{'wait':500},*dump('summary-turn-complete'),
   *action(first,'regenerate-title'),*dump('summary-release'),{'wait_summaries':30000},*dump('pending-summary-result'),{'quit':True}]))
  assert len(titles)==before,'Retitling called the model before its summary was current'

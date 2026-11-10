@@ -151,9 +151,9 @@ try:
         child_messages = database.execute('SELECT content_json FROM messages WHERE session_id = ? ORDER BY id', (child_id,)).fetchall()
         assert child_messages[:len(parent_messages)] == parent_messages, 'Fork lost conversation history'
     peak = max(peak, run([{'wait_ready': 30000}, {'resume': 'goose:' + parent_id}, {'wait': 800},
-        {'wait_idle': 30000}, {'click_text': 'Resume'}, {'wait': 500}, *turn('vwork-parent-restored'),
+        {'wait_idle': 30000},  {'wait': 500}, *turn('vwork-parent-restored'),
         {'resume': 'goose:' + child_id}, {'wait': 800}, {'wait_idle': 30000},
-        {'click_text': 'Resume'}, {'wait': 500}, *turn('vwork-child-restored'), {'wait': 1000},
+         {'wait': 500}, *turn('vwork-child-restored'), {'wait': 1000},
         {'sidebar': ['dump', str(out / 'project-groups.json')]}, {'quit': True}], 'restored', env))
     for prompt, expected in [('vwork-bound-parent', b'child change \xce\xbb\r\n'),
                              ('vwork-parent-restored', b'child change \xce\xbb\r\n'),

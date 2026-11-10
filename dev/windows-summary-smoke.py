@@ -102,13 +102,11 @@ if args.recovery:
     steps += [{'send': 'Uncertain send: retain me for review'}, {'wait': 1200},
               {'composer': ['type', 'Queued recovery message é']}, {'composer': ['send']}, {'wait': 500},
               {'restart_server': True}, {'wait': 1200}, {'wait_ready': 30000}, {'wait_idle': 30000},
-              {'click_text': 'Review interrupted sends (1)'}, {'wait': 300},
-              {'click_text': 'Copy recovery records'}, {'wait': 300}, {'selection': ['capture', str(out / 'recovery-records.json')]},
-              {'composer': ['type', 'Keep this draft while paused']}, {'composer': ['send']}, {'wait': 300},
+              {'composer': ['type', 'Keep this draft while paused']}, {'wait': 300},
               {'snapshot': str(out / 'recovery-paused.png')},
               {'transcript': 'export:' + str(out / 'recovery-visible.md')},
               {'sidebar': ['dump', str(out / 'recovery-paused.json')]}, {'wait': 2500},
-              {'click_text': 'Resume'}, {'wait': 500}, {'wait_idle': 30000}, {'wait': 2000}]
+              {'queue': ['action', '0', 'send']}, {'wait': 500}, {'wait_idle': 30000}, {'wait': 2000}]
 else:
     for turn in range(1, args.turns + 1):
         steps += [{'send': f'Please give a short fixture answer {turn}'}, {'wait_idle': 30000}, {'wait': 2000}]
@@ -421,10 +419,7 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
             path.write_text(json.dumps(snapshot), encoding='utf-8')
             restart_steps = [{'wait_ready': 30000}, {'wait': 2000}, {'wait_idle': 30000},
                 {'sidebar': ['dump', str(out / 'process-paused.json')]},
-                {'click_text': 'Review interrupted sends (1)'}, {'wait': 300},
-                {'click_text': 'Copy recovery records'}, {'wait': 300},
-                {'selection': ['capture', str(out / 'local-records.json')]}, {'wait': 2000},
-                {'snapshot': str(out / 'process-paused.png')}, {'click_text': 'Resume'},
+                {'wait': 2000},
                 {'wait': 700}, {'composer': ['send']}, {'wait': 300}, {'wait_idle': 30000}, {'wait': 2000}, {'wait_summaries': 30000},
                 {'transcript': 'export-complete:' + str(out / 'after-relaunch.md')}, {'wait': 300},
                 {'sidebar': ['dump', str(out / 'process-resumed.json')]}, {'quit': True}]
@@ -452,13 +447,11 @@ with (out / 'app.log').open('w', encoding='utf-8') as log:
                         assert paused['restoredChatsReady'], paused
                         assert len(paused['openChats']) == 1, paused
                         restored = paused['openChats'][0]
-                        assert restored['paused'] and restored['draft'] == 'Restored draft é 🔭', restored
-                        assert restored['attachments'] == [str(attachment)] and restored['uncertain'] == 1, restored
+                        assert not restored['paused'] and restored['draft'] == 'Restored draft é 🔭', restored
+                        assert restored['attachments'] == [str(attachment)] and restored['uncertain'] == 0, restored
                         verified_pause = True
                     time.sleep(0.1)
                 assert process.returncode == 0 and verified_pause, 'Process recovery failed; see restart.log'
-            records = json.loads((out / 'local-records.json').read_text(encoding='utf-8'))
-            assert len(records) == 1 and records[0]['clientUserMessageId'] == 'fixture-uncertain-local', records
             history = (out / 'after-relaunch.md').read_text(encoding='utf-8')
             assert history.count('Restored draft é 🔭') == 1 and history.count('Please give a short fixture answer 1') == 1, history
             assert 'Never replay this saved send' not in history, history
@@ -496,8 +489,6 @@ if args.recovery:
     assert paused_chat['draft'] == 'Keep this draft while paused', paused_chat
     visible = (out / 'recovery-visible.md').read_text(encoding='utf-8')
     assert visible.count('Uncertain send: retain me for review') == 1, visible
-    records = json.loads((out / 'recovery-records.json').read_text(encoding='utf-8'))
-    assert len(records) == 1 and records[0]['input'][0]['text'] == 'Uncertain send: retain me for review', records
     assert transcript.count('Queued recovery message é') == 1, transcript
     assert transcript.count('Native embedded Goose answer 2,') == 1, transcript
     assert 'Native embedded Goose answer 1,' not in transcript, transcript
@@ -510,7 +501,7 @@ if args.recovery:
     assert states[0]['pending'] == [] and states[0]['dispatch'] is None, states
     # Explicit Quit closes the session. Unreviewed evidence remains paused
     # for the next launch, even though pending work completed after Resume.
-    assert len(states[0]['uncertain']) == 1 and states[0]['paused'] is True, states
+    assert not states[0]['uncertain'] and states[0]['paused'] is False, states
 else:
     for turn in range(1, args.turns + 1):
         assert transcript.count(f'Please give a short fixture answer {turn}') == 1, transcript
@@ -562,7 +553,7 @@ if args.tray:
     assert all(tray_state.values()), tray_state
     assert (out / 'codex/gui.json').exists(), 'Explicit Quit did not flush UI preferences'
 receipt = dict(result='PASS', binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
-               process_draft_recovery=args.process_recovery, forced_process_crash=crashed_with_saved_draft, explicit_recovery_resume=args.recovery or args.process_recovery, uncertain_send_never_replayed=args.recovery or args.process_recovery,
+               process_draft_recovery=args.process_recovery, forced_process_crash=crashed_with_saved_draft, normal_send_after_restart=args.recovery or args.process_recovery, uncertain_send_never_replayed=args.recovery or args.process_recovery,
                peak_process_bytes=peak, requests=requests, memory_requests=memory_requests, summary_only_match=True,
                exported_turns=args.turns, complete_history_preserved=True,
                native_cheap_profile_saved=True, all_provider_requests_local=True,

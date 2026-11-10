@@ -79,6 +79,9 @@ export global ComposerState {
     callback send();
     callback steer();
     callback interrupt();
+    in property <bool> can-undo;
+    in property <bool> can-redo;
+    callback history(redo: bool);
     callback input-changed(text: string, cursor: int);
     callback accept-suggestion(row: int);
     callback dismiss-suggestions();
@@ -127,6 +130,9 @@ component ComposerInput inherits Rectangle {
     ContextMenuArea {
         enabled: root.enabled;
         Menu {
+            MenuItem { title: "Undo"; enabled: root.enabled && ComposerState.can-undo; activated => { ComposerState.history(false); } }
+            MenuItem { title: "Redo"; enabled: root.enabled && ComposerState.can-redo; activated => { ComposerState.history(true); } }
+            MenuSeparator { }
             MenuItem {
                 title: "Cut";
                 enabled: root.enabled;
@@ -190,6 +196,10 @@ component ComposerInput inherits Rectangle {
                 }
 
                 key-pressed(event) => {
+                    if (event.modifiers.control || event.modifiers.meta) && !event.modifiers.alt && self.preedit-text == "" {
+                        if event.text == "z" || event.text == "Z" { ComposerState.history(event.modifiers.shift); return accept; }
+                        if event.text == "y" || event.text == "Y" { ComposerState.history(true); return accept; }
+                    }
                     if ComposerState.popup-open {
                         if event.text == Key.Escape {
                             ComposerState.dismiss-suggestions();

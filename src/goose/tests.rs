@@ -136,24 +136,6 @@ async fn v72_typed_review_routes_and_busy_guards() {
             }
         }
     }
-    assert!(
-        call(
-            &client,
-            request["method"].as_str().unwrap(),
-            request["params"].clone()
-        )
-        .await
-        .unwrap_err()
-        .message
-        .contains("paused")
-    );
-    call(
-        &client,
-        "fastrock/goose/resumeQueue",
-        json!({"threadId":id}),
-    )
-    .await
-    .unwrap();
     let result = call(
         &client,
         request["method"].as_str().unwrap(),
@@ -590,14 +572,11 @@ async fn v70_typed_queue_reorder_start_preserve_recovery_and_selected_order() {
         .await
         .unwrap();
     assert_eq!(recovery["paused"], true);
-    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 0);
     assert!(
-        typed(
-            &client,
-            start(recovery["uncertain"][0]["id"].as_str().unwrap())
-        )
-        .await
-        .is_err()
+        typed(&client, start("interrupted-not-eligible"))
+            .await
+            .is_err()
     );
     let result = typed(&client, start(&ids[1])).await.unwrap();
     let _: ThreadQueueStartResponse = serde_json::from_value(result).unwrap();
@@ -624,7 +603,7 @@ async fn v70_typed_queue_reorder_start_preserve_recovery_and_selected_order() {
         .await
         .unwrap();
     assert_eq!(recovery["pending"], 0);
-    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 0);
     assert!(
         typed(&client, start(&ids[1])).await.is_err(),
         "Consumed input cannot replay"
@@ -674,7 +653,7 @@ async fn v70_failed_selected_start_pauses_and_keeps_pending_input() {
         .unwrap();
     assert_eq!(recovery["paused"], true);
     assert_eq!(recovery["pending"], 2);
-    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 0);
     let pending = call(&client, "thread/queue/list", json!({"threadId":id}))
         .await
         .unwrap();
@@ -873,7 +852,7 @@ async fn queued_drafts_are_persisted_before_acknowledgement() {
 }
 
 #[tokio::test]
-async fn v41_restart_requires_resume_and_never_replays_uncertain_send() {
+async fn v107_restart_preserves_queue_without_replaying_interrupted_send() {
     let (client, temp) = fixture().await;
     let id = new(&client, temp.path()).await;
     send(&client, &id, "hold uncertain").await;
@@ -896,23 +875,10 @@ async fn v41_restart_requires_resume_and_never_replays_uncertain_send() {
         .unwrap();
     assert_eq!(recovery["paused"], true);
     assert_eq!(recovery["pending"], 1);
-    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
-    assert_eq!(
-        recovery["uncertain"][0]["input"][0]["text"],
-        "hold uncertain"
-    );
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 0);
     call(&client, "thread/queue/add", add("pending-two"))
         .await
         .unwrap();
-    assert!(
-        call(
-            &client,
-            "turn/start",
-            json!({"threadId":id,"input":[{"type":"text","text":"must wait"}]})
-        )
-        .await
-        .is_err()
-    );
     tokio::time::sleep(Duration::from_millis(250)).await;
     assert_eq!(
         call(&client, "thread/read", json!({"threadId":id}))
@@ -922,14 +888,14 @@ async fn v41_restart_requires_resume_and_never_replays_uncertain_send() {
     );
     call(
         &client,
-        "fastrock/goose/resumeQueue",
-        json!({"threadId":id}),
+        "turn/start",
+        json!({"threadId":id,"clientUserMessageId":"fresh", "input":[{"type":"text","text":"New message after restart"}]}),
     )
     .await
     .unwrap();
     let mut started = vec![];
     let mut completed = 0;
-    while completed < 2 {
+    while completed < 3 {
         if let AppServerEvent::ServerNotification(n) = event(&mut client).await {
             match *n {
                 codex_app_server_protocol::ServerNotification::TurnStarted(n) => {
@@ -941,17 +907,20 @@ async fn v41_restart_requires_resume_and_never_replays_uncertain_send() {
             }
         }
     }
-    assert_eq!(started, vec![json!("pending-one"), json!("pending-two")]);
+    assert_eq!(
+        started,
+        vec![json!("fresh"), json!("pending-one"), json!("pending-two")]
+    );
     let recovery = call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
         .await
         .unwrap();
     assert_eq!(recovery["pending"], 0);
-    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 0);
     client.shutdown().await.unwrap();
 }
 
 #[tokio::test]
-async fn v41_close_reopen_requires_resume_and_preserves_queued_edits() {
+async fn v107_close_reopen_preserves_queued_edits_without_review() {
     let (client, temp) = fixture().await;
     let id = new(&client, temp.path()).await;
     send(&client, &id, "hold uncertain close").await;
@@ -983,42 +952,11 @@ async fn v41_close_reopen_requires_resume_and_preserves_queued_edits() {
         .unwrap();
     assert_eq!(recovery["paused"], true);
     assert_eq!(recovery["pending"], 1);
-    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 1);
+    assert_eq!(recovery["uncertain"].as_array().unwrap().len(), 0);
     let pending = call(&client, "thread/queue/list", json!({"threadId":id}))
         .await
         .unwrap();
     assert_eq!(pending["data"][0]["input"], input);
-    call(
-        &client,
-        "fastrock/goose/dismissRecovery",
-        json!({"threadId":id,"ids":["not-reviewed"]}),
-    )
-    .await
-    .unwrap();
-    assert_eq!(
-        call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
-            .await
-            .unwrap()["uncertain"]
-            .as_array()
-            .unwrap()
-            .len(),
-        1
-    );
-    call(
-        &client,
-        "fastrock/goose/dismissRecovery",
-        json!({"threadId":id,"ids":[recovery["uncertain"][0]["id"]]}),
-    )
-    .await
-    .unwrap();
-    assert!(
-        call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
-            .await
-            .unwrap()["uncertain"]
-            .as_array()
-            .unwrap()
-            .is_empty()
-    );
     client.shutdown().await.unwrap();
 }
 
@@ -1053,8 +991,8 @@ async fn v41_failed_completion_save_remains_reviewable_and_resumable() {
     let recovered = call(&client, "fastrock/goose/recovery", json!({"threadId":id}))
         .await
         .unwrap();
-    assert_eq!(recovered["paused"], true);
-    assert_eq!(recovered["uncertain"].as_array().unwrap().len(), 1);
+    assert_eq!(recovered["paused"], false);
+    assert_eq!(recovered["uncertain"].as_array().unwrap().len(), 0);
     std::fs::remove_dir(&path).unwrap();
     std::fs::write(&path, original).unwrap();
     call(
@@ -1066,7 +1004,7 @@ async fn v41_failed_completion_save_remains_reviewable_and_resumable() {
     .unwrap();
     let saved: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
     assert_eq!(saved["dispatch"], Value::Null);
-    assert_eq!(saved["uncertain"].as_array().unwrap().len(), 1);
+    assert_eq!(saved["uncertain"].as_array().unwrap().len(), 0);
     send(
         &client,
         &id,

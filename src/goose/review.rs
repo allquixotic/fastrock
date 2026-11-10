@@ -6,6 +6,7 @@ impl Adapter {
     pub(super) async fn review_request(self: &Arc<Self>, params: &Value, action: &str) -> Reply {
         let start = action == "start";
         let id = session_id(text(params, "threadId"))?;
+        self.retry_storage_history(&id).await?;
         let gate = self.gate(id).await;
         let _guard = gate.lock().await;
         let (workspace, cwd) = {

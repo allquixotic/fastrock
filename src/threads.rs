@@ -292,8 +292,8 @@ impl AppController {
         if let Some(thread) = self.thread_tab_mut(index) {
             thread.phase = ThreadPhase::Error;
             thread.last_error = Some(message.clone());
-            unsent = thread.pending_inputs.clone();
-            thread.recovery_paused |= !unsent.is_empty();
+            unsent = std::mem::take(&mut thread.pending_inputs);
+            thread.recovery_paused = false;
         }
         for pending in unsent {
             self.transcript_echo_unsent(index, &pending.client_id);
@@ -753,10 +753,6 @@ impl AppController {
         let Some(thread) = self.thread_tab(index) else {
             return false;
         };
-        if self.thread_recovery_paused(thread) {
-            self.toast("Recovered work is paused. Choose Resume before sending.");
-            return false;
-        }
         if let Some(reason) = input_refusal(thread) {
             self.toast(reason);
             return false;
@@ -777,11 +773,15 @@ impl AppController {
         // Until the thread is attached (started, resumed, forked, or a side
         // chat got its boundary) input waits in the tab.
         if thread.thread_id.is_none() || thread.phase == ThreadPhase::Starting {
+            let start = thread.thread_id.is_none() && thread.phase != ThreadPhase::Starting;
             thread.pending_inputs.push(PendingInput {
                 input,
                 client_id,
                 mode,
             });
+            if start {
+                self.start_thread_in_tab(index);
+            }
             self.refresh_tabs();
             return true;
         }
@@ -1141,13 +1141,6 @@ impl AppController {
             "worktree" => self.worktree_continue(index),
             "compact" => {
                 if let Some(thread_id) = thread_id {
-                    if self
-                        .thread_tab(index)
-                        .is_some_and(|thread| self.thread_recovery_paused(thread))
-                    {
-                        self.toast("Recovered work is paused. Choose Resume before compacting.");
-                        return;
-                    }
                     if let Some(thread) = self.thread_tab_mut(index) {
                         if thread.is_busy() {
                             self.toast("Wait for the current turn before compacting");

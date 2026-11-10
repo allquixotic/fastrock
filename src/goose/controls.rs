@@ -132,22 +132,33 @@ impl AppController {
         else {
             return;
         };
+        let state = self.window.global::<GooseState>();
+        if state.get_changing() {
+            return;
+        }
+        state.set_changing(true);
+        state.set_error("".into());
         let backend = self.backend.clone();
         self.backend.spawn(async move {
             let result = backend
                 .goose_request("fastrock/goose/config", json!({"threadId":id}))
                 .await;
             crate::ui_thread::post(move |app| {
-                if let Ok(reply) = result {
-                    app.composer_shared.goose_configs.insert(
-                        id,
-                        reply["configOptions"]
-                            .as_array()
-                            .cloned()
-                            .unwrap_or_default(),
-                    );
-                    app.goose_controls_refresh();
+                let state = app.window.global::<GooseState>();
+                state.set_changing(false);
+                match result {
+                    Ok(reply) => {
+                        app.composer_shared.goose_configs.insert(
+                            id,
+                            reply["configOptions"]
+                                .as_array()
+                                .cloned()
+                                .unwrap_or_default(),
+                        );
+                    }
+                    Err(error) => state.set_error(error.into()),
                 }
+                app.goose_controls_refresh();
             });
         });
     }

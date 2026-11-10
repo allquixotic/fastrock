@@ -86,7 +86,7 @@ with tempfile.TemporaryDirectory(prefix='codex-gui-conversation-') as directory:
             assert any(row['status'] == 'Unread' for row in unread['rows']), unread
             assert all(row['status'] != 'Unread' for row in read['rows']), read
             run('pending', [
-                {'wait_ready': 60000}, {'resume': read['rows'][0]['id']}, {'wait_idle': 30000}, {'click_text':'Resume'}, {'wait_goose':30000},
+                {'wait_ready': 60000}, {'resume': read['rows'][0]['id']}, {'wait_idle': 30000},
                 {'send': 'slow pending editing'}, {'wait': 300},
                 {'composer': ['type', 'ORIGINAL_PENDING']}, {'composer': ['send']}, {'wait': 400}, {'pending': ['click']}, {'wait_pending': {'open': True, 'timeout_ms': 5000}},
                 {'pending': ['dump', str(out / 'editing.json')]}, {'snapshot': str(out / 'editing.png')},

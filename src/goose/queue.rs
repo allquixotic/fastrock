@@ -1,4 +1,4 @@
-//! One atomic queue/dispatch record. Recovered work always waits for Resume.
+//! Atomic queue/dispatch record. Interrupted sends fail without replay.
 use super::*;
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +33,7 @@ impl QueueState {
     pub(super) fn ensure_deletable(&self) -> Result<(), JSONRPCErrorError> {
         if self.dispatch.is_some() || !self.pending.is_empty() || !self.uncertain.is_empty() {
             return Err(error(
-                "Remove queued messages and dismiss reviewed recovery records before deleting",
+                "Finish the current send and remove queued messages before deleting",
             ));
         }
         Ok(())
@@ -83,31 +83,24 @@ impl QueueState {
             uncertain: self.uncertain.clone(),
         }
     }
-    fn quarantine(&mut self, reason: &str) {
-        if let Some(mut item) = self.dispatch.take() {
+    fn quarantine(&mut self, _reason: &str) {
+        if let Some(item) = self.dispatch.take() {
             self.pending.retain(|queued| queued["id"] != item["id"]);
-            if !self.uncertain.iter().any(|old| old["id"] == item["id"]) {
-                item["recoveryReason"] = json!(reason);
-                self.uncertain.push(item);
-            }
         }
+        self.uncertain.clear();
         self.paused = true;
     }
     fn recover(mut self) -> Self {
-        if self.dispatch.is_some() {
-            self.quarantine("Fastrock stopped before this send's completion was saved. Check conversation history and tool results before sending it again.");
-        }
-        self.paused |= !self.pending.is_empty() || !self.uncertain.is_empty();
+        self.quarantine("interrupted");
+        self.paused = !self.pending.is_empty();
         self
     }
 }
 
 impl Adapter {
-    /// Explicit Resume/Send from the native queue. Automatic senders must not use
-    /// this to bypass recovery; uncertain records are never eligible here.
+    /// Explicit Send from the native queue; automatic senders use drain_queue.
     pub(super) async fn start_queued(self: &Arc<Self>, params: &Value) -> Reply {
         let id = session_id(text(params, "threadId"))?.to_string();
-        // "Resume & send" is an explicit activation decision, just like Resume.
         // Finish activation before selecting or consuming the queued message.
         self.retry_storage_history(&id).await?;
         let gate = self.gate(&id).await;
@@ -123,9 +116,7 @@ impl Adapter {
                 || (session.ephemeral && !session.binding.side)
                 || session.recovery_only
             {
-                return Err(error(
-                    "Wait for this conversation to become idle and resolve any uncertain tools in Checkpoints before resuming",
-                ));
+                return Err(error("Wait for this conversation to become idle"));
             }
         }
         self.checkpoint_ready(&id)
@@ -182,26 +173,13 @@ impl Adapter {
             .ensure_deletable()
     }
     pub(super) async fn load_queue(&self, id: &str) -> Result<Recovery, JSONRPCErrorError> {
-        let inactive = self
-            .sessions
-            .lock()
-            .await
-            .get(id)
-            .is_some_and(|s| s.activation_pending || s.storage_pending || s.recovery_only);
         let mut queues = self.queue.lock().await;
         if !queues.contains_key(id) {
             let path = self.queue_path(id);
-            let mut state = tokio::task::spawn_blocking(move || read_queue(&path))
+            let state = tokio::task::spawn_blocking(move || read_queue(&path))
                 .await
                 .map_err(|e| error(e.to_string()))??;
-            state.paused |= inactive;
             queues.insert(id.to_owned(), state);
-        }
-        if inactive
-            && let Some(state) = queues.get_mut(id)
-            && !state.paused
-        {
-            state.paused = true;
         }
         let recovery = queues[id].recovery();
         // A newly opened tab needs the actual recovery state even if a catalog
@@ -246,7 +224,7 @@ impl Adapter {
                 .is_some_and(|s| s.recovery_only)
             {
                 return Err(error(
-                    "Review the interrupted restore or uncertain tools in Checkpoints before resuming",
+                    "Conversation storage is unavailable; try sending again",
                 ));
             }
             self.checkpoint_ready(&id)
@@ -335,11 +313,7 @@ impl Adapter {
         let state = queues
             .get_mut(id)
             .ok_or_else(|| error("Queue unavailable"))?;
-        if state.paused {
-            return Err(error(
-                "Recovered work is paused. Review it and choose Resume first.",
-            ));
-        }
+
         if state.dispatch.is_some() {
             return Err(error("A previous send has not settled yet."));
         }
@@ -350,6 +324,9 @@ impl Adapter {
             }
             state.pending.remove(0)
         } else {
+            // A new user message is sufficient to continue the conversation.
+            // Existing accepted queue items follow it after successful completion.
+            state.paused = false;
             json!({"id":uuid::Uuid::new_v4().to_string(),"input":params["input"],"clientUserMessageId":params["clientUserMessageId"]})
         };
         item["turnId"] = json!(tid);
@@ -524,8 +501,8 @@ mod tests {
         queue.pending.clear();
         queue.dispatch = Some(serde_json::json!({"id":"dispatch"}));
         assert!(queue.ensure_deletable().is_err());
-        queue.quarantine("uncertain");
-        assert!(queue.ensure_deletable().is_err());
+        queue.quarantine("interrupted");
+        assert!(queue.ensure_deletable().is_ok());
         queue.uncertain.clear();
         assert!(queue.ensure_deletable().is_ok());
     }
@@ -587,10 +564,10 @@ mod tests {
         let recovered = read_queue(&path).unwrap();
         assert!(recovered.paused);
         assert_eq!(recovered.pending, vec![item("b")]);
-        assert_eq!(recovered.uncertain[0]["input"], item("a")["input"]);
+        assert!(recovered.uncertain.is_empty());
         assert!(recovered.dispatch.is_none());
         write_queue(&path, &recovered).unwrap();
-        assert_eq!(read_queue(&path).unwrap().uncertain.len(), 1);
+        assert!(read_queue(&path).unwrap().uncertain.is_empty());
     }
     #[test]
     fn v41_legacy_dispatch_overlap_is_quarantined_and_files_preserved() {
@@ -603,7 +580,7 @@ mod tests {
         let mut recovered = read_queue(&path).unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), legacy);
         assert_eq!(recovered.pending, vec![item("b")]);
-        assert_eq!(recovered.uncertain[0]["id"], "a");
+        assert!(recovered.uncertain.is_empty());
         recovered.uncertain.clear();
         write_queue(&path, &recovered).unwrap();
         assert!(

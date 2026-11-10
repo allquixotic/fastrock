@@ -10,6 +10,7 @@ mod approve;
 pub(crate) mod attachments;
 mod drop;
 mod file_search;
+pub(crate) mod history;
 mod input;
 mod names;
 mod popup;
@@ -81,6 +82,7 @@ pub(crate) struct PreparingMessage {
 pub(crate) struct ComposerDraft {
     /// Unsent text while the tab is in the background.
     pub(crate) text: String,
+    pub(crate) history: history::History,
     /// Images to send with the next message.
     pub(crate) attachments: Vec<Attachment>,
     /// Collaboration mode of the thread (Plan or Default).
@@ -158,6 +160,9 @@ impl AppController {
 
         state.on_send(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::composer_submit)
+        }));
+        state.on_history(crate::ui_thread::scoped_callback!(|redo| {
+            crate::ui_thread::with_app(move |app| app.composer_history(redo));
         }));
         state.on_steer(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(|app| app.composer_submit_mode(BusyInput::Steer))
@@ -247,9 +252,14 @@ impl AppController {
             return;
         };
         let text = self.window.global::<ComposerState>().get_text().to_string();
+        let cursor = self.composer_shared.cursor;
         if let Some(index) = self.tab_index_by_id(tab_id)
             && let Some(thread) = self.thread_tab_mut(index)
         {
+            thread
+                .composer
+                .history
+                .observe(&thread.composer.text, &text, cursor);
             thread.composer.text = text;
         }
     }
@@ -268,7 +278,10 @@ impl AppController {
                 .and_then(|(index, _)| self.thread_tab(index))
                 .map(|thread| thread.composer.text.clone())
                 .unwrap_or_default();
-            let cursor = text.len();
+            let cursor = active
+                .and_then(|(index, _)| self.thread_tab(index))
+                .map(|t| t.composer.history.cursor)
+                .unwrap_or(text.len());
             self.composer_set_text(text, cursor);
         }
         // Every time, not only on tab switches: a resumed or new thread
@@ -414,10 +427,6 @@ impl AppController {
             return false;
         };
         if matches!(thread.phase, ThreadPhase::Closed | ThreadPhase::Error) {
-            return false;
-        }
-        if self.thread_recovery_paused(thread) {
-            self.toast("Recovered work is paused. Choose Resume before sending.");
             return false;
         }
         if thread.composer.preparing.is_some() {
@@ -759,6 +768,16 @@ impl AppController {
 
     /// Replaces the visible text, moves the cursor and focuses the input.
     fn composer_set_text(&mut self, text: String, cursor: usize) {
+        if let Some(thread) = self
+            .active_thread_index()
+            .and_then(|i| self.thread_tab_mut(i))
+        {
+            thread
+                .composer
+                .history
+                .observe(&thread.composer.text, &text, cursor);
+            thread.composer.text = text.clone();
+        }
         let state = self.window.global::<ComposerState>();
         let shared = &mut self.composer_shared;
         shared.cursor = cursor;
@@ -769,6 +788,37 @@ impl AppController {
         state.set_cursor_serial(shared.cursor_serial);
         state.set_focus_serial(shared.focus_serial);
         self.save_open_chats();
+        self.composer_refresh_history();
+    }
+
+    pub(crate) fn composer_history(&mut self, redo: bool) {
+        let Some(thread) = self
+            .active_thread_index()
+            .and_then(|i| self.thread_tab_mut(i))
+        else {
+            return;
+        };
+        if thread
+            .composer
+            .history
+            .travel(&mut thread.composer.text, redo)
+        {
+            let text = thread.composer.text.clone();
+            let cursor = thread.composer.history.cursor;
+            self.composer_set_text(text, cursor);
+            self.composer_close_popup();
+            self.composer_refresh_history();
+        }
+    }
+
+    pub(super) fn composer_refresh_history(&self) {
+        let history = self
+            .active_thread_index()
+            .and_then(|i| self.thread_tab(i))
+            .map(|t| &t.composer.history);
+        let state = self.window.global::<ComposerState>();
+        state.set_can_undo(history.is_some_and(history::History::can_undo));
+        state.set_can_redo(history.is_some_and(history::History::can_redo));
     }
 
     /// Moves keyboard focus to the input.
@@ -1017,6 +1067,8 @@ impl AppController {
             "choose" => self.composer_choose(arg(1), arg(2)),
             "open" => self.composer_open_picker(arg(1)),
             "plan" => self.composer_toggle_plan(),
+            "undo" => self.composer_history(false),
+            "redo" => self.composer_history(true),
             "send" => self.composer_submit(),
             "steer" => self.composer_submit_mode(BusyInput::Steer),
             "drop" => {

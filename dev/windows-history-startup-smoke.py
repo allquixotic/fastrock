@@ -80,15 +80,15 @@ try:
         connection.execute('UPDATE sessions SET provider_name=? WHERE id=?', ('unavailable-fixture-provider',sid))
     opening = [{'wait_ready':30000}, {'resize':[1440,1000]}, {'resume':'goose:'+sid}, {'wait_idle':30000}]
     peak = max(peak, run('unavailable', [*opening, *export('before-failure'),
-        {'click_text':'Resume'}, {'wait':2000}, *export('failed'), {'snapshot':str(out/'failed.png')},
-        {'click_text':'Retry'}, {'wait':1000}, *export('retried'), {'quit':True}]))
+        {'click_text':'Model options  ▾'}, {'wait':2000}, *export('failed'), {'snapshot':str(out/'failed.png')},
+        {'click_text':'Retry'}, {'wait_goose':30000}, *export('retried'), {'quit':True}]))
     before = assert_history('before-failure')
     assert assert_history('failed') == before and assert_history('retried') == before
     assert read('failed')['sessionError'] and read('retried')['sessionError'], 'Real activation errors need a visible retry'
     assert not provider.initializations and not provider.requests, 'Browsing activated a provider or extension'
     with sqlite3.connect(database) as connection:
         connection.execute('UPDATE sessions SET provider_name=? WHERE id=?', ('aws_bedrock',sid))
-    peak = max(peak, run('slow', [*opening, *export('before-slow'), {'click_text':'Resume'},
+    peak = max(peak, run('slow', [*opening, *export('before-slow'), {'click_text':'Model options  ▾'},
         {'wait':95000}, *export('during-slow'), {'snapshot':str(out/'waiting.png')},
         {'wait_goose':60000}, *export('activated'), {'send':'Continue after delayed activation'},
         {'wait_idle':30000}, *export('continued'), {'quit':True}]))

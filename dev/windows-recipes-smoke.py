@@ -76,7 +76,7 @@ try:
  assert any('external editor changed' in p.read_text(encoding='utf-8') for p in recipe_path.parent.glob('*.fastrock-backup-*'))
  assert sum(not q['summary'] for q in provider.requests)==before
  peak=max(peak,run('resume-deleted-recipe',[{'wait_ready':30000},wait(),{'resume':tools['threadId']},wait(),{'wait_idle':30000},
-  {'click_text':'Resume'},{'wait':500},{'send':'vwork-child-restored'},{'wait':400},{'wait_idle':30000},wait(),
+  {'wait':500},{'send':'vwork-child-restored'},{'wait':400},{'wait_idle':30000},wait(),
   {'transcript':'export-complete:'+str(out/'resumed.md')},wait(),{'quit':True}]))
  assert any(r['prompt']=='vwork-child-restored' for r in provider.workspace_results),provider.workspace_results
  assert all(q['path'].startswith('/model/us.openai.gpt-6-luna/') for q in provider.requests if not q['summary'])

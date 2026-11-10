@@ -49,7 +49,7 @@ try:
  peak=max(peak,run('organize',[{'wait_ready':30000},{'wait':1500},{'resize':[1440,1100]},
   *thread(first,'pin'),*thread(second,'settle'),*thread(third,'snooze-hour'),*dump('settled-hidden'),{'sidebar':['section','settled',str(repos[0])]},{'wait':500},*dump('groups'),{'snapshot':str(out/'groups.png')},
   {'sidebar':['project',str(project_index)]},{'wait':300},*dump('project-filter'),{'sidebar':['project','0']},{'wait':300},
-  {'resume':first},{'wait':300},{'click_text':'Resume'},{'wait':400},{'send':'hold organization fixture'},{'wait':900},*dump('pinned-working'),
+  {'resume':first},{'wait':300},{'wait':400},{'send':'hold organization fixture'},{'wait':900},*dump('pinned-working'),
   *thread(first,'unpin'),*dump('working'),{'shortcut':'escape'},{'wait_idle':15000},{'wait':600},*dump('active'),
   {'click_text':'Select'},{'wait':250},*thread(first,'select'),*thread(second,'select'),{'click_text':'Pin'},{'wait':600},*dump('batch'),
   *thread(second,'move-up'),*dump('ordered'),{'sidebar':['section','pinned']},{'wait':500},*dump('collapsed'),
@@ -71,7 +71,7 @@ try:
  assert any(r['id']==first for r in read('search-collapsed')['rows']),read('search-collapsed')
  assert 'Readable project' in read('renamed')['projectChoices'],read('renamed')
  assert read('renamed')['navigation']['activeScope']=='Readable project',read('renamed')
- peak=max(peak,run('failure-wake',[{'wait_ready':30000},{'wait':1000},{'resume':first},{'wait':400},{'click_text':'Resume'},{'wait':500},
+ peak=max(peak,run('failure-wake',[{'wait_ready':30000},{'wait':1000},{'resume':first},{'wait':400},{'wait':500},
   *thread(first,'unpin'),{'send':'FailureWake local fixture'},{'wait':800},*thread(first,'snooze-hour'),*dump('failure-snoozed'),
   {'wait_idle':30000},{'wait':900},*dump('failure-woken'),*thread(first,'pin'),{'quit':True}]))
  assert 1 <= len(failures) <= 4,failures  # Unmodified AWS SDK may retry HTTP 500.

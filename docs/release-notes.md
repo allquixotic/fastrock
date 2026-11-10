@@ -1,25 +1,23 @@
-# Fastrock 0.5.0
+# Fastrock 0.5.1
 
-Updates the direct dependencies, including unmodified Goose 1.58.0 and the latest
-stable Codex support crates. Goose continues to run inside Fastrock; no separate
-installation or service is required. Existing configuration, conversations,
-virtual workspaces and credential identities are preserved.
-The default search-summary model uses `us.openai.gpt-6-luna` on Bedrock Runtime.
-Goose 1.58 routes bare closed-weight GPT IDs to Mantle; use a `us.` inference
-profile for Runtime. Explicitly saved model IDs are retained.
+Saved conversations no longer require checkpoint review or Resume. Send normally
+after reopening a conversation. Interrupted tool calls are recorded as failed
+before activation and are never automatically replayed. Existing conversation
+messages remain intact; explicitly queued messages remain available through the
+queue's Send button or follow the next new message after it completes. Interrupted
+restore operations keep their current saved state and retain the previous state in Checkpoints for optional undo.
 
-- **Context window:** choose **View context window** in the conversation info
-  pane to inspect the next request's token counts, component breakdown and text
-  previews. Refresh after a turn or model/tool change. Counts use Goose's local
-  tokenizer and may differ from provider accounting; pending compaction is shown.
-  Restored conversations still require Resume before context inspection.
-- **Thinking:** enable **Settings → Appearance → Collapse thinking by default**
-  to start thinking blocks collapsed. This is opt-in and persists across restarts.
-  Each block can still be expanded, selected and copied. Thinking text remains in
-  conversation exports.
+The message composer now saves its text, cursor and undo/redo history to disk.
+Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes; the native context menu offers both.
+History is isolated per chat and survives switching tabs, unexpected process exit
+and clean restart. Sending clears the composer as an undoable edit. Background
+saves coalesce for 200 milliseconds, then atomically sync the snapshot; work since
+the latest completed disk save can still be lost in a crash. History retains up to
+512 edits and 2 MiB of text deltas, plus the last edit when it exceeds that limit.
 
-Retains the 0.4.2 workspace performance improvements and 0.4.3 accessibility
-repair. Windows x64 ZIP only, built, tested, signed, timestamped and published by
-GitHub Actions. macOS compilation only.
+Goose 1.58.0 remains unmodified. Provider configuration, credentials, conversations,
+workspace history and manual checkpoints are preserved. Windows x64 ZIP only;
+macOS receives a compatibility compile. Existing build/signing/timestamping and
+memory-guarded Windows verification requirements remain in force.
 
-Use **Quit** in the previous version's tray menu before launching 0.5.0.
+Use **Quit** in the previous version's tray menu before launching 0.5.1.

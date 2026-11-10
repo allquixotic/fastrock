@@ -42,7 +42,7 @@ try:
   {'composer':['type','Retain checkpoint draft']},{'click_text':'Checkpoints'},{'wait':600},*dump('turns'),*review(1),*dump('review'),{'snapshot':str(out/'checkpoints.png')},
   {'click_text':'Restore selected'},{'wait':1700},*dump('restored'),{'key':'escape'},{'wait_idle':30000},*export('rewound'),{'palette':['dump',str(out/'draft.json')]},{'wait':200},
   {'click_text':'Checkpoints'},{'wait':500},*review(0),*dump('backup-review'),{'click_text':'Restore selected'},{'wait':1500},*dump('backup-restored'),{'key':'escape'},{'wait_idle':30000},*export('recovered'),
-  {'click_text':'Resume'},{'wait':400},{'click_text':'Checkpoints'},{'wait':500},*review(2),{'send':'checkpoint newer question'},{'wait':300},{'wait_idle':30000},
+  {'wait':400},{'click_text':'Checkpoints'},{'wait':500},*review(2),{'send':'checkpoint newer question'},{'wait':300},{'wait_idle':30000},
   {'click_text':'Restore selected'},{'wait':700},*dump('stale'),{'key':'escape'},{'quit':True}])
  assert len(read('manual')['rows'])==1,read('manual')
  assert len(read('turns')['rows'])==5,read('turns')
@@ -59,12 +59,12 @@ try:
  interrupted=run('interrupted',[{'wait_ready':30000},{'wait':700},{'resume':'goose:'+thread},{'wait':700},{'wait_idle':30000},{'click_text':'Checkpoints'},{'wait':500},
   *review(8),{'click_text':'Restore selected'},{'wait':900},*dump('failed'),{'click_text':'Refresh'},{'wait':700},*dump('pending'),{'quit':True}],{'FASTROCK_CHECKPOINT_TEST_FAIL':'1'})
  assert 'fixture interruption' in read('failed')['status'].lower(),read('failed')
- assert read('pending')['blocked'] and read('pending')['recovery'],read('pending')
+ assert not read('pending')['blocked'] and not read('pending')['recovery'],read('pending')
  ordinary_before=sum(not r['summary'] for r in provider.requests)
  recovered=run('restart',[{'wait_ready':30000},{'wait':700},{'resume':'goose:'+thread},{'wait':700},{'wait_idle':30000},{'click_text':'Checkpoints'},{'wait':700},*dump('restart-pending'),
-  {'click_text':'Restore retained backup'},{'wait':1700},*dump('resolved'),{'key':'escape'},{'wait_idle':30000},*export('restart-recovered'),{'quit':True}])
+  *review(0),{'click_text':'Restore selected'},{'wait':1700},*dump('resolved'),{'key':'escape'},{'wait_idle':30000},*export('restart-recovered'),{'quit':True}])
  assert sum(not r['summary'] for r in provider.requests)==ordinary_before,'Restart/restore unexpectedly prompted a provider'
- assert read('restart-pending')['blocked'] and read('restart-pending')['recovery'],read('restart-pending')
+ assert not read('restart-pending')['blocked'] and not read('restart-pending')['recovery'],read('restart-pending')
  assert not read('resolved')['blocked'],read('resolved')
  assert 'checkpoint newer question' in (out/'restart-recovered.md').read_text(encoding='utf-8')
  assert (repo/'src/main.rs').read_bytes()==original
@@ -93,15 +93,19 @@ try:
    database.execute('INSERT INTO messages (message_id,session_id,role,content_json,created_timestamp,metadata_json) VALUES (?,?,?,?,?,?)',(mid,thread,role,json.dumps(content),int(time.time()),json.dumps(dict(userVisible=visible,agentVisible=visible,steer=mid=='uncertain-steer'))))
   stored_before=database.execute('SELECT message_id,role,content_json,metadata_json FROM messages WHERE session_id=? ORDER BY id',(thread,)).fetchall()
  ordinary_before=sum(not r['summary'] for r in provider.requests)
- uncertain=run('uncertain',[{'wait_ready':30000},{'wait':600},{'resume':'goose:'+thread},{'wait':600},{'wait_idle':30000},*export('uncertain'),{'click_text':'Resume'},{'wait':500},
-  {'click_text':'Checkpoints'},{'wait':500},*dump('uncertain-points'),{'key':'escape'},{'quit':True}])
- assert 'Recovery review required' in (out/'uncertain.md').read_text(encoding='utf-8')
+ uncertain=run('uncertain',[{'wait_ready':30000},{'wait':600},{'resume':'goose:'+thread},{'wait':600},{'wait_idle':30000},*export('uncertain'),{'wait':500},
+  {'click_text':'Checkpoints'},{'wait':500},*dump('uncertain-points'),{'key':'escape'},
+  {'send':'Continue after interrupted tool'}, {'wait_idle':30000}, {'wait_summaries':30000}, {'quit':True}])
+ assert 'Recovery review required' not in (out/'uncertain.md').read_text(encoding='utf-8')
  assert 'Uncertain fixture work' in (out/'uncertain.md').read_text(encoding='utf-8')
  assert '[ActionRequired: ToolConfirmationResponse' not in (out/'uncertain.md').read_text(encoding='utf-8'), 'Hidden approval metadata was not decoded'
- assert sum(not r['summary'] for r in provider.requests)==ordinary_before,'Approved tool continuation activated on history load'
+ assert sum(not r['summary'] for r in provider.requests)==ordinary_before+1,'Approved tool continuation activated on history load'
  with sqlite3.connect(database_path) as database:
-  assert database.execute('SELECT message_id,role,content_json,metadata_json FROM messages WHERE session_id=? ORDER BY id',(thread,)).fetchall()==stored_before,'Recovery view changed stored messages'
+  after=database.execute('SELECT message_id,role,content_json,metadata_json FROM messages WHERE session_id=? ORDER BY id',(thread,)).fetchall()
+  assert after[:len(stored_before)]==stored_before,'Recovery changed original messages'
+  failures=[block for row in after[len(stored_before):] for block in json.loads(row[2]) if block.get('type')=='toolResponse' and block.get('id')=='uncertain-tool']
+  assert len(failures)==1 and failures[0]['toolResult']['value']['isError'] is True, failures
  provider.write_evidence(out)
- receipt=dict(binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_bytes=max(peak,interrupted,recovered,modes,uncertain),turn_checkpoints=4,checks=['manual/turn capture','native diff','file + exact conversation restore','retained backup','draft retention','stale review guard','original checkout unchanged','durable interrupted restore','restart review only','explicit rollback','files-only restore','conversation-only restore','approved uncertain tools never activated','read-only recovery preserves stored messages'])
+ receipt=dict(binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_bytes=max(peak,interrupted,recovered,modes,uncertain),turn_checkpoints=4,checks=['manual/turn capture','native diff','file + exact conversation restore','retained backup','draft retention','stale review guard','original checkout unchanged','durable interrupted restore','automatic keep current','retained backup restore','files-only restore','conversation-only restore','approved uncertain tools never activated','failed tool response persisted before normal Send'])
  (out/'result.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8');print(json.dumps(receipt,indent=2))
 finally:provider.close()

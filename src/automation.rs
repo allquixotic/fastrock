@@ -44,6 +44,11 @@ pub(crate) enum Step {
     WaitReady(u64),
     /// Wait until the active thread has an id and no running turn.
     WaitIdle(u64),
+    /// Wait for the active conversation's asynchronously resolved scope label.
+    WaitScope {
+        scope: String,
+        timeout_ms: u64,
+    },
     /// Wait for session provider/model/effort controls to finish their request.
     WaitGoose(u64),
     /// Wait for native capability input and asynchronous load/save to settle.
@@ -314,6 +319,7 @@ impl AppController {
                 Step::Wait(_)
                 | Step::WaitReady(_)
                 | Step::WaitIdle(_)
+                | Step::WaitScope { .. }
                 | Step::WaitGoose(_)
                 | Step::WaitCapabilities(_)
                 | Step::WaitContext(_)
@@ -1114,6 +1120,13 @@ impl AppController {
                         ),
                     )
             }
+            Step::WaitScope { scope, timeout_ms } => {
+                self.window
+                    .global::<crate::ui::AppState>()
+                    .get_active_scope()
+                    == scope.as_str()
+                    || timed_out(elapsed, *timeout_ms, "conversation scope")
+            }
             Step::WaitIdle(timeout) => {
                 let idle = self
                     .active_thread_index()
@@ -1146,7 +1159,7 @@ impl AppController {
                 let ready = !state.get_busy()
                     && !state.get_changing()
                     && !state.get_setup_loading()
-                    && state.get_options().row_count() > 0;
+                    && (state.get_options().row_count() > 0 || !state.get_error().is_empty());
                 ready || timed_out(elapsed, *timeout, "Session controls ready")
             }
             Step::WaitCapabilities(timeout) => {

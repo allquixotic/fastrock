@@ -107,19 +107,19 @@ try:
     peak = max(peak, run('restart', [
         {'wait_ready': 30000}, {'resume': sid}, {'wait_idle': 30000}, {'wait_summaries': 30000},
         {'context_report': ['open']}, {'wait_context': 30000}, *snapshot('paused'),
-        {'key': 'escape'}, {'wait': 200}, {'click_text': 'Resume'}, {'wait_goose': 30000},
+        {'key': 'escape'}, {'wait': 200},  {'wait_goose': 30000},
         {'context_report': ['open']}, {'wait_context': 30000}, *snapshot('restored'),
         {'new_thread': str(out / 'project')}, {'wait_idle': 30000}, *snapshot('switched'), {'quit': True},
     ]))
     paused, restored, switched = map(read, ('paused', 'restored', 'switched'))
-    assert 'Resume' in paused['status'] and not paused['rows'], paused
+    assert paused['rows'] and not paused['status'].startswith('Resume'), paused
     assert restored['rows'] and restored['collapseThinking'], restored
     assert restored['thinking'] and all(not t['expanded'] for t in restored['thinking'])
     assert not switched['open'] and not switched['rows'], 'Other conversation retained context report'
     assert len(provider.requests) == before, 'Restore/report replayed a model request'
     receipt = dict(result='PASS', binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(), peak_process_bytes=peak,
                    native_report=True, previews=True, no_inference=True, thinking_opt_in=True,
-                   manual_expansion=True, export_preserved=True, persisted_restart=True, restored_resume_guard=True,
+                   manual_expansion=True, export_preserved=True, persisted_restart=True, restored_lazy_activation=True,
                    conversation_switch_clears_report=True)
     (out / 'acceptance.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     print('PASS: native context report, thinking settings, history and Resume guards', flush=True)

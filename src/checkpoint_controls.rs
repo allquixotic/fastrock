@@ -120,43 +120,143 @@ impl AppController {
             state.set_reviewed(false);
             state.set_recovery(false);
         }
-        self.backend.spawn(async move{
-            let result=backend.goose_request(&format!("fastrock/checkpoint/{action}"),params).await;
-            crate::ui_thread::post(move|app|{
+        self.backend.spawn(async move {
+            let result = backend
+                .goose_request(&format!("fastrock/checkpoint/{action}"), params)
+                .await;
+            crate::ui_thread::post(move |app| {
                 // Restore completion must refresh any surviving tab even if its
                 // panel was closed/switched while the worker was running.
-                if result.as_ref().is_ok_and(|v|v["reload"]==true){if let Some(index)=app.tab_index_for_thread(&id){app.resume_thread_in_tab(index,id.clone(),false);}}
-                if app.checkpoints.epoch!=epoch || app.checkpoints.thread.as_ref()!=Some(&id){return}
-                let state=app.window.global::<CheckpointState>();state.set_busy(false);
-                match result {
-                    Err(e)=>{state.set_status(e.into());state.set_reviewed(false);app.checkpoints.review=None;},
-                    Ok(value)=>match action.as_str(){
-                        "list"=>{
-                            app.checkpoints.before=value["page"]["before"].as_str().map(str::to_owned);
-                            app.checkpoints.pending=value["pending"]["id"].as_str().map(str::to_owned);
-                            state.set_blocked(app.checkpoints.pending.is_some());state.set_more(app.checkpoints.before.is_some());
-                            let rows=value["page"]["points"].as_array().into_iter().flatten().map(|p|{
-                                let time=chrono::DateTime::from_timestamp_millis(p["created_ms"].as_i64().unwrap_or_default()).map(|t|t.with_timezone(&chrono::Local).format("%b %d %H:%M:%S").to_string()).unwrap_or_default();
-                                CheckpointRow{id:p["id"].as_str().unwrap_or("").into(),title:p["label"].as_str().unwrap_or("Checkpoint").into(),detail:format!("{time} · {} messages{}",p["boundary"]["count"],if p["workspace"].is_null(){""}else{" · files"}).into()}
-                            }).collect::<Vec<_>>();state.set_rows(ModelRc::new(VecModel::from(rows)));
-                            if let Some(id)=app.checkpoints.pending.clone(){app.checkpoints_request("review",json!({"id":id}));}
-                        },
-                        "review"=>{
-                            let review=&value["review"];let point=&review["checkpoint"];
-                            state.set_selected(point["id"].as_str().unwrap_or("").into());
-                            let files=review["complete"]==true && !point["workspace"].is_null();let conversation=value["targetCount"].is_number();
-                            state.set_can_files(files);state.set_can_conversation(conversation);state.set_files(files);state.set_conversation(conversation);state.set_reviewed(true);
-                            state.set_recovery(app.checkpoints.pending.as_deref()==point["id"].as_str());
-                            let mut description=format!("{}\n{} file changes. Conversation: {} → {} messages.",point["label"].as_str().unwrap_or("Checkpoint"),review["files"].as_array().map_or(0,Vec::len),value["current"]["count"],value["targetCount"].as_u64().map_or("unavailable".into(),|n|n.to_string()));
-                            if review["complete"]!=true{description.push_str("\nFile review exceeds its limit; file restore is disabled.");}
-                            if let Some(reason)=value["conversationError"].as_str().filter(|s|!s.is_empty()){description.push('\n');description.push_str(reason);}
-                            state.set_description(description.into());
-                            let file_headers=review["files"].as_array().into_iter().flatten().map(|f|SharedString::from(format!("{}  {} → {}  {}",f["kind"].as_str().unwrap_or(""),f["checkpoint_mode"].as_str().unwrap_or(""),f["current_mode"].as_str().unwrap_or(""),f["path"].as_str().unwrap_or(""))));
-                            state.set_lines(ModelRc::new(VecModel::from(file_headers.chain(review["diff"].as_str().unwrap_or("").lines().map(SharedString::from)).collect::<Vec<_>>())));
-                            app.checkpoints.review=Some(value);
-                        },
-                        _=>{app.checkpoints_request("list",json!({}));app.window.global::<CheckpointState>().set_status(if action=="capture"{"Checkpoint saved."}else{"Restore saved. Queued work remains paused; review it before choosing Resume."}.into());}
+                if result.as_ref().is_ok_and(|v| v["reload"] == true) {
+                    if let Some(index) = app.tab_index_for_thread(&id) {
+                        app.resume_thread_in_tab(index, id.clone(), false);
                     }
+                }
+                if app.checkpoints.epoch != epoch || app.checkpoints.thread.as_ref() != Some(&id) {
+                    return;
+                }
+                let state = app.window.global::<CheckpointState>();
+                state.set_busy(false);
+                match result {
+                    Err(e) => {
+                        state.set_status(e.into());
+                        state.set_reviewed(false);
+                        app.checkpoints.review = None;
+                    }
+                    Ok(value) => match action.as_str() {
+                        "list" => {
+                            app.checkpoints.before =
+                                value["page"]["before"].as_str().map(str::to_owned);
+                            app.checkpoints.pending =
+                                value["pending"]["id"].as_str().map(str::to_owned);
+                            state.set_blocked(app.checkpoints.pending.is_some());
+                            state.set_more(app.checkpoints.before.is_some());
+                            let rows = value["page"]["points"]
+                                .as_array()
+                                .into_iter()
+                                .flatten()
+                                .map(|p| {
+                                    let time = chrono::DateTime::from_timestamp_millis(
+                                        p["created_ms"].as_i64().unwrap_or_default(),
+                                    )
+                                    .map(|t| {
+                                        t.with_timezone(&chrono::Local)
+                                            .format("%b %d %H:%M:%S")
+                                            .to_string()
+                                    })
+                                    .unwrap_or_default();
+                                    CheckpointRow {
+                                        id: p["id"].as_str().unwrap_or("").into(),
+                                        title: p["label"].as_str().unwrap_or("Checkpoint").into(),
+                                        detail: format!(
+                                            "{time} · {} messages{}",
+                                            p["boundary"]["count"],
+                                            if p["workspace"].is_null() {
+                                                ""
+                                            } else {
+                                                " · files"
+                                            }
+                                        )
+                                        .into(),
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+                            state.set_rows(ModelRc::new(VecModel::from(rows)));
+                            if let Some(id) = app.checkpoints.pending.clone() {
+                                app.checkpoints_request("review", json!({"id":id}));
+                            }
+                        }
+                        "review" => {
+                            let review = &value["review"];
+                            let point = &review["checkpoint"];
+                            state.set_selected(point["id"].as_str().unwrap_or("").into());
+                            let files = review["complete"] == true && !point["workspace"].is_null();
+                            let conversation = value["targetCount"].is_number();
+                            state.set_can_files(files);
+                            state.set_can_conversation(conversation);
+                            state.set_files(files);
+                            state.set_conversation(conversation);
+                            state.set_reviewed(true);
+                            state.set_recovery(
+                                app.checkpoints.pending.as_deref() == point["id"].as_str(),
+                            );
+                            let mut description = format!(
+                                "{}\n{} file changes. Conversation: {} → {} messages.",
+                                point["label"].as_str().unwrap_or("Checkpoint"),
+                                review["files"].as_array().map_or(0, Vec::len),
+                                value["current"]["count"],
+                                value["targetCount"]
+                                    .as_u64()
+                                    .map_or("unavailable".into(), |n| n.to_string())
+                            );
+                            if review["complete"] != true {
+                                description.push_str(
+                                    "\nFile review exceeds its limit; file restore is disabled.",
+                                );
+                            }
+                            if let Some(reason) = value["conversationError"]
+                                .as_str()
+                                .filter(|s| !s.is_empty())
+                            {
+                                description.push('\n');
+                                description.push_str(reason);
+                            }
+                            state.set_description(description.into());
+                            let file_headers =
+                                review["files"].as_array().into_iter().flatten().map(|f| {
+                                    SharedString::from(format!(
+                                        "{}  {} → {}  {}",
+                                        f["kind"].as_str().unwrap_or(""),
+                                        f["checkpoint_mode"].as_str().unwrap_or(""),
+                                        f["current_mode"].as_str().unwrap_or(""),
+                                        f["path"].as_str().unwrap_or("")
+                                    ))
+                                });
+                            state.set_lines(ModelRc::new(VecModel::from(
+                                file_headers
+                                    .chain(
+                                        review["diff"]
+                                            .as_str()
+                                            .unwrap_or("")
+                                            .lines()
+                                            .map(SharedString::from),
+                                    )
+                                    .collect::<Vec<_>>(),
+                            )));
+                            app.checkpoints.review = Some(value);
+                        }
+                        _ => {
+                            app.checkpoints_request("list", json!({}));
+                            app.window.global::<CheckpointState>().set_status(
+                                if action == "capture" {
+                                    "Checkpoint saved."
+                                } else {
+                                    "Restore saved."
+                                }
+                                .into(),
+                            );
+                        }
+                    },
                 }
             });
         });

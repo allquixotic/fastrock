@@ -44,13 +44,19 @@ explicitly Quit the old version before starting the new executable. A workspace
 database ownership error means another process still holds its lock; it is not
 evidence of corruption and does not call for replacing the database.
 
-Opening conversation history allows at most two seconds for the workspace
-checkpoint recovery check. If storage is busy or unavailable, saved messages
-remain readable in a read-only view. **Resume** retries the check; uncertain tools
-or an interrupted restore still require review in Checkpoints. Workspace tool
-discovery itself does not open the database. Actual operations still require
-exclusive ownership and normal workspace validation. Settings diagnostics show
-active restoration stages if loading stalls.
+Opening conversation history does not start model or tool work. Send normally to
+continue; Fastrock prepares the conversation when needed. Interrupted tools are
+recorded as failed and are never replayed automatically. If storage or provider
+setup fails, saved messages remain readable and the next Send can retry. Workspace
+operations still require exclusive ownership and normal validation. Settings
+diagnostics show active restoration stages if loading stalls.
+
+The composer saves each chat's draft, cursor and undo/redo history to disk in the
+background, coalescing edits for 200 ms. **Ctrl+Z** undoes; **Ctrl+Y** or
+**Ctrl+Shift+Z** redoes. The context menu offers both actions. History survives tab
+switches and restart, including Undo after Send. Up to 512 edits and 2 MiB of text
+deltas are retained, plus the most recent edit if larger. A crash can lose edits
+made after the last completed save; explicit Quit flushes pending saves.
 
 Open **Checkpoints** in the conversation header or command palette. Fastrock
 captures the conversation boundary and virtual source revision before and after
@@ -65,10 +71,10 @@ File restore requires an isolated workspace, no active terminal/temporary lease,
 and a complete current review. Large or stale reviews cannot restore files.
 Conversation rewind checks exact message content and boundaries; if compaction
 changed that history, the panel explains why conversation restore is unavailable.
-If a restore is interrupted, reopen Checkpoints to **Restore retained backup**
-or **Keep reviewed state**. Queued work stays paused until Resume. Saved tool
-calls with uncertain outcomes open as read-only history; restore a completed
-checkpoint or fork before the interrupted turn to continue without replaying them.
+If a restore is interrupted, Fastrock keeps the current saved state and retains
+its backup as a checkpoint you can restore manually. No review or Resume step
+blocks the conversation. Explicitly queued messages remain available through
+**Send**, or follow the next new message after it completes.
 
 Conversations appear in the sidebar. Click the active title in the header for
 rename, fork, compact, export and other conversation actions. **Open tabs** also

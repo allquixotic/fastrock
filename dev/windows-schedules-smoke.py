@@ -204,7 +204,7 @@ try:
     restored = task(read('after-crash'), 'Hold')
     assert restored['paused'] and restored['active'] is None and restored['last']['status'] == 'needs_review', restored
     assert restored['last']['id'] == active['id'] and restored['last']['child'] == active['child']
-    assert any(c['id'] == 'goose:' + active['child'] and c['paused'] for c in read('child-recovered')['navigation']['openChats'])
+    assert any(c['id'] == 'goose:' + active['child'] and not c['paused'] for c in read('child-recovered')['navigation']['openChats'])
     assert len([r for r in provider.requests if r['prompt'] == 'hold-schedule' and not r['summary']]) == 2
     bindings = [json.loads(p.read_text(encoding='utf-8')) for p in out.rglob('*.binding.json')]
     children = [b for b in bindings if (b.get('delegation') or {}).get('scheduled')]

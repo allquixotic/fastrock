@@ -1,9 +1,10 @@
 //! Saved messages are readable without credentials, extensions or a workspace.
-//! Agent activation is a separate, explicit Resume operation.
+//! Agent activation happens lazily on the next user action.
 use super::*;
 use goose_provider_types::conversation::{Conversation, message::MessageContentBlock as Block};
 
 pub(super) fn project_saved(session: &mut Session, conversation: &Conversation) {
+    let unfinished = super::recovery_history::unfinished(conversation);
     session.replaying = true;
     for (index, original) in conversation.messages().iter().enumerate() {
         if !original.is_user_visible() {
@@ -27,7 +28,7 @@ pub(super) fn project_saved(session: &mut Session, conversation: &Conversation) 
                 Block::Error(e) => chunk(user, false, json!({"type":"text","text":e.message})),
                 Block::ToolRequest(t) => match &t.tool_call {
                     Ok(call) => {
-                        json!({"sessionUpdate":"tool_call","toolCallId":t.id,"title":call.name,"rawInput":call.arguments,"status":"pending"})
+                        json!({"sessionUpdate":"tool_call","toolCallId":t.id,"title":call.name,"rawInput":call.arguments,"status":if unfinished.contains(&t.id){"failed"}else{"pending"},"rawOutput":if unfinished.contains(&t.id){super::recovery_history::INTERRUPTED}else{""}})
                     }
                     Err(e) => {
                         json!({"sessionUpdate":"tool_call","toolCallId":t.id,"title":"Invalid tool request","status":"failed","rawOutput":e.to_string()})
@@ -64,11 +65,7 @@ pub(super) fn project_saved(session: &mut Session, conversation: &Conversation) 
             session.update(&update);
         }
     }
-    session.recovery_only = super::recovery_history::uncertain(conversation);
-    if session.recovery_only {
-        session.update(&json!({"sessionUpdate":"agent_message_chunk","messageId":"fastrock-recovery-notice",
-            "content":{"type":"text","text":"**Recovery review required**\n\nThis conversation contains tool calls whose outcomes are uncertain. Open Checkpoints to restore a completed boundary, or fork before the interrupted turn. No saved tools have been resumed."}}));
-    }
+    session.recovery_only = false;
     session.replaying = false;
     session.loaded = true;
     session.activation_pending = true;
@@ -117,13 +114,6 @@ impl Adapter {
         .await
         .map_err(|_| error("Saved history projection failed"))?;
         self.sessions.lock().await.insert(id.to_owned(), session);
-        // Queue recovery is independent of browsing. Its notification asks the
-        // UI to refresh drafts separately; slow sidecar IO cannot hide messages.
-        // Pausing must preserve any already-published interrupted sends. The
-        // separate queue refresh publishes its full state, including cache hits.
-        let _ = self.events.try_send(AppServerEvent::GooseHistoryPaused {
-            thread_id: ui_id(id),
-        });
         let _ = self.emit(json!({"method":"thread/queue/changed","params":{"threadId":ui_id(id)}}));
         self.saved_history_response(id, params, resume)
             .await?

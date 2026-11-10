@@ -42,18 +42,30 @@ impl Adapter {
         };
         Ok((self.stores.connection(home), workspace))
     }
-    pub(super) async fn checkpoint_pending(&self, id: &str) -> Result<bool> {
-        if !self.embedded_runtime {
-            return Ok(false);
-        }
-        let (connection, _) = self.checkpoint_context(id).await?;
-        Ok(journal::pending(&connection, id.into()).await?.is_some())
-    }
     pub(super) async fn checkpoint_ready(&self, id: &str) -> Result<()> {
-        ensure!(
-            !self.checkpoint_pending(id).await?,
-            "An interrupted restore needs review in Checkpoints before work can resume"
-        );
+        if !self.embedded_runtime {
+            return Ok(());
+        }
+        let (connection, workspace) = self.checkpoint_context(id).await?;
+        if let Some(pending) = journal::pending(&connection, id.into()).await? {
+            // A crashed restore is a failed operation. Keep the current durable
+            // state and retained undo backup; never replay or roll back tools.
+            let review = disk::review(
+                &connection,
+                id.into(),
+                pending.backup.capture.id.clone(),
+                workspace,
+            )
+            .await?;
+            journal::resolve(
+                &connection,
+                review,
+                pending.backup.capture.id,
+                false,
+                |_| Ok(()),
+            )
+            .await?;
+        }
         Ok(())
     }
     pub(super) async fn checkpoint_capture(
@@ -181,6 +193,7 @@ impl Adapter {
     ) -> Result<Value> {
         let (connection, workspace) = self.checkpoint_context(id).await?;
         if action == "list" {
+            self.checkpoint_ready(id).await?;
             let page = disk::list(
                 &connection,
                 id.into(),

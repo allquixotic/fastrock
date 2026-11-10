@@ -93,7 +93,7 @@ try:
         assert 110 <= speed['x']-labels[-1]['x'] <= 145,(speed,labels)
         assert abs(speed['x']-provider['x'])<1,(speed,provider)
     first=json.loads((out/'tabs.json').read_text(encoding='utf-8'))['navigation']['openChats'][0]['id']
-    peak=max(peak,run('restore',[{'wait_ready':30000},{'wait':600},{'resume':first},{'wait_idle':30000},{'click_text':'Resume'},*dump('restored'),
+    peak=max(peak,run('restore',[{'wait_ready':30000},{'wait':600},{'resume':first},{'wait_idle':30000},{'click_text':'Model options  ▾'},{'wait_goose':30000},*dump('restored'),
         *choose('model',LUNA),*dump('luna'),*choose('speed','ultrafast'),*dump('rejected'),
         *choose('model',SOL),*dump('reset'),{'quit':True}]))
     assert option('restored','speed')['current']=='ultrafast',read('restored')

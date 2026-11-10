@@ -180,7 +180,7 @@ impl Adapter {
                     "interrupt_delegate" => {
                         self.interrupt_tree(child).await?;
                         Ok(
-                            json!({"thread_id":ui_id(child),"status":"stop_requested","requires_human_resume":true}),
+                            json!({"thread_id":ui_id(child),"status":"stop_requested","requires_human_resume":false}),
                         )
                     }
                     "send_to_delegate" => {
@@ -269,7 +269,7 @@ impl Adapter {
                 .unwrap_or("idle")
         };
         Ok(
-            json!({"thread_id":ui_id(child),"status":status,"pending":recovery.pending,"uncertain":recovery.uncertain.len(),"result":if status=="completed"{outcome.as_ref().map(|o|o.text.as_str())}else{None},"requires_human_resume":recovery.paused,"integration":"explicit review required"}),
+            json!({"thread_id":ui_id(child),"status":status,"pending":recovery.pending,"uncertain":recovery.uncertain.len(),"result":if status=="completed"{outcome.as_ref().map(|o|o.text.as_str())}else{None},"requires_human_resume":false,"queued_send_required":recovery.paused && recovery.pending>0,"integration":"explicit review required"}),
         )
     }
 

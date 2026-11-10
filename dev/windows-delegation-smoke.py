@@ -111,12 +111,15 @@ class DelegationFixture(ProviderFixture):
             if step == 0:
                 operation = ('list_delegates', {})
             elif step == 1:
-                assert any(c['thread_id'] == self.holding and c['status'] == 'paused' for c in result['children']), result
-                operation = ('send_to_delegate', dict(thread_id=self.holding, message='delegation-paused-followup'))
+                assert any(c['thread_id'] == self.holding and c['status'] == 'idle' for c in result['children']), result
+                operation = ('send_to_delegate', dict(thread_id=self.holding, message='delegation-new-followup'))
             elif step == 2:
                 operation = ('wait_delegate', dict(thread_id=self.holding))
             elif step == 3:
-                assert result['status'] == 'paused' and result['pending'] == 1, result
+                assert result['status'] == 'completed' and result['pending'] == 0, result
+                assert not result['requires_human_resume'], result
+        elif prompt == 'delegation-new-followup':
+            assert step == 0, 'New follow-up was repeated'
         else:
             raise AssertionError('Unexpected dispatched prompt: ' + prompt)
         content = [{'text': 'child-finished' if prompt == 'delegation-child' else 'followup-finished' if prompt == 'delegation-followup' else 'parent-finished'}]
@@ -228,35 +231,34 @@ try:
         {'wait_idle': 30000}, {'send': '/status'}, {'wait': 500},
         {'sidebar': ['dump', str(out / 'restored-agents.json')]}, {'wait': 300},
         {'snapshot': str(out / 'restored-delegates.png')}, {'wait': 300},
-        {'click_text': 'Resume'}, {'wait': 500}, *turn('delegation-recovered-parent'),
+         {'wait': 500}, *turn('delegation-recovered-parent'),
         {'quit': True}], 'restored'))
     assert provider.steps.get('delegation-recovered-parent') == 4, provider.steps
     restored = json.loads((out / 'restored-agents.json').read_text(encoding='utf-8'))['navigation']['agents']
     assert {a['id'] for a in restored} == {provider.child, provider.holding}, restored
     assert len([r for r in provider.requests if r['prompt'] == 'hold-delegation-child']) == 1, 'Recovered task was replayed'
-    assert not any(r['prompt'] == 'delegation-paused-followup' for r in provider.requests), 'Paused queue ran'
+    assert len([r for r in provider.requests if r['prompt'] == 'delegation-new-followup']) == 1, 'New follow-up did not run exactly once'
     peak = max(peak, run([{'wait_ready': 30000}, {'resume': 'goose:' + parent_id}, {'wait': 1000},
-        {'wait_idle': 30000}, {'click_text': 'Resume'}, {'wait': 500},
+        {'wait_idle': 30000},  {'wait': 500},
         {'send': 'delegation-crash-parent'}, {'wait': 60000}], 'crash'))
     peak = max(peak, run([{'wait_ready': 30000}, {'resume': 'goose:' + parent_id}, {'wait': 1500},
         {'wait_idle': 30000}, {'resume': provider.crashing}, {'wait': 1000}, {'wait_idle': 30000},
-        {'click_text': 'Review interrupted sends (1)'}, {'wait': 300},
         {'sidebar': ['dump', str(out / 'crash-restored.json')]},
         {'wait': 1000}, {'quit': True}], 'after-crash'))
     assert len([r for r in provider.requests if r['prompt'] == 'hold-delegation-crash']) == 1, 'Crashed task replayed'
     recovered_chats = json.loads((out / 'crash-restored.json').read_text(encoding='utf-8'))['navigation']['openChats']
-    assert any(c['id'] == provider.crashing and c['paused'] for c in recovered_chats), recovered_chats
+    assert any(c['id'] == provider.crashing and not c['paused'] for c in recovered_chats), recovered_chats
     crash_binding, = [p for p in out.rglob('*.binding.json') if
         (json.loads(p.read_text(encoding='utf-8')).get('delegation') or {}).get('task_id') == 'crashing']
     queue = json.loads(crash_binding.with_name(crash_binding.name.replace('.binding.json', '.json')).read_text(encoding='utf-8'))
-    assert queue['paused'] and len(queue['uncertain']) == 1 and not queue['pending'], queue
+    assert not queue['paused'] and not queue['uncertain'] and not queue['pending'], queue
     (out / 'acceptance.json').write_text(json.dumps(dict(result='PASS', binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
         peak_process_bytes=peak, fresh_child_context=True, isolated_workspace=True, source_preserved=True,
         idempotent_delegation=True, wait_and_followup=True, child_ownership_guard=True,
-        parent_stop_cancels_child=True, restart_requires_resume=True, paused_followup_retained=True,
+        parent_stop_cancels_child=True, restart_requires_no_review=True, new_followup_runs_once=True,
         forced_crash_no_tool_replay=True, native_child_pane_restored=True,
         no_goose_shared_cwd_delegate=True, no_backend_installed=True), indent=2), encoding='utf-8')
-    print('PASS: isolated delegation, retry identity, followup/wait, ownership, Stop and restart Resume', flush=True)
+    print('PASS: isolated delegation, retry identity, followup/wait, ownership, Stop and restart without Resume', flush=True)
 finally:
     provider.close()
     provider.write_evidence(out)

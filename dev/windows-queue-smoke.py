@@ -33,19 +33,16 @@ try:
  peak=max(peak,run('restart',[{'wait_ready':30000},{'wait':1200},*dump('restored'),
   {'snapshot':str(out/'restored.png')},{'wait':1000},*dump('selected'),
   # The native exact-label helper selects the last matching row: Queue second.
-  {'click_text':'Resume & send'},{'wait':500},{'wait_idle':30000},{'wait':1500},*dump('drained'),
-  {'click_text':'Review interrupted sends (1)'},{'wait':300},{'click_text':'Copy recovery records'},{'wait':200},
-  {'selection':['capture',str(out/'uncertain.json')]},{'quit':True}]))
+  {'queue':['action','2','send']},{'wait':500},{'wait_idle':30000},{'wait':1500},*dump('drained'),
+  {'quit':True}]))
  assert read('restored')['paused'] and [r['text'] for r in read('restored')['rows']]==expected,read('restored')
  assert prompts()==['hold queue fixture','Queue second','Queue third','Queue first é'],prompts()
  assert not read('drained')['rows'] and not read('drained')['paused'],read('drained')
- uncertain=read('uncertain')
- assert len(uncertain)==1 and uncertain[0]['input'][0]['text']=='hold queue fixture',uncertain
  peak=max(peak,run('final-restart',[{'wait_ready':30000},{'wait':1500},*dump('final'),{'quit':True}]))
  assert prompts()==['hold queue fixture','Queue second','Queue third','Queue first é'],'Restart dispatched work'
  assert not read('final')['rows'],read('final')
  assert not provider.errors,provider.errors
- receipt=dict(result='PASS',binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_process_bytes=peak,native_reorder=True,busy_preserves_queue=True,restart_paused=True,explicit_selected_resume=True,exact_provider_order=prompts(),uncertain_never_replayed=True)
+ receipt=dict(result='PASS',binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_process_bytes=peak,native_reorder=True,busy_preserves_queue=True,restart_paused=True,explicit_selected_send=True,exact_provider_order=prompts(),uncertain_never_replayed=True)
  (out/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n');print('PASS: native queue ordering, selected Resume, persistence and uncertain-send protection',flush=True)
 finally:
  provider.close();provider.write_evidence(out)

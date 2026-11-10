@@ -96,6 +96,13 @@ impl AppServerRequestHandle {
                     | "fastrock/project/open"
                     | "fastrock/goose/resumeQueue"
                     | "thread/queue/start"
+                    | "turn/start"
+                    | "thread/compact/start"
+                    | "fastrock/context/report"
+                    | "thread/shellCommand"
+                    | "review/start"
+                    | "fastrock/goose/setConfig"
+                    | "fastrock/goose/config"
             )
         );
         let id = value["id"].to_string();

@@ -5152,7 +5152,7 @@ dependencies = [
 
 [[package]]
 name = "fastrock"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "accesskit 0.25.2",
  "accesskit_consumer 0.39.2",

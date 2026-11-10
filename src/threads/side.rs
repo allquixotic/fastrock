@@ -319,10 +319,8 @@ impl AppController {
         let thread_id = self.thread_tab_mut(index).and_then(|thread| {
             thread.phase = ThreadPhase::Error;
             thread.last_error = Some(message.to_string());
-            thread.recovery_paused = true;
-            for pending in thread.pending_inputs.drain(..) {
-                thread.recovered_sends.push(json!({"id":format!("local:{}",pending.client_id),"input":pending.input,"recoveryReason":"Side-chat setup failed. Review and send manually."}));
-            }
+            thread.recovery_paused = false;
+            thread.pending_inputs.clear();
             thread.thread_id.take()
         });
         if let Some(thread_id) = thread_id {

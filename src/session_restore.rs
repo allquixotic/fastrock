@@ -24,6 +24,8 @@ const MAX_BYTES: u64 = 64 * 1024 * 1024;
 #[derive(Clone, Default, Serialize, Deserialize)]
 struct Draft {
     text: String,
+    #[serde(default)]
+    history: Option<crate::composer::history::History>,
     attachments: Vec<PathBuf>,
     mode: ModeKind,
     pre_plan_effort: Option<Option<ReasoningEffort>>,
@@ -79,6 +81,7 @@ impl Chat {
             xtab_enabled: thread.xtab_enabled,
             draft: Draft {
                 text: text.unwrap_or_else(|| thread.composer.text.clone()),
+                history: Some(thread.composer.history.clone()),
                 attachments: thread
                     .composer
                     .attachments
@@ -107,9 +110,15 @@ impl Chat {
         thread.turn_overrides = self.overrides;
         thread.xtab_enabled = self.xtab_enabled;
         thread.phase = ThreadPhase::Idle;
-        thread.recovery_paused = true;
+        thread.recovery_paused = false;
+        let history = self.draft.history.unwrap_or_else(|| {
+            let mut history = crate::composer::history::History::default();
+            history.cursor = self.draft.text.len();
+            history
+        });
         thread.composer = ComposerDraft {
             text: self.draft.text,
+            history,
             attachments: self
                 .draft
                 .attachments
@@ -120,15 +129,8 @@ impl Chat {
             pre_plan_effort: self.draft.pre_plan_effort,
             ..Default::default()
         };
-        thread.recovered_sends = self.recovered;
-        for pending in self.pending {
-            // The latest UI snapshot can predate the backend accepting this send.
-            // Only the backend dispatch journal can prove whether replay is safe.
-            let id = format!("local:{}", pending.client_id);
-            if !thread.recovered_sends.iter().any(|v| v["id"] == id) {
-                thread.recovered_sends.push(json!({"id":id,"clientUserMessageId":pending.client_id,"input":pending.input,"mode":pending.mode,"recoveryReason":"Saved before Fastrock stopped; delivery is unknown. Review conversation history before sending manually."}));
-            }
-        }
+        // Interrupted local submissions are failed, never replayed. Only the
+        // composer draft and durably accepted backend queue survive restart.
         thread
     }
 }
@@ -472,8 +474,7 @@ impl AppController {
                 if thread.composer.text.is_empty() {
                     thread.composer = restored.composer;
                 }
-                thread.recovered_sends.extend(restored.recovered_sends);
-                thread.recovery_paused = true;
+                thread.recovery_paused = false;
                 index
             } else {
                 self.push_tab(TabKind::Thread(Box::new(restored)), true)
@@ -515,7 +516,7 @@ impl AppController {
             .enumerate()
             .filter_map(|(index, tab)| {
                 let thread = tab.thread()?;
-                (thread.recovery_paused && thread.extras.open_generation == 0)
+                (thread.extras.open_generation == 0)
                     .then(|| thread.thread_id.clone().map(|id| (index, id)))
                     .flatten()
             })
@@ -527,9 +528,10 @@ impl AppController {
     pub(crate) fn pause_local_inputs(&mut self) {
         for tab in &mut self.tabs {
             if let TabKind::Thread(thread) = &mut tab.kind {
-                if !thread.pending_inputs.is_empty() || thread.composer.preparing.is_some() {
-                    thread.recovery_paused = true;
-                }
+                thread.pending_inputs.clear();
+                thread.composer.preparing = None;
+                thread.recovered_sends.clear();
+                thread.recovery_paused = false;
             }
         }
         self.save_open_chats();
@@ -645,7 +647,7 @@ mod tests {
         assert!(validate(&duplicate).is_err());
     }
     #[test]
-    fn v47_snapshot_retains_drafts_and_quarantines_local_sends() {
+    fn v107_snapshot_retains_drafts_and_drops_interrupted_local_sends() {
         let mut thread = ThreadTab::new(PathBuf::from("fixture"));
         thread.thread_id = Some("goose:fixture".into());
         thread.composer.text = "unsent é 🔭".into();
@@ -671,7 +673,7 @@ mod tests {
         });
         let bytes = serde_json::to_vec(&Chat::capture(&thread, None)).unwrap();
         let restored = serde_json::from_slice::<Chat>(&bytes).unwrap().restore();
-        assert!(restored.recovery_paused);
+        assert!(!restored.recovery_paused);
         assert!(restored.pending_inputs.is_empty());
         assert_eq!(restored.composer.text, "unsent é 🔭");
         assert_eq!(
@@ -685,19 +687,7 @@ mod tests {
         );
         assert_eq!(restored.composer.mode, ModeKind::Plan);
         assert!(restored.composer.preparing.is_none());
-        assert_eq!(restored.recovered_sends.len(), 2);
-        assert_eq!(
-            restored.recovered_sends[0]["input"][0]["path"],
-            "pending.png"
-        );
-        assert_eq!(restored.recovered_sends[1]["clientUserMessageId"], "send-1");
-        assert_eq!(
-            Chat::capture(&restored, None)
-                .restore()
-                .recovered_sends
-                .len(),
-            2
-        );
+        assert!(restored.recovered_sends.is_empty());
     }
     #[test]
     fn v75_side_snapshot_retains_identity_draft_and_error_without_replay() {
@@ -715,9 +705,62 @@ mod tests {
         assert_eq!(restored.extras.side_parent, thread.extras.side_parent);
         assert_eq!(restored.last_error, thread.last_error);
         assert_eq!(restored.composer.text, thread.composer.text);
-        assert!(restored.recovery_paused && restored.pending_inputs.is_empty());
+        assert!(!restored.recovery_paused && restored.pending_inputs.is_empty());
         assert!(!restored.xtab_enabled);
     }
+    #[tokio::test]
+    async fn v108_snapshot_flush_restores_text_and_undo_redo() {
+        let temp = tempfile::tempdir().unwrap();
+        let writer = Writer::new(&tokio::runtime::Handle::current());
+        writer.enable(temp.path().into());
+        let mut thread = ThreadTab::new(temp.path().into());
+        for text in ["first é", "second 🔭"] {
+            thread
+                .composer
+                .history
+                .observe(&thread.composer.text, text, text.len());
+            thread.composer.text = text.into();
+        }
+        assert!(
+            thread
+                .composer
+                .history
+                .travel(&mut thread.composer.text, false)
+        );
+        writer.save(
+            1,
+            Window {
+                chats: vec![Chat::capture(&thread, None)],
+                ..Default::default()
+            },
+        );
+        writer.flush().await.unwrap();
+        let mut restored = read(temp.path()).unwrap().windows[&1].chats[0]
+            .clone()
+            .restore();
+        assert_eq!(restored.composer.text, "first é");
+        assert!(
+            restored
+                .composer
+                .history
+                .travel(&mut restored.composer.text, true)
+        );
+        assert_eq!(restored.composer.text, "second 🔭");
+        assert!(
+            restored
+                .composer
+                .history
+                .travel(&mut restored.composer.text, false)
+        );
+        assert!(
+            restored
+                .composer
+                .history
+                .travel(&mut restored.composer.text, false)
+        );
+        assert_eq!(restored.composer.text, "");
+    }
+
     #[tokio::test]
     async fn v47_writer_flushes_all_windows_and_closed_tabs() {
         let temp = tempfile::tempdir().unwrap();

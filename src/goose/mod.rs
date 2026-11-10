@@ -689,6 +689,8 @@ impl Adapter {
                 Ok(json!({"cwd": s.info["cwd"], "workspace": s.binding.workspace}))
             }
             "fastrock/goose/config" => {
+                let id = session_id(text(params, "threadId"))?;
+                self.retry_storage_history(id).await?;
                 if self.embedded_runtime {
                     provider_policy::refresh()
                         .await
@@ -705,6 +707,7 @@ impl Adapter {
             "fastrock/goose/saveEffortDefault" => self.save_effort_default(params).await,
             "fastrock/goose/setConfig" => {
                 let id = session_id(text(params, "threadId"))?;
+                self.retry_storage_history(id).await?;
                 let gate = self.gate(id).await;
                 let _lock = gate.lock().await;
                 if self

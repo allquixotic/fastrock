@@ -61,7 +61,7 @@ try:
         history = out/'restored.md'
         owner = start('restore', [{'wait_ready':30000},{'wait':1500},{'wait_idle':30000},
             {'transcript':'export-complete:'+str(history)}, {'wait':15000},
-            {'click_text':'Resume'}, {'wait':1000}, {'wait_idle':30000},
+             {'wait':1000}, {'wait_idle':30000},
             {'transcript':'export-complete:'+str(out/'resumed.md')}, {'wait':750}, {'quit':True}])
         guard = ProcessGuard(owner, timeout=90)
         secondary = None

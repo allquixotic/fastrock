@@ -155,9 +155,13 @@ impl AppController {
             .active_thread_index()
             .and_then(|index| self.thread_tab_mut(index))
         {
+            tab.composer
+                .history
+                .observe(&tab.composer.text, text, cursor);
             tab.composer.text = text.to_owned();
         }
         self.save_open_chats();
+        self.composer_refresh_history();
         let Some(index) = self.active_thread_index() else {
             self.composer_close_popup();
             return;

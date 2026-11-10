@@ -190,18 +190,20 @@ hides it to the native tray while agents continue. Open Fastrock restores it;
 Quit Fastrock saves preferences, stops the backend and exits.
 
 Pending input and the current dispatch share one atomic queue record. After a
-backend restart or session close/reopen, pending work stays paused until Resume.
-Interrupted or uncertain sends appear under Review interrupted sends; they are
-never automatically queued again. Copy preserves the complete input, including
-attachment references, and Dismiss removes only the records reviewed in that
-dialog. Existing legacy queue files migrate on the next successful write; old
-dispatch evidence is retained on disk. Invalid records are not overwritten.
+backend restart or session close/reopen, interrupted dispatches fail without
+replay. Explicitly accepted queued messages remain available through Send, or
+follow the next new message after it completes. Unfinished tool calls receive
+failed results through public Goose storage before activation; original messages
+remain unchanged. There is no conversation recovery review or Resume step.
+Invalid records are not overwritten.
 
 Persistent open chats and drafts are saved separately from Goose history in
 `fastrock-open-chats.json` under the existing UI settings home. On restart they
-reopen in their original native windows with sending paused until Resume. Local submissions
-whose delivery cannot be established appear in the recovery review, never in an
-automatic replay queue. Explicit Quit flushes the coalesced snapshot writer;
+reopen in their original native windows and accept normal Send. Local submissions
+whose delivery cannot be established are dropped without replay. Each chat's text,
+cursor and bounded undo/redo history are saved atomically in the background, with
+200 ms coalescing. Sending clears the composer as an undoable edit. Explicit Quit
+flushes the snapshot writer;
 malformed or newer-format snapshots remain untouched. Image paths are retained
 with drafts; their files are no longer deleted on a fixed age limit. Temporary
 side chats also restore after Quit or a crash, with their drafts and isolated

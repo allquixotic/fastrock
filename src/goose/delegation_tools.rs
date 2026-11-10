@@ -49,9 +49,9 @@ pub(super) fn add(tools: &mut Vec<Value>) {
         function("delegate_task", "Create and start a child with fresh task context, inherited permissions/provider, and isolated vwork workspaces. Use a stable unique task_id: repeating it returns the existing child without rerunning work. Include all needed task context in instructions. No automatic integration.",
             json!({"task_id":{"type":"string","minLength":1,"maxLength":80},"instructions":{"type":"string","minLength":1,"maxLength":32768},"model":{"type":"string"},"effort":{"type":"string"}}),json!(["task_id","instructions"])),
         function("list_delegates", "List your direct child conversations, including durable task identities and recovery status. Use the returned cursor for more.",json!({"cursor":{"type":"string"}}),json!([])),
-        function("wait_delegate", "Wait up to 30 seconds for your child to finish or need Resume. Returns its final textual answer when completed; a timeout does not cancel it. Recovered work stays paused for human Resume.",json!({"thread_id":child}),json!(["thread_id"])),
+        function("wait_delegate", "Wait up to 30 seconds for your child to finish. Returns its final textual answer when completed; a timeout does not cancel it. Interrupted work is never replayed.",json!({"thread_id":child}),json!(["thread_id"])),
         function("send_to_delegate", "Queue a follow-up to your child. A paused child remains paused; do not replay uncertain tool calls. Each call is a new message.",json!({"thread_id":child,"message":{"type":"string","minLength":1,"maxLength":32768}}),json!(["thread_id","message"])),
-        function("interrupt_delegate", "Stop your child and its descendants, preserving work and pausing queues. Interrupted work needs human review and Resume.",json!({"thread_id":child}),json!(["thread_id"]))
+        function("interrupt_delegate", "Stop your child and its descendants, preserving work and pausing queued messages. A new user message or queue Send continues the conversation.",json!({"thread_id":child}),json!(["thread_id"]))
     ]}));
 }
 

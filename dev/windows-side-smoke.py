@@ -58,7 +58,7 @@ try:
  assert not [r for r in provider.requests[before:] if not r['summary']],'Restart replayed side work'
  assert json.loads((out/'restored-draft.json').read_text(encoding='utf-8'))['draft']=='Preserve side draft é'
  assert 'vwork-child-edit' in (out/'restored.md').read_text(encoding='utf-8')
- peak=max(peak,run('crash',[{'wait_ready':30000},{'wait':1500},{'click_text':'Resume'},{'wait':300},{'send':'hold-side-crash'},{'wait':120000}],True))
+ peak=max(peak,run('crash',[{'wait_ready':30000},{'wait':1500},{'wait':300},{'send':'hold-side-crash'},{'wait':120000}],True))
  before=len(provider.requests)
  peak=max(peak,run('discard',[{'wait_ready':30000},{'wait':1500},*export('crash-restored'),{'shortcut':'close-tab'},{'wait':700},
   {'new_thread':str(repo)},{'wait_idle':30000},{'tab_action':'side'},{'wait':600},{'wait_idle':30000},{'send':'ordinary-side-question'},*complete(),{'quit':True}]))
@@ -72,7 +72,7 @@ try:
  assert len(current)==1 and Path(current[0]['cwd'])!=repo and current[0]['thread_id']!='goose:'+side_id,current
  live_id=current[0]['thread_id'].removeprefix('goose:')
  live_encoded=base64.urlsafe_b64encode(live_id.encode()).decode().rstrip('=')
- peak=max(peak,run('close-running',[{'wait_ready':30000},{'wait':1500},{'click_text':'Resume'},{'wait':300},
+ peak=max(peak,run('close-running',[{'wait_ready':30000},{'wait':1500},{'wait':300},
   {'send':'hold-side-explicit-close'},{'wait':700},{'shortcut':'close-tab'},{'wait':300},{'dialog':True},{'wait':2500},{'quit':True}]))
  assert not any(row[0]==live_id for row in dbrows()),dbrows()
  assert not list(path.parent.glob(live_encoded+'.*')),'Late turn completion recreated temporary metadata'

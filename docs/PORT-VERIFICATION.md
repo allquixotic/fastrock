@@ -2920,3 +2920,41 @@ Published ZIP SHA-256:
 `ba252291e365b94d8c6c3d0c4541e5323dc88b4ed436f67e9bbbe58902f9ef53`.
 Signed executable SHA-256:
 `07373e6090e443d55f1684a876d40c0fd1b8fca119e6e574524776e088586939`.
+
+
+## Recovery removal and durable composer undo — 0.5.1 (2026-11-10)
+
+The final candidate passed 869 Windows Rust tests, the standalone embedded Goose
+provider fixture and the isolated renderer. The full native matrix covered 43
+cases; 40 passed initially. The three failures were obsolete paused-child
+assertions and a sidebar assertion that ran before the project catalog returned.
+Corrected cases passed, with seven affected recovery/side/history cases rerun on
+the final candidate plus the sidebar case. Mac compilation, formatting, static
+build policy and workflow lint passed; no Mac application or tests ran.
+Evidence: [games receipt](benchmarks/051-games-2026-11-10.json).
+
+Native fixtures verified that approved but unfinished tool calls receive one
+failed result before normal Send, without changing original stored messages or
+replaying tools. Interrupted restore keeps current saved state and its retained
+backup. Draft text, cursor and undo/redo survive forced process termination,
+clean restart and tab switches. Unicode edits, redo branching and Undo after Send
+passed. Goose 1.58.0 and its configuration/credential storage remain unchanged.
+
+Both versions completed the full 1,000-conversation, eight-stream, 10,000-message
+workload under host/guest headroom and process-memory guards. No reduction was
+needed. These are synthetic loopback-fixture measurements on games.
+
+| Measurement | 0.3.4 baseline | 0.5.1 candidate |
+|---|---:|---:|
+| Observed history-open time | 1,208.6 ms | 201.1 ms |
+| Frame p95 | 8.465 ms | 8.322 ms |
+| Event-loop p95 | 31.396 ms | 20.697 ms |
+| Peak app memory | 194.6 MB | 251.4 MB |
+
+Candidate history navigation reached the first, middle and last pages, exported
+all 10,000 messages and preserved current summaries. Migration preserved the
+legacy source bytes; catalog checks passed. All model, tool and Rally requests
+used isolated local fixtures.
+
+Signed CI must repeat the complete native matrix on the release executable before
+publication. The local candidate is not a release asset.

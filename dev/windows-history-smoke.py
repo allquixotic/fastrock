@@ -48,7 +48,7 @@ try:
     peak = bounded([str(seed.resolve()), '--seed-benchmark', str(parameters)], 'seed')
     sid = json.loads((out / 'seed.json').read_text())['sessions'][0]
     steps = [{'wait_ready': 30000}, {'resize': [1440, 1000]}, {'resume': 'goose:' + sid},
-             {'wait_idle': 30000}, {'wait': 500}, {'click_text':'Resume'}, {'wait_goose':30000},
+             {'wait_idle': 30000}, {'wait': 500},
              {'transcript': 'history-dump:' + str(out / 'before-open.json')},
              {'snapshot': str(out / 'before-open.png')},
              {'click_text': 'History'}, {'wait': 500},

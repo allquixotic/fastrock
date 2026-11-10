@@ -30,7 +30,7 @@ impl Adapter {
             .is_some_and(|s| s.storage_pending)
         {
             return Err(error(
-                "Workspace recovery has not been checked. Choose Resume before forking this history.",
+                "Workspace storage is unavailable; try forking again.",
             ));
         }
         if let Some(task) = &delegation {

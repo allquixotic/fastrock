@@ -15,7 +15,7 @@ Anthropic Claude Opus 5.5 with US cross-region inference. Preserve working route
 reasoning choices follow Goose, including custom saved values if supported.
 Port pinned stable T3 UI/orchestration into native Slint/Rust. Include scheduling,
 isolated child vwork workspaces, explicit merge, durable queues and recovery.
-Restart restores state but needs Resume; never blindly replay uncertain tools.
+Restart restores drafts/history without review or Resume; interrupted tools fail, never replay.
 Projects represent repositories. Permanent Rally virtual project contains
 closable horizontal document tabs/boards without conversation binding. Retain
 on-demand temporary Rally assistance and human Apply. Web previews use browser.
@@ -75,3 +75,8 @@ Slint/AccessKit focus crash, Windows x64 ZIP via GitHub Actions after verificati
 2026-11-09: user explicitly authorizes stable Fastrock 0.5.0, latest direct
 dependencies including unmodified Goose 1.58.0, native context report/viewer and
 opt-in collapse-thinking setting. Windows x64 ZIP via signed CI after verification.
+
+2026-11-10: user explicitly authorizes stable Fastrock 0.5.1. Remove conversation
+recovery review/Resume; settle interrupted tools as failed without replay. Persist
+composer drafts and undo/redo across crashes. Signed Windows x64 ZIP through CI
+after full verification; Mac compile-only and games memory guards retained.

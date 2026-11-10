@@ -6,7 +6,7 @@ rebuilt using Slint buttons, editors, lists, layouts and dialogs. Rally document
 occupy their own horizontal tabs under the permanent Rally sidebar project.
 Conversations use the sidebar and a separate title/action header.
 
-Fastrock 0.5.0 embeds unmodified Goose **1.58.0** and vwork
+Fastrock 0.5.1 embeds unmodified Goose **1.58.0** and vwork
 **0.4.1**. No separate Goose or vwork installation is required. Goose runs on
 Fastrock's Tokio runtime through bounded memory streams. Existing Goose
 configuration, credentials, extensions and sessions remain separate from Fastrock
@@ -16,6 +16,10 @@ start processes.
 Use **View context window** in the conversation info pane for token counts and
 component previews. **Settings → Appearance → Collapse thinking by default**
 starts thinking blocks collapsed when enabled; individual blocks remain expandable.
+
+Saved conversations accept new messages without a recovery review or Resume step.
+Interrupted tools fail without replay. The composer saves each chat's draft and
+undo/redo history to disk; Ctrl+Z can also restore text after Send.
 
 Only Goose's Bedrock, direct OpenAI and direct Anthropic providers are enabled.
 Expand **Goose options** above Send for the session's model, mode and supported

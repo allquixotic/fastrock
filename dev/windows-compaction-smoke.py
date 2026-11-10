@@ -78,8 +78,7 @@ def metadata(row): return json.loads(row[3])
 def text(name): return (out / (name + '.md')).read_text(encoding='utf-8')
 def open_session():
     return [{'wait_ready': 30000}, {'resume': sid}, {'wait_idle': 30000}, {'wait_summaries': 30000},
-            {'tab_action': 'compact'}, {'wait_idle': 30000},  # Must remain paused until explicit Resume.
-            {'click_text': 'Resume'}, {'wait_goose': 10000}]
+]
 
 
 try:

@@ -50,6 +50,7 @@ impl Adapter {
                 .filter(|n| *n <= 86_400_000)
                 .ok_or_else(|| error("Command timeout must be 0–86400000 milliseconds"))?,
         };
+        self.retry_storage_history(&id).await?;
         let gate = self.gate(&id).await;
         let _guard = gate.lock().await;
         let context = {
@@ -68,11 +69,6 @@ impl Adapter {
                 workspace: session.binding.workspace.clone(),
             }
         };
-        if self.load_queue(&id).await?.paused {
-            return Err(error(
-                "Recovered work is paused. Review it and choose Resume first.",
-            ));
-        }
         let tid = uuid::Uuid::new_v4().to_string();
         let message_id = format!("user-command-{tid}");
         let input = json!([{"type":"text","text":format!("!{command}"),"textElements":[]}]);

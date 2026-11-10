@@ -60,7 +60,7 @@ try:
  assert sum(not r['summary'] for r in provider.requests)==before,'Drag dispatched a provider request'
  # Escape cancels a pointer drag while an independent foreground turn keeps running.
  peak=max(peak,run('running-cancel',[
-  {'wait_ready':30000},{'wait':1000},{'resume':third},{'wait':400},{'click_text':'Resume'},{'wait':400},
+  {'wait_ready':30000},{'wait':1000},{'resume':third},{'wait':400},{'wait':400},
   {'send':'hold drag cancellation fixture'},{'wait':800},*dump('running'),
   *pointer('press',first),*pointer('move','drop:pinned'),*pointer('move','drop:pinned'),
   {'key':'Escape'},{'wait':200},*pointer('release','drop:pinned'),*dump('running-cancelled'),

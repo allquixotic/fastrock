@@ -1,0 +1,849 @@
+{
+  "result": "PASS",
+  "version": "0.5.1",
+  "verified_at": "2026-11-10T19:17:36.418688+00:00",
+  "source_base": "ac8664f59c612f480a99892ea68a8d2a6b6b1e24",
+  "source": "0.5.1 working tree committed with this receipt; exact tested executable hashes below",
+  "final_candidate_sha256": "84b0aebf2b17f2fd72cfe12f658d40d6897fac3777f5667188117b17fc89f751",
+  "windows_rust": {
+    "total": 869,
+    "by_target": {
+      "fastrock_workspaces": 20,
+      "embedded_goose": 0,
+      "integration": 7,
+      "durability": 1,
+      "review": 3,
+      "embedded": 7,
+      "store_startup": 0,
+      "checkpoints": 7,
+      "fastrock": 0,
+      "codex_gui": 817,
+      "migration": 2,
+      "accesskit_focus": 4,
+      "renderer": 1
+    },
+    "standalone_embedded_goose": "PASS",
+    "release_policy": "PASS",
+    "fixture_watchdog": "PASS",
+    "guarded_runs": [
+      {
+        "name": "unit-migration",
+        "result": "PASS",
+        "seconds": 1.8269626998808235,
+        "peak_tree_bytes": 18604032
+      },
+      {
+        "name": "unit-checkpoints",
+        "result": "PASS",
+        "seconds": 3.8873572000302374,
+        "peak_tree_bytes": 14544896
+      },
+      {
+        "name": "unit-durability",
+        "result": "PASS",
+        "seconds": 2.041719199856743,
+        "peak_tree_bytes": 10432512
+      },
+      {
+        "name": "unit-store_startup",
+        "result": "PASS",
+        "seconds": 1.6267751001287252,
+        "peak_tree_bytes": 13914112
+      },
+      {
+        "name": "unit-review",
+        "result": "PASS",
+        "seconds": 1.6260684002190828,
+        "peak_tree_bytes": 16109568
+      },
+      {
+        "name": "unit-embedded",
+        "result": "PASS",
+        "seconds": 3.160026399884373,
+        "peak_tree_bytes": 12173312
+      },
+      {
+        "name": "unit-integration",
+        "result": "PASS",
+        "seconds": 3.776629599975422,
+        "peak_tree_bytes": 14278656
+      },
+      {
+        "name": "unit-fastrock_workspaces",
+        "result": "PASS",
+        "seconds": 4.099742399994284,
+        "peak_tree_bytes": 115216384
+      },
+      {
+        "name": "unit-codex_gui",
+        "result": "PASS",
+        "seconds": 6.90124909998849,
+        "peak_tree_bytes": 109244416
+      },
+      {
+        "name": "unit-accesskit_focus",
+        "result": "PASS",
+        "seconds": 0.7118597000371665,
+        "peak_tree_bytes": 7745536
+      },
+      {
+        "name": "unit-fastrock",
+        "result": "PASS",
+        "seconds": 1.1129757000599056,
+        "peak_tree_bytes": 7774208
+      },
+      {
+        "name": "unit-embedded_goose",
+        "result": "PASS",
+        "seconds": 1.517784799914807,
+        "peak_tree_bytes": 68071424
+      },
+      {
+        "name": "test-release-policy.py",
+        "result": "PASS",
+        "seconds": 1.4164214001502842,
+        "peak_tree_bytes": 39813120
+      },
+      {
+        "name": "test-fixture-watchdog.py",
+        "result": "PASS",
+        "seconds": 1.2176038001198322,
+        "peak_tree_bytes": 36765696
+      }
+    ]
+  },
+  "native_coverage": {
+    "rally": "PASS",
+    "goose": "PASS",
+    "vwork": "PASS",
+    "delegation": "PASS",
+    "schedules": "PASS",
+    "webhook": "PASS",
+    "provider-setup": "PASS",
+    "profiles": "PASS",
+    "effort": "PASS",
+    "model-options": "PASS",
+    "capabilities": "PASS",
+    "recipes": "PASS",
+    "projects": "PASS",
+    "commands": "PASS",
+    "palette": "PASS",
+    "terminal": "PASS",
+    "checkpoints": "PASS",
+    "compaction": "PASS",
+    "sidebar": "PASS",
+    "organization": "PASS",
+    "sidebar-drag": "PASS",
+    "sidebar-policy": "PASS",
+    "titles": "PASS",
+    "queue": "PASS",
+    "mentions": "PASS",
+    "review": "PASS",
+    "shell": "PASS",
+    "console": "PASS",
+    "side": "PASS",
+    "window-recovery": "PASS",
+    "draft-history": "PASS",
+    "relaunch": "PASS",
+    "delete": "PASS",
+    "history": "PASS",
+    "history-startup": "PASS",
+    "selection": "PASS",
+    "accessibility": "PASS",
+    "context": "PASS",
+    "summary": "PASS",
+    "summary-priority": "PASS",
+    "memory": "PASS",
+    "queue-recovery": "PASS",
+    "process-recovery": "PASS"
+  },
+  "native_initial": {
+    "binary_sha256": "781ddc94a764039a73b8e0d9f0414bb39291f0e3e8088d483a4ab75700c10c82",
+    "result": "FAIL",
+    "cases": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 51.16,
+        "peak_tree_bytes": 162107392
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 4.43,
+        "peak_tree_bytes": 160370688
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 32.11,
+        "peak_tree_bytes": 165171200
+      },
+      {
+        "name": "delegation",
+        "result": "FAIL",
+        "error": "delegation failed (1); see C:\\Users\\SeanMcNamara\\fastrock-051-verify\\native-candidate\\delegation.log",
+        "seconds": 16.85,
+        "peak_tree_bytes": 114237440
+      },
+      {
+        "name": "schedules",
+        "result": "FAIL",
+        "error": "schedules failed (1); see C:\\Users\\SeanMcNamara\\fastrock-051-verify\\native-candidate\\schedules.log",
+        "seconds": 64.42,
+        "peak_tree_bytes": 108748800
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 83.46,
+        "peak_tree_bytes": 162570240
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.25,
+        "peak_tree_bytes": 161214464
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 29.29,
+        "peak_tree_bytes": 162484224
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.25,
+        "peak_tree_bytes": 160612352
+      },
+      {
+        "name": "model-options",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.44,
+        "peak_tree_bytes": 160481280
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 35.31,
+        "peak_tree_bytes": 161206272
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 39.32,
+        "peak_tree_bytes": 161292288
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.65,
+        "peak_tree_bytes": 160727040
+      },
+      {
+        "name": "commands",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.85,
+        "peak_tree_bytes": 161013760
+      },
+      {
+        "name": "palette",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.05,
+        "peak_tree_bytes": 160579584
+      },
+      {
+        "name": "terminal",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.3,
+        "peak_tree_bytes": 161566720
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 32.71,
+        "peak_tree_bytes": 162869248
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.65,
+        "peak_tree_bytes": 161685504
+      },
+      {
+        "name": "sidebar",
+        "result": "FAIL",
+        "error": "sidebar failed (1); see C:\\Users\\SeanMcNamara\\fastrock-051-verify\\native-candidate\\sidebar.log",
+        "seconds": 12.05,
+        "peak_tree_bytes": 113258496
+      },
+      {
+        "name": "organization",
+        "result": "PASS",
+        "error": null,
+        "seconds": 43.72,
+        "peak_tree_bytes": 162299904
+      },
+      {
+        "name": "sidebar-drag",
+        "result": "PASS",
+        "error": null,
+        "seconds": 34.73,
+        "peak_tree_bytes": 161488896
+      },
+      {
+        "name": "sidebar-policy",
+        "result": "PASS",
+        "error": null,
+        "seconds": 21.08,
+        "peak_tree_bytes": 160636928
+      },
+      {
+        "name": "titles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.71,
+        "peak_tree_bytes": 161337344
+      },
+      {
+        "name": "queue",
+        "result": "PASS",
+        "error": null,
+        "seconds": 17.68,
+        "peak_tree_bytes": 160825344
+      },
+      {
+        "name": "mentions",
+        "result": "PASS",
+        "error": null,
+        "seconds": 21.68,
+        "peak_tree_bytes": 160342016
+      },
+      {
+        "name": "review",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.25,
+        "peak_tree_bytes": 162160640
+      },
+      {
+        "name": "shell",
+        "result": "PASS",
+        "error": null,
+        "seconds": 21.06,
+        "peak_tree_bytes": 161693696
+      },
+      {
+        "name": "console",
+        "result": "PASS",
+        "error": null,
+        "seconds": 6.83,
+        "peak_tree_bytes": 161173504
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 23.69,
+        "peak_tree_bytes": 162603008
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 34.31,
+        "peak_tree_bytes": 163532800
+      },
+      {
+        "name": "draft-history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.84,
+        "peak_tree_bytes": 160681984
+      },
+      {
+        "name": "relaunch",
+        "result": "PASS",
+        "error": null,
+        "seconds": 25.08,
+        "peak_tree_bytes": 160960512
+      },
+      {
+        "name": "delete",
+        "result": "PASS",
+        "error": null,
+        "seconds": 44.76,
+        "peak_tree_bytes": 162906112
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.85,
+        "peak_tree_bytes": 163487744
+      },
+      {
+        "name": "history-startup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 114.94,
+        "peak_tree_bytes": 163225600
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.69,
+        "peak_tree_bytes": 161869824
+      },
+      {
+        "name": "accessibility",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.28,
+        "peak_tree_bytes": 161800192
+      },
+      {
+        "name": "context",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.44,
+        "peak_tree_bytes": 161239040
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 35.7,
+        "peak_tree_bytes": 163983360
+      },
+      {
+        "name": "summary-priority",
+        "result": "PASS",
+        "error": null,
+        "seconds": 9.24,
+        "peak_tree_bytes": 160399360
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 41.53,
+        "peak_tree_bytes": 162312192
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.24,
+        "peak_tree_bytes": 163024896
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 18.67,
+        "peak_tree_bytes": 162619392
+      }
+    ],
+    "error": "Failed acceptance cases: delegation, schedules, sidebar"
+  },
+  "native_final": {
+    "binary_sha256": "84b0aebf2b17f2fd72cfe12f658d40d6897fac3777f5667188117b17fc89f751",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 26.3,
+        "peak_tree_bytes": 165941248
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 64.59,
+        "peak_tree_bytes": 163954688
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.12,
+        "peak_tree_bytes": 162770944
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 23.06,
+        "peak_tree_bytes": 162213888
+      },
+      {
+        "name": "draft-history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.44,
+        "peak_tree_bytes": 160948224
+      },
+      {
+        "name": "history-startup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 115.95,
+        "peak_tree_bytes": 163766272
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 18.46,
+        "peak_tree_bytes": 163110912
+      }
+    ]
+  },
+  "sidebar_final": {
+    "result": "PASS",
+    "binary_sha256": "84b0aebf2b17f2fd72cfe12f658d40d6897fac3777f5667188117b17fc89f751",
+    "peak_process_bytes": 150384640,
+    "first_stream_visible": true,
+    "project_name_and_scope": true,
+    "search_archive_filters": true,
+    "native_palette_pages": true,
+    "draft_and_restart_identity": true
+  },
+  "draft_history": {
+    "result": "PASS",
+    "binary_sha256": "84b0aebf2b17f2fd72cfe12f658d40d6897fac3777f5667188117b17fc89f751",
+    "peak_process_bytes": 137658368,
+    "forced_crash": true,
+    "durable_undo_redo": true,
+    "unicode": true,
+    "tab_isolation": true,
+    "ordinary_send_after_restart": true,
+    "undo_send": true,
+    "redo_branch": true,
+    "clean_restart": true,
+    "no_replay": true
+  },
+  "checkpoints": {
+    "binary_sha256": "84b0aebf2b17f2fd72cfe12f658d40d6897fac3777f5667188117b17fc89f751",
+    "peak_bytes": 158388224,
+    "turn_checkpoints": 4,
+    "checks": [
+      "manual/turn capture",
+      "native diff",
+      "file + exact conversation restore",
+      "retained backup",
+      "draft retention",
+      "stale review guard",
+      "original checkout unchanged",
+      "durable interrupted restore",
+      "automatic keep current",
+      "retained backup restore",
+      "files-only restore",
+      "conversation-only restore",
+      "approved uncertain tools never activated",
+      "failed tool response persisted before normal Send"
+    ]
+  },
+  "delegation": {
+    "result": "PASS",
+    "binary_sha256": "84b0aebf2b17f2fd72cfe12f658d40d6897fac3777f5667188117b17fc89f751",
+    "peak_process_bytes": 167419904,
+    "fresh_child_context": true,
+    "isolated_workspace": true,
+    "source_preserved": true,
+    "idempotent_delegation": true,
+    "wait_and_followup": true,
+    "child_ownership_guard": true,
+    "parent_stop_cancels_child": true,
+    "restart_requires_no_review": true,
+    "new_followup_runs_once": true,
+    "forced_crash_no_tool_replay": true,
+    "native_child_pane_restored": true,
+    "no_goose_shared_cwd_delegate": true,
+    "no_backend_installed": true
+  },
+  "migration": {
+    "passed": true,
+    "peakBytes": 283156480,
+    "sha256": "84b0aebf2b17f2fd72cfe12f658d40d6897fac3777f5667188117b17fc89f751",
+    "sourceSha256": "4e6f6c999da43fcabf5a238944ae461666c17f26a85ce93911e3d139ec97147f",
+    "checks": [
+      "manual native progress",
+      "native Pause and Resume",
+      "registry discovery",
+      "automatic detection",
+      "first thread handoff",
+      "byte-exact source preservation",
+      "clean reopen without redb"
+    ]
+  },
+  "organization_catalog": {
+    "result": "PASS",
+    "binary_sha256": "84b0aebf2b17f2fd72cfe12f658d40d6897fac3777f5667188117b17fc89f751",
+    "peak_process_bytes": 65576960,
+    "stored_conversations": 100,
+    "first_page": 50,
+    "pinned_outside_first_page": "goose:benchmark-0000",
+    "provider_activation": false
+  },
+  "scale_baseline": {
+    "binary_sha256": "dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9",
+    "seed_sha256": "dbe0969f2dc70295be34bce56656785a1db46588a987d792132796c3c3dd8f08",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "external Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 2478471168,
+            "peak_app_bytes": 106475520,
+            "peak_tree_commit_bytes": 101879808
+          },
+          "app": {
+            "cap_bytes": 2494621696,
+            "peak_app_bytes": 194625536,
+            "peak_tree_commit_bytes": 231972864
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 1208.6,
+        "switch_dispatch_ms": [
+          1.1,
+          1.2,
+          0.7,
+          0.9,
+          0.9
+        ],
+        "frame": {
+          "p50_ms": 6.65,
+          "p95_ms": 8.465,
+          "p99_ms": 9.404
+        },
+        "render": {
+          "p50_ms": 5.657,
+          "p95_ms": 6.914,
+          "p99_ms": 7.88
+        },
+        "event_loop": {
+          "p50_ms": 16.759,
+          "p95_ms": 31.396,
+          "p99_ms": 36.2
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ],
+    "goose_sha256": "89d5849587586765fa335f664fac0a9ed0e466d0f3717dd609ca04ebdffa64e2"
+  },
+  "scale_candidate": {
+    "binary_sha256": "84b0aebf2b17f2fd72cfe12f658d40d6897fac3777f5667188117b17fc89f751",
+    "seed_sha256": "dbe0969f2dc70295be34bce56656785a1db46588a987d792132796c3c3dd8f08",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose 1.58.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 2404476928,
+            "peak_app_bytes": 106770432,
+            "peak_tree_commit_bytes": 102289408
+          },
+          "app": {
+            "cap_bytes": 2353321984,
+            "peak_app_bytes": 251355136,
+            "peak_tree_commit_bytes": 199573504
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 201.1,
+        "switch_dispatch_ms": [
+          0.3,
+          0.5,
+          0.3,
+          0.4,
+          0.3
+        ],
+        "frame": {
+          "p50_ms": 4.792,
+          "p95_ms": 8.322,
+          "p99_ms": 10.756
+        },
+        "render": {
+          "p50_ms": 3.73,
+          "p95_ms": 7.272,
+          "p99_ms": 9.477
+        },
+        "event_loop": {
+          "p50_ms": 16.491,
+          "p95_ms": 20.697,
+          "p99_ms": 23.698
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true,
+        "history_navigation": {
+          "first": {
+            "browsing": true,
+            "loading": false,
+            "start": 0,
+            "end": 100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 4.016,
+            "rows": 100,
+            "bytes": 285990
+          },
+          "middle": {
+            "browsing": true,
+            "loading": false,
+            "start": 5000,
+            "end": 5100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 8.320400000000001,
+            "rows": 100,
+            "bytes": 292500
+          },
+          "last": {
+            "browsing": true,
+            "loading": false,
+            "start": 9900,
+            "end": 10000,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 11.906699999999999,
+            "rows": 100,
+            "bytes": 292569
+          },
+          "middle_frame": {
+            "p50_ms": 4.758,
+            "p95_ms": 6.367,
+            "p99_ms": 7.312
+          }
+        }
+      }
+    ]
+  },
+  "guards": {
+    "scale-baseline-guard": {
+      "cap_bytes": 2532997120,
+      "peak_tree_bytes": 261963776,
+      "elapsed_seconds": 37.03427150007337,
+      "exit_code": 0
+    },
+    "host-guard": {
+      "healthy": true,
+      "available": 6332137472,
+      "received_at": 1794338234.3752415
+    },
+    "native-final-guard": {
+      "cap_bytes": 1639516160,
+      "peak_tree_bytes": 188104704,
+      "elapsed_seconds": 295.1525060001295,
+      "exit_code": 0
+    },
+    "native-candidate-guard": {
+      "cap_bytes": 1181960192,
+      "peak_tree_bytes": 187174912,
+      "elapsed_seconds": 1187.750037000049,
+      "exit_code": 1
+    },
+    "migration-guard": {
+      "cap_bytes": 1640056832,
+      "peak_tree_bytes": 303431680,
+      "elapsed_seconds": 23.94674519984983,
+      "exit_code": 0
+    },
+    "unit-settlement-guard": {
+      "cap_bytes": 1200199680,
+      "peak_tree_bytes": 102064128,
+      "elapsed_seconds": 5.494534799829125,
+      "exit_code": 101
+    },
+    "renderer-rc-guard": {
+      "cap_bytes": 1631905792,
+      "peak_tree_bytes": 14843904,
+      "elapsed_seconds": 1.7513473997823894,
+      "exit_code": 0
+    },
+    "catalog-guard": {
+      "cap_bytes": 1690294272,
+      "peak_tree_bytes": 168177664,
+      "elapsed_seconds": 8.43618919979781,
+      "exit_code": 0
+    },
+    "draft-initial-guard": {
+      "cap_bytes": 1573791744,
+      "peak_tree_bytes": 168542208,
+      "elapsed_seconds": 15.076705399900675,
+      "exit_code": 0
+    },
+    "sidebar-final-guard": {
+      "cap_bytes": 2323621888,
+      "peak_tree_bytes": 168316928,
+      "elapsed_seconds": 13.296902399975806,
+      "exit_code": 0
+    },
+    "scale-candidate-guard": {
+      "cap_bytes": 2427246592,
+      "peak_tree_bytes": 229646336,
+      "elapsed_seconds": 43.621956600109115,
+      "exit_code": 0
+    },
+    "policies-guard": {
+      "cap_bytes": 1599621120,
+      "peak_tree_bytes": 39911424,
+      "elapsed_seconds": 1.7269349000416696,
+      "exit_code": 0
+    },
+    "native-initial-guard": {
+      "cap_bytes": 1508247552,
+      "peak_tree_bytes": 183914496,
+      "elapsed_seconds": 131.92741189990193,
+      "exit_code": 1
+    }
+  },
+  "macos": "PASS: compile only; no application or tests executed",
+  "workflow_lint": "PASS",
+  "notes": [
+    "Initial full matrix exposed obsolete paused-child fixture assertions and a sidebar catalog timing assumption; corrected cases passed on the final candidate. The final candidate also drops failed setup submissions and adds the bounded scope wait used by automation.",
+    "Seven affected recovery/side/history cases rerun on the final candidate, plus the sidebar fixture. Signed CI must run all 43 cases on the published executable.",
+    "Interrupted tool settlement appends failed responses through public Goose APIs, preserves original messages, and never replays requests. Goose 1.58.0 is unmodified.",
+    "Drafts retain per-chat cursor and bounded undo/redo; forced crash, clean restart, tab isolation, Unicode, branching redo and Undo Send passed.",
+    "All model, tool and Rally requests used isolated local fixtures. Host/guest memory guards remained active; no scale reduction was required."
+  ]
+}

@@ -592,6 +592,7 @@ impl Adapter {
 
     pub(super) async fn start_turn(self: &Arc<Self>, params: &Value) -> Reply {
         let id = session_id(text(params, "threadId"))?.to_string();
+        self.retry_storage_history(&id).await?;
         let gate = self.gate(&id).await;
         let _lock = gate.lock().await;
         self.start_turn_locked(params).await
@@ -617,14 +618,14 @@ impl Adapter {
                 .ok_or_else(|| error("Open the session before sending"))?;
             if s.activation_pending {
                 return Err(error(
-                    "Saved history is available. Choose Resume to prepare this conversation before sending.",
+                    "Conversation activation has not completed; try sending again.",
                 ));
             }
             if s.recovery_only {
                 return Err(error(if s.storage_pending {
-                    "Workspace recovery has not been checked. Choose Resume to retry; saved history remains read-only."
+                    "Workspace storage is unavailable; try sending again."
                 } else {
-                    "Review the uncertain history in Checkpoints or fork before the interrupted turn before sending new work"
+                    "Conversation storage is unavailable; try sending again."
                 }));
             }
             if s.active.is_some() {
@@ -904,6 +905,9 @@ impl Adapter {
             "thread/unarchive" => "unarchive",
             _ => "compact",
         };
+        if suffix == "compact" {
+            self.retry_storage_history(id).await?;
+        }
         // Compaction mutates the same public conversation storage as rewind.
         // Serialize it with turns/restores and leave uncertain history intact.
         let compact_gate = if matches!(suffix, "compact" | "rename") {

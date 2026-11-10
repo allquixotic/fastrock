@@ -57,23 +57,6 @@ export component GooseControls inherits Rectangle {
     property <bool> review-open;
     VerticalLayout {
         spacing: Theme.pad-s;
-        if GooseState.recovery-paused: HorizontalLayout {
-            Text { text: GooseState.changing ? "Preparing conversation… Saved history remains available while you wait."
-                : "Saved history is available · Resume to continue · " + GooseState.recovered-pending + " queued"; color: Theme.text-muted; wrap: word-wrap; vertical-alignment: center; }
-            FlatButton { text: "Resume"; enabled: !GooseState.changing && !GooseState.busy; clicked => { GooseState.resume-recovered(); } }
-            if GooseState.error != "": FlatButton { text: "Retry"; enabled: !GooseState.changing && !GooseState.busy; clicked => { GooseState.resume-recovered(); } }
-        }
-        if GooseState.uncertain-count > 0: VerticalLayout {
-            FlatButton { text: "Review interrupted sends (" + GooseState.uncertain-count + ")"; clicked => { root.review-open = !root.review-open; } }
-            if root.review-open: VerticalLayout {
-                Text { text: "These sends may have reached the model or run tools. They will not be sent again automatically. Check the conversation and tool results before continuing."; color: Theme.text-muted; wrap: word-wrap; }
-                TextEdit { text: GooseState.recovery-details; read-only: true; height: 130px; wrap: word-wrap; }
-                HorizontalLayout {
-                    FlatButton { text: "Copy recovery records"; clicked => { GooseState.copy-recovery(); } }
-                    FlatButton { text: "Dismiss reviewed records"; enabled: !GooseState.changing; clicked => { GooseState.dismiss-recovery(); } }
-                }
-            }
-        }
         Rectangle {
             height: 28px;
             summary-size := Text { text: GooseState.summary + "  ▾"; font-size: Theme.font-size; visible: false; }
@@ -121,7 +104,11 @@ export component GooseControls inherits Rectangle {
                 Text { text: "Mode controls tool permissions. Tool processes are not sandboxed."; color: Theme.text-faint; wrap: word-wrap; font-size: Theme.font-size-small; }
             }
         }
-        if GooseState.error != "": Text { text: GooseState.error; color: Theme.danger; wrap: word-wrap; }
+        if GooseState.changing: Text { text: "Preparing conversation…"; color: Theme.text-muted; }
+        if GooseState.error != "": HorizontalLayout {
+            Text { text: GooseState.error; color: Theme.danger; wrap: word-wrap; }
+            FlatButton { text: "Retry"; enabled: !GooseState.changing; clicked => { GooseState.refresh(); } }
+        }
     }
 }
 

@@ -5,6 +5,7 @@ Fastrock 0.4.0: stable T3 UI/orchestration in native Slint/Rust, unmodified embe
 Broader GUI contract: repository `GUI.md`.
 
 ## §C CONSTRAINTS
+- 2026-11-10 explicit stable 0.5.1 authorized: remove conversation recovery review/Resume; fail interrupted tools through unchanged Goose public storage, preserve history without replay. Persist composer text/cursor/undo/redo; ordinary Send activates saved chats. Supersedes earlier conversation Resume/review clauses (schedules and storage migration retain their own pause controls). Signed Windows x64 ZIP, full games acceptance/scale and Mac compile-only.
 - 2026-11-09 explicit stable 0.5.0 authorized: latest direct dependencies, unmodified Goose 1.58.0, native context report/viewer and opt-in collapse-thinking preference. Windows x64 ZIP through signed CI; games acceptance/scale guards and Mac compile-only retained.
 - 2026-11-04 explicit stable 0.4.1 release authorized: ordinary Fjall changes buffered in RAM, OS flush in background, permanent journal target within 60s; explicit saves/recovery intents/shutdown sync before success. Tests/signing/benchmark gates retained; private live-profile feedback remains unavailable, not a new publication gate for this authorized version.
 - 2026-11-04: latest stable Fjall 3.1.13 replaces vwork redb; configure LZ4 in engine, no direct entropy compression in Fastrock/vwork except legacy migration decoding. Git delta support, shared immutable objects, independent workspace/conversation transaction keys. Automatic preserved-source migration, native progress, explicit migration menu; no source loss or silent overwrite.
@@ -45,9 +46,10 @@ Broader GUI contract: repository `GUI.md`.
 - I.orchestration: persistent threads/runs/queues/lineage/mailboxes/schedules; delegate/message/wait/interrupt/fork/model switch/explicit merge/recovery; no quota features.
 - I.search: immediate deterministic substring plus bounded parallel fuzzy search; background cheap-model current-summary replacement and backfill.
 - I.memory: completed-turn learning, bounded in-process recall tool, compressed facts/tombstones, native memory controls.
-- I.checkpoints: per-turn/manual snapshots, native file review, guarded file restore and Goose conversation rewind; durable interrupted-restore review.
-- I.lifecycle: close-to-tray, explicit Quit, restart Resume and safe cancellation.
+- I.checkpoints: per-turn/manual snapshots, native file review, guarded file restore and Goose conversation rewind; retained interrupted-restore backup, current state kept automatically.
+- I.lifecycle: close-to-tray, explicit Quit, restart drafts/undo and safe cancellation.
 - I.context: native context-window report/viewer using unchanged Goose public ACP APIs, explicit read-only refresh.
+- I.composer-history: native Undo/Redo menu and Ctrl/Cmd+Z, Ctrl+Y/Cmd+Shift+Z; per-chat durable delta history and cursor.
 - I.thinking: GUI-only collapse-thinking default, native settings and per-block expansion.
 
 ## §R REFERENCES
@@ -244,6 +246,10 @@ V105: Collapse thinking ! opt-in false default in persisted GUI preferences; new
 
 V106: Goose hook snapshots ! scoped to activated conversation and repository; new chats/explicit reopen see saved edits, active chats retain their snapshot. Global tool permissions ! shared public PermissionManager across connections; project plugin discovery ! native path separators. Multiplexed public connections ! namespace server-request IDs, preserve wire order, share public storage, release only after successful close; no provider/tool replay. Verify `v106_*`, embedded fixture and native tools/hooks multi-project regression.
 
+V107: Conversation restart ! no review/Resume gate. Browse ! no agent activation/inference/tools; unmatched tool/approval requests ! failed responses persisted before public Goose activation, original messages preserved, idempotent and no replay. Ordinary Send/Compact/Review/shell/context/settings ! lazy activation, retry real failures without losing history. Interrupted dispatch/local sends ! never resubmitted; accepted queued items ! retained for normal queue Send. Interrupted restore ! keep durable current state plus original undo backup. Supersedes conversation recovery clauses in V41,V47,V63,V70,V73,V75,V85,V94,V100. Verify v107 regressions, native checkpoints/queue/compaction/context and crash fixtures.
+
+V108: Composer ! text/cursor/undo/redo persisted per chat across process death/restart, tab/window switch and clean Quit; UTF-8 edits, selection replacement, paste, deletion and Send clearing undoable. Bounded 512-edit/2MiB delta history (one oversized last edit retained); background atomic sync within 200ms coalescing plus IO, no UI-thread disk IO. Cursor-only changes ! no undo edit; new edit after Undo ! discard redo; stale malformed deltas ! never alter unrelated text. Verify v108 state/disk tests and native draft-history crash/restart fixture.
+
 ## §T TASKS
 id|status|task|cites
 T77|x|Update direct dependencies to latest stable; adapt unchanged Goose 1.58.0 public services, preserve credentials/storage/provider routes and Slint patches|V38,V39,V95,V103,V104,V106,I.goose,I.vwork
@@ -338,6 +344,8 @@ T66|x|Content-sized native model controls and remove app-owned Goose branding|V9
 T67|x|RC9 Windows/Mac compile, fixture/native/scale acceptance and signed-CI publication gate|V39,V44,V45,V89,V90,V91
 T68|x|Conservative automatic memories, bounded recall tool, redb maintenance and native controls; 834 Rust tests, embedded fixtures, native memory/capabilities and Mac compile pass; docs/benchmarks/memory-games-2026-11-03.json|V38,V40,V44,V82,V92,V93,I.goose,I.vwork
 T69|x|Repair old-thread restoration and tray ownership; verify 838 Rust tests, native recovery fixtures, guarded scale/startup and Mac compatibility; prepare RC12 signed-CI inputs|V38,V40,V44,V87,V94
+
+T81|x|0.5.1 prepublication acceptance passed: remove recovery gates, persist draft undo/redo, 869 Windows Rust tests, 43-case native coverage with corrected-case reruns, migration/catalog, full guarded 1,000/eight/10,000 comparison and Mac compile-only; ready for authorized signed CI; docs/benchmarks/051-games-2026-11-10.json|V107,V108,V39,V45,I.composer-history,I.lifecycle
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.
 
@@ -925,3 +933,17 @@ B305|2026-11-09|Goose 1.58 routes bare closed-weight GPT IDs to Mantle; inherite
 B306|2026-11-09|Goose 1.58 shared services capture hooks only at construction; saving a Stop hook no longer affected new chats and project roots were absent from the snapshot|V106; use public connection/services per activated chat with project-scoped HookManager, shared session storage and bounded in-memory routing; no Goose fork.
 
 B307|2026-11-09|Independent services cached separate permission maps, so control-connection permission edits stayed invisible to active chats; mixed Windows project-plugin separators produced duplicate config entries|V106; share public PermissionManager singleton while retaining per-chat hook snapshots; compose project plugin path with separate native components; strengthened native permission/project-hook fixture.
+
+B308|2026-11-10|Saved-history activation, uncertain tools and queue quarantine all required review/Resume; composer snapshot omitted native undo history|V107,V108; fail interrupted tool results through public Goose storage, lazy normal Send activation, retained checkpoint backup and durable composer deltas
+
+B309|2026-11-10|First 0.5.1 compile found missing Arc import and side-history caller of removed helper|Retain shared unfinished-call predicate and import Arc; compile gate
+
+B310|2026-11-10|Native readiness helper required populated model options even for expected activation errors; removed Resume also left obsolete option waits in history-only fixtures|V23,V107; accept settled activation error and wait for controls only after requested activation
+
+B311|2026-11-10|Interrupted-tool unit fixture omitted required public Goose message metadata|V107; include real visibility metadata; rerun settlement regression and Windows suite
+
+B312|2026-11-10|Failed thread/side setup retained local submissions behind removed Resume control|V107; fail local submissions on setup error; composer Undo retains sent text
+
+B313|2026-11-10|Delegation/schedule fixtures expected child chats paused after restart; ad-hoc unit runner omitted fixture Python path|V107; chats reopen without review, old child work never replays, new follow-up runs once; schedules retain own pause; use configured full-suite runner
+
+B314|2026-11-10|Sidebar fixture checked scope before asynchronous project catalog returned; later snapshots already correct|V23,V67; bounded wait for resolved scope before assertions; preserve nonblocking project loading

@@ -5,6 +5,7 @@ use super::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::sync::Arc;
 
 const MAX_ROWS: usize = 512;
 const MAX_PREVIEW: usize = 16 * 1024;
@@ -94,8 +95,9 @@ pub(super) fn project(value: &Value) -> anyhow::Result<Report> {
 }
 
 impl Adapter {
-    pub(super) async fn context_report(&self, params: &Value) -> Reply {
+    pub(super) async fn context_report(self: &Arc<Self>, params: &Value) -> Reply {
         let id = session_id(text(params, "threadId"))?;
+        self.retry_storage_history(&id).await?;
         let gate = self.gate(id).await;
         let _guard = gate.lock().await;
         {
@@ -109,7 +111,7 @@ impl Adapter {
                 || session.recovery_only
             {
                 return Err(error(
-                    "Resume this conversation before inspecting its current context.",
+                    "Conversation activation has not completed; try again.",
                 ));
             }
             if session.active.is_some() || session.compacting || session.shell.is_some() {
@@ -131,6 +133,7 @@ impl Adapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
     #[test]
     fn v104_context_counts_and_parts_are_not_double_counted() {
         let report = project(&json!({"model":{"modelName":"fixture","contextLimit":100},"totalTokens":12,"segments":[{"category":"messages","label":"Messages","tokenCount":12,"parts":[{"label":"User","tokenCount":5,"contentPreview":"hello"},{"label":"Assistant","tokenCount":7}]}],"autoCompactionPending":true})).unwrap();
