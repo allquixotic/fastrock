@@ -12,6 +12,7 @@
 //! unsubscribed, so the server unloads it, even when `thread/start` answers
 //! only after the recap gave up waiting.
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::future::Future;
@@ -23,7 +24,6 @@ use codex_app_server_protocol::ConfigReadResponse;
 use codex_app_server_protocol::SandboxMode;
 use codex_app_server_protocol::SandboxPolicy;
 use codex_app_server_protocol::ServerNotification;
-use codex_app_server_protocol::ThreadItem;
 use codex_app_server_protocol::ThreadSource;
 use codex_app_server_protocol::ThreadStartParams;
 use codex_app_server_protocol::ThreadStartResponse;
@@ -152,7 +152,10 @@ pub(crate) fn recap_output_schema() -> Value {
 
 /// The full prompt for `history` (see [`recap_history`]).
 pub(crate) fn recap_prompt(history: &str) -> String {
-    RecapPrompt::new(history).render()
+    RecapPrompt::new(history)
+        .render()
+        .into_text()
+        .unwrap_or_default()
 }
 
 /// Validates the model's answer the way the TUI does.
@@ -575,7 +578,11 @@ pub(crate) async fn collect_structured_response(
     while let Some(notification) = notifications.recv().await {
         match notification {
             ServerNotification::ItemCompleted(completed) if completed.turn_id == turn_id => {
-                if let ThreadItem::AgentMessage { text, .. } = completed.item {
+                if let ThreadItem {
+                    payload: ThreadItemPayload::AgentMessage { text, .. },
+                    ..
+                } = completed.item
+                {
                     if text.len() > STRUCTURED_RESPONSE_MAX_BYTES {
                         return Err(RecapError::TooLarge);
                     }
@@ -1030,14 +1037,14 @@ mod tests {
 
     fn agent_message(turn_id: &str, text: &str) -> ServerNotification {
         ServerNotification::ItemCompleted(ItemCompletedNotification {
-            item: ThreadItem::AgentMessage {
+            item: ThreadItem::untimed(ThreadItemPayload::AgentMessage {
                 id: "m".to_string(),
                 text: text.to_string(),
                 phase: None,
                 memory_citation: None,
                 delivery: None,
                 questions: None,
-            },
+            }),
             thread_id: "tmp".to_string(),
             turn_id: turn_id.to_string(),
             completed_at_ms: 0,

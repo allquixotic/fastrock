@@ -6,6 +6,7 @@
 //! file owns the hooks that call into them; see `codex-rs/gui/README.md`
 //! for the architecture and `docs/gui.md` for the user guide.
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -1021,8 +1022,9 @@ impl AppController {
             }
             ServerNotification::ItemStarted(started)
                 if thread.preview.is_empty()
-                    && let codex_app_server_protocol::ThreadItem::UserMessage {
-                        content, ..
+                    && let ThreadItem {
+                        payload: ThreadItemPayload::UserMessage { content, .. },
+                        ..
                     } = &started.item =>
             {
                 thread.preview = crate::threads::user_input_preview(content);

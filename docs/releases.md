@@ -1,7 +1,24 @@
+# Fastrock 0.5.0
+
+Explicitly authorized 2026-11-09. This release updates the direct Rust dependencies,
+including unmodified Goose 1.58.0, stable Codex support crates 0.167.0 and the latest
+vwork source. The native context viewer reports Goose's token estimates, component
+counts and text previews. Settings → Appearance offers an opt-in default to collapse
+thinking while preserving individual expansion, copying and exports.
+
+Existing configuration, credential identities, conversations and workspace history
+are retained. The default cheap model uses `us.openai.gpt-6-luna` on Bedrock Runtime;
+Goose now routes bare closed-weight GPT IDs to Mantle. Explicit saved model choices
+remain intact. See [dependency details](DEPENDENCIES-050.md).
+
+Windows x64 ZIP publication requires the complete signed CI acceptance pipeline.
+macOS is compiled only. Use **Quit** in an older version's tray menu before starting
+0.5.0. [Release page](https://github.com/allquixotic/fastrock/releases/tag/v0.5.0).
+
 # Fastrock 0.4.3 stable
 
 [Fastrock 0.4.3](https://github.com/allquixotic/fastrock/releases/tag/v0.4.3)
-is the latest stable Windows x64 ZIP, explicitly authorized 2026-11-09. It fixes
+is a stable Windows x64 ZIP, explicitly authorized 2026-11-09. It fixes
 the Slint/AccessKit crash when focus moves to newly created controls while UI
 Automation or assistive technology is active. Accessibility remains enabled;
 Goose and workspace storage are unchanged. See [cause and verification](ACCESSIBILITY-043.md).

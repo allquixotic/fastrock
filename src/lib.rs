@@ -227,7 +227,10 @@ fn run_app(
     let cli_overrides = cli
         .config_overrides
         .parse_overrides()
-        .map_err(|err| anyhow::anyhow!("invalid -c override: {err}"))?;
+        .map_err(|err| anyhow::anyhow!("invalid -c override: {err}"))?
+        .into_iter()
+        .map(|(key, value)| Ok((key, toml::Value::try_from(value)?)))
+        .collect::<anyhow::Result<Vec<_>>>()?;
     let folder = match cli.folder {
         // Keeps the path the user typed when it goes through a symlink, and
         // avoids Windows `\\?\` verbatim paths, which Explorer rejects.

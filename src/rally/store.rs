@@ -119,18 +119,7 @@ pub fn vault_target(endpoint: &str) -> String {
     format!("fastrock:{endpoint}")
 }
 fn vault_entry(endpoint: &str) -> Result<keyring::Entry> {
-    #[cfg(windows)]
-    {
-        Ok(keyring::Entry::new_with_target(
-            &vault_target(endpoint),
-            "fastrock",
-            endpoint,
-        )?)
-    }
-    #[cfg(not(windows))]
-    {
-        Ok(keyring::Entry::new("fastrock", endpoint)?)
-    }
+    crate::vault::platform_entry(endpoint)
 }
 pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     use std::io::Write;

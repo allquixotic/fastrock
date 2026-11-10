@@ -116,8 +116,8 @@ pub fn normalized(text: &str) -> String {
 }
 pub fn identity(scope: &str, key: &str) -> String {
     format!(
-        "{:x}",
-        Sha256::digest(format!("{scope}\0{}", normalized(key)))
+        "{}",
+        hex::encode(Sha256::digest(format!("{scope}\0{}", normalized(key))))
     )
 }
 fn valid_text(text: &str, max: usize) -> bool {

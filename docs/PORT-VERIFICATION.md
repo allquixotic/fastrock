@@ -2862,3 +2862,48 @@ Windows x64 ZIP. Downloaded checksum, online/bundled provenance, publisher and
 secure timestamp were independently verified; no Mac assets were published,
 and no temporary runners remain. Evidence: [local tests](benchmarks/043-games-2026-11-09.json),
 [release](benchmarks/043-release-ci-2026-11-09.json), [analysis](ACCESSIBILITY-043.md).
+
+
+## Goose 1.58 and native context/thinking — 0.5.0 (2026-11-09)
+
+The final local candidate passed 868 Windows Rust tests, the standalone embedded
+Goose provider fixture, all 42 native acceptance cases, legacy-store migration
+and the organization catalog check on games. Mac compilation passed; no Mac
+application or tests ran. Formatting, build policy and workflow lint passed.
+Evidence: [games receipt](benchmarks/050-games-2026-11-09.json) and
+[direct dependency audit](benchmarks/050-dependencies-2026-11-09.json).
+
+The native context case verifies real upstream token/component reports and text
+previews without inference, opt-in thinking collapse, manual expansion, exports,
+restart persistence, the restored-session Resume gate and chat-switch cleanup.
+Legacy credential targets remain readable after the Keyring upgrade. Updated
+permission and hook fixtures verify saved changes, code mode and project isolation.
+
+The first full matrix passed 41/42: Goose 1.58 snapshots hooks in shared services,
+so new chats did not see newly saved hooks. Public per-conversation connections
+now hold project hook snapshots while sharing the permission manager and session
+store. A targeted follow-up caught separate permission caches and mixed Windows
+plugin path separators; both were corrected before the complete successful rerun.
+Goose source remains unmodified. See [integration notes](DEPENDENCIES-050.md).
+
+Both versions completed the full guarded 1,000-conversation, eight-stream,
+10,000-message workload without reducing scale. Results below are one synthetic
+loopback-fixture comparison on games, not a live-provider latency guarantee.
+
+| Measurement | 0.3.4 baseline | 0.5.0 candidate |
+|---|---:|---:|
+| Observed history-open time | 1,911.5 ms | 200.8 ms |
+| Frame p95 | 13.695 ms | 10.211 ms |
+| Event-loop p95 | 53.342 ms | 21.292 ms |
+| Peak app memory | 190.7 MB | 250.8 MB |
+| Peak process-tree committed memory | 234.8 MB | 197.1 MB |
+
+Candidate navigation visited the first, middle and last history pages, exported
+all 10,000 messages and returned to the live transcript. Current summaries were
+preserved. Host and guest headroom guards remained active; no limit triggered.
+The original migration fixture bytes were preserved. All model, tool and Rally
+requests used isolated local fixtures; private live-profile feedback remains
+user-owned.
+
+Signed release CI and independent published-download verification are recorded
+below after publication.

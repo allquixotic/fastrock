@@ -2,6 +2,7 @@ import { LearnedMemoryState, LearnedMemoryRow } from "learned-memories.slint";
 import { RecipeState, RecipeRow, RecipeParameter } from "recipes.slint";
 import { CapabilityState, CapabilityRow } from "capabilities.slint";
 import { CheckpointPanel, CheckpointState, CheckpointRow } from "checkpoints.slint";
+import { ContextReportPanel, ContextReportState, ContextRow } from "context-report.slint";
 // Main window: tab strip, sidebar, active tab content, info pane, and the
 // shared modal dialog, toast, and status overlays.
 //
@@ -32,6 +33,7 @@ import { PendingMessageState, PendingMessageEditor } from "pending-message.slint
 import { ProjectState, ProjectDialog } from "project-settings.slint";
 
 export {
+    ContextReportState, ContextRow,
     LearnedMemoryState, LearnedMemoryRow,
     ProjectState,
     TerminalState, TerminalCell, TerminalTab,
@@ -1389,6 +1391,7 @@ export component MainWindow inherits Window {
     if ProjectState.open: ProjectDialog { width: parent.width; height: parent.height; }
 
     if CheckpointState.open: CheckpointPanel { width: parent.width; height: parent.height; }
+    if ContextReportState.open: ContextReportPanel { width: parent.width; height: parent.height; }
 
     if CommandPaletteState.open: CommandPalette { width: parent.width; height: parent.height; }
 

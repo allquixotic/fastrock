@@ -17,12 +17,12 @@
 //! (`Transcript::adopt_snapshot`), and a trimmed live item that a legacy
 //! read cannot find by id is located by its turn.
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
 use codex_app_server_protocol::ClientRequest;
 use codex_app_server_protocol::ThreadHistoryMode;
-use codex_app_server_protocol::ThreadItem;
 use codex_app_server_protocol::ThreadItemsListResponse;
 use codex_app_server_protocol::ThreadReadParams;
 use codex_app_server_protocol::ThreadReadResponse;
@@ -619,9 +619,16 @@ pub(crate) fn legacy_slice(
 pub(crate) fn has_synthetic_legacy_id(item: &ThreadItem) -> bool {
     matches!(
         item,
-        ThreadItem::UserMessage { .. }
-            | ThreadItem::AgentMessage { .. }
-            | ThreadItem::Reasoning { .. }
+        ThreadItem {
+            payload: ThreadItemPayload::UserMessage { .. },
+            ..
+        } | ThreadItem {
+            payload: ThreadItemPayload::AgentMessage { .. },
+            ..
+        } | ThreadItem {
+            payload: ThreadItemPayload::Reasoning { .. },
+            ..
+        }
     )
 }
 
@@ -784,14 +791,14 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     fn message(id: &str) -> ThreadItem {
-        ThreadItem::AgentMessage {
+        ThreadItem::untimed(ThreadItemPayload::AgentMessage {
             id: id.to_string(),
             text: id.to_string(),
             phase: None,
             memory_citation: None,
             delivery: None,
             questions: None,
-        }
+        })
     }
 
     fn turn(id: &str, items: &[&str]) -> Turn {

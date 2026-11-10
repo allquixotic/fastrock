@@ -1,7 +1,7 @@
 //! Bounded webhook authentication, template evaluation and durable receipts.
 use anyhow::{Result, bail, ensure};
 use base64::Engine;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -151,7 +151,7 @@ impl Delivery {
     }
 }
 fn hash(value: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(value))
+    hex::encode(Sha256::digest(value))
 }
 pub fn accept(
     history: &mut Vec<Delivery>,
@@ -314,7 +314,7 @@ mod tests {
         let hook = Hook::default();
         let mut mac = Hmac::<Sha256>::new_from_slice(b"fixture-key").unwrap();
         mac.update(b"{\"id\":1}");
-        let signature = format!("sha256={:x}", mac.finalize().into_bytes());
+        let signature = format!("sha256={}", hex::encode(mac.finalize().into_bytes()));
         hook.verify(b"fixture-key", &signature, b"{\"id\":1}")
             .unwrap();
         assert!(

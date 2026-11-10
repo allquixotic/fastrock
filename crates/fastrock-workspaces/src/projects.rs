@@ -25,7 +25,7 @@ pub fn id(home: &Path, repo: &str) -> String {
     digest.update(home.as_os_str().as_encoded_bytes());
     digest.update([0]);
     digest.update(repo.as_bytes());
-    format!("vwork:{:x}", digest.finalize())
+    format!("vwork:{}", hex::encode(digest.finalize()))
 }
 
 pub async fn root(path: PathBuf) -> Result<Option<PathBuf>> {
@@ -156,8 +156,8 @@ fn register(engine: &Engine, root: &Path) -> Result<String> {
         return Ok(id.into());
     }
     let id = format!(
-        "project-{:x}",
-        Sha256::digest(root.to_string_lossy().as_bytes())
+        "project-{}",
+        hex::encode(Sha256::digest(root.to_string_lossy().as_bytes()))
     );
     engine.call("repo_register", &json!({"repo":id,"path":root}))?;
     Ok(id)

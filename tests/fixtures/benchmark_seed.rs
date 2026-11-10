@@ -97,7 +97,7 @@ async fn seed(parameters: Parameters) -> Result<()> {
         manager
             .update(&id)
             .provider_name("aws_bedrock")
-            .model_config(ModelConfig::new("openai.gpt-6.1-sol"))
+            .model_config(ModelConfig::new("us.openai.gpt-6.1-sol"))
             .apply()
             .await?;
         let count = if session == 0 { parameters.messages } else { 2 };
@@ -134,8 +134,8 @@ async fn seed(parameters: Parameters) -> Result<()> {
             profile: "benchmark fixture".into(),
             source_messages: stored.messages().len(),
             source_digest: format!(
-                "{:x}",
-                Sha256::digest(serde_json::to_vec(stored.messages())?)
+                "{}",
+                hex::encode(Sha256::digest(serde_json::to_vec(stored.messages())?))
             ),
         };
         ensure!(

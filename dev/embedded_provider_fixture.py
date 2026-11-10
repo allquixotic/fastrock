@@ -84,7 +84,7 @@ class ProviderFixture:
         if self.tools:
             extensions['fixture'] = dict(enabled=True, type='streamable_http', name='fixture',
                                          uri=self.endpoint + '/mcp', timeout=30, description='Local test tools')
-        config = dict(GOOSE_PROVIDER='aws_bedrock', GOOSE_MODEL='openai.gpt-6.1-sol',
+        config = dict(GOOSE_PROVIDER='aws_bedrock', GOOSE_MODEL='us.openai.gpt-6.1-sol',
                       GOOSE_MODE='auto', BEDROCK_DISABLE_STREAMING=not streaming,
                       BEDROCK_MAX_RETRIES=0, GOOSE_DISABLE_SESSION_NAMING=True, extensions=extensions)
         (root / 'goose/config/config.yaml').write_text(json.dumps(config), encoding='utf-8')

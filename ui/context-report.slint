@@ -1,0 +1,64 @@
+import { ListView, TextEdit } from "std-widgets.slint";
+import { Theme, FlatButton } from "theme.slint";
+export struct ContextRow { title: string, detail: string, preview: string, part: bool }
+export global ContextReportState {
+    in property <bool> open;
+    in property <bool> busy;
+    in property <int> generation;
+    in property <string> thread;
+    in property <string> summary;
+    in property <string> note;
+    in property <string> status;
+    in property <[ContextRow]> rows;
+    in property <int> selected: -1;
+    in property <string> preview;
+    callback action(string);
+    callback select(int);
+}
+export component ContextReportPanel inherits Rectangle {
+    background: #00000060;
+    TouchArea { clicked => { ContextReportState.action("close"); } }
+    focus := FocusScope {
+        init => { self.focus(); }
+        capture-key-pressed(event) => {
+            if event.text == Key.Escape { ContextReportState.action("close"); return EventResult.accept; }
+            return EventResult.reject;
+        }
+        Rectangle {
+            x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+            width: min(1100px, max(0px, parent.width - 32px));
+            height: min(800px, max(0px, parent.height - 48px));
+            background: Theme.surface; border-color: Theme.border-strong; border-width: 1px; border-radius: Theme.radius;
+            TouchArea { }
+            VerticalLayout {
+                padding: Theme.pad-m; spacing: Theme.pad-s;
+                HorizontalLayout {
+                    Text { text: "Context window"; color: Theme.text; font-weight: 600; horizontal-stretch: 1; vertical-alignment: center; }
+                    FlatButton { text: "Refresh"; enabled: !ContextReportState.busy; clicked => { ContextReportState.action("refresh"); } }
+                    FlatButton { text: "Close"; clicked => { ContextReportState.action("close"); } }
+                }
+                Text { text: ContextReportState.summary; color: Theme.text; wrap: word-wrap; }
+                Text { text: ContextReportState.note; color: Theme.text-muted; wrap: word-wrap; }
+                HorizontalLayout {
+                    spacing: Theme.pad-m; vertical-stretch: 1;
+                    ListView {
+                        width: min(390px, parent.width * 0.45);
+                        horizontal-scrollbar-policy: always-off;
+                        for row[index] in ContextReportState.rows: Rectangle {
+                            height: 62px;
+                            background: ContextReportState.selected == index ? Theme.selected : transparent;
+                            VerticalLayout {
+                                padding: 6px; padding-left: row.part ? 20px : 6px;
+                                Text { text: row.title; color: Theme.text; font-weight: row.part ? 400 : 600; overflow: elide; }
+                                Text { text: row.detail; color: Theme.text-muted; font-size: Theme.font-size-small; overflow: elide; }
+                            }
+                            TouchArea { mouse-cursor: pointer; clicked => { ContextReportState.select(index); } }
+                        }
+                    }
+                    TextEdit { text: ContextReportState.preview; read-only: true; horizontal-stretch: 1; font-family: Theme.mono-font; }
+                }
+                Text { text: ContextReportState.busy ? "Preparing context report…" : ContextReportState.status; color: Theme.text-muted; wrap: word-wrap; }
+            }
+        }
+    }
+}

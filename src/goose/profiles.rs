@@ -85,7 +85,10 @@ fn fingerprint(mut value: serde_json::Value) -> Result<String> {
     // Goose model metadata contains HashMaps. Their iteration order must not
     // make an unchanged profile look like a stale edit after another load.
     value.sort_all_objects();
-    Ok(format!("{:x}", Sha256::digest(serde_json::to_vec(&value)?)))
+    Ok(format!(
+        "{}",
+        hex::encode(Sha256::digest(serde_json::to_vec(&value)?))
+    ))
 }
 fn helper(id: &str) -> Result<api::AuthConfig> {
     ensure!(

@@ -1,10 +1,10 @@
 //! Copy and export (port of the TUI's `/copy` and `/export` formats).
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::path::Path;
 
 use codex_app_server_protocol::CommandExecutionStatus;
 use codex_app_server_protocol::DynamicToolCallOutputContentItem;
-use codex_app_server_protocol::ThreadItem;
 
 use super::blocks::Block;
 use super::blocks::BlockKind;
@@ -28,6 +28,14 @@ use super::store::Live;
 pub(crate) const EXPORT_TITLE: &str = "# Fastrock conversation\n";
 /// [`render_transcript`]'s error when nothing is exportable.
 pub(crate) const NOTHING_TO_EXPORT: &str = "No conversation content to export.";
+
+fn thinking_text(summary: &[String], content: &[String]) -> String {
+    std::iter::once(reasoning_summary_markdown(summary))
+        .chain(content.iter().cloned())
+        .filter(|part| !part.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
 
 /// One exportable element.
 pub(crate) enum ExportSource<'a> {
@@ -79,9 +87,18 @@ pub(crate) fn render_transcript(
             ExportSource::Error(text) => ("Activity", vec![format!("error: {text}")]),
             ExportSource::Item { item, live_text } => {
                 match item {
-                    ThreadItem::EnteredReviewMode { .. } => in_review = true,
-                    ThreadItem::ExitedReviewMode { .. } => in_review = false,
-                    ThreadItem::UserMessage { .. } if in_review => continue,
+                    ThreadItem {
+                        payload: ThreadItemPayload::EnteredReviewMode { .. },
+                        ..
+                    } => in_review = true,
+                    ThreadItem {
+                        payload: ThreadItemPayload::ExitedReviewMode { .. },
+                        ..
+                    } => in_review = false,
+                    ThreadItem {
+                        payload: ThreadItemPayload::UserMessage { .. },
+                        ..
+                    } if in_review => continue,
                     _ => {}
                 }
                 match export_item(item, *live_text, cwd) {
@@ -118,7 +135,10 @@ fn export_item(
     cwd: &Path,
 ) -> Option<(&'static str, Vec<String>)> {
     let cell = match item {
-        ThreadItem::UserMessage { content, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::UserMessage { content, .. },
+            ..
+        } => {
             if let Some(message) = user_cross_tab_message(content) {
                 return Some(("User", vec![message.readable()]));
             }
@@ -142,26 +162,40 @@ fn export_item(
             }
             ("User", lines)
         }
-        ThreadItem::AgentMessage { text, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::AgentMessage { text, .. },
+            ..
+        } => {
             let text = live_text.filter(|_| text.is_empty()).unwrap_or(text);
             match crosstab::parse(text) {
                 Some(message) => ("Assistant", vec![message.readable()]),
                 None => ("Assistant", vec![message_markdown(text, cwd)]),
             }
         }
-        ThreadItem::Plan { text, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::Plan { text, .. },
+            ..
+        } => {
             let text = live_text.filter(|_| text.is_empty()).unwrap_or(text);
             ("Plan", vec![message_markdown(text, cwd)])
         }
-        ThreadItem::Reasoning { summary, .. } => {
-            ("Reasoning", vec![reasoning_summary_markdown(summary)])
-        }
-        ThreadItem::CommandExecution {
-            command,
-            status,
-            aggregated_output,
-            exit_code,
-            duration_ms,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::Reasoning {
+                    summary, content, ..
+                },
+            ..
+        } => ("Reasoning", vec![thinking_text(summary, content)]),
+        ThreadItem {
+            payload:
+                ThreadItemPayload::CommandExecution {
+                    command,
+                    status,
+                    aggregated_output,
+                    exit_code,
+                    duration_ms,
+                    ..
+                },
             ..
         } => {
             let mut lines = vec![format!("$ {}", display_command(command))];
@@ -189,8 +223,12 @@ fn export_item(
             lines.push(outcome);
             ("Activity", lines)
         }
-        ThreadItem::FileChange {
-            changes, status, ..
+        ThreadItem {
+            payload:
+                ThreadItemPayload::FileChange {
+                    changes, status, ..
+                },
+            ..
         } => {
             let mut lines = vec![format!(
                 "file changes: {status:?} · {} changes",
@@ -202,13 +240,17 @@ fn export_item(
             }
             ("Activity", lines)
         }
-        ThreadItem::McpToolCall {
-            server,
-            tool,
-            status,
-            arguments,
-            result,
-            error,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::McpToolCall {
+                    server,
+                    tool,
+                    status,
+                    arguments,
+                    result,
+                    error,
+                    ..
+                },
             ..
         } => {
             let mut lines = vec![format!(
@@ -252,12 +294,16 @@ fn export_item(
             }
             ("Activity", lines)
         }
-        ThreadItem::DynamicToolCall {
-            namespace,
-            tool,
-            arguments,
-            status,
-            content_items,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::DynamicToolCall {
+                    namespace,
+                    tool,
+                    arguments,
+                    status,
+                    content_items,
+                    ..
+                },
             ..
         } => {
             let name = match namespace {
@@ -281,43 +327,71 @@ fn export_item(
             }
             ("Activity", lines)
         }
-        ThreadItem::WebSearch(search) => (
+        ThreadItem {
+            payload: ThreadItemPayload::WebSearch(search),
+            ..
+        } => (
             "Activity",
             vec![format!("Searched the web: {}", search.query)],
         ),
-        ThreadItem::ExitedReviewMode { review, .. } => {
-            ("Assistant", vec![message_markdown(review, cwd)])
-        }
-        ThreadItem::EnteredReviewMode { review, .. } => {
-            ("Activity", vec![format!("Code review started: {review}")])
-        }
-        ThreadItem::ContextCompaction { .. } => ("Activity", vec!["Context compacted".to_string()]),
-        ThreadItem::ImageView { path, .. } => {
-            ("Activity", vec![format!("Viewed image {}", path.as_str())])
-        }
-        ThreadItem::ImageGeneration(generation) => (
+        ThreadItem {
+            payload: ThreadItemPayload::ExitedReviewMode { review, .. },
+            ..
+        } => ("Assistant", vec![message_markdown(review, cwd)]),
+        ThreadItem {
+            payload: ThreadItemPayload::EnteredReviewMode { review, .. },
+            ..
+        } => ("Activity", vec![format!("Code review started: {review}")]),
+        ThreadItem {
+            payload: ThreadItemPayload::ContextCompaction { .. },
+            ..
+        } => ("Activity", vec!["Context compacted".to_string()]),
+        ThreadItem {
+            payload: ThreadItemPayload::ImageView { path, .. },
+            ..
+        } => ("Activity", vec![format!("Viewed image {}", path.as_str())]),
+        ThreadItem {
+            payload: ThreadItemPayload::ImageGeneration(generation),
+            ..
+        } => (
             "Activity",
             vec![format!(
                 "Generated image: {}",
                 generation.revised_prompt.clone().unwrap_or_default()
             )],
         ),
-        ThreadItem::CollabAgentToolCall { tool, prompt, .. } => (
+        ThreadItem {
+            payload: ThreadItemPayload::CollabAgentToolCall { tool, prompt, .. },
+            ..
+        } => (
             "Activity",
             vec![format!(
                 "agent {tool:?}: {}",
                 prompt.clone().unwrap_or_default()
             )],
         ),
-        ThreadItem::SubAgentActivity {
-            kind, agent_path, ..
+        ThreadItem {
+            payload:
+                ThreadItemPayload::SubAgentActivity {
+                    kind, agent_path, ..
+                },
+            ..
         } => (
             "Activity",
             vec![format!("sub-agent {kind:?}: {agent_path}")],
         ),
-        ThreadItem::HookPrompt { .. }
-        | ThreadItem::Sleep(_)
-        | ThreadItem::FunctionCallOutput { .. } => return None,
+        ThreadItem {
+            payload: ThreadItemPayload::HookPrompt { .. },
+            ..
+        }
+        | ThreadItem {
+            payload: ThreadItemPayload::Sleep(_),
+            ..
+        }
+        | ThreadItem {
+            payload: ThreadItemPayload::FunctionCallOutput { .. },
+            ..
+        } => return None,
     };
     Some(cell)
 }
@@ -348,12 +422,29 @@ pub(crate) fn entry_markdown(entry: &Entry, cwd: &Path) -> Option<String> {
         _ => None,
     };
     let text = match &item.item {
-        ThreadItem::UserMessage { content, .. } => user_message_parts(content).0,
-        ThreadItem::AgentMessage { text, .. } | ThreadItem::Plan { text, .. } => {
-            message_markdown(live.filter(|_| text.is_empty()).unwrap_or(text), cwd)
+        ThreadItem {
+            payload: ThreadItemPayload::UserMessage { content, .. },
+            ..
+        } => user_message_parts(content).0,
+        ThreadItem {
+            payload: ThreadItemPayload::AgentMessage { text, .. },
+            ..
         }
-        ThreadItem::ExitedReviewMode { review, .. } => message_markdown(review, cwd),
-        ThreadItem::Reasoning { summary, .. } => reasoning_summary_markdown(summary),
+        | ThreadItem {
+            payload: ThreadItemPayload::Plan { text, .. },
+            ..
+        } => message_markdown(live.filter(|_| text.is_empty()).unwrap_or(text), cwd),
+        ThreadItem {
+            payload: ThreadItemPayload::ExitedReviewMode { review, .. },
+            ..
+        } => message_markdown(review, cwd),
+        ThreadItem {
+            payload:
+                ThreadItemPayload::Reasoning {
+                    summary, content, ..
+                },
+            ..
+        } => thinking_text(summary, content),
         other => {
             let (_, lines) = export_item(other, live, cwd)?;
             lines.join("\n")
@@ -365,8 +456,14 @@ pub(crate) fn entry_markdown(entry: &Entry, cwd: &Path) -> Option<String> {
 /// The cross-tab message shown by `entry`, if any.
 pub(crate) fn entry_cross_tab_message(entry: &Entry) -> Option<crosstab::CrossTabMessage> {
     match &entry.item()?.item {
-        ThreadItem::UserMessage { content, .. } => user_cross_tab_message(content),
-        ThreadItem::AgentMessage { text, .. } => crosstab::parse(text),
+        ThreadItem {
+            payload: ThreadItemPayload::UserMessage { content, .. },
+            ..
+        } => user_cross_tab_message(content),
+        ThreadItem {
+            payload: ThreadItemPayload::AgentMessage { text, .. },
+            ..
+        } => crosstab::parse(text),
         _ => None,
     }
 }
@@ -384,12 +481,30 @@ pub(crate) fn entry_text_view(entry: &Entry, cwd: &Path) -> Option<(String, Stri
         Body::Notice { title, .. } if !title.is_empty() => title.clone(),
         Body::Notice { .. } => "Notice".to_string(),
         Body::Item(item) => match &item.item {
-            ThreadItem::UserMessage { .. } => "Your message".to_string(),
-            ThreadItem::AgentMessage { .. } => "Reply".to_string(),
-            ThreadItem::Plan { .. } => "Plan".to_string(),
-            ThreadItem::Reasoning { .. } => "Reasoning".to_string(),
-            ThreadItem::ExitedReviewMode { .. } => "Code review".to_string(),
-            ThreadItem::CommandExecution { .. } => "Command".to_string(),
+            ThreadItem {
+                payload: ThreadItemPayload::UserMessage { .. },
+                ..
+            } => "Your message".to_string(),
+            ThreadItem {
+                payload: ThreadItemPayload::AgentMessage { .. },
+                ..
+            } => "Reply".to_string(),
+            ThreadItem {
+                payload: ThreadItemPayload::Plan { .. },
+                ..
+            } => "Plan".to_string(),
+            ThreadItem {
+                payload: ThreadItemPayload::Reasoning { .. },
+                ..
+            } => "Reasoning".to_string(),
+            ThreadItem {
+                payload: ThreadItemPayload::ExitedReviewMode { .. },
+                ..
+            } => "Code review".to_string(),
+            ThreadItem {
+                payload: ThreadItemPayload::CommandExecution { .. },
+                ..
+            } => "Command".to_string(),
             _ => "Activity".to_string(),
         },
         _ => "Message".to_string(),
@@ -536,12 +651,12 @@ mod tests {
 
     #[test]
     fn exports_the_tui_format() {
-        let user = ThreadItem::UserMessage {
+        let user = ThreadItem::untimed(ThreadItemPayload::UserMessage {
             id: "u".to_string(),
             client_id: None,
             content: vec![crate::session::text_input("Run the tests")],
-        };
-        let exec = ThreadItem::CommandExecution {
+        });
+        let exec = ThreadItem::untimed(ThreadItemPayload::CommandExecution {
             sandbox_type: None,
             model_context: None,
             id: "e".to_string(),
@@ -557,15 +672,15 @@ mod tests {
             aggregated_output: Some("ok\n".to_string()),
             exit_code: Some(0),
             duration_ms: Some(1200),
-        };
-        let agent = ThreadItem::AgentMessage {
+        });
+        let agent = ThreadItem::untimed(ThreadItemPayload::AgentMessage {
             id: "a".to_string(),
             text: "All **green**. :codex-followup[Ship it]{id=\"x\"}".to_string(),
             phase: None,
             memory_citation: None,
             delivery: None,
             questions: None,
-        };
+        });
         let sources = vec![
             ExportSource::Item {
                 item: &user,
@@ -598,12 +713,12 @@ mod tests {
             "Tests pass on **main**.",
             /*reply_expected*/ false,
         );
-        let user = ThreadItem::UserMessage {
+        let user = ThreadItem::untimed(ThreadItemPayload::UserMessage {
             id: "u".to_string(),
             client_id: None,
             content: vec![crate::session::text_input(&envelope)],
-        };
-        let forwarded = ThreadItem::UserMessage {
+        });
+        let forwarded = ThreadItem::untimed(ThreadItemPayload::UserMessage {
             id: "f".to_string(),
             client_id: None,
             content: vec![crate::session::text_input(
@@ -614,7 +729,7 @@ mod tests {
                     "Line one\nLine two",
                 ),
             )],
-        };
+        });
         let sources = vec![
             ExportSource::Item {
                 item: &user,
@@ -633,14 +748,14 @@ mod tests {
 
     #[test]
     fn text_views_name_the_message() {
-        let agent = ThreadItem::AgentMessage {
+        let agent = ThreadItem::untimed(ThreadItemPayload::AgentMessage {
             id: "a".to_string(),
             text: "Done :codex-followup[Next]{id=\"x\"}".to_string(),
             phase: None,
             memory_citation: None,
             delivery: None,
             questions: None,
-        };
+        });
         let entry = Entry::from_history("turn".to_string(), agent);
         assert_eq!(
             entry_text_view(&entry, Path::new("/repo")),
@@ -649,11 +764,11 @@ mod tests {
         let envelope = crate::xtab::tools::wrap_agent_message(
             "t", "repo-a", "Hi", /*reply_expected*/ false,
         );
-        let user = ThreadItem::UserMessage {
+        let user = ThreadItem::untimed(ThreadItemPayload::UserMessage {
             id: "u".to_string(),
             client_id: None,
             content: vec![crate::session::text_input(&envelope)],
-        };
+        });
         let entry = Entry::from_history("turn".to_string(), user);
         assert_eq!(
             entry_markdown(&entry, Path::new("/repo")),

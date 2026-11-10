@@ -1,14 +1,18 @@
-# Embedded Goose in Fastrock 0.4.0
+# Embedded Goose in Fastrock 0.5.0
 
-Goose 1.57.0 is pinned at `30bba95105e59bc3e7df624cf6b4d433690cfe12`.
-Its source is unchanged. Fastrock calls the public `GooseAcpAgent` and `serve`
+Goose 1.58.0 is pinned at `7c039ac9f90f5d61cf2953d32baf26e7ad1219ae`.
+Its source is unchanged. Fastrock calls the public `StateMachineServices`, `AcpConnection` and `serve`
 APIs on its own Tokio runtime, connected to the UI adapter by a bounded memory
 stream. There is no Goose process or HTTP/stdio hop to an external Goose service.
-The existing adapter preserves native transcript, permission and queue behavior.
+Each activated conversation has its own public connection and services so its
+hook snapshot uses the correct repository and newly saved settings. Connections
+share Goose's public session store; bounded routing separates permission replies
+and releases a connection after close and outstanding prompt replies complete.
+The adapter preserves native transcript, permission and queue behavior.
 
 On Windows 11 24H2 / Windows Server 2025 and newer, Fastrock prepares a
 windowless console before starting worker threads. This is necessary because
-Goose 1.57 hides the Developer shell process but starts command hooks through
+Goose 1.58 hides the Developer shell process but starts command hooks through
 ordinary `sh -c` processes, which otherwise open a console from a GUI parent.
 Fastrock uses the documented
 [AllocConsoleWithOptions](https://learn.microsoft.com/en-us/windows/console/allocconsolewithoptions)
@@ -93,8 +97,8 @@ and leave the rendered prompt for explicit Send; they do not run automatically.
 
 The standalone `embedded_goose` test isolates environment/configuration before
 starting threads and disables access to the user's Goose keyring. It sends requests
-to a local Bedrock Runtime fixture with model IDs `openai.gpt-6.1-sol`,
-`openai.gpt-6-luna`, and `us.anthropic.claude-opus-5-5`. These strings test route
+to a local Bedrock Runtime fixture with model IDs `us.openai.gpt-6.1-sol`,
+`us.openai.gpt-6-luna`, and `us.anthropic.claude-opus-5-5`. These strings test route
 preservation; they do not establish AWS model availability or account access.
 Working profiles and final model acceptance are validated by the user.
 

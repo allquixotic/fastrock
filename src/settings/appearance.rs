@@ -73,6 +73,7 @@ impl AppController {
         state.set_pref_enter_sends(prefs.enter_sends);
         state.set_pref_busy_input(i32::from(prefs.busy_input == BusyInput::Queue));
         state.set_pref_notifications(prefs.desktop_notifications);
+        state.set_pref_collapse_thinking(prefs.collapse_thinking);
         state.set_pref_cross_tab(prefs.cross_tab_tools);
         state.set_pref_sidebar(app_state.get_sidebar_visible());
         state.set_pref_info(app_state.get_info_visible());
@@ -113,6 +114,10 @@ impl AppController {
                 };
             }
             "notifications" => self.prefs.desktop_notifications = state.get_pref_notifications(),
+            "collapse-thinking" => {
+                self.prefs.collapse_thinking = state.get_pref_collapse_thinking();
+                self.transcript_refresh_thinking();
+            }
             "cross-tab" => self.prefs.cross_tab_tools = state.get_pref_cross_tab(),
             "sidebar" => {
                 let visible = state.get_pref_sidebar();

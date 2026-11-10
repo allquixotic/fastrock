@@ -7,6 +7,7 @@
 //! timer only while the section is on screen. At most one request per tab
 //! is in flight; changes during it trigger one more.
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::time::Duration;
@@ -20,7 +21,6 @@ use codex_app_server_protocol::ThreadBackgroundTerminalsListParams;
 use codex_app_server_protocol::ThreadBackgroundTerminalsListResponse;
 use codex_app_server_protocol::ThreadBackgroundTerminalsTerminateParams;
 use codex_app_server_protocol::ThreadBackgroundTerminalsTerminateResponse;
-use codex_app_server_protocol::ThreadItem;
 use slint::ComponentHandle;
 
 use super::Fetch;
@@ -159,8 +159,11 @@ pub(crate) fn may_change_terminals(notification: &ServerNotification) -> bool {
 fn has_process(item: &ThreadItem) -> bool {
     matches!(
         item,
-        ThreadItem::CommandExecution {
-            process_id: Some(_),
+        ThreadItem {
+            payload: ThreadItemPayload::CommandExecution {
+                process_id: Some(_),
+                ..
+            },
             ..
         }
     )
@@ -698,7 +701,7 @@ mod tests {
 
     fn exec_started(process_id: Option<&str>) -> ServerNotification {
         ServerNotification::ItemStarted(ItemStartedNotification {
-            item: ThreadItem::CommandExecution {
+            item: ThreadItem::untimed(ThreadItemPayload::CommandExecution {
                 sandbox_type: None,
                 model_context: None,
                 id: "c".to_string(),
@@ -714,7 +717,7 @@ mod tests {
                 aggregated_output: None,
                 exit_code: None,
                 duration_ms: None,
-            },
+            }),
             thread_id: "t".to_string(),
             turn_id: "u".to_string(),
             started_at_ms: 0,

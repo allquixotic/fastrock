@@ -24,6 +24,7 @@ mod policy;
 pub(crate) mod tools;
 mod wait;
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::cell::Cell;
 use std::cell::OnceCell;
 use std::collections::BTreeMap;
@@ -45,7 +46,6 @@ use codex_app_server_protocol::DynamicToolSpec;
 use codex_app_server_protocol::RequestId;
 use codex_app_server_protocol::ServerNotification;
 use codex_app_server_protocol::SortDirection;
-use codex_app_server_protocol::ThreadItem;
 use codex_app_server_protocol::ThreadItemsListParams;
 use codex_app_server_protocol::ThreadItemsListResponse;
 use codex_app_server_protocol::ThreadQueueAddParams;
@@ -1198,8 +1198,12 @@ impl AppController {
         if self.xtab.deliveries.is_empty() {
             return;
         }
-        let ThreadItem::UserMessage {
-            client_id: Some(client_id),
+        let ThreadItem {
+            payload:
+                ThreadItemPayload::UserMessage {
+                    client_id: Some(client_id),
+                    ..
+                },
             ..
         } = item
         else {

@@ -75,6 +75,7 @@ export struct InfoTerminal {
     stopping: bool,
 }
 
+import { ContextReportState } from "context-report.slint";
 export global InfoState {
     // Thread summary.
     in property <string> title;
@@ -387,6 +388,7 @@ export component InfoPane inherits Rectangle {
                 collapsed <=> InfoState.context-collapsed;
             }
             if !InfoState.context-collapsed: SectionBody {
+                FlatButton { text: "View context window"; clicked => { ContextReportState.action("open"); } }
                 if !InfoState.has-usage: Text {
                     text: "No tokens used yet.";
                     color: Theme.text-faint;

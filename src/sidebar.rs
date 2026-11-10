@@ -1240,6 +1240,8 @@ fn list_params(
         search_term,
         parent_thread_id: None,
         ancestor_thread_id: None,
+        attached_to_thread_id: None,
+        excluded_thread_ids: None,
     }
 }
 

@@ -1,15 +1,19 @@
 //! Async questions are ordinary messages: retain their forms across turn completion
 //! and deliver replies through normal send/steer/queue, never JSON-RPC resolution.
 use codex_app_server_protocol::RequestId;
-use codex_app_server_protocol::ThreadItem;
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 
 use super::user_input::UserInputForm;
 use super::*;
 
 fn pending(thread_id: &str, item: &ThreadItem) -> Option<PendingRequest> {
-    let ThreadItem::AgentMessage {
-        id,
-        questions: Some(questions),
+    let ThreadItem {
+        payload:
+            ThreadItemPayload::AgentMessage {
+                id,
+                questions: Some(questions),
+                ..
+            },
         ..
     } = item
     else {
@@ -32,7 +36,10 @@ fn pending(thread_id: &str, item: &ThreadItem) -> Option<PendingRequest> {
 
 impl AppController {
     pub(super) fn approvals_async_item(&mut self, thread_id: &str, item: &ThreadItem) {
-        if let ThreadItem::UserMessage { content, .. } = item
+        if let ThreadItem {
+            payload: ThreadItemPayload::UserMessage { content, .. },
+            ..
+        } = item
             && let Some(replies) = crate::async_questions::parse_input(content)
         {
             let ids = self
@@ -95,16 +102,26 @@ impl AppController {
         };
         // History is paginated newest-first. Remember replies before considering
         // any questions on this page; later older pages consult the same IDs.
-        for item in items
-            .iter()
-            .filter(|item| matches!(item, ThreadItem::UserMessage { .. }))
-        {
+        for item in items.iter().filter(|item| {
+            matches!(
+                item,
+                ThreadItem {
+                    payload: ThreadItemPayload::UserMessage { .. },
+                    ..
+                }
+            )
+        }) {
             self.approvals_async_item(&thread_id, item);
         }
-        for item in items
-            .iter()
-            .filter(|item| matches!(item, ThreadItem::AgentMessage { .. }))
-        {
+        for item in items.iter().filter(|item| {
+            matches!(
+                item,
+                ThreadItem {
+                    payload: ThreadItemPayload::AgentMessage { .. },
+                    ..
+                }
+            )
+        }) {
             self.approvals_async_item(&thread_id, item);
         }
     }
@@ -188,7 +205,7 @@ mod tests {
 
     #[test]
     fn v6_async_pending_uses_message_identity_and_survives_turn_completion() {
-        let item = ThreadItem::AgentMessage {
+        let item = ThreadItem::untimed(ThreadItemPayload::AgentMessage {
             id: "call".into(),
             text: "Which ticket?".into(),
             phase: None,
@@ -198,7 +215,7 @@ mod tests {
                 title: "Which ticket?".into(),
                 options: None,
             }]),
-        };
+        });
         let request = pending("thread", &item).expect("async question");
         assert!(request.is_async_question());
         assert!(request.turn_id.is_none());
@@ -210,14 +227,14 @@ mod tests {
         assert!(
             pending(
                 "thread",
-                &ThreadItem::AgentMessage {
+                &ThreadItem::untimed(ThreadItemPayload::AgentMessage {
                     id: "plain".into(),
                     text: "Ordinary message".into(),
                     phase: None,
                     memory_citation: None,
                     delivery: None,
                     questions: None,
-                }
+                })
             )
             .is_none()
         );

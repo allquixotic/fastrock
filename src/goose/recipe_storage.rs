@@ -12,7 +12,7 @@ pub(super) fn read(path: &Path) -> Result<Value> {
         .take((LIMIT + 1) as u64)
         .read_to_end(&mut bytes)?;
     ensure!(bytes.len() <= LIMIT, "Recipe exceeds 1 MiB");
-    let revision = format!("{:x}", Sha256::digest(&bytes));
+    let revision = hex::encode(Sha256::digest(&bytes));
     let content = String::from_utf8(bytes).context("Recipe must be UTF-8")?;
     Ok(json!({"content":content,"revision":revision}))
 }

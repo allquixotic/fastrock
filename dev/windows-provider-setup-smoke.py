@@ -54,15 +54,15 @@ try:
                 control('field', 'OPENAI_BASE_URL', ''),
                 control('field', 'AWS_REGION', 'us-west-2'),
                 control('field', 'AWS_ENDPOINT_URL_BEDROCK_RUNTIME', provider.endpoint),
-                control('model', 'openai.gpt-6-luna'),
+                control('model', 'us.openai.gpt-6-luna'),
                 {'click_text': 'Save provider defaults'}, {'wait': 1000}, *dump('saved'),
                 {'snapshot': str(out / 'provider-defaults.png')}, {'quit': True}], 'setup')
     initial = json.loads((out / 'initial.json').read_text(encoding='utf-8'))
     invalid = json.loads((out / 'invalid.json').read_text(encoding='utf-8'))
     saved = json.loads((out / 'saved.json').read_text(encoding='utf-8'))
-    assert initial['loaded'] and not initial['busy'] and initial['model'] == 'openai.gpt-6.1-sol', initial
+    assert initial['loaded'] and not initial['busy'] and initial['model'] == 'us.openai.gpt-6.1-sol', initial
     assert 'cannot contain' in invalid['status'], invalid
-    assert 'Saved in provider configuration' in saved['status'] and saved['model'] == 'openai.gpt-6-luna', saved
+    assert 'Saved in provider configuration' in saved['status'] and saved['model'] == 'us.openai.gpt-6-luna', saved
     assert saved['fields']['AWS_REGION'] == 'us-west-2', saved
     assert secrets.read_bytes() == original_secrets, 'Setup changed credentials'
     assert 'preserve me' in config.read_text(encoding='utf-8'), 'Setup lost unrelated configuration'
@@ -77,9 +77,9 @@ try:
     assert 'External agent backends' in blocked['sessionError'], blocked
     offered = next(o['values'] for o in blocked['sessionOptions'] if o['id'] == 'provider')
     assert offered and set(offered) <= {'goose', 'aws_bedrock', 'openai', 'anthropic'}, offered
-    assert restored['model'] == 'openai.gpt-6-luna', restored
+    assert restored['model'] == 'us.openai.gpt-6-luna', restored
     assert restored['fields']['AWS_REGION'] == 'us-west-2', restored
-    assert provider.requests and all('/model/openai.gpt-6-luna/' in r['path'] for r in provider.requests), provider.requests
+    assert provider.requests and all('/model/us.openai.gpt-6-luna/' in r['path'] for r in provider.requests), provider.requests
     assert not provider.errors, provider.errors
     assert secrets.read_bytes() == original_secrets
     assert (out / 'provider-defaults.png').stat().st_size > 1000

@@ -1,6 +1,7 @@
 //! Rendering of transcript entries (thread items, notices, turn markers)
 //! into rows. Pure functions: the store decides when to call them.
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::path::Path;
 
 use codex_app_server_protocol::CollabAgentStatus;
@@ -17,7 +18,6 @@ use codex_app_server_protocol::McpToolCallStatus;
 use codex_app_server_protocol::PatchApplyStatus;
 use codex_app_server_protocol::PatchChangeKind;
 use codex_app_server_protocol::SubAgentActivityKind;
-use codex_app_server_protocol::ThreadItem;
 use codex_app_server_protocol::TurnPlanStepStatus;
 use codex_app_server_protocol::TurnStatus;
 use codex_app_server_protocol::UserInput;
@@ -77,6 +77,7 @@ pub(crate) struct RenderContext<'a> {
     pub(crate) show_raw_reasoning: bool,
     /// `hide_agent_reasoning` from config.
     pub(crate) hide_reasoning: bool,
+    pub(crate) collapse_thinking: bool,
     /// Threads open in a tab of this window (cross-tab cards link to them).
     pub(crate) open_threads: &'a [String],
 }
@@ -270,7 +271,10 @@ fn render_hook(hook: &HookEntry) -> Block {
 fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
     let expanded = |toggle: usize| entry.expanded.contains(&toggle);
     match &entry.item {
-        ThreadItem::UserMessage { content, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::UserMessage { content, .. },
+            ..
+        } => {
             let mut blocks = match user_cross_tab_message(content) {
                 Some(message) => crosstab_blocks(&message, delivery_status(entry), ctx),
                 None => vec![user_block(content, delivery_status(entry))],
@@ -280,15 +284,21 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
             }
             blocks
         }
-        ThreadItem::AgentMessage { text, .. }
-            if !matches!(entry.live, Live::Markdown(_))
-                && let Some(message) = crosstab::parse(text) =>
+        ThreadItem {
+            payload: ThreadItemPayload::AgentMessage { text, .. },
+            ..
+        } if !matches!(entry.live, Live::Markdown(_))
+            && let Some(message) = crosstab::parse(text) =>
         {
             crosstab_blocks(&message, Status::None, ctx)
         }
-        ThreadItem::AgentMessage {
-            text,
-            memory_citation,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::AgentMessage {
+                    text,
+                    memory_citation,
+                    ..
+                },
             ..
         } => {
             let style = BlockStyle {
@@ -329,7 +339,10 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
             mark_footer(&mut blocks, entry);
             blocks
         }
-        ThreadItem::Plan { text, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::Plan { text, .. },
+            ..
+        } => {
             let style = BlockStyle {
                 tone: Tone::Plan,
                 message: true,
@@ -364,18 +377,35 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
             mark_footer(&mut blocks, entry);
             blocks
         }
-        ThreadItem::Reasoning { .. } if ctx.hide_reasoning => Vec::new(),
-        ThreadItem::Reasoning {
-            summary, content, ..
-        } => reasoning_blocks(summary, content, entry, ctx, expanded(TOGGLE_MAIN)),
-        ThreadItem::CommandExecution {
-            command,
-            source,
-            status,
-            command_actions,
-            aggregated_output,
-            exit_code,
-            duration_ms,
+        ThreadItem {
+            payload: ThreadItemPayload::Reasoning { .. },
+            ..
+        } if ctx.hide_reasoning => Vec::new(),
+        ThreadItem {
+            payload:
+                ThreadItemPayload::Reasoning {
+                    summary, content, ..
+                },
+            ..
+        } => reasoning_blocks(
+            summary,
+            content,
+            entry,
+            ctx,
+            entry.thinking_expanded.unwrap_or(!ctx.collapse_thinking),
+        ),
+        ThreadItem {
+            payload:
+                ThreadItemPayload::CommandExecution {
+                    command,
+                    source,
+                    status,
+                    command_actions,
+                    aggregated_output,
+                    exit_code,
+                    duration_ms,
+                    ..
+                },
             ..
         } => exec_blocks(
             ExecView {
@@ -397,17 +427,25 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
             },
             expanded(TOGGLE_MAIN),
         ),
-        ThreadItem::FileChange {
-            changes, status, ..
+        ThreadItem {
+            payload:
+                ThreadItemPayload::FileChange {
+                    changes, status, ..
+                },
+            ..
         } => patch_blocks(changes, status.clone(), &entry.expanded, ctx.cwd),
-        ThreadItem::McpToolCall {
-            server,
-            tool,
-            status,
-            arguments,
-            result,
-            error,
-            duration_ms,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::McpToolCall {
+                    server,
+                    tool,
+                    status,
+                    arguments,
+                    result,
+                    error,
+                    duration_ms,
+                    ..
+                },
             ..
         } => {
             let mut result_lines = Vec::new();
@@ -444,14 +482,18 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
                 expanded: expanded(TOGGLE_MAIN),
             })]
         }
-        ThreadItem::DynamicToolCall {
-            namespace,
-            tool,
-            arguments,
-            status,
-            content_items,
-            success,
-            duration_ms,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::DynamicToolCall {
+                    namespace,
+                    tool,
+                    arguments,
+                    status,
+                    content_items,
+                    success,
+                    duration_ms,
+                    ..
+                },
             ..
         } => {
             let result = content_items
@@ -491,7 +533,10 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
                 expanded: expanded(TOGGLE_MAIN),
             })]
         }
-        ThreadItem::WebSearch(search) => {
+        ThreadItem {
+            payload: ThreadItemPayload::WebSearch(search),
+            ..
+        } => {
             let detail = match &search.action {
                 Some(WebSearchAction::Search { query, queries }) => query
                     .clone()
@@ -540,7 +585,10 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
             block.meta = "web".to_string();
             vec![block]
         }
-        ThreadItem::ImageView { path, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::ImageView { path, .. },
+            ..
+        } => {
             let mut block = Block::new(BlockKind::Tool);
             block.title = "Viewed image".to_string();
             block.text = display_path(path.as_str(), ctx.cwd);
@@ -548,7 +596,10 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
             block.meta = "image".to_string();
             vec![block]
         }
-        ThreadItem::ImageGeneration(generation) => {
+        ThreadItem {
+            payload: ThreadItemPayload::ImageGeneration(generation),
+            ..
+        } => {
             let failed =
                 generation.status.eq_ignore_ascii_case("failed") || generation.failure.is_some();
             let mut block = Block::new(BlockKind::Tool);
@@ -575,14 +626,18 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
             }
             vec![block]
         }
-        ThreadItem::CollabAgentToolCall {
-            tool,
-            status,
-            receiver_thread_ids,
-            prompt,
-            model,
-            reasoning_effort,
-            agents_states,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::CollabAgentToolCall {
+                    tool,
+                    status,
+                    receiver_thread_ids,
+                    prompt,
+                    model,
+                    reasoning_effort,
+                    agents_states,
+                    ..
+                },
             ..
         } => {
             let agent_label = |id: &str| format!("Agent {}", short_id(id));
@@ -665,10 +720,14 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
                 .collect();
             vec![block]
         }
-        ThreadItem::SubAgentActivity {
-            kind,
-            agent_thread_id,
-            agent_path,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::SubAgentActivity {
+                    kind,
+                    agent_thread_id,
+                    agent_path,
+                    ..
+                },
             ..
         } => {
             let mut block = Block::new(BlockKind::Agent);
@@ -683,14 +742,20 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
             block.target = agent_thread_id.clone();
             vec![block]
         }
-        ThreadItem::EnteredReviewMode { review, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::EnteredReviewMode { review, .. },
+            ..
+        } => {
             let mut block = Block::new(BlockKind::Section);
             block.title = "Code review started".to_string();
             block.text = review.clone();
             block.tone = Tone::Info;
             vec![block]
         }
-        ThreadItem::ExitedReviewMode { review, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::ExitedReviewMode { review, .. },
+            ..
+        } => {
             let mut header = Block::new(BlockKind::Section);
             header.title = "Code review finished".to_string();
             header.tone = Tone::Info;
@@ -703,7 +768,10 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
             blocks.extend(markdown::render(&visible_markdown(review, ctx.cwd), style));
             blocks
         }
-        ThreadItem::ContextCompaction { .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::ContextCompaction { .. },
+            ..
+        } => {
             let mut block = notice_block(
                 NoticeKind::Info,
                 "",
@@ -720,9 +788,18 @@ fn render_item(entry: &ItemEntry, ctx: RenderContext<'_>) -> Vec<Block> {
             };
             vec![block]
         }
-        ThreadItem::HookPrompt { .. }
-        | ThreadItem::Sleep(_)
-        | ThreadItem::FunctionCallOutput { .. } => Vec::new(),
+        ThreadItem {
+            payload: ThreadItemPayload::HookPrompt { .. },
+            ..
+        }
+        | ThreadItem {
+            payload: ThreadItemPayload::Sleep(_),
+            ..
+        }
+        | ThreadItem {
+            payload: ThreadItemPayload::FunctionCallOutput { .. },
+            ..
+        } => Vec::new(),
     }
 }
 
@@ -954,6 +1031,7 @@ fn reasoning_blocks(
     };
     let expandable = !body.is_empty() || !raw.is_empty();
     header.toggle = expandable.then_some(TOGGLE_MAIN);
+    header.copyable = expandable;
     header.expanded = expanded && expandable;
     let mut blocks = vec![header];
     if expanded && expandable {
@@ -1723,6 +1801,7 @@ mod tests {
             item,
             live: Live::None,
             expanded: std::collections::BTreeSet::new(),
+            thinking_expanded: None,
             local_echo: false,
             unsent: false,
             completed,
@@ -1736,6 +1815,7 @@ mod tests {
             cwd: Path::new("/repo"),
             show_raw_reasoning: false,
             hide_reasoning: false,
+            collapse_thinking: true,
             open_threads: &[],
         }
     }
@@ -1818,10 +1898,10 @@ mod tests {
 
     #[test]
     fn proposed_plans_have_a_header_and_actions() {
-        let item = ThreadItem::Plan {
+        let item = ThreadItem::untimed(ThreadItemPayload::Plan {
             id: "p".to_string(),
             text: "1. Do it\n2. Test it".to_string(),
-        };
+        });
         let blocks = render_item(&item_entry(item, /*completed*/ true), ctx());
         let kinds: Vec<BlockKind> = blocks.iter().map(|block| block.kind).collect();
         assert_eq!(
@@ -1840,11 +1920,11 @@ mod tests {
     }
 
     fn user_text(id: &str, text: &str) -> ThreadItem {
-        ThreadItem::UserMessage {
+        ThreadItem::untimed(ThreadItemPayload::UserMessage {
             id: id.to_string(),
             client_id: None,
             content: vec![crate::session::text_input(text)],
-        }
+        })
     }
 
     #[test]
@@ -1989,11 +2069,11 @@ mod tests {
 
     #[test]
     fn hidden_reasoning_renders_nothing() {
-        let item = ThreadItem::Reasoning {
+        let item = ThreadItem::untimed(ThreadItemPayload::Reasoning {
             id: "r".to_string(),
             summary: vec!["**Look**".to_string()],
             content: Vec::new(),
-        };
+        });
         let entry = item_entry(item, /*completed*/ true);
         assert_eq!(render_item(&entry, ctx()).len(), 1);
         let hidden = RenderContext {

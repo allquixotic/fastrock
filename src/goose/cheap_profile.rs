@@ -16,7 +16,9 @@ impl Default for CheapProfile {
         Self {
             name: "Bedrock Luna".into(),
             provider: "aws_bedrock".into(),
-            model: "openai.gpt-6-luna".into(),
+            // Goose routes bare closed-weight GPT IDs to Mantle. The US profile
+            // selects the required Bedrock Runtime Converse route.
+            model: "us.openai.gpt-6-luna".into(),
         }
     }
 }
@@ -73,6 +75,7 @@ mod tests {
         let config =
             Config::new_with_file_secrets(&path, dir.path().join("fixture-secrets.yaml")).unwrap();
         assert_eq!(read(&config).unwrap(), CheapProfile::default());
+        assert_eq!(read(&config).unwrap().model, "us.openai.gpt-6-luna");
         config.set_param(KEY, serde_json::json!({"name":"invalid","provider":"external-agent","model":"expensive"})).unwrap();
         assert!(read(&config).is_err());
         config

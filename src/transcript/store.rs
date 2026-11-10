@@ -13,6 +13,7 @@
 //! items when read back (see `history`); [`Transcript::adopt_snapshot`]
 //! records those ids as aliases of the live entries.
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -29,7 +30,6 @@ use codex_app_server_protocol::ImageReference;
 use codex_app_server_protocol::McpToolCallStatus;
 use codex_app_server_protocol::PatchApplyStatus;
 use codex_app_server_protocol::ServerNotification;
-use codex_app_server_protocol::ThreadItem;
 use codex_app_server_protocol::Turn;
 use codex_app_server_protocol::TurnPlanStepStatus;
 use codex_app_server_protocol::TurnStatus;
@@ -68,6 +68,7 @@ pub(crate) struct ItemEntry {
     pub(crate) live: Live,
     /// Toggle ids of expanded sub-elements (see `render::TOGGLE_MAIN`).
     pub(crate) expanded: BTreeSet<usize>,
+    pub(crate) thinking_expanded: Option<bool>,
     /// A user message shown before the server confirmed it.
     pub(crate) local_echo: bool,
     /// A local echo whose message could not be sent (or queued).
@@ -88,6 +89,7 @@ impl ItemEntry {
             item: slim_item(item),
             live,
             expanded: BTreeSet::new(),
+            thinking_expanded: None,
             local_echo: false,
             unsent: false,
             completed,
@@ -268,22 +270,43 @@ fn slim_data_url(url: &mut String) {
 /// megabytes per item and would otherwise stay alive with the tab.
 pub(crate) fn slim_item(mut item: ThreadItem) -> ThreadItem {
     match &mut item {
-        ThreadItem::ImageGeneration(generation) => generation.result = String::new(),
-        ThreadItem::WebSearch(search) => search.results = None,
-        ThreadItem::UserMessage { content, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::ImageGeneration(generation),
+            ..
+        } => {
+            if let codex_app_server_protocol::GeneratedImageRef::Inline { result } =
+                &mut generation.image
+            {
+                result.clear();
+            }
+        }
+        ThreadItem {
+            payload: ThreadItemPayload::WebSearch(search),
+            ..
+        } => search.results = None,
+        ThreadItem {
+            payload: ThreadItemPayload::UserMessage { content, .. },
+            ..
+        } => {
             for input in content {
                 match input {
                     UserInput::Image {
                         image: ImageReference::Inline { url },
                         ..
                     }
-                    | UserInput::Audio { url } => slim_data_url(url),
+                    | UserInput::Audio {
+                        audio: codex_app_server_protocol::AudioReference::Inline { url },
+                    } => slim_data_url(url),
                     _ => {}
                 }
             }
         }
-        ThreadItem::DynamicToolCall {
-            content_items: Some(items),
+        ThreadItem {
+            payload:
+                ThreadItemPayload::DynamicToolCall {
+                    content_items: Some(items),
+                    ..
+                },
             ..
         } => {
             for item in items {
@@ -296,8 +319,12 @@ pub(crate) fn slim_item(mut item: ThreadItem) -> ThreadItem {
                 }
             }
         }
-        ThreadItem::McpToolCall {
-            result: Some(result),
+        ThreadItem {
+            payload:
+                ThreadItemPayload::McpToolCall {
+                    result: Some(result),
+                    ..
+                },
             ..
         } => {
             for content in &mut result.content {
@@ -318,7 +345,10 @@ pub(crate) fn slim_item(mut item: ThreadItem) -> ThreadItem {
 /// Approximate bytes an item keeps alive outside its rendered rows.
 fn item_bytes(item: &ThreadItem) -> usize {
     match item {
-        ThreadItem::UserMessage { content, .. } => content
+        ThreadItem {
+            payload: ThreadItemPayload::UserMessage { content, .. },
+            ..
+        } => content
             .iter()
             .map(|input| match input {
                 UserInput::Text { text, .. } => text.len(),
@@ -326,34 +356,62 @@ fn item_bytes(item: &ThreadItem) -> usize {
                     image: ImageReference::Inline { url },
                     ..
                 }
-                | UserInput::Audio { url } => url.len(),
+                | UserInput::Audio {
+                    audio: codex_app_server_protocol::AudioReference::Inline { url },
+                } => url.len(),
                 _ => 64,
             })
             .sum(),
-        ThreadItem::AgentMessage { text, .. } | ThreadItem::Plan { text, .. } => text.len(),
-        ThreadItem::Reasoning {
-            summary, content, ..
+        ThreadItem {
+            payload: ThreadItemPayload::AgentMessage { text, .. },
+            ..
+        }
+        | ThreadItem {
+            payload: ThreadItemPayload::Plan { text, .. },
+            ..
+        } => text.len(),
+        ThreadItem {
+            payload:
+                ThreadItemPayload::Reasoning {
+                    summary, content, ..
+                },
+            ..
         } => summary.iter().chain(content).map(String::len).sum(),
-        ThreadItem::CommandExecution {
-            command,
-            aggregated_output,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::CommandExecution {
+                    command,
+                    aggregated_output,
+                    ..
+                },
             ..
         } => command.len() + aggregated_output.as_ref().map_or(0, String::len),
-        ThreadItem::FileChange { changes, .. } => changes
+        ThreadItem {
+            payload: ThreadItemPayload::FileChange { changes, .. },
+            ..
+        } => changes
             .iter()
             .map(|change| change.diff.len() + change.path.len())
             .sum(),
-        ThreadItem::McpToolCall {
-            arguments, result, ..
+        ThreadItem {
+            payload:
+                ThreadItemPayload::McpToolCall {
+                    arguments, result, ..
+                },
+            ..
         } => {
             arguments.to_string().len()
                 + result.as_ref().map_or(0, |result| {
                     serde_json::to_string(&result.content).map_or(0, |s| s.len())
                 })
         }
-        ThreadItem::DynamicToolCall {
-            arguments,
-            content_items,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::DynamicToolCall {
+                    arguments,
+                    content_items,
+                    ..
+                },
             ..
         } => {
             arguments.to_string().len()
@@ -369,11 +427,19 @@ fn item_bytes(item: &ThreadItem) -> usize {
                     })
                     .sum::<usize>()
         }
-        ThreadItem::ImageGeneration(generation) => {
-            128 + generation.result.len()
-                + generation.revised_prompt.as_ref().map_or(0, String::len)
+        ThreadItem {
+            payload: ThreadItemPayload::ImageGeneration(generation),
+            ..
+        } => {
+            128 + match &generation.image {
+                codex_app_server_protocol::GeneratedImageRef::Inline { result } => result.len(),
+                codex_app_server_protocol::GeneratedImageRef::File { file_id } => file_id.len(),
+            } + generation.revised_prompt.as_ref().map_or(0, String::len)
         }
-        ThreadItem::ExitedReviewMode { review, .. } => review.len(),
+        ThreadItem {
+            payload: ThreadItemPayload::ExitedReviewMode { review, .. },
+            ..
+        } => review.len(),
         _ => 128,
     }
 }
@@ -409,7 +475,10 @@ fn signature(turn_id: &str, item: &ThreadItem) -> Option<Signature> {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     turn_id.hash(&mut hasher);
     let kind = match item {
-        ThreadItem::UserMessage { content, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::UserMessage { content, .. },
+            ..
+        } => {
             for input in content {
                 if let UserInput::Text { text, .. } = input {
                     text.hash(&mut hasher);
@@ -417,12 +486,19 @@ fn signature(turn_id: &str, item: &ThreadItem) -> Option<Signature> {
             }
             0
         }
-        ThreadItem::AgentMessage { text, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::AgentMessage { text, .. },
+            ..
+        } => {
             text.hash(&mut hasher);
             1
         }
-        ThreadItem::Reasoning {
-            summary, content, ..
+        ThreadItem {
+            payload:
+                ThreadItemPayload::Reasoning {
+                    summary, content, ..
+                },
+            ..
         } => {
             summary.hash(&mut hasher);
             content.hash(&mut hasher);
@@ -772,7 +848,10 @@ impl Transcript {
             }
             ServerNotification::FileChangePatchUpdated(updated) => {
                 self.with_item(&updated.item_id, ctx, |item| {
-                    if let ThreadItem::FileChange { changes, .. } = &mut item.item
+                    if let ThreadItem {
+                        payload: ThreadItemPayload::FileChange { changes, .. },
+                        ..
+                    } = &mut item.item
                         && !item.completed
                     {
                         changes.clone_from(&updated.changes);
@@ -1045,11 +1124,11 @@ impl Transcript {
         if self.index.contains_key(client_id) {
             return;
         }
-        let item = ThreadItem::UserMessage {
+        let item = ThreadItem::untimed(ThreadItemPayload::UserMessage {
             id: client_id.to_string(),
             client_id: Some(client_id.to_string()),
             content: input.to_vec(),
-        };
+        });
         let mut item = ItemEntry::from_event(item, Live::None, /*completed*/ false);
         item.local_echo = true;
         let entry = Entry::new(client_id.to_string(), None, Body::Item(Box::new(item)));
@@ -1090,11 +1169,11 @@ impl Transcript {
             return false;
         };
         if let Some(item) = self.entries[index].item_mut() {
-            item.item = ThreadItem::UserMessage {
+            item.item = ThreadItem::untimed(ThreadItemPayload::UserMessage {
                 id: client_id.to_string(),
                 client_id: Some(client_id.to_string()),
                 content: input,
-            };
+            });
         }
         self.rerender(index, ctx);
         true
@@ -1111,8 +1190,12 @@ impl Transcript {
 
     /// The local echo a server user message confirms, if any.
     fn local_echo_for(&self, item: &ThreadItem) -> Option<usize> {
-        let ThreadItem::UserMessage {
-            client_id, content, ..
+        let ThreadItem {
+            payload:
+                ThreadItemPayload::UserMessage {
+                    client_id, content, ..
+                },
+            ..
         } = item
         else {
             return None;
@@ -1129,7 +1212,7 @@ impl Transcript {
             entry.item().is_some_and(|item| {
                 item.local_echo
                     && !item.unsent
-                    && matches!(&item.item, ThreadItem::UserMessage { content: echoed, .. } if echoed == content)
+                    && matches!(&item.item, ThreadItem { payload: ThreadItemPayload::UserMessage { content: echoed, .. }, .. } if echoed == content)
             })
         })
     }
@@ -1143,7 +1226,10 @@ impl Transcript {
     ) {
         let item = slim_item(item);
         let key = item.id().to_string();
-        if let ThreadItem::Reasoning { summary, .. } = &item
+        if let ThreadItem {
+            payload: ThreadItemPayload::Reasoning { summary, .. },
+            ..
+        } = &item
             && !completed
         {
             self.activity = reasoning_header(summary).or_else(|| self.activity.clone());
@@ -1217,19 +1303,19 @@ impl Transcript {
         if !self.index.contains_key(item_id) {
             // The `item/started` was dropped (lag); start from the deltas.
             let item = if plan {
-                ThreadItem::Plan {
+                ThreadItem::untimed(ThreadItemPayload::Plan {
                     id: item_id.to_string(),
                     text: String::new(),
-                }
+                })
             } else {
-                ThreadItem::AgentMessage {
+                ThreadItem::untimed(ThreadItemPayload::AgentMessage {
                     id: item_id.to_string(),
                     text: String::new(),
                     phase: None,
                     memory_citation: None,
                     delivery: None,
                     questions: None,
-                }
+                })
             };
             self.upsert_item(turn_id, item, /*completed*/ false, ctx);
         }
@@ -1254,11 +1340,11 @@ impl Transcript {
         ctx: RenderContext<'_>,
     ) -> bool {
         if !self.index.contains_key(item_id) {
-            let item = ThreadItem::Reasoning {
+            let item = ThreadItem::untimed(ThreadItemPayload::Reasoning {
                 id: item_id.to_string(),
                 summary: Vec::new(),
                 content: Vec::new(),
-            };
+            });
             self.upsert_item(turn_id, item, /*completed*/ false, ctx);
         }
         let Ok(index) = usize::try_from(index) else {
@@ -1269,8 +1355,12 @@ impl Transcript {
             if item.completed {
                 return false;
             }
-            let ThreadItem::Reasoning {
-                summary, content, ..
+            let ThreadItem {
+                payload:
+                    ThreadItemPayload::Reasoning {
+                        summary, content, ..
+                    },
+                ..
             } = &mut item.item
             else {
                 return false;
@@ -1323,7 +1413,14 @@ impl Transcript {
         // `turn/completed` carries the final message; render it when its
         // item events were lost.
         for item in &turn.items {
-            if matches!(item, ThreadItem::AgentMessage { .. }) && !self.contains(item.id()) {
+            if matches!(
+                item,
+                ThreadItem {
+                    payload: ThreadItemPayload::AgentMessage { .. },
+                    ..
+                }
+            ) && !self.contains(item.id())
+            {
                 self.upsert_item(&turn.id, item.clone(), /*completed*/ true, ctx);
             }
         }
@@ -1381,11 +1478,36 @@ impl Transcript {
         let Some(item) = self.entries[index].item_mut() else {
             return false;
         };
-        if !item.expanded.remove(&toggle) {
+        if matches!(
+            item.item,
+            ThreadItem {
+                payload: ThreadItemPayload::Reasoning { .. },
+                ..
+            }
+        ) {
+            item.thinking_expanded =
+                Some(!item.thinking_expanded.unwrap_or(!ctx.collapse_thinking));
+        } else if !item.expanded.remove(&toggle) {
             item.expanded.insert(toggle);
         }
         self.rerender(index, ctx);
         true
+    }
+
+    pub(crate) fn refresh_thinking(&mut self, ctx: RenderContext<'_>) {
+        for index in 0..self.entries.len() {
+            if self.entries[index].item().is_some_and(|item| {
+                matches!(
+                    item.item,
+                    ThreadItem {
+                        payload: ThreadItemPayload::Reasoning { .. },
+                        ..
+                    }
+                )
+            }) {
+                self.rerender(index, ctx);
+            }
+        }
     }
 
     /// The entry and block shown in row `row_id`.
@@ -1438,7 +1560,7 @@ impl Transcript {
             let key = item.id();
             let duplicate = self.find(key).is_some()
                 || seen.contains(key)
-                || matches!(item, ThreadItem::UserMessage { client_id: Some(client), .. } if self.index.contains_key(client));
+                || matches!(item, ThreadItem { payload: ThreadItemPayload::UserMessage { client_id: Some(client), .. }, .. } if self.index.contains_key(client));
             if !duplicate {
                 seen.insert(key.to_string());
                 entries.push(Entry::from_history(turn_id.clone(), item.clone()));
@@ -1822,9 +1944,18 @@ impl Transcript {
 /// `item` (a user, agent or reasoning message) under the id `id`.
 fn with_item_id(mut item: ThreadItem, id: &str) -> ThreadItem {
     match &mut item {
-        ThreadItem::UserMessage { id: item_id, .. }
-        | ThreadItem::AgentMessage { id: item_id, .. }
-        | ThreadItem::Reasoning { id: item_id, .. } => *item_id = id.to_string(),
+        ThreadItem {
+            payload: ThreadItemPayload::UserMessage { id: item_id, .. },
+            ..
+        }
+        | ThreadItem {
+            payload: ThreadItemPayload::AgentMessage { id: item_id, .. },
+            ..
+        }
+        | ThreadItem {
+            payload: ThreadItemPayload::Reasoning { id: item_id, .. },
+            ..
+        } => *item_id = id.to_string(),
         _ => {}
     }
     item
@@ -1832,9 +1963,22 @@ fn with_item_id(mut item: ThreadItem, id: &str) -> ThreadItem {
 
 fn initial_live(item: &ThreadItem, ctx: RenderContext<'_>) -> Live {
     match item {
-        ThreadItem::AgentMessage { text, .. } | ThreadItem::Plan { text, .. } => {
+        ThreadItem {
+            payload: ThreadItemPayload::AgentMessage { text, .. },
+            ..
+        }
+        | ThreadItem {
+            payload: ThreadItemPayload::Plan { text, .. },
+            ..
+        } => {
             let style = BlockStyle {
-                tone: if matches!(item, ThreadItem::Plan { .. }) {
+                tone: if matches!(
+                    item,
+                    ThreadItem {
+                        payload: ThreadItemPayload::Plan { .. },
+                        ..
+                    }
+                ) {
                     Tone::Plan
                 } else {
                     Tone::Normal
@@ -1845,8 +1989,12 @@ fn initial_live(item: &ThreadItem, ctx: RenderContext<'_>) -> Live {
             stream.push(text);
             Live::Markdown(Box::new(stream))
         }
-        ThreadItem::CommandExecution {
-            aggregated_output, ..
+        ThreadItem {
+            payload:
+                ThreadItemPayload::CommandExecution {
+                    aggregated_output, ..
+                },
+            ..
         } => {
             let mut output = LiveOutput::default();
             if let Some(text) = aggregated_output {
@@ -1864,23 +2012,39 @@ fn initial_live(item: &ThreadItem, ctx: RenderContext<'_>) -> Live {
 fn finalize_unfinished(item: &mut ItemEntry, turn_status: &TurnStatus) {
     let succeeded = *turn_status == TurnStatus::Completed;
     match (&mut item.item, std::mem::take(&mut item.live)) {
-        (ThreadItem::McpToolCall { status, .. }, _) if *status == McpToolCallStatus::InProgress => {
+        (
+            ThreadItem {
+                payload: ThreadItemPayload::McpToolCall { status, .. },
+                ..
+            },
+            _,
+        ) if *status == McpToolCallStatus::InProgress => {
             *status = if succeeded {
                 McpToolCallStatus::Completed
             } else {
                 McpToolCallStatus::Failed
             };
         }
-        (ThreadItem::DynamicToolCall { status, .. }, _)
-            if *status == DynamicToolCallStatus::InProgress =>
-        {
+        (
+            ThreadItem {
+                payload: ThreadItemPayload::DynamicToolCall { status, .. },
+                ..
+            },
+            _,
+        ) if *status == DynamicToolCallStatus::InProgress => {
             *status = if succeeded {
                 DynamicToolCallStatus::Completed
             } else {
                 DynamicToolCallStatus::Failed
             };
         }
-        (ThreadItem::FileChange { status, .. }, _) if *status == PatchApplyStatus::InProgress => {
+        (
+            ThreadItem {
+                payload: ThreadItemPayload::FileChange { status, .. },
+                ..
+            },
+            _,
+        ) if *status == PatchApplyStatus::InProgress => {
             *status = match turn_status {
                 TurnStatus::Completed => PatchApplyStatus::Completed,
                 // Interrupted while waiting for approval or applying.
@@ -1888,9 +2052,13 @@ fn finalize_unfinished(item: &mut ItemEntry, turn_status: &TurnStatus) {
                 _ => PatchApplyStatus::Failed,
             };
         }
-        (ThreadItem::CollabAgentToolCall { status, .. }, _)
-            if *status == CollabAgentToolCallStatus::InProgress =>
-        {
+        (
+            ThreadItem {
+                payload: ThreadItemPayload::CollabAgentToolCall { status, .. },
+                ..
+            },
+            _,
+        ) if *status == CollabAgentToolCallStatus::InProgress => {
             *status = match turn_status {
                 TurnStatus::Completed => CollabAgentToolCallStatus::Completed,
                 TurnStatus::Interrupted => CollabAgentToolCallStatus::Interrupted,
@@ -1898,15 +2066,26 @@ fn finalize_unfinished(item: &mut ItemEntry, turn_status: &TurnStatus) {
             };
         }
         (
-            ThreadItem::AgentMessage { text, .. } | ThreadItem::Plan { text, .. },
+            ThreadItem {
+                payload: ThreadItemPayload::AgentMessage { text, .. },
+                ..
+            }
+            | ThreadItem {
+                payload: ThreadItemPayload::Plan { text, .. },
+                ..
+            },
             Live::Markdown(stream),
         ) if text.is_empty() => {
             *text = stream.raw().to_string();
         }
         (
-            ThreadItem::CommandExecution {
-                status,
-                aggregated_output,
+            ThreadItem {
+                payload:
+                    ThreadItemPayload::CommandExecution {
+                        status,
+                        aggregated_output,
+                        ..
+                    },
                 ..
             },
             live,
@@ -1949,27 +2128,28 @@ mod tests {
             cwd: Path::new("/repo"),
             show_raw_reasoning: false,
             hide_reasoning: false,
+            collapse_thinking: true,
             open_threads: &[],
         }
     }
 
     fn agent(id: &str, text: &str) -> ThreadItem {
-        ThreadItem::AgentMessage {
+        ThreadItem::untimed(ThreadItemPayload::AgentMessage {
             id: id.to_string(),
             text: text.to_string(),
             phase: None,
             memory_citation: None,
             delivery: None,
             questions: None,
-        }
+        })
     }
 
     fn user(id: &str, client: Option<&str>, text: &str) -> ThreadItem {
-        ThreadItem::UserMessage {
+        ThreadItem::untimed(ThreadItemPayload::UserMessage {
             id: id.to_string(),
             client_id: client.map(str::to_string),
             content: vec![crate::session::text_input(text)],
-        }
+        })
     }
 
     fn started(item: ThreadItem) -> ServerNotification {
@@ -2167,7 +2347,7 @@ mod tests {
         let entry = transcript.entry("a").and_then(Entry::item).map(|item| {
             (
                 item.completed,
-                matches!(&item.item, ThreadItem::AgentMessage { text, .. } if text == "partial text"),
+                matches!(&item.item, ThreadItem { payload: ThreadItemPayload::AgentMessage { text, .. }, .. } if text == "partial text"),
             )
         });
         assert_eq!(entry, Some((true, true)));
@@ -2389,16 +2569,54 @@ mod tests {
     }
 
     fn reasoning(id: &str, summary: &str) -> ThreadItem {
-        ThreadItem::Reasoning {
+        ThreadItem::untimed(ThreadItemPayload::Reasoning {
             id: id.to_string(),
             summary: vec![summary.to_string()],
             content: Vec::new(),
-        }
+        })
+    }
+
+    #[test]
+    fn v105_thinking_defaults_and_explicit_choices_survive_stream_and_history() {
+        let mut transcript = Transcript::new();
+        let mut reported = None;
+        let expanded = RenderContext {
+            show_raw_reasoning: true,
+            collapse_thinking: false,
+            ..ctx()
+        };
+        let collapsed = RenderContext {
+            collapse_thinking: true,
+            ..expanded
+        };
+        let item = || {
+            serde_json::from_value(serde_json::json!({"type":"reasoning","id":"thought","summary":[],"content":["Inspectable thinking λ"]})).unwrap()
+        };
+        transcript.apply(&started(item()), &mut reported, expanded);
+        assert!(transcript.entries()[0].blocks[0].expanded);
+        let row = transcript.model.id_at(0).unwrap();
+        assert!(transcript.toggle(&row, expanded));
+        assert!(!transcript.entries()[0].blocks[0].expanded);
+        transcript.apply(&completed(item()), &mut reported, expanded);
+        assert!(!transcript.entries()[0].blocks[0].expanded);
+        transcript.refresh_thinking(collapsed);
+        assert!(transcript.toggle(&row, collapsed));
+        transcript.refresh_thinking(expanded);
+        transcript.refresh_thinking(collapsed);
+        assert!(transcript.entries()[0].blocks[0].expanded);
+        let mut history = Transcript::new();
+        history.resync(vec![("turn".into(), item())], collapsed);
+        assert!(!history.entries()[0].blocks[0].expanded);
+        history.refresh_thinking(expanded);
+        assert!(history.entries()[0].blocks[0].expanded);
     }
 
     fn agent_text(transcript: &Transcript, key: &str) -> Option<String> {
         match &transcript.entry(key)?.item()?.item {
-            ThreadItem::AgentMessage { text, .. } => Some(text.clone()),
+            ThreadItem {
+                payload: ThreadItemPayload::AgentMessage { text, .. },
+                ..
+            } => Some(text.clone()),
             _ => None,
         }
     }
@@ -2688,10 +2906,22 @@ mod tests {
             .iter()
             .filter_map(|entry| {
                 Some(match &entry.item()?.item {
-                    ThreadItem::McpToolCall { status, .. } => format!("{status:?}"),
-                    ThreadItem::DynamicToolCall { status, .. } => format!("{status:?}"),
-                    ThreadItem::FileChange { status, .. } => format!("{status:?}"),
-                    ThreadItem::CollabAgentToolCall { status, .. } => format!("{status:?}"),
+                    ThreadItem {
+                        payload: ThreadItemPayload::McpToolCall { status, .. },
+                        ..
+                    } => format!("{status:?}"),
+                    ThreadItem {
+                        payload: ThreadItemPayload::DynamicToolCall { status, .. },
+                        ..
+                    } => format!("{status:?}"),
+                    ThreadItem {
+                        payload: ThreadItemPayload::FileChange { status, .. },
+                        ..
+                    } => format!("{status:?}"),
+                    ThreadItem {
+                        payload: ThreadItemPayload::CollabAgentToolCall { status, .. },
+                        ..
+                    } => format!("{status:?}"),
                     _ => return None,
                 })
             })
@@ -2778,11 +3008,11 @@ mod tests {
     #[test]
     fn toggling_expands_rows() {
         let mut transcript = Transcript::new();
-        let item = ThreadItem::Reasoning {
+        let item = ThreadItem::untimed(ThreadItemPayload::Reasoning {
             id: "r".to_string(),
             summary: vec!["**Plan**\n\nDetails here.".to_string()],
             content: Vec::new(),
-        };
+        });
         apply(&mut transcript, completed(item));
         assert_eq!(transcript.rows(), 1);
         // Expanded: the body without the repeated headline.

@@ -17,12 +17,12 @@ This project includes code derived from [Ratatui](https://github.com/ratatui/rat
 Copyright (c) 2016-2022 Florian Dehau
 Copyright (c) 2023-2025 The Ratatui Developers
 
-Embedded Goose 1.57.0
+Embedded Goose 1.58.0
 Copyright Block, Inc. and Goose contributors
 Licensed under Apache-2.0. Unmodified dependency pinned in Cargo.lock.
 https://github.com/aaif-goose/goose
 
-Embedded vwork 0.4.0
+Embedded vwork 0.4.1
 Copyright (c) 2026 Sean McNamara
 Licensed under the MIT License. Maintained storage integration pinned in Cargo.lock.
 https://github.com/allquixotic/vwork
@@ -38,7 +38,7 @@ Native sidebar and workspace chrome adapted from commit 6d450a4284852af137b2f340
 Licensed under the MIT License. License included in licenses/t3code/LICENSE.
 https://github.com/pingdotgg/t3code
 
-yaml-edit 0.3.2
+yaml-edit 0.3.6
 Jelmer Vernooĳ and contributors
 Licensed under Apache-2.0; license included in licenses/yaml-edit/LICENSE.
 Unmodified lossless YAML editor pinned in Cargo.lock.

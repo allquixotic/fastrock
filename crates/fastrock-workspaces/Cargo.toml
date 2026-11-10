@@ -22,21 +22,22 @@ required-features = ["http-fixtures"]
 
 [dependencies]
 anyhow.workspace = true
-vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "77b688a80e06fd05a630058dce043adbf445d5a4" }
+vwork-engine = { package = "vwork", git = "https://github.com/allquixotic/vwork", rev = "fb523be0efd118adc819fd6cc4159f97d67dd5f0" }
 fjall = "=3.1.13"
 tempfile.workspace = true
-rayon = "1.11"
+rayon = "1.12.0"
 base64.workspace = true
-sha2 = "0.10"
-git2 = "0.21"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+sha2 = "0.11.1"
+hex = "0.4.3"
+git2 = "0.21.0"
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serde_yaml = "0.9"
+serde_yaml = "0.9.34"
 thiserror.workspace = true
 tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "rt", "sync", "time"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
-redb = "4.4"
-zstd = "0.13"
+redb = "4.5.0"
+zstd = "0.14.3"

@@ -1,11 +1,11 @@
 {
   "repository": "https://github.com/openai/codex",
-  "tag": "rust-v0.162.0",
-  "revision": "c1382380de69521303b416720a52f42d51af6248",
-  "version": "0.162.0",
+  "tag": "rust-v0.167.0",
+  "revision": "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a",
+  "version": "0.167.0",
   "rust": "1.95.0",
   "v8": "150.4.0",
-  "patches": [
+  "historicalPatches": [
     {
       "crate": "codex-model-provider",
       "file": "patches/bedrock-sol-ultrafast.patch",
@@ -21,5 +21,7 @@
       "file": "patches/pending-steer-server.patch",
       "reason": "Expose pending-steer edits through scoped queue update/delete IDs; no wire schema fork"
     }
-  ]
+  ],
+  "patches": [],
+  "note": "Current support crates are unmodified git dependencies; historical backend patches are retained as provenance and are not applied."
 }

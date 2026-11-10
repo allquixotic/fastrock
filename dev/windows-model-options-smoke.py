@@ -60,7 +60,7 @@ def run(name,steps):
 
 try:
     peak=run('controls',[{'wait_ready':30000},{'resize':[1440,1100]},*new(),
-        {'click_text':'openai.gpt-6.1-sol  ▾'},*settled(),*dump('initial'),
+        {'click_text':'us.openai.gpt-6.1-sol  ▾'},*settled(),*dump('initial'),
         *choose('provider','custom_bedrock_sol'),*choose('model',SOL),*dump('sol'),
         {'click_text':'Standard'},{'wait':150},{'key':'down'},*settled(),*dump('ultra'),
         *choose('thinking_effort','high'),*dump('effort'),{'snapshot':str(out/'compact-model-controls.png')},

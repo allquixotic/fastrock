@@ -37,8 +37,8 @@ pub(crate) fn acquire(cli: &crate::Cli, rt: &tokio::runtime::Handle) -> Result<O
     let root = goose_runtime::config::paths::Paths::data_dir();
     let key = root.to_string_lossy().replace('/', "\\").to_lowercase();
     let name = format!(
-        r"\\.\pipe\fastrock-profile-{:x}",
-        Sha256::digest(key.as_bytes())
+        r"\\.\pipe\fastrock-profile-{}",
+        hex::encode(Sha256::digest(key.as_bytes()))
     );
     let launch = Launch {
         folder: cli

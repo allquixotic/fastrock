@@ -1,0 +1,694 @@
+{
+  "result": "PASS",
+  "version": "0.5.0",
+  "verified_at": "2026-11-10T00:09:58.427473+00:00",
+  "source_base": "acb7bfc820bd12bdf6dd54a7d8e4c7f0c8e07280",
+  "source": "0.5.0 working tree committed together with this receipt; exact fixture binary hashes below",
+  "windows_rust": {
+    "total": 868,
+    "by_target": {
+      "review": 3,
+      "store_startup": 0,
+      "integration": 7,
+      "durability": 1,
+      "migration": 2,
+      "embedded": 7,
+      "checkpoints": 7,
+      "fastrock_workspaces": 20,
+      "codex_gui": 816,
+      "accesskit_focus": 4,
+      "fastrock": 0,
+      "embedded_goose": 0,
+      "renderer": 1
+    },
+    "standalone_embedded_goose": "PASS",
+    "release_policy": "PASS",
+    "fixture_watchdog": "PASS",
+    "guarded_runs": [
+      {
+        "name": "unit-review",
+        "result": "PASS",
+        "seconds": 1.3251536999596283,
+        "peak_tree_bytes": 15613952
+      },
+      {
+        "name": "unit-store_startup",
+        "result": "PASS",
+        "seconds": 1.2261158000910655,
+        "peak_tree_bytes": 13963264
+      },
+      {
+        "name": "unit-integration",
+        "result": "PASS",
+        "seconds": 2.64660710003227,
+        "peak_tree_bytes": 14196736
+      },
+      {
+        "name": "unit-durability",
+        "result": "PASS",
+        "seconds": 1.525237200083211,
+        "peak_tree_bytes": 10031104
+      },
+      {
+        "name": "unit-migration",
+        "result": "PASS",
+        "seconds": 1.423625799943693,
+        "peak_tree_bytes": 16150528
+      },
+      {
+        "name": "unit-embedded",
+        "result": "PASS",
+        "seconds": 2.1359302999917418,
+        "peak_tree_bytes": 12775424
+      },
+      {
+        "name": "unit-checkpoints",
+        "result": "PASS",
+        "seconds": 2.537786899949424,
+        "peak_tree_bytes": 14495744
+      },
+      {
+        "name": "unit-fastrock_workspaces",
+        "result": "PASS",
+        "seconds": 3.2587305000051856,
+        "peak_tree_bytes": 127856640
+      },
+      {
+        "name": "unit-codex_gui",
+        "result": "PASS",
+        "seconds": 5.69163820007816,
+        "peak_tree_bytes": 106434560
+      },
+      {
+        "name": "unit-accesskit_focus",
+        "result": "PASS",
+        "seconds": 0.7187600999604911,
+        "peak_tree_bytes": 8138752
+      },
+      {
+        "name": "unit-fastrock",
+        "result": "PASS",
+        "seconds": 1.123456500004977,
+        "peak_tree_bytes": 7704576
+      },
+      {
+        "name": "unit-embedded_goose",
+        "result": "PASS",
+        "seconds": 1.8339531000237912,
+        "peak_tree_bytes": 68026368
+      },
+      {
+        "name": "renderer",
+        "result": "PASS",
+        "seconds": 1.6281534999143332,
+        "peak_tree_bytes": 14675968
+      },
+      {
+        "name": "test-release-policy.py",
+        "result": "PASS",
+        "seconds": 1.3255005000391975,
+        "peak_tree_bytes": 39751680
+      },
+      {
+        "name": "test-fixture-watchdog.py",
+        "result": "PASS",
+        "seconds": 1.1224895999766886,
+        "peak_tree_bytes": 36728832
+      }
+    ]
+  },
+  "native_matrix": {
+    "binary_sha256": "79ed59b5ff82b2fa87fa9b127cbfc223d36fa2170e76b57b4a522ede068dd894",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 48.73,
+        "peak_tree_bytes": 161718272
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 4.02,
+        "peak_tree_bytes": 159961088
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.28,
+        "peak_tree_bytes": 165228544
+      },
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 23.67,
+        "peak_tree_bytes": 165347328
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 63.76,
+        "peak_tree_bytes": 163696640
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 82.62,
+        "peak_tree_bytes": 162619392
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.85,
+        "peak_tree_bytes": 160681984
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 28.89,
+        "peak_tree_bytes": 162377728
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.25,
+        "peak_tree_bytes": 160935936
+      },
+      {
+        "name": "model-options",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.24,
+        "peak_tree_bytes": 160935936
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 34.72,
+        "peak_tree_bytes": 161169408
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 39.73,
+        "peak_tree_bytes": 161296384
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.04,
+        "peak_tree_bytes": 160661504
+      },
+      {
+        "name": "commands",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.64,
+        "peak_tree_bytes": 160763904
+      },
+      {
+        "name": "palette",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.04,
+        "peak_tree_bytes": 161021952
+      },
+      {
+        "name": "terminal",
+        "result": "PASS",
+        "error": null,
+        "seconds": 32.49,
+        "peak_tree_bytes": 161325056
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.48,
+        "peak_tree_bytes": 162451456
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.25,
+        "peak_tree_bytes": 162787328
+      },
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.07,
+        "peak_tree_bytes": 160714752
+      },
+      {
+        "name": "organization",
+        "result": "PASS",
+        "error": null,
+        "seconds": 44.53,
+        "peak_tree_bytes": 162316288
+      },
+      {
+        "name": "sidebar-drag",
+        "result": "PASS",
+        "error": null,
+        "seconds": 34.52,
+        "peak_tree_bytes": 161247232
+      },
+      {
+        "name": "sidebar-policy",
+        "result": "PASS",
+        "error": null,
+        "seconds": 21.07,
+        "peak_tree_bytes": 160743424
+      },
+      {
+        "name": "titles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.91,
+        "peak_tree_bytes": 161112064
+      },
+      {
+        "name": "queue",
+        "result": "PASS",
+        "error": null,
+        "seconds": 18.48,
+        "peak_tree_bytes": 160944128
+      },
+      {
+        "name": "mentions",
+        "result": "PASS",
+        "error": null,
+        "seconds": 21.28,
+        "peak_tree_bytes": 160530432
+      },
+      {
+        "name": "review",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.25,
+        "peak_tree_bytes": 162009088
+      },
+      {
+        "name": "shell",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.46,
+        "peak_tree_bytes": 161718272
+      },
+      {
+        "name": "console",
+        "result": "PASS",
+        "error": null,
+        "seconds": 5.43,
+        "peak_tree_bytes": 161062912
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.66,
+        "peak_tree_bytes": 162447360
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.72,
+        "peak_tree_bytes": 162844672
+      },
+      {
+        "name": "relaunch",
+        "result": "PASS",
+        "error": null,
+        "seconds": 25.08,
+        "peak_tree_bytes": 161189888
+      },
+      {
+        "name": "delete",
+        "result": "PASS",
+        "error": null,
+        "seconds": 43.31,
+        "peak_tree_bytes": 162852864
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.65,
+        "peak_tree_bytes": 163414016
+      },
+      {
+        "name": "history-startup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 116.59,
+        "peak_tree_bytes": 163332096
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.48,
+        "peak_tree_bytes": 161734656
+      },
+      {
+        "name": "accessibility",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.47,
+        "peak_tree_bytes": 166838272
+      },
+      {
+        "name": "context",
+        "result": "PASS",
+        "error": null,
+        "seconds": 9.64,
+        "peak_tree_bytes": 160927744
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 35.72,
+        "peak_tree_bytes": 164429824
+      },
+      {
+        "name": "summary-priority",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.64,
+        "peak_tree_bytes": 160378880
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 41.12,
+        "peak_tree_bytes": 162164736
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.27,
+        "peak_tree_bytes": 162648064
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 19.68,
+        "peak_tree_bytes": 162373632
+      }
+    ]
+  },
+  "context": {
+    "result": "PASS",
+    "binary_sha256": "79ed59b5ff82b2fa87fa9b127cbfc223d36fa2170e76b57b4a522ede068dd894",
+    "peak_process_bytes": 155394048,
+    "native_report": true,
+    "previews": true,
+    "no_inference": true,
+    "thinking_opt_in": true,
+    "manual_expansion": true,
+    "export_preserved": true,
+    "persisted_restart": true,
+    "restored_resume_guard": true,
+    "conversation_switch_clears_report": true
+  },
+  "hooks": {
+    "result": "PASS",
+    "binary_sha256": "79ed59b5ff82b2fa87fa9b127cbfc223d36fa2170e76b57b4a522ede068dd894",
+    "peak_process_bytes": 152453120,
+    "native_extensions": true,
+    "custom_workspace_alias_protected": true,
+    "code_mode_tool_executed": true,
+    "tool_permissions_persisted": true,
+    "idle_mutation_guard": true,
+    "defaults_only_affect_new_chats": true,
+    "hook_validation_backup_execution": true,
+    "project_hooks_isolated": true,
+    "credentials_preserved": true,
+    "restart_no_replay": true
+  },
+  "migration": {
+    "passed": true,
+    "peakBytes": 247279616,
+    "sha256": "79ed59b5ff82b2fa87fa9b127cbfc223d36fa2170e76b57b4a522ede068dd894",
+    "sourceSha256": "80e2886638c8b3588fb0a453ed8b0271d36581917255320b3064a9085a0785d8",
+    "checks": [
+      "manual native progress",
+      "native Pause and Resume",
+      "registry discovery",
+      "automatic detection",
+      "first thread handoff",
+      "byte-exact source preservation",
+      "clean reopen without redb"
+    ]
+  },
+  "migration_seed": "Retained 0.4.3 store_startup executable; freshly generated legacy fixture, original bytes preserved",
+  "organization_catalog": {
+    "result": "PASS",
+    "binary_sha256": "79ed59b5ff82b2fa87fa9b127cbfc223d36fa2170e76b57b4a522ede068dd894",
+    "peak_process_bytes": 65847296,
+    "stored_conversations": 100,
+    "first_page": 50,
+    "pinned_outside_first_page": "goose:benchmark-0000",
+    "provider_activation": false
+  },
+  "scale_baseline": {
+    "binary_sha256": "dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9",
+    "seed_sha256": "0a330f0a2052837efcf7e8ef52001c9520ea36c9023b7b9d6d0a1ade3d2d14b1",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "external Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 2478036992,
+            "peak_app_bytes": 106647552,
+            "peak_tree_commit_bytes": 102088704
+          },
+          "app": {
+            "cap_bytes": 2402859008,
+            "peak_app_bytes": 190730240,
+            "peak_tree_commit_bytes": 234770432
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 1911.5,
+        "switch_dispatch_ms": [
+          1.1,
+          1.0,
+          0.8,
+          1.2,
+          1.0
+        ],
+        "frame": {
+          "p50_ms": 6.932,
+          "p95_ms": 13.695,
+          "p99_ms": 17.539
+        },
+        "render": {
+          "p50_ms": 5.797,
+          "p95_ms": 11.983,
+          "p99_ms": 15.743
+        },
+        "event_loop": {
+          "p50_ms": 17.958,
+          "p95_ms": 53.342,
+          "p99_ms": 82.342
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ],
+    "goose_sha256": "89d5849587586765fa335f664fac0a9ed0e466d0f3717dd609ca04ebdffa64e2"
+  },
+  "scale_candidate": {
+    "binary_sha256": "79ed59b5ff82b2fa87fa9b127cbfc223d36fa2170e76b57b4a522ede068dd894",
+    "seed_sha256": "0a330f0a2052837efcf7e8ef52001c9520ea36c9023b7b9d6d0a1ade3d2d14b1",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose 1.58.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 2339530752,
+            "peak_app_bytes": 106524672,
+            "peak_tree_commit_bytes": 101994496
+          },
+          "app": {
+            "cap_bytes": 2278885376,
+            "peak_app_bytes": 250781696,
+            "peak_tree_commit_bytes": 197111808
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 200.8,
+        "switch_dispatch_ms": [
+          0.4,
+          0.5,
+          0.4,
+          1.0,
+          0.5
+        ],
+        "frame": {
+          "p50_ms": 5.786,
+          "p95_ms": 10.211,
+          "p99_ms": 11.102
+        },
+        "render": {
+          "p50_ms": 4.361,
+          "p95_ms": 7.897,
+          "p99_ms": 9.389
+        },
+        "event_loop": {
+          "p50_ms": 16.539,
+          "p95_ms": 21.292,
+          "p99_ms": 24.677
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true,
+        "history_navigation": {
+          "first": {
+            "browsing": true,
+            "loading": false,
+            "start": 0,
+            "end": 100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 9.5407,
+            "rows": 100,
+            "bytes": 285990
+          },
+          "middle": {
+            "browsing": true,
+            "loading": false,
+            "start": 5000,
+            "end": 5100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 12.8815,
+            "rows": 100,
+            "bytes": 292500
+          },
+          "last": {
+            "browsing": true,
+            "loading": false,
+            "start": 9900,
+            "end": 10000,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 15.5184,
+            "rows": 100,
+            "bytes": 292569
+          },
+          "middle_frame": {
+            "p50_ms": 7.924,
+            "p95_ms": 9.952,
+            "p99_ms": 12.063
+          }
+        }
+      }
+    ]
+  },
+  "guards": {
+    "scale-baseline-guard": {
+      "cap_bytes": 2511337472,
+      "peak_tree_bytes": 265347072,
+      "elapsed_seconds": 41.407411899999715,
+      "exit_code": 0
+    },
+    "host-guard": {
+      "healthy": true,
+      "available": 6220091392,
+      "received_at": 1794269394.5940855
+    },
+    "hooks-r3-guard": {
+      "cap_bytes": 2105350144,
+      "peak_tree_bytes": 168677376,
+      "elapsed_seconds": 35.35524870001245,
+      "exit_code": 0
+    },
+    "native-candidate-guard": {
+      "cap_bytes": 2087819264,
+      "peak_tree_bytes": 188956672,
+      "elapsed_seconds": 1178.7454377000686,
+      "exit_code": 0
+    },
+    "migration-guard": {
+      "cap_bytes": 1900242944,
+      "peak_tree_bytes": 226500608,
+      "elapsed_seconds": 28.73991310002748,
+      "exit_code": 0
+    },
+    "catalog-guard": {
+      "cap_bytes": 2078218240,
+      "peak_tree_bytes": 168312832,
+      "elapsed_seconds": 10.268022899981588,
+      "exit_code": 0
+    },
+    "native-new-guard": {
+      "cap_bytes": 1194821632,
+      "peak_tree_bytes": 184729600,
+      "elapsed_seconds": 62.525854100007564,
+      "exit_code": 1
+    },
+    "hooks-r2-guard": {
+      "cap_bytes": 1888471040,
+      "peak_tree_bytes": 130469888,
+      "elapsed_seconds": 31.607677099993452,
+      "exit_code": 1
+    },
+    "scale-candidate-guard": {
+      "cap_bytes": 2346379264,
+      "peak_tree_bytes": 226992128,
+      "elapsed_seconds": 44.3833786000032,
+      "exit_code": 0
+    },
+    "context-2-guard": {
+      "cap_bytes": 1256003584,
+      "peak_tree_bytes": 168759296,
+      "elapsed_seconds": 8.840074200066738,
+      "exit_code": 0
+    }
+  },
+  "macos": "PASS: compile only; no app or tests executed",
+  "workflow_lint": "PASS",
+  "notes": [
+    "First native matrix passed 41/42; Goose 1.58 service-level hook snapshots required separate public connections per activated conversation. The corrected candidate passed the complete matrix.",
+    "Public permission manager and session storage are shared; project hooks remain isolated. No Goose source is vendored or patched.",
+    "Goose 1.58 routes bare closed-weight GPT IDs to Mantle. Default cheap Luna and Runtime fixtures use US inference-profile IDs; explicit saved model IDs remain intact.",
+    "All model, Rally and tool requests used local fixtures. Private live-profile acceptance remains user-owned."
+  ]
+}

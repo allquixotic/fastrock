@@ -1,6 +1,29 @@
 //! Fastrock-owned secrets. No plaintext fallback and no Goose storage internals.
 use anyhow::{Result, ensure};
 
+pub(crate) fn platform_entry(user: &str) -> Result<keyring::Entry> {
+    #[cfg(windows)]
+    {
+        // Keyring 4 changed its generated Windows target. Keep the exact legacy
+        // Fastrock target for Rally, provider profiles and webhook secrets.
+        keyring::Entry::store_status()
+            .as_ref()
+            .map_err(|_| anyhow::anyhow!("OS credential vault is unavailable"))?;
+        let target = format!("fastrock:{user}");
+        Ok(keyring::Entry {
+            inner: keyring_core::Entry::new_with_modifiers(
+                "fastrock",
+                user,
+                &std::collections::HashMap::from([("target", target.as_str())]),
+            )?,
+        })
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(keyring::Entry::new("fastrock", user)?)
+    }
+}
+
 fn entry(kind: &str, id: &str) -> Result<keyring::Entry> {
     ensure!(
         matches!(kind, "webhook" | "provider"),
@@ -9,10 +32,7 @@ fn entry(kind: &str, id: &str) -> Result<keyring::Entry> {
     let id =
         uuid::Uuid::parse_str(id).map_err(|_| anyhow::anyhow!("Invalid credential identity"))?;
     let user = format!("{kind}/{id}");
-    #[cfg(windows)]
-    let entry = keyring::Entry::new_with_target(&format!("fastrock:{user}"), "fastrock", &user);
-    #[cfg(not(windows))]
-    let entry = keyring::Entry::new("fastrock", &user);
+    let entry = platform_entry(&user);
     entry.map_err(|_| anyhow::anyhow!("OS credential vault is unavailable"))
 }
 pub(crate) fn get(kind: &str, id: &str) -> Result<String> {

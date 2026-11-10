@@ -14,7 +14,7 @@ config.write_text(json.dumps(cfg),encoding='utf-8');(repo/'src').mkdir();(repo/'
 git_env={k:v for k,v in os.environ.items() if not k.upper().startswith('GIT_')};git_env.update(GIT_CONFIG_NOSYSTEM='1',GIT_CONFIG_GLOBAL=str(out/'aws-empty'))
 for args in (['init','.'],['add','.'],['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-m','Fixture']):
  subprocess.run(['git','-c','core.hooksPath=NUL','-c','core.autocrlf=false',*args],cwd=repo,env=git_env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,check=True)
-recipe=dict(title='Native recipe fixture',description='Typed parameters and isolated workspace',instructions='RecipeUniqueFjord {{topic}} {{mode}} {{count}} {{source}}',prompt='{{task}}',extensions=[],settings=dict(goose_provider='aws_bedrock',goose_model='openai.gpt-6-luna'),parameters=[
+recipe=dict(title='Native recipe fixture',description='Typed parameters and isolated workspace',instructions='RecipeUniqueFjord {{topic}} {{mode}} {{count}} {{source}}',prompt='{{task}}',extensions=[],settings=dict(goose_provider='aws_bedrock',goose_model='us.openai.gpt-6-luna'),parameters=[
  dict(key='topic',input_type='string',requirement='required',description='Subject'),
  dict(key='mode',input_type='select',requirement='required',description='Mode',options=['review','explain'],default='review'),
  dict(key='count',input_type='number',requirement='required',description='Count',default='2'),
@@ -46,7 +46,7 @@ try:
  assert not read('prepared')['status'],read('prepared')
  assert read('draft')['draft']=='vwork-bound-parent',read('draft')
  ordinary=[q for q in provider.requests if not q['summary']]
- assert ordinary and all(q['path'].startswith('/model/openai.gpt-6-luna/') for q in ordinary),ordinary
+ assert ordinary and all(q['path'].startswith('/model/us.openai.gpt-6-luna/') for q in ordinary),ordinary
  assert 'RecipeUniqueFjord Aurora review 2 recipe source remains intact' in json.dumps(ordinary[0]['body']),ordinary[0]
  assert provider.workspace_results and provider.workspace_results[0]['prompt']=='vwork-bound-parent',provider.workspace_results
  tools=read('recipe-tools');assert any(e['name']=='source' and e['protected'] for e in tools['extensions']),tools
@@ -79,7 +79,7 @@ try:
   {'click_text':'Resume'},{'wait':500},{'send':'vwork-child-restored'},{'wait':400},{'wait_idle':30000},wait(),
   {'transcript':'export-complete:'+str(out/'resumed.md')},wait(),{'quit':True}]))
  assert any(r['prompt']=='vwork-child-restored' for r in provider.workspace_results),provider.workspace_results
- assert all(q['path'].startswith('/model/openai.gpt-6-luna/') for q in provider.requests if not q['summary'])
+ assert all(q['path'].startswith('/model/us.openai.gpt-6-luna/') for q in provider.requests if not q['summary'])
  assert (repo/'src/main.rs').read_text(encoding='utf-8')=='recipe source remains intact\n'
  assert list((out/'goose/config/recipes').glob('*.fastrock-backup-*')),'No original recipe backup'
  assert not provider.errors,provider.errors

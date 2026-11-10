@@ -22,8 +22,8 @@ pub(super) fn section_name(id: &str) -> Option<&str> {
 fn section_id(root: Option<&Path>, section: &str) -> String {
     match root {
         Some(root) => format!(
-            "project:{:x}:{section}",
-            Sha256::digest(root.as_os_str().as_encoded_bytes())
+            "project:{}:{section}",
+            hex::encode(Sha256::digest(root.as_os_str().as_encoded_bytes()))
         ),
         None => section.into(),
     }

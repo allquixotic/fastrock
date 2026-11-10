@@ -56,6 +56,8 @@ pub(crate) struct Prefs {
     pub(crate) busy_input: BusyInput,
     pub(crate) font_size: f32,
     pub(crate) desktop_notifications: bool,
+    /// Start thinking blocks collapsed; explicit per-block choices take precedence.
+    pub(crate) collapse_thinking: bool,
     /// Register cross-tab messaging tools on new threads.
     pub(crate) cross_tab_tools: bool,
     pub(crate) sidebar_visible: bool,
@@ -87,6 +89,7 @@ impl Default for Prefs {
             busy_input: BusyInput::Steer,
             font_size: 13.0,
             desktop_notifications: true,
+            collapse_thinking: false,
             cross_tab_tools: true,
             sidebar_visible: true,
             sidebar_width: 261.0,
@@ -372,6 +375,18 @@ impl Writer {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn v105_thinking_collapse_is_opt_in_and_round_trips() {
+        let (mut prefs, invalid) = super::parse_lenient(br#"{"future_setting":42}"#).unwrap();
+        assert!(!prefs.collapse_thinking);
+        assert!(invalid.is_empty());
+        prefs.collapse_thinking = true;
+        let (restored, invalid) =
+            super::parse_lenient(&serde_json::to_vec(&prefs).unwrap()).unwrap();
+        assert!(restored.collapse_thinking);
+        assert_eq!(restored.unknown["future_setting"], 42);
+        assert!(invalid.is_empty());
+    }
     use super::*;
     use pretty_assertions::assert_eq;
 

@@ -5,6 +5,7 @@ Fastrock 0.4.0: stable T3 UI/orchestration in native Slint/Rust, unmodified embe
 Broader GUI contract: repository `GUI.md`.
 
 ## §C CONSTRAINTS
+- 2026-11-09 explicit stable 0.5.0 authorized: latest direct dependencies, unmodified Goose 1.58.0, native context report/viewer and opt-in collapse-thinking preference. Windows x64 ZIP through signed CI; games acceptance/scale guards and Mac compile-only retained.
 - 2026-11-04 explicit stable 0.4.1 release authorized: ordinary Fjall changes buffered in RAM, OS flush in background, permanent journal target within 60s; explicit saves/recovery intents/shutdown sync before success. Tests/signing/benchmark gates retained; private live-profile feedback remains unavailable, not a new publication gate for this authorized version.
 - 2026-11-04: latest stable Fjall 3.1.13 replaces vwork redb; configure LZ4 in engine, no direct entropy compression in Fastrock/vwork except legacy migration decoding. Git delta support, shared immutable objects, independent workspace/conversation transaction keys. Automatic preserved-source migration, native progress, explicit migration menu; no source loss or silent overwrite.
 - Fastrock derives from pinned allquixotic/codex-gui; Apache-2.0 and Slint attribution preserved.
@@ -46,6 +47,8 @@ Broader GUI contract: repository `GUI.md`.
 - I.memory: completed-turn learning, bounded in-process recall tool, compressed facts/tombstones, native memory controls.
 - I.checkpoints: per-turn/manual snapshots, native file review, guarded file restore and Goose conversation rewind; durable interrupted-restore review.
 - I.lifecycle: close-to-tray, explicit Quit, restart Resume and safe cancellation.
+- I.context: native context-window report/viewer using unchanged Goose public ACP APIs, explicit read-only refresh.
+- I.thinking: GUI-only collapse-thinking default, native settings and per-block expansion.
 
 ## §R REFERENCES
 R1: T3 Code v0.1.5, 6d450a4284852af137b2f3407fddd89eb76e7644; UI/orchestration-v2 reference, MIT attribution; https://github.com/pingdotgg/t3code/releases/tag/v0.1.5.
@@ -236,8 +239,17 @@ V102: Bulk workspace calls ! admission before general workers, at most four of e
 
 V103: Accessibility focus ! node present in published tree or current full rebuild; new/delegated focus waits at root until structure published. Reentrant item registration/destruction ! coalesced deferred rebuild, no dropped notification or retained dying ItemTreeRef. Preserve accessibility and stable live identities. Verify `v103_*` real AccessKit consumer regressions and native UI Automation state-change/focus fixture on Windows.
 
+V104: 0.5.0 ! latest audited stable direct dependencies and unchanged Goose 1.58.0; preserve credential identities, config/history, required routes and patched Slint behavior; default cheap Luna ! US Bedrock Runtime inference-profile ID, saved choices retained. Context report ! real upstream counts/components, honest estimates/unknowns, read-only off-UI request, bounded viewer, no model turn or activation of restored sessions; stale results cannot replace another chat. Verify `v104_*`, embedded provider fixture, `dev/windows-context-smoke.py`, full Windows suite and Mac compile.
+V105: Collapse thinking ! opt-in false default in persisted GUI preferences; new/live/history reasoning respects setting, explicit per-block choice survives deltas and setting changes. Reasoning remains inspectable/copyable without changing backend context; native settings applies without restart. Verify `v105_*` and `dev/windows-context-smoke.py` restart/stream/history fixture.
+
+V106: Goose hook snapshots ! scoped to activated conversation and repository; new chats/explicit reopen see saved edits, active chats retain their snapshot. Global tool permissions ! shared public PermissionManager across connections; project plugin discovery ! native path separators. Multiplexed public connections ! namespace server-request IDs, preserve wire order, share public storage, release only after successful close; no provider/tool replay. Verify `v106_*`, embedded fixture and native tools/hooks multi-project regression.
+
 ## §T TASKS
 id|status|task|cites
+T77|x|Update direct dependencies to latest stable; adapt unchanged Goose 1.58.0 public services, preserve credentials/storage/provider routes and Slint patches|V38,V39,V95,V103,V104,V106,I.goose,I.vwork
+T78|x|Native context-window report/viewer with explicit refresh, bounded details and stale-session guards|V104,I.goose,I.context
+T79|x|Opt-in persisted collapse-thinking setting, streaming/history defaults and independent per-block toggles|V105,I.thinking
+T80|x|0.5.0 prepublication acceptance passed: 868 Windows Rust tests, 42 native cases, migration/catalog, full guarded 1,000/eight/10,000 comparison with 0.3.4, Mac compile only and workflow lint; signed CI publication prepared. docs/benchmarks/050-games-2026-11-09.json|V23,V45,V104,V105,I.distribution
 T76|x|0.4.3 AccessKit focus/structure repair; four red/green consumer tests, 861 games Rust tests, four native cases and full-scale 0.3.4 comparison passed; Mac compile only, workflow lint passed. Signed CI 42700164850 passed 861 Rust tests, 41 native cases and migration/catalog/scroll checks; stable v0.4.3 published, downloaded checksum/provenance/signature verified. docs/ACCESSIBILITY-043.md|V103,V45,I.distribution
 
 T75|x|0.4.2 explicit Git frontier, packed materialization, reserved worker capacity and phase diagnostics; upstream Windows/macOS CI, 857 games Rust tests, nine native regressions, virtual cold/warm starts and full-scale 1,000/eight/10,000 comparison passed; Mac compile only. Signed CI 42681807135 passed 857 tests and 40 native cases; stable v0.4.2 published, download/provenance/signature verified; docs/PERFORMANCE-042.md|V102,V101,V99,V45,I.vwork,I.distribution
@@ -904,3 +916,12 @@ B300|2026-11-09|Slint dropped item registration while adapter borrowed during pa
 B301|2026-11-09|Regression harness initially imported private AccessKit ChangeHandler name and used SSH-account Python from Entra desktop|Use exported TreeChangeHandler and desktop account Python; no production behavior change.
 
 B302|2026-11-09|Games SSH transport interruption ended first Windows suite after checkpoints; heartbeat became unhealthy and no fixture processes remained|Preserve interrupted evidence; verify VM/headroom, restart guard and full suite with SSH keepalives; no application change.
+
+B303|2026-11-09|Latest direct dependencies changed Goose service construction, Codex timestamped item wrappers, Keyring target selection, hash formatting and Markdown variants|V104; adapt public APIs, retain complete item wrappers and explicit legacy vault targets; full Windows fixtures and Mac compilation required.
+B304|2026-11-09|Goose thinking used raw-content events while inherited Codex display flags hid raw reasoning; no native default-collapse preference existed|V105; show emitted thinking, persist opt-in collapse default, preserve explicit toggles and export content; streaming/history/settings/restart regressions.
+
+B305|2026-11-09|Goose 1.58 routes bare closed-weight GPT IDs to Mantle; inherited cheap default and loopback fixtures used bare IDs, so background summary failed before HTTP|V104; default Luna and Runtime fixtures use supported us. inference-profile IDs; preserve explicitly saved values and cover required routes with real embedded runtime.
+
+B306|2026-11-09|Goose 1.58 shared services capture hooks only at construction; saving a Stop hook no longer affected new chats and project roots were absent from the snapshot|V106; use public connection/services per activated chat with project-scoped HookManager, shared session storage and bounded in-memory routing; no Goose fork.
+
+B307|2026-11-09|Independent services cached separate permission maps, so control-connection permission edits stayed invisible to active chats; mixed Windows project-plugin separators produced duplicate config entries|V106; share public PermissionManager singleton while retaining per-chat hook snapshots; compose project plugin path with separate native components; strengthened native permission/project-hook fixture.

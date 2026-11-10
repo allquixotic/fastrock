@@ -78,7 +78,7 @@ env = provider.environment(out)
 config_path = out / 'goose/config/config.yaml'
 config = json.loads(config_path.read_text())
 config.pop('GOOSE_DISABLE_SESSION_NAMING')  # Do not hide upstream auxiliary requests.
-config['GOOSE_MODEL'] = 'openai.gpt-6-luna'
+config['GOOSE_MODEL'] = 'us.openai.gpt-6-luna'
 config_path.write_text('# Working Bedrock route and user comments must survive startup\n' + json.dumps(config))
 steps = [{'wait_ready': 30000}, {'new_thread': str(out / 'project')}, {'wait_idle': 30000},
          {'send': 'Seed a completed conversation'}, {'wait_idle': 10000}, {'wait': 4000},

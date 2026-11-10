@@ -1,10 +1,10 @@
 //! Unmodified Goose runs on our Tokio runtime through bounded memory streams.
 //! These are ordinary allocations: no listener, subprocess, stdin or stdout.
 use goose_runtime::acp::server::{
-    AcpBuiltinSelection, AcpProviderFactory, ActiveRunRegistry, GooseAcpAgent,
-    GooseAcpAgentOptions, LiveVoiceService,
+    AcpBuiltinSelection, AcpConnection, AcpConnectionOptions, AcpProviderFactory, LiveVoiceService,
+    acp_services_config,
 };
-use goose_runtime::agents::GoosePlatform;
+use goose_runtime::agents::{GoosePlatform, StateMachineServices};
 use goose_runtime::config::paths::Paths;
 use std::sync::Arc;
 use tokio::io::{DuplexStream, ReadHalf, WriteHalf};
@@ -21,8 +21,38 @@ pub(super) async fn connect() -> anyhow::Result<Connection> {
         goose_mcp::BUILTIN_EXTENSIONS.clone(),
     );
     super::memory_tool::register();
-    let active_runs = Arc::new(ActiveRunRegistry::default());
-    let live_voice = Arc::new(LiveVoiceService::from_config(active_runs.clone()));
+    let (client, embedded) = tokio::io::duplex(256 * 1024);
+    let (reader, writer) = tokio::io::split(client);
+    let task = tokio::spawn(super::embedded_router::serve(embedded));
+    Ok(Connection {
+        reader,
+        writer,
+        task,
+    })
+}
+
+/// Goose 1.58 snapshots hooks in services. Give each activated conversation its
+/// own services, retaining the shared public session store and unchanged runtime.
+pub(super) async fn connect_session(cwd: Option<std::path::PathBuf>) -> anyhow::Result<Connection> {
+    let mut config = acp_services_config(
+        Arc::new(goose_runtime::session::SessionManager::instance()),
+        Paths::config_dir(),
+        goose_runtime::config::Config::global()
+            .get_goose_disable_session_naming()
+            .unwrap_or(false),
+        GoosePlatform::GooseDesktop,
+    );
+    // Permissions are global settings, while hooks are a conversation snapshot.
+    // Every connection must observe edits made through the control connection.
+    config.permission_manager = goose_runtime::config::permission::PermissionManager::instance();
+    config.hooks = Some(
+        tokio::task::spawn_blocking(move || {
+            goose_runtime::hooks::HookManager::load(cwd.as_deref())
+        })
+        .await?,
+    );
+    let services = StateMachineServices::with_config(config);
+    let live_voice = Arc::new(LiveVoiceService::from_config(services.runtime.runs.clone()));
     let provider_factory: AcpProviderFactory = Arc::new(|name| {
         Box::pin(async move {
             anyhow::ensure!(
@@ -37,24 +67,18 @@ pub(super) async fn connect() -> anyhow::Result<Connection> {
         })
     });
     let agent = Arc::new(
-        GooseAcpAgent::new(GooseAcpAgentOptions {
+        AcpConnection::new(AcpConnectionOptions {
             provider_factory,
             builtin_selection: AcpBuiltinSelection {
                 defaults: vec!["developer".into(), super::memory_tool::NAME.into()],
                 explicit: Vec::new(),
             },
-            data_dir: Paths::data_dir(),
             config_dir: Paths::config_dir(),
-            disable_session_naming: goose_runtime::config::Config::global()
-                .get_goose_disable_session_naming()
-                .unwrap_or(false),
-            goose_platform: GoosePlatform::GooseDesktop,
             additional_source_roots: Vec::new(),
             session_cwd: None,
             // Fastrock owns orchestration and restart/resume policy. Do not start
             // Goose's separate scheduler implicitly when opening a connection.
-            scheduler: None,
-            active_runs,
+            services,
             live_voice,
         })
         .await?,

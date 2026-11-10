@@ -99,6 +99,7 @@ for line in sys.stdin:
         reply(req,dict(protocolVersion=1,agentInfo=dict(name='goose-fixture',version='1.56.0'),agentCapabilities=dict(loadSession=True,
             sessionCapabilities=dict(list={},close={},delete={}),mcpCapabilities=dict(http=True),promptCapabilities=dict(image=True))))
     elif method=='_goose/unstable/defaults/read': reply(req,dict(providerId='fixture',modelId='fixture-model'))
+    elif method=='_goose/unstable/context/report': reply(req,dict(model=dict(modelName='fixture-model',contextLimit=10000),totalTokens=12,segments=[dict(category='messages',label='Messages',tokenCount=12,contentPreview='Fixture context')]))
     elif method=='_goose/unstable/session/extensions/list':
         reply(req,dict(extensions=[dict(extensionKey='fastrock',extension=dict(type='mcp',server=s)) for s in sessions[p['sessionId']]['mcpServers']]))
     elif method=='_goose/unstable/session/system-prompt/set':

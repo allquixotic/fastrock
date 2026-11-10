@@ -13,8 +13,10 @@ pub(super) fn revision(value: &Value) -> String {
     let mut value = value.clone();
     value.sort_all_objects();
     format!(
-        "{:x}",
-        Sha256::digest(serde_json::to_vec(&value).unwrap_or_default())
+        "{}",
+        hex::encode(Sha256::digest(
+            serde_json::to_vec(&value).unwrap_or_default()
+        ))
     )
 }
 fn read(config: &Config, key: &str) -> Result<Value> {
@@ -339,7 +341,7 @@ pub(super) fn open_hooks(config: &Config, key: &str) -> Result<Value> {
     let path = hook_path(config, key)?;
     let bytes = hook_bytes(&path)?;
     Ok(
-        json!({"key":key,"revision":format!("{:x}",Sha256::digest(&bytes)),"text":if bytes.is_empty(){"{\n  \"hooks\": {}\n}".into()}else{String::from_utf8(bytes)?}}),
+        json!({"key":key,"revision":format!("{}",hex::encode(Sha256::digest(&bytes))),"text":if bytes.is_empty(){"{\n  \"hooks\": {}\n}".into()}else{String::from_utf8(bytes)?}}),
     )
 }
 pub(super) fn validate_hooks(text: &str) -> Result<()> {
@@ -419,7 +421,7 @@ pub(super) fn save_hooks(config: &Config, key: &str, expected: &str, text: &str)
     let path = hook_path(config, key)?;
     let before = hook_bytes(&path)?;
     ensure!(
-        format!("{:x}", Sha256::digest(&before)) == expected,
+        hex::encode(Sha256::digest(&before)) == expected,
         "Hooks changed; reload before saving"
     );
     std::fs::create_dir_all(path.parent().unwrap())?;

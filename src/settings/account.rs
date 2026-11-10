@@ -83,11 +83,17 @@ pub(crate) fn describe_account(
             "No OpenAI sign-in needed".to_string(),
             "The current model provider does not use an OpenAI account.".to_string(),
         ),
+        Some(Account::Gcp {}) => (
+            "Using Google Cloud".into(),
+            "Credentials come from your Google Cloud configuration.".into(),
+        ),
         Some(Account::ApiKey {}) => (
             "Signed in with an API key".to_string(),
             "Usage is billed to your OpenAI Platform account.".to_string(),
         ),
-        Some(Account::Chatgpt { email, plan_type }) => {
+        Some(Account::Chatgpt {
+            email, plan_type, ..
+        }) => {
             let plan = capitalize(&model::wire_name(plan_type));
             facts.push(("Plan".to_string(), plan));
             if let Some(email) = email {
@@ -255,6 +261,7 @@ impl AppController {
                 let (title, detail, facts) = describe_account(response, provider);
                 let kind = match &response.account {
                     None => "none",
+                    Some(Account::Gcp {}) => "gcp",
                     Some(Account::ApiKey {}) => "apikey",
                     Some(Account::Chatgpt { .. }) => "chatgpt",
                     Some(Account::AmazonBedrock { .. }) => "bedrock",

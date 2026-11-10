@@ -25,7 +25,7 @@ pub(super) fn discover(
 ) -> Result<Vec<goose_runtime::plugins::discovery::DiscoveredPlugin>> {
     let roots = [
         goose_runtime::plugins::plugin_install_dir(),
-        cwd.join(".agents/plugins"),
+        cwd.join(".agents").join("plugins"),
     ];
     register(goose_runtime::config::Config::global(), &roots)?;
     Ok(goose_runtime::plugins::discovery::discover_enabled_plugins(

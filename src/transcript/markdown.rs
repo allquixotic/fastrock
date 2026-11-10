@@ -197,7 +197,9 @@ impl TreeBuilder {
                 Some(Frame::Code(_, body) | Frame::Html(body)) => body.push_str(&text),
                 _ => self.inline(Inline::Text(text.into_string())),
             },
-            Event::Code(code) => self.inline(Inline::Code(code.into_string())),
+            Event::Code(code) | Event::InlineMath(code) | Event::DisplayMath(code) => {
+                self.inline(Inline::Code(code.into_string()))
+            }
             Event::Html(html) => match self.stack.last_mut() {
                 Some(Frame::Html(body)) => body.push_str(&html),
                 None => self.node(Node::Html(html.into_string())),
@@ -219,7 +221,7 @@ impl TreeBuilder {
         let frame = match tag {
             Tag::Paragraph => Frame::Paragraph(Vec::new()),
             Tag::Heading { level, .. } => Frame::Heading(heading_level(level), Vec::new()),
-            Tag::BlockQuote => Frame::Quote(Vec::new()),
+            Tag::BlockQuote(_) => Frame::Quote(Vec::new()),
             Tag::CodeBlock(kind) => {
                 let lang = match kind {
                     CodeBlockKind::Fenced(info) => code_language(&info),
@@ -246,6 +248,11 @@ impl TreeBuilder {
             Tag::Link { dest_url, .. } => Frame::Link(dest_url.into_string(), Vec::new()),
             Tag::Image { .. } => Frame::Image(Vec::new()),
             Tag::FootnoteDefinition(_) | Tag::MetadataBlock(_) => Frame::Ignore,
+            Tag::DefinitionList => Frame::Quote(Vec::new()),
+            Tag::DefinitionListTitle | Tag::DefinitionListDefinition => {
+                Frame::Paragraph(Vec::new())
+            }
+            Tag::Superscript | Tag::Subscript => Frame::Emphasis(Vec::new()),
         };
         self.stack.push(frame);
     }

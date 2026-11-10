@@ -37,7 +37,7 @@ out.mkdir(parents=True, exist_ok=False)
 receipt = dict(binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                seed_sha256=hashlib.sha256(args.seed_executable.read_bytes()).hexdigest(),
                host=platform.node(), os=platform.platform(),
-               backend='external Goose 1.57.0' if args.legacy_goose else 'embedded Goose 1.57.0',
+               backend='external Goose 1.57.0' if args.legacy_goose else 'embedded Goose 1.58.0',
                hard_cap_bytes=HARD_CAP, attempts=[])
 if args.legacy_goose:
     receipt['goose_sha256'] = hashlib.sha256(args.legacy_goose.read_bytes()).hexdigest()

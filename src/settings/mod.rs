@@ -1328,6 +1328,10 @@ impl AppController {
         let text = |index: usize| SharedString::from(arg(index));
         let state = self.window.global::<SettingsState>();
         match arg(0) {
+            "collapse-thinking" => {
+                state.set_pref_collapse_thinking(arg(1) == "true");
+                state.invoke_pref_changed("collapse-thinking".into());
+            }
             "toggle" => state.invoke_field_toggle(text(1), text(2), arg(3) == "true"),
             "select" => state.invoke_field_select(text(1), text(2), arg(3).parse().unwrap_or(0)),
             "apply" => state.invoke_field_apply(text(1), text(2), text(3)),

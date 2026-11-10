@@ -7,6 +7,8 @@ mod cheap_profile;
 mod config_guard;
 #[path = "../src/goose/embedded.rs"]
 mod embedded;
+#[path = "../src/goose/embedded_router.rs"]
+mod embedded_router;
 #[path = "../src/goose/memory.rs"]
 mod memory;
 #[path = "../src/goose/memory_tool.rs"]
@@ -42,7 +44,7 @@ fn main() -> Result<()> {
     std::fs::create_dir_all(temp.path().join("config"))?;
     std::fs::write(
         temp.path().join("config/config.yaml"),
-        "GOOSE_PROVIDER: aws_bedrock\nGOOSE_MODEL: openai.gpt-6.1-sol\nBEDROCK_DISABLE_STREAMING: true\nBEDROCK_MAX_RETRIES: 0\nGOOSE_DISABLE_SESSION_NAMING: true\nextensions: {}\n",
+        "GOOSE_PROVIDER: aws_bedrock\nGOOSE_MODEL: us.openai.gpt-6.1-sol\nBEDROCK_DISABLE_STREAMING: true\nBEDROCK_MAX_RETRIES: 0\nGOOSE_DISABLE_SESSION_NAMING: true\nextensions: {}\n",
     )?;
     std::fs::write(temp.path().join("aws-empty"), "")?;
     let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
@@ -111,8 +113,8 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
     let http = tokio::spawn(async move { axum::serve(listener, router).await });
     let provider = BedrockProvider::from_env(None).await?;
     for model in [
-        "openai.gpt-6.1-sol",
-        "openai.gpt-6-luna",
+        "us.openai.gpt-6.1-sol",
+        "us.openai.gpt-6-luna",
         "us.anthropic.claude-opus-5-5",
     ] {
         let config = ModelConfig::new(model);
@@ -135,8 +137,8 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
         "Unexpected retry or missing model request"
     );
     for ((path, body), model) in requests.iter().zip([
-        "openai.gpt-6.1-sol",
-        "openai.gpt-6-luna",
+        "us.openai.gpt-6.1-sol",
+        "us.openai.gpt-6-luna",
         "us.anthropic.claude-opus-5-5",
     ]) {
         ensure!(
@@ -317,7 +319,7 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
     );
     for (path, body) in &requests[4..] {
         ensure!(
-            path.contains("openai.gpt-6-luna"),
+            path.contains("us.openai.gpt-6-luna"),
             "Summary used an expensive fallback"
         );
         ensure!(
@@ -359,7 +361,7 @@ async fn speed_fixture(
 ) -> Result<()> {
     use goose_runtime::config::{declarative_providers as api, paths::Paths};
     use goose_runtime::{
-        agents::Agent,
+        agents::{StateMachineServices, StateMachineServicesConfig},
         session::{SessionManager, SessionType},
     };
     let model = "us.openai.gpt-6.1-sol";
@@ -384,7 +386,7 @@ async fn speed_fixture(
             goose_runtime::config::GooseMode::Auto,
         )
         .await?;
-    let agent = Agent::new();
+    let agent = StateMachineServices::with_config(StateMachineServicesConfig::cli());
     let provider = goose_runtime::providers::create("custom_speed_fixture", vec![]).await?;
     agent
         .update_provider(provider, ModelConfig::new(model), &session.id)
@@ -409,7 +411,11 @@ async fn speed_fixture(
             .apply()
             .await?;
         // Agent resolves its model config from the public store for each call.
-        let config = agent.model_config_for_session(&session.id).await?;
+        let config = manager
+            .get_session(&session.id, false)
+            .await?
+            .model_config
+            .context("Missing model config")?;
         let provider = agent.provider(&session.id).await?;
         provider
             .complete(

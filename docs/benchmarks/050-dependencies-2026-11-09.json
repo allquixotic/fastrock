@@ -1,0 +1,591 @@
+{
+  "audited_at": "2026-11-09T22:53:25.471972+00:00",
+  "registry": "https://crates.io/api/v1/crates/{name}",
+  "direct_registry_dependencies": [
+    {
+      "name": "accesskit",
+      "latest": "0.25.2",
+      "locked_versions": [
+        "0.24.1",
+        "0.25.2"
+      ],
+      "previous_requested": "0.24",
+      "requested": "0.25.2"
+    },
+    {
+      "name": "accesskit_consumer",
+      "latest": "0.39.2",
+      "locked_versions": [
+        "0.38.0",
+        "0.39.2"
+      ],
+      "previous_requested": "0.38",
+      "requested": "0.39.2"
+    },
+    {
+      "name": "anyhow",
+      "latest": "1.0.104",
+      "locked_versions": [
+        "1.0.104"
+      ],
+      "previous_requested": "1",
+      "requested": "1.0.104"
+    },
+    {
+      "name": "arboard",
+      "latest": "3.7.0",
+      "locked_versions": [
+        "3.7.0"
+      ],
+      "previous_requested": "3",
+      "requested": "3.7.0"
+    },
+    {
+      "name": "async-trait",
+      "latest": "0.1.92",
+      "locked_versions": [
+        "0.1.92"
+      ],
+      "previous_requested": "0.1",
+      "requested": "0.1.92"
+    },
+    {
+      "name": "axum",
+      "latest": "0.8.9",
+      "locked_versions": [
+        "0.8.9"
+      ],
+      "previous_requested": "0.8.9",
+      "requested": "0.8.9"
+    },
+    {
+      "name": "base64",
+      "latest": "0.23.1",
+      "locked_versions": [
+        "0.22.1",
+        "0.23.1"
+      ],
+      "previous_requested": "0.22.1",
+      "requested": "0.23.1"
+    },
+    {
+      "name": "chrono",
+      "latest": "0.4.45",
+      "locked_versions": [
+        "0.4.45"
+      ],
+      "previous_requested": "0.4",
+      "requested": "0.4.45"
+    },
+    {
+      "name": "clap",
+      "latest": "4.6.7",
+      "locked_versions": [
+        "4.6.7"
+      ],
+      "previous_requested": "4",
+      "requested": "4.6.7"
+    },
+    {
+      "name": "csv",
+      "latest": "1.4.0",
+      "locked_versions": [
+        "1.4.0"
+      ],
+      "previous_requested": "1",
+      "requested": "1.4.0"
+    },
+    {
+      "name": "dirs",
+      "latest": "7.0.0",
+      "locked_versions": [
+        "6.0.0",
+        "7.0.0"
+      ],
+      "previous_requested": "6",
+      "requested": "7.0.0"
+    },
+    {
+      "name": "dunce",
+      "latest": "1.0.5",
+      "locked_versions": [
+        "1.0.5"
+      ],
+      "previous_requested": "1.0.4",
+      "requested": "1.0.5"
+    },
+    {
+      "name": "fjall",
+      "latest": "3.1.13",
+      "locked_versions": [
+        "3.1.13"
+      ],
+      "previous_requested": "=3.1.13",
+      "requested": "=3.1.13"
+    },
+    {
+      "name": "futures",
+      "latest": "0.3.34",
+      "locked_versions": [
+        "0.3.34"
+      ],
+      "previous_requested": "0.3",
+      "requested": "0.3.34"
+    },
+    {
+      "name": "git2",
+      "latest": "0.21.0",
+      "locked_versions": [
+        "0.21.0"
+      ],
+      "previous_requested": "0.21",
+      "requested": "0.21.0"
+    },
+    {
+      "name": "hmac",
+      "latest": "0.13.0",
+      "locked_versions": [
+        "0.12.1",
+        "0.13.0"
+      ],
+      "previous_requested": "0.12.1",
+      "requested": "0.13.0"
+    },
+    {
+      "name": "i-slint-backend-winit",
+      "latest": "1.18.1",
+      "locked_versions": [
+        "1.18.1"
+      ],
+      "previous_requested": "=1.18.1",
+      "requested": "=1.18.1"
+    },
+    {
+      "name": "i-slint-common",
+      "latest": "1.18.1",
+      "locked_versions": [
+        "1.18.1"
+      ],
+      "previous_requested": "=1.18.1",
+      "requested": "=1.18.1"
+    },
+    {
+      "name": "i-slint-core",
+      "latest": "1.18.1",
+      "locked_versions": [
+        "1.18.1"
+      ],
+      "previous_requested": "=1.18.1",
+      "requested": "=1.18.1"
+    },
+    {
+      "name": "image",
+      "latest": "0.25.10",
+      "locked_versions": [
+        "0.24.9",
+        "0.25.10"
+      ],
+      "previous_requested": "^0.25.9",
+      "requested": "0.25.10"
+    },
+    {
+      "name": "keyring",
+      "latest": "4.2.0",
+      "locked_versions": [
+        "3.6.3",
+        "4.2.0"
+      ],
+      "previous_requested": "3",
+      "requested": "4.2.0"
+    },
+    {
+      "name": "libc",
+      "latest": "0.2.191",
+      "locked_versions": [
+        "0.2.191"
+      ],
+      "previous_requested": "0.2.182",
+      "requested": "0.2.191"
+    },
+    {
+      "name": "notify-rust",
+      "latest": "4.19.0",
+      "locked_versions": [
+        "4.19.0"
+      ],
+      "previous_requested": "4.18",
+      "requested": "4.19.0"
+    },
+    {
+      "name": "objc2",
+      "latest": "0.6.5",
+      "locked_versions": [
+        "0.5.3",
+        "0.6.5"
+      ],
+      "previous_requested": "0.6.3",
+      "requested": "0.6.5"
+    },
+    {
+      "name": "portable-pty",
+      "latest": "0.9.0",
+      "locked_versions": [
+        "0.9.0"
+      ],
+      "previous_requested": "0.9.0",
+      "requested": "0.9.0"
+    },
+    {
+      "name": "pretty_assertions",
+      "latest": "1.4.1",
+      "locked_versions": [
+        "1.4.1"
+      ],
+      "previous_requested": "1.4.1",
+      "requested": "1.4.1"
+    },
+    {
+      "name": "pulldown-cmark",
+      "latest": "0.13.6",
+      "locked_versions": [
+        "0.13.6"
+      ],
+      "previous_requested": "0.10",
+      "requested": "0.13.6"
+    },
+    {
+      "name": "rayon",
+      "latest": "1.12.0",
+      "locked_versions": [
+        "1.12.0"
+      ],
+      "previous_requested": "1.11",
+      "requested": "1.12.0"
+    },
+    {
+      "name": "redb",
+      "latest": "4.5.0",
+      "locked_versions": [
+        "4.5.0"
+      ],
+      "previous_requested": "4.4",
+      "requested": "4.5.0"
+    },
+    {
+      "name": "regex",
+      "latest": "1.13.1",
+      "locked_versions": [
+        "1.13.1"
+      ],
+      "previous_requested": "1",
+      "requested": "1.13.1"
+    },
+    {
+      "name": "reqwest",
+      "latest": "0.13.5",
+      "locked_versions": [
+        "0.12.28",
+        "0.13.5"
+      ],
+      "previous_requested": "0.12",
+      "requested": "0.13.5"
+    },
+    {
+      "name": "rfd",
+      "latest": "0.18.0",
+      "locked_versions": [
+        "0.18.0"
+      ],
+      "previous_requested": "0.17.2",
+      "requested": "0.18.0"
+    },
+    {
+      "name": "serde",
+      "latest": "1.0.229",
+      "locked_versions": [
+        "1.0.229"
+      ],
+      "previous_requested": "1",
+      "requested": "1.0.229"
+    },
+    {
+      "name": "serde_json",
+      "latest": "1.0.154",
+      "locked_versions": [
+        "1.0.154"
+      ],
+      "previous_requested": "1",
+      "requested": "1.0.154"
+    },
+    {
+      "name": "serde_yaml",
+      "latest": "0.9.34+deprecated",
+      "locked_versions": [
+        "0.9.34+deprecated"
+      ],
+      "previous_requested": "0.9",
+      "requested": "0.9.34"
+    },
+    {
+      "name": "sha2",
+      "latest": "0.11.1",
+      "locked_versions": [
+        "0.10.9",
+        "0.11.1"
+      ],
+      "previous_requested": "0.10",
+      "requested": "0.11.1"
+    },
+    {
+      "name": "shlex",
+      "latest": "2.0.1",
+      "locked_versions": [
+        "1.3.0",
+        "2.0.1"
+      ],
+      "previous_requested": "1.3.0",
+      "requested": "2.0.1"
+    },
+    {
+      "name": "similar",
+      "latest": "3.2.1",
+      "locked_versions": [
+        "2.7.0",
+        "3.2.1"
+      ],
+      "previous_requested": "2.7.0",
+      "requested": "3.2.1"
+    },
+    {
+      "name": "slint",
+      "latest": "1.18.1",
+      "locked_versions": [
+        "1.18.1"
+      ],
+      "previous_requested": "=1.18.1",
+      "requested": "=1.18.1"
+    },
+    {
+      "name": "slint-build",
+      "latest": "1.18.1",
+      "locked_versions": [
+        "1.18.1"
+      ],
+      "previous_requested": "=1.18.1",
+      "requested": "=1.18.1"
+    },
+    {
+      "name": "tempfile",
+      "latest": "3.27.0",
+      "locked_versions": [
+        "3.27.0"
+      ],
+      "previous_requested": "3.23.0",
+      "requested": "3.27.0"
+    },
+    {
+      "name": "thiserror",
+      "latest": "2.0.21",
+      "locked_versions": [
+        "1.0.69",
+        "2.0.21"
+      ],
+      "previous_requested": "2.0.17",
+      "requested": "2.0.21"
+    },
+    {
+      "name": "tokio",
+      "latest": "1.54.1",
+      "locked_versions": [
+        "1.54.1"
+      ],
+      "previous_requested": "1",
+      "requested": "1.54.1"
+    },
+    {
+      "name": "tokio-tungstenite",
+      "latest": "0.30.0",
+      "locked_versions": [
+        "0.28.0",
+        "0.29.0",
+        "0.30.0"
+      ],
+      "previous_requested": "0.28",
+      "requested": "0.30.0"
+    },
+    {
+      "name": "tokio-util",
+      "latest": "0.7.20",
+      "locked_versions": [
+        "0.7.20"
+      ],
+      "previous_requested": "0.7",
+      "requested": "0.7.20"
+    },
+    {
+      "name": "toml",
+      "latest": "1.2.1+spec-1.1.0",
+      "locked_versions": [
+        "0.5.11",
+        "0.9.12+spec-1.1.0",
+        "1.2.1+spec-1.1.0"
+      ],
+      "previous_requested": "0.9.5",
+      "requested": "1.2.1"
+    },
+    {
+      "name": "toml_edit",
+      "latest": "0.25.19+spec-1.1.0",
+      "locked_versions": [
+        "0.24.1+spec-1.1.0",
+        "0.25.19+spec-1.1.0"
+      ],
+      "previous_requested": "0.24.0",
+      "requested": "0.25.19"
+    },
+    {
+      "name": "tracing",
+      "latest": "0.1.44",
+      "locked_versions": [
+        "0.1.44"
+      ],
+      "previous_requested": "0.1.44",
+      "requested": "0.1.44"
+    },
+    {
+      "name": "tracing-appender",
+      "latest": "0.2.5",
+      "locked_versions": [
+        "0.2.5"
+      ],
+      "previous_requested": "0.2.3",
+      "requested": "0.2.5"
+    },
+    {
+      "name": "tracing-subscriber",
+      "latest": "0.3.23",
+      "locked_versions": [
+        "0.3.23"
+      ],
+      "previous_requested": "0.3.22",
+      "requested": "0.3.23"
+    },
+    {
+      "name": "unicode-segmentation",
+      "latest": "1.13.3",
+      "locked_versions": [
+        "1.13.3"
+      ],
+      "previous_requested": "1.12",
+      "requested": "1.13.3"
+    },
+    {
+      "name": "url",
+      "latest": "2.5.8",
+      "locked_versions": [
+        "2.5.8"
+      ],
+      "previous_requested": "2",
+      "requested": "2.5.8"
+    },
+    {
+      "name": "uuid",
+      "latest": "1.29.2",
+      "locked_versions": [
+        "1.29.2"
+      ],
+      "previous_requested": "1",
+      "requested": "1.29.2"
+    },
+    {
+      "name": "vt100",
+      "latest": "0.18.1",
+      "locked_versions": [
+        "0.18.1"
+      ],
+      "previous_requested": "0.18.1",
+      "requested": "0.18.1"
+    },
+    {
+      "name": "webbrowser",
+      "latest": "1.2.6",
+      "locked_versions": [
+        "1.2.6"
+      ],
+      "previous_requested": "1.2.2",
+      "requested": "1.2.6"
+    },
+    {
+      "name": "windows-sys",
+      "latest": "0.61.2",
+      "locked_versions": [
+        "0.52.0",
+        "0.59.0",
+        "0.60.2",
+        "0.61.2"
+      ],
+      "previous_requested": "0.61.2",
+      "requested": "0.61.2"
+    },
+    {
+      "name": "wiremock",
+      "latest": "0.6.5",
+      "locked_versions": [
+        "0.6.5"
+      ],
+      "previous_requested": "0.6",
+      "requested": "0.6.5"
+    },
+    {
+      "name": "yaml-edit",
+      "latest": "0.3.6",
+      "locked_versions": [
+        "0.3.6"
+      ],
+      "previous_requested": "=0.3.2",
+      "requested": "0.3.6"
+    },
+    {
+      "name": "zstd",
+      "latest": "0.14.3",
+      "locked_versions": [
+        "0.13.4",
+        "0.14.3"
+      ],
+      "previous_requested": "0.13",
+      "requested": "0.14.3"
+    },
+    {
+      "name": "hex",
+      "latest": "0.4.3",
+      "locked_versions": [
+        "0.4.3"
+      ],
+      "previous_requested": "new compatibility dependency",
+      "requested": "0.4.3"
+    },
+    {
+      "name": "keyring-core",
+      "latest": "1.0.1",
+      "locked_versions": [
+        "1.0.1"
+      ],
+      "previous_requested": "new compatibility dependency",
+      "requested": "1.0.1"
+    }
+  ],
+  "git": {
+    "goose": {
+      "version": "1.58.0",
+      "revision": "7c039ac9f90f5d61cf2953d32baf26e7ad1219ae"
+    },
+    "codex_support": {
+      "version": "0.167.0",
+      "revision": "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a"
+    },
+    "vwork": {
+      "revision": "fb523be0efd118adc819fd6cc4159f97d67dd5f0",
+      "version": "0.4.1"
+    }
+  }
+}

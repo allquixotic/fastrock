@@ -34,7 +34,10 @@ pub(super) fn context(
                 normalized
             };
         (
-            format!("directory:{:x}", Sha256::digest(normalized.as_bytes())),
+            format!(
+                "directory:{}",
+                hex::encode(Sha256::digest(normalized.as_bytes()))
+            ),
             path.to_owned(),
         )
     };

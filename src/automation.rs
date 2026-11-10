@@ -48,6 +48,8 @@ pub(crate) enum Step {
     WaitGoose(u64),
     /// Wait for native capability input and asynchronous load/save to settle.
     WaitCapabilities(u64),
+    WaitContext(u64),
+    ContextReport(Vec<String>),
     /// Wait for checkpoint load/save/restore and any chained refresh to finish.
     WaitCheckpoints {
         #[serde(default)]
@@ -314,6 +316,7 @@ impl AppController {
                 | Step::WaitIdle(_)
                 | Step::WaitGoose(_)
                 | Step::WaitCapabilities(_)
+                | Step::WaitContext(_)
                 | Step::WaitCheckpoints { .. }
                 | Step::WaitMigration { .. }
                 | Step::WaitProject { .. }
@@ -663,6 +666,7 @@ impl AppController {
                 Step::Composer(args) => self.composer_automation(&args),
                 Step::Terminal(args) => self.terminal_automation(&args),
                 Step::Checkpoints(args) => self.checkpoints_automation(&args),
+                Step::ContextReport(args) => self.context_report_automation(&args),
                 Step::VirtualWorkspaces(args) => self.virtual_workspaces_automation(&args),
                 Step::Bedrock(args) => self.bedrock_automation(&args),
                 Step::Forward(text) => {
@@ -1151,6 +1155,11 @@ impl AppController {
                 // never mistake an elapsed delay for a completed async save.
                 (elapsed >= Duration::from_millis(800) && !state.get_busy())
                     || timed_out(elapsed, *timeout, "Capability controls ready")
+            }
+            Step::WaitContext(timeout) => {
+                let state = self.window.global::<crate::ui::ContextReportState>();
+                (elapsed >= Duration::from_millis(200) && state.get_open() && !state.get_busy())
+                    || timed_out(elapsed, *timeout, "Context report ready")
             }
             Step::WaitCheckpoints {
                 reviewed,

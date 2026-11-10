@@ -28,7 +28,7 @@ pub(super) fn boundary(conversation: &Conversation) -> Result<Boundary> {
     Ok(Boundary {
         count: conversation.len(),
         last: conversation.last().and_then(|m| m.id.clone()),
-        digest: format!("{:x}", hash.0.finalize()),
+        digest: hex::encode(hash.0.finalize()),
     })
 }
 pub(super) fn prefix(mut conversation: Conversation, point: &Boundary) -> Result<Conversation> {

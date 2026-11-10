@@ -71,3 +71,7 @@ performance fixes, Windows x64 ZIP via GitHub Actions after verification.
 
 2026-11-09: user explicitly authorizes stable Fastrock 0.4.3 to fix the confirmed
 Slint/AccessKit focus crash, Windows x64 ZIP via GitHub Actions after verification.
+
+2026-11-09: user explicitly authorizes stable Fastrock 0.5.0, latest direct
+dependencies including unmodified Goose 1.58.0, native context report/viewer and
+opt-in collapse-thinking setting. Windows x64 ZIP via signed CI after verification.

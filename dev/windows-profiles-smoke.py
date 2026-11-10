@@ -127,7 +127,32 @@ def run(steps,name,exe=binary):
         return ProcessGuard(proc,timeout=150).wait(tick)
 
 vault_ids=set()
+
+def legacy_vault_read():
+    """Read the exact target and UTF-16 blob written by pre-0.5 Keyring 3."""
+    class Credential(C.Structure):
+        _fields_ = [('Flags', W.DWORD), ('Type', W.DWORD), ('TargetName', W.LPWSTR),
+                    ('Comment', W.LPWSTR), ('LastWritten', W.FILETIME), ('CredentialBlobSize', W.DWORD),
+                    ('CredentialBlob', C.POINTER(C.c_ubyte)), ('Persist', W.DWORD),
+                    ('AttributeCount', W.DWORD), ('Attributes', C.c_void_p),
+                    ('TargetAlias', W.LPWSTR), ('UserName', W.LPWSTR)]
+    identity = str(uuid.uuid4())
+    vault_ids.add(identity)
+    user = 'provider/' + identity
+    expected = 'legacy-fixture-050-λ'
+    blob = (C.c_ubyte * len(expected.encode('utf-16-le'))).from_buffer_copy(expected.encode('utf-16-le'))
+    credential = Credential(Type=1, TargetName='fastrock:' + user, UserName=user,
+                            CredentialBlobSize=len(blob), CredentialBlob=blob, Persist=2)
+    api = C.WinDLL('Advapi32', use_last_error=True)
+    api.CredWriteW.argtypes = [C.POINTER(Credential), W.DWORD]
+    api.CredWriteW.restype = W.BOOL
+    assert api.CredWriteW(C.byref(credential), 0), 'Cannot seed isolated legacy vault fixture'
+    result = subprocess.run([str(binary), '--fastrock-provider-credential', identity], env=env,
+                            capture_output=True, timeout=20)
+    assert result.returncode == 0 and result.stdout.decode('utf-8') == expected, 'Legacy credential target/encoding changed'
+
 try:
+    legacy_vault_read()
     peak=run([{'wait_ready':30000},{'resize':[1440,1100]},{'open_settings':'goose'},{'wait':800},
         *create('Fixture A',servers[0],0),*create('Fixture B',servers[1],1),*create('Fixture C',servers[2],2),*dump('created'),
         profile('select','Fixture A'),{'wait':100},profile('url','https://key@example.invalid'),profile('save'),{'wait':300},*dump('invalid'),

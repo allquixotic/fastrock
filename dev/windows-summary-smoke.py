@@ -38,7 +38,7 @@ for folder in ('home', 'codex', 'project', 'goose/config', 'local', 'roaming'):
     (out / folder).mkdir(parents=True)
 (out / 'aws-empty').write_text('')
 (out / 'goose/config/config.yaml').write_text(
-    'GOOSE_PROVIDER: aws_bedrock\nGOOSE_MODEL: openai.gpt-6.1-sol\n'
+    'GOOSE_PROVIDER: aws_bedrock\nGOOSE_MODEL: us.openai.gpt-6.1-sol\n'
     'BEDROCK_DISABLE_STREAMING: true\nBEDROCK_MAX_RETRIES: 0\n'
     'GOOSE_DISABLE_SESSION_NAMING: true\nextensions: {}\n', encoding='utf-8')
 requests = []
@@ -57,7 +57,7 @@ class Provider(BaseHTTPRequestHandler):
         (memory_requests if memory else requests).append({'path': self.path, 'summary': summary})
         assert self.path.startswith('/model/') and self.path.endswith('/converse'), self.path
         if memory:
-            assert 'openai.gpt-6-luna' in self.path and not body.get('toolConfig'), body
+            assert 'us.openai.gpt-6-luna' in self.path and not body.get('toolConfig'), body
         turn = sum(not request['summary'] for request in requests)
         foreground = not (summary or memory)
         if args.recovery and foreground and turn == 2:
@@ -487,8 +487,8 @@ if args.navigation:
     assert memory_requests, 'Summary regression did not exercise background memory learning'
 paired_requests = requests[1:] if args.recovery else requests
 for ordinary, summary in zip(paired_requests[::2], paired_requests[1::2]):
-    assert ordinary['summary'] is False and 'openai.gpt-6.1-sol' in ordinary['path']
-    assert summary['summary'] is True and 'openai.gpt-6-luna' in summary['path']
+    assert ordinary['summary'] is False and 'us.openai.gpt-6.1-sol' in ordinary['path']
+    assert summary['summary'] is True and 'us.openai.gpt-6-luna' in summary['path']
 transcript = (out / 'complete.md').read_text(encoding='utf-8')
 if args.recovery:
     assert observed_recovery_pause

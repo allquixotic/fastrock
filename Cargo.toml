@@ -1,6 +1,6 @@
 [package]
 name = "fastrock"
-version = "0.4.3"
+version = "0.5.0"
 edition = "2024"
 rust-version = "1.94.1"
 license = "Apache-2.0"
@@ -27,7 +27,7 @@ workspace = true
 
 [dependencies]
 fastrock-workspaces = { path = "crates/fastrock-workspaces" }
-unicode-segmentation = "1.12"
+unicode-segmentation = "1.13.3"
 anyhow = { workspace = true }
 arboard = { workspace = true }
 base64 = { workspace = true }
@@ -56,17 +56,18 @@ dunce = { workspace = true }
 futures = { workspace = true }
 # Goose's optional source-symbol parser conflicts with the retained UI protocol's
 # native tree-sitter ABI. Tools and code mode do not require that feature.
-goose-runtime = { package = "goose", git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12", default-features = false, features = ["aws-providers", "rustls-tls", "system-keyring", "code-mode"] }
-goose-mcp = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12", default-features = false, features = ["bundled-mcp", "rustls-tls"] }
-goose-context-management = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12" }
-goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "30bba95105e59bc3e7df624cf6b4d433690cfe12" }
-sha2 = "0.10"
-regex = "1"
-serde_yaml = { version = "0.9.32", default-features = false }
-yaml-edit = "=0.3.2"
+goose-runtime = { package = "goose", git = "https://github.com/aaif-goose/goose", rev = "7c039ac9f90f5d61cf2953d32baf26e7ad1219ae", default-features = false, features = ["aws-providers", "rustls-tls", "system-keyring", "code-mode"] }
+goose-mcp = { git = "https://github.com/aaif-goose/goose", rev = "7c039ac9f90f5d61cf2953d32baf26e7ad1219ae", default-features = false, features = ["bundled-mcp", "rustls-tls"] }
+goose-context-management = { git = "https://github.com/aaif-goose/goose", rev = "7c039ac9f90f5d61cf2953d32baf26e7ad1219ae" }
+goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "7c039ac9f90f5d61cf2953d32baf26e7ad1219ae" }
+sha2 = "0.11.1"
+hex = "0.4.3"
+regex = "1.13.1"
+serde_yaml = { version = "0.9.34", default-features = false }
+yaml-edit = "0.3.6"
 tempfile = { workspace = true }
-hmac = "0.12.1"
-tokio-util = { version = "0.7", features = ["compat"] }
+hmac = "0.13.0"
+tokio-util = { version = "0.7.20", features = ["compat", "codec"] }
 image = { workspace = true, features = ["png", "jpeg", "gif", "webp"] }
 # Version matches Slint: native glyph hit-testing and renderer invalidation.
 i-slint-core = { version = "=1.18.1", features = ["shared-parley"] }
@@ -97,12 +98,13 @@ slint = { workspace = true, features = [
     "unstable-fontique-011",
 ] }
 thiserror = { workspace = true }
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "stream"] }
 axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
-keyring = { version = "3", features = ["apple-native", "windows-native"] }
-csv = "1"
-chrono = { version = "0.4", features = ["serde"] }
-tokio-tungstenite = { version = "0.28", features = ["rustls-tls-native-roots"] }
+keyring = { version = "4.2.0", features = ["apple-native-keyring-store", "windows-native-keyring-store"] }
+keyring-core = "1.0.1"
+csv = "1.4.0"
+chrono = { version = "0.4.45", features = ["serde"] }
+tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-native-roots"] }
 tokio = { workspace = true, features = [
     "process",
     "io-util",
@@ -130,7 +132,7 @@ libc = { workspace = true }
 
 # Intercepts `terminate:` (Cmd+Q, Dock › Quit) on winit's app delegate.
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6.3"
+objc2 = "0.6.5"
 libc = { workspace = true }
 
 # Attaches to the parent console for `--help` and argument errors.
@@ -145,12 +147,12 @@ ignored = ["i-slint-common"]
 slint-build = { workspace = true, features = ["compat-1-18"] }
 
 [dev-dependencies]
-accesskit = "0.24"
-accesskit_consumer = "0.38"
+accesskit = "0.25.2"
+accesskit_consumer = "0.39.2"
 tokio = { workspace = true, features = ["test-util"] }
-git2 = "0.21"
-async-trait = "0.1"
-wiremock = "0.6"
+git2 = "0.21.0"
+async-trait = "0.1.92"
+wiremock = "0.6.5"
 codex-model-provider-info = { workspace = true }
 pretty_assertions = { workspace = true }
 
@@ -160,60 +162,60 @@ default-members = ["."]
 resolver = "2"
 
 [workspace.dependencies]
-codex-exec-server = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-code-mode-host = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-http-client = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-otel-trace-websocket = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-windows-sandbox = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-utils-process = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-utils-pty = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-model-provider-info = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-anyhow = "1"
-arboard = { version = "3", features = ["wayland-data-control"] }
-base64 = "0.22.1"
-clap = "4"
-codex-ansi-escape = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-app-server-protocol = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-async-utils = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-aws-auth = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-config = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-context-fragments = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-feedback = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-file-search = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-git-utils = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-login = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-protocol = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-utils-absolute-path = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-utils-cli = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-utils-home-dir = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-codex-utils-path-uri = { git = "https://github.com/openai/codex", rev = "c1382380de69521303b416720a52f42d51af6248" }
-dirs = "6"
-dunce = "1.0.4"
-futures = { version = "0.3", default-features = false }
-image = { version = "^0.25.9", default-features = false }
-notify-rust = "4.18"
-pulldown-cmark = { version = "0.10", default-features = false }
-rfd = "0.17.2"
-serde = { version = "1", features = ["rc"] }
-serde_json = "1"
-shlex = "1.3.0"
-similar = "2.7.0"
+codex-exec-server = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-code-mode-host = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-http-client = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-otel-trace-websocket = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-windows-sandbox = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-utils-process = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-utils-pty = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-model-provider-info = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+anyhow = "1.0.104"
+arboard = { version = "3.7.0", features = ["wayland-data-control"] }
+base64 = "0.23.1"
+clap = "4.6.7"
+codex-ansi-escape = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-app-server-protocol = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-async-utils = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-aws-auth = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-config = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-context-fragments = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-feedback = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-file-search = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-git-utils = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-login = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-protocol = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-utils-absolute-path = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-utils-cli = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-utils-home-dir = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+codex-utils-path-uri = { git = "https://github.com/openai/codex", rev = "086ccc833bc9cf01024ad2dd6af7dbd421b6bf9a" }
+dirs = "7.0.0"
+dunce = "1.0.5"
+futures = { version = "0.3.34", default-features = false }
+image = { version = "0.25.10", default-features = false }
+notify-rust = "4.19.0"
+pulldown-cmark = { version = "0.13.6", default-features = false }
+rfd = "0.18.0"
+serde = { version = "1.0.229", features = ["rc"] }
+serde_json = "1.0.154"
+shlex = "2.0.1"
+similar = "3.2.1"
 slint = { version = "=1.18.1", default-features = false }
-thiserror = "2.0.17"
-tokio = "1"
-toml = "0.9.5"
-toml_edit = "0.24.0"
-url = "2"
+thiserror = "2.0.21"
+tokio = "1.54.1"
+toml = "1.2.1"
+toml_edit = "0.25.19"
+url = "2.5.8"
 tracing = "0.1.44"
-tracing-appender = "0.2.3"
-tracing-subscriber = "0.3.22"
-uuid = "1"
-webbrowser = "1.2.2"
-libc = "0.2.182"
+tracing-appender = "0.2.5"
+tracing-subscriber = "0.3.23"
+uuid = "1.29.2"
+webbrowser = "1.2.6"
+libc = "0.2.191"
 windows-sys = "0.61.2"
 slint-build = { version = "=1.18.1", default-features = false }
 pretty_assertions = "1.4.1"
-tempfile = "3.23.0"
+tempfile = "3.27.0"
 
 [workspace.lints.rust]
 

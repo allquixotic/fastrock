@@ -30,6 +30,7 @@ mod format;
 mod request;
 mod user_input;
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
@@ -47,7 +48,6 @@ use codex_app_server_protocol::ServerRequest;
 use codex_app_server_protocol::SessionSource;
 use codex_app_server_protocol::SortDirection;
 use codex_app_server_protocol::Thread;
-use codex_app_server_protocol::ThreadItem;
 use codex_app_server_protocol::ThreadItemsListParams;
 use codex_app_server_protocol::ThreadItemsListResponse;
 use codex_app_server_protocol::ThreadReadResponse;
@@ -869,9 +869,10 @@ impl AppController {
                     .data
                     .into_iter()
                     .find_map(|entry| match entry.item {
-                        ThreadItem::FileChange { id, changes, .. } if id == item_id => {
-                            Some(changes)
-                        }
+                        ThreadItem {
+                            payload: ThreadItemPayload::FileChange { id, changes, .. },
+                            ..
+                        } if id == item_id => Some(changes),
                         _ => None,
                     });
                 if let Some(changes) = changes
@@ -895,7 +896,11 @@ impl AppController {
     pub(crate) fn approvals_on_notification(&mut self, notification: &ServerNotification) {
         match notification {
             ServerNotification::ItemStarted(started) => {
-                if let ThreadItem::FileChange { id, changes, .. } = &started.item {
+                if let ThreadItem {
+                    payload: ThreadItemPayload::FileChange { id, changes, .. },
+                    ..
+                } = &started.item
+                {
                     self.approvals_cache_changes(&started.thread_id, id, changes.clone());
                 }
             }
@@ -908,7 +913,11 @@ impl AppController {
             }
             ServerNotification::ItemCompleted(completed) => {
                 self.approvals_async_item(&completed.thread_id, &completed.item);
-                if let ThreadItem::FileChange { id, .. } = &completed.item {
+                if let ThreadItem {
+                    payload: ThreadItemPayload::FileChange { id, .. },
+                    ..
+                } = &completed.item
+                {
                     self.approvals.file_changes.remove(&completed.thread_id, id);
                 }
             }

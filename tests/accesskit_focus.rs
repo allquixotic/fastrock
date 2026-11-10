@@ -2,8 +2,8 @@
 #[path = "../third_party/slint/i-slint-backend-winit/accesskit_focus.rs"]
 mod accesskit_focus;
 
-use accesskit::{Node, NodeId, Role, Tree, TreeId, TreeUpdate};
-use accesskit_consumer::{Node as ConsumerNode, TreeChangeHandler};
+use accesskit::{Node, NodeId, Role, TreeId, TreeInfo, TreeUpdate};
+use accesskit_consumer::{NodeRef as ConsumerNode, TreeChangeHandler};
 
 const ROOT: NodeId = NodeId(1);
 const OLD: NodeId = NodeId(2);
@@ -22,7 +22,7 @@ fn complete(child: NodeId, requested: NodeId) -> TreeUpdate {
     root.set_children(vec![child]);
     TreeUpdate {
         nodes: vec![(ROOT, root), (child, Node::new(Role::TextInput))],
-        tree: Some(Tree::new(ROOT)),
+        tree: Some(TreeInfo::new(ROOT)),
         tree_id: TreeId::ROOT,
         focus: accesskit_focus::published_focus(requested, ROOT, [ROOT, child].into_iter()),
     }

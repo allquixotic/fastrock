@@ -607,6 +607,7 @@ impl AppController {
                 move |request_id| ClientRequest::HooksList {
                     request_id,
                     params: HooksListParams {
+                        thread_id: None,
                         cwds: cwd.into_iter().collect(),
                     },
                 },

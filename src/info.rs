@@ -9,6 +9,7 @@
 
 mod terminals;
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
@@ -41,7 +42,6 @@ use codex_app_server_protocol::ThreadGoalMutationOrigin;
 use codex_app_server_protocol::ThreadGoalSetParams;
 use codex_app_server_protocol::ThreadGoalSetResponse;
 use codex_app_server_protocol::ThreadGoalStatus;
-use codex_app_server_protocol::ThreadItem;
 use codex_app_server_protocol::ThreadListParams;
 use codex_app_server_protocol::ThreadListResponse;
 use codex_app_server_protocol::ThreadQueueDeleteParams;
@@ -285,10 +285,14 @@ fn thread_status_agent(status: &ThreadStatus) -> AgentStatus {
 /// Sub-agent updates carried by an item of the parent thread.
 pub(crate) fn agent_updates_from_item(item: &ThreadItem) -> Vec<AgentUpdate> {
     match item {
-        ThreadItem::CollabAgentToolCall {
-            tool,
-            receiver_thread_ids,
-            agents_states,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::CollabAgentToolCall {
+                    tool,
+                    receiver_thread_ids,
+                    agents_states,
+                    ..
+                },
             ..
         } => receiver_thread_ids
             .iter()
@@ -304,10 +308,14 @@ pub(crate) fn agent_updates_from_item(item: &ThreadItem) -> Vec<AgentUpdate> {
                 }
             })
             .collect(),
-        ThreadItem::SubAgentActivity {
-            kind,
-            agent_thread_id,
-            agent_path,
+        ThreadItem {
+            payload:
+                ThreadItemPayload::SubAgentActivity {
+                    kind,
+                    agent_thread_id,
+                    agent_path,
+                    ..
+                },
             ..
         } => vec![AgentUpdate {
             thread_id: agent_thread_id.clone(),
@@ -430,6 +438,7 @@ struct InfoModels {
 
 impl AppController {
     pub(crate) fn info_bind(&mut self) {
+        self.context_report_install();
         let state = self.window.global::<InfoState>();
         let models = &self.info_shared.models;
         state.set_fields(ModelRc::from(models.fields.clone()));
@@ -503,6 +512,7 @@ impl AppController {
     }
 
     pub(crate) fn info_show(&mut self) {
+        self.context_report_sync();
         let Some(index) = self.active_thread_index() else {
             return;
         };
@@ -923,6 +933,8 @@ impl AppController {
             search_term: None,
             parent_thread_id: Some(thread_id),
             ancestor_thread_id: None,
+            attached_to_thread_id: None,
+            excluded_thread_ids: None,
         };
         self.backend.call(
             |request_id| ClientRequest::ThreadList { request_id, params },
@@ -1474,7 +1486,7 @@ impl AppController {
                         .status_message
                         .clone()
                         .filter(|message| !message.trim().is_empty())
-                        .unwrap_or_else(|| file_name(&run.source_path.as_path().to_string_lossy()))
+                        .unwrap_or_else(|| file_name(run.source_path.as_str()))
                         .into(),
                 })
                 .collect(),
@@ -2183,7 +2195,7 @@ deleted file mode 100644
     #[test]
     fn sub_agents_merge_updates_from_items_and_threads() {
         let mut agents = Vec::new();
-        let spawn = ThreadItem::CollabAgentToolCall {
+        let spawn = ThreadItem::untimed(ThreadItemPayload::CollabAgentToolCall {
             id: "call".to_string(),
             tool: CollabAgentTool::SpawnAgent,
             status: codex_app_server_protocol::CollabAgentToolCallStatus::Completed,
@@ -2193,20 +2205,20 @@ deleted file mode 100644
             model: None,
             reasoning_effort: None,
             agents_states: HashMap::new(),
-        };
+        });
         assert!(apply_agent_updates(&mut agents, &spawn));
         assert_eq!(agents.len(), 1);
         assert_eq!(agents[0].status, AgentStatus::Running);
         assert_eq!(agents[0].label(), "Agent child");
 
-        let activity = ThreadItem::SubAgentActivity {
+        let activity = ThreadItem::untimed(ThreadItemPayload::SubAgentActivity {
             model: None,
             reasoning_effort: None,
             id: "act".to_string(),
             kind: SubAgentActivityKind::Completed,
             agent_thread_id: "child".to_string(),
             agent_path: "/root/tester".to_string(),
-        };
+        });
         apply_agent_updates(&mut agents, &activity);
         assert_eq!(agents[0].status, AgentStatus::Completed);
         assert_eq!(agents[0].label(), "tester");

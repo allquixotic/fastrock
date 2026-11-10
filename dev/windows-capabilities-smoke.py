@@ -15,9 +15,16 @@ plugin=out/'goose/.agents/plugins/fixture-hooks';(plugin/'hooks').mkdir(parents=
 (plugin/'plugin.json').write_text(json.dumps(dict(name='fixture-hooks',version='1.0.0')),encoding='utf-8')
 hook=plugin/'hooks/hooks.json';hook.write_text('{"hooks":{}}',encoding='utf-8');original_hooks=hook.read_bytes()
 marker=out/'hook-invocations.jsonl';helper=out/'hook-fixture.py'
-helper.write_text('import json,sys\nfrom pathlib import Path\nv=json.load(sys.stdin)\nwith Path(sys.argv[1]).open("a",encoding="utf-8") as f:f.write(json.dumps({"event":v.get("event"),"session":v.get("session_id")})+"\\n")\nprint("{}")\n',encoding='utf-8')
+helper.write_text('import json,sys\nfrom pathlib import Path\nv=json.load(sys.stdin)\nwith Path(sys.argv[1]).open("a",encoding="utf-8") as f:f.write(json.dumps({"event":v.get("event"),"session":v.get("session_id"),"message":v.get("last_assistant_message")})+"\\n")\nprint("{}")\n',encoding='utf-8')
 command=' '.join("'"+str(path).replace('\\','/').replace("'","'\"'\"'")+"'" for path in (Path(sys.executable),helper,marker))
 new_hooks=json.dumps({'hooks':{'Stop':[{'hooks':[{'type':'command','command':command,'timeout':10}]}]}})
+project_plugin=out/'project/.agents/plugins/project-hooks';(project_plugin/'hooks').mkdir(parents=True)
+(project_plugin/'plugin.json').write_text(json.dumps(dict(name='project-hooks',version='1.0.0')),encoding='utf-8')
+project_marker=out/'project-hook-invocations.jsonl'
+project_command=command.replace(str(marker).replace('\\','/'),str(project_marker).replace('\\','/'))
+(project_plugin/'hooks/hooks.json').write_text(json.dumps({'hooks':{'Stop':[{'hooks':[{'type':'command','command':project_command,'timeout':10}]}]}}),encoding='utf-8')
+other_project=out/'other-project';other_project.mkdir()
+
 def c(*args):return {'settings':['capabilities',*args]}
 def wait():return {'wait_capabilities':30000}
 def dump(name):return [c('dump',str(out/(name+'.json'))),{'wait':180}]
@@ -46,8 +53,9 @@ try:
   *section(2),c('field','name','native-hooks'),{'click_text':'Create hook plugin'},wait(),*dump('created-hook-plugin'),c('select',str(plugin)),{'wait':180},{'click_text':'Edit hooks'},wait(),c('field','hooks','{}'),{'wait':180},{'click_text':'Save hooks'},wait(),*dump('invalid-hooks'),
   c('field','hooks',new_hooks),{'wait':180},{'click_text':'Save hooks'},wait(),*dump('saved-hooks'),
   {'new_thread':str(out/'project')},{'wait_idle':30000},wait(),{'send':'Check native hook invocation'},{'wait_idle':30000},wait(),
-  {'open_settings':'capabilities'},wait(),c('session','1'),wait(),*section(1),*dump('new-chat'),{'select_tab':2},{'shortcut':'close-tab'},wait(),{'open_settings':'capabilities'},wait(),wait(),*dump('closed-selection'),{'quit':True}])
+  {'open_settings':'capabilities'},wait(),c('session','1'),wait(),*section(1),*dump('new-chat'),{'select_tab':2},{'shortcut':'close-tab'},wait(),{'open_settings':'capabilities'},wait(),wait(),*dump('closed-selection'),{'new_thread':str(other_project)},{'wait_idle':30000},{'send':'Check project hook isolation'},{'wait_idle':30000},wait(),{'quit':True}])
  assert not read('initial')['busy'],read('initial')
+ assert len([h for h in read('initial')['catalog']['hooks'] if h['name']=='project-hooks'])==1,'Duplicate project hook paths'
  assert extension(read('initial'),'source')['protected']
  assert next(e for e in read('initial')['extensions'] if e['name']=='source')['protected']
  workspace_tools=[t for t in read('initial')['tools'] if t['name'].startswith('source__')]
@@ -67,6 +75,11 @@ try:
  assert marker.exists() and marker.stat().st_size>0,'Configured Goose Stop hook did not execute'
  invocations=[json.loads(line) for line in marker.read_text(encoding='utf-8').splitlines()]
  assert any(i['event']=='Stop' and i['session']==read('new-chat')['threadId'].removeprefix('goose:') for i in invocations),invocations
+ project_invocations=[json.loads(line) for line in project_marker.read_text(encoding='utf-8').splitlines()]
+ assert any('Check project hook isolation' in (i.get('message') or '') for i in invocations),invocations
+ assert any(i['session']==read('new-chat')['threadId'].removeprefix('goose:') for i in project_invocations),project_invocations
+ assert all('Check project hook isolation' not in (i.get('message') or '') for i in project_invocations),'Project hooks leaked into another repository'
+
  assert not any(t['name'].startswith('fixture__') for t in read('new-chat')['tools']),read('new-chat')
  assert len(read('closed-selection')['sessions'])==1 and not read('closed-selection')['busy'],read('closed-selection')
  assert secrets.read_bytes()==original_secrets
@@ -81,7 +94,7 @@ try:
  assert not provider.errors,provider.errors
  receipt=dict(result='PASS',binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_process_bytes=peak,
   native_extensions=True,custom_workspace_alias_protected=True,code_mode_tool_executed=True,tool_permissions_persisted=True,idle_mutation_guard=True,
-  defaults_only_affect_new_chats=True,hook_validation_backup_execution=True,credentials_preserved=True,restart_no_replay=True)
+  defaults_only_affect_new_chats=True,hook_validation_backup_execution=True,project_hooks_isolated=True,credentials_preserved=True,restart_no_replay=True)
  (out/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8')
  print('PASS: native Goose extension/tool/code-mode/hook controls',flush=True)
 finally:

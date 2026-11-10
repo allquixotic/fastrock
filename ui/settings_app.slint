@@ -145,6 +145,14 @@ export component AppearancePage inherits Rectangle {
                     title: "Composer";
                 }
                 PrefRow {
+                    title: "Collapse thinking by default";
+                    description: "Start thinking blocks collapsed in live and saved conversations. Expand any block to read it. Your choices for individual blocks stay in place.";
+                    Switch {
+                        checked <=> SettingsState.pref-collapse-thinking;
+                        toggled => { SettingsState.pref-changed("collapse-thinking"); }
+                    }
+                }
+                PrefRow {
                     title: "Send and queue";
                     description: "Enter sends when idle, or queues until the entire running turn ends. Shift+Enter steers immediately. Alt+Enter adds a line.";
                 }

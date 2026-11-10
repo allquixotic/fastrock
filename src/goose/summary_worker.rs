@@ -28,7 +28,7 @@ impl Write for HashWriter {
 fn digest(messages: &[Message]) -> Result<String> {
     let mut writer = HashWriter(Sha256::new());
     serde_json::to_writer(&mut writer, messages)?;
-    Ok(format!("{:x}", writer.0.finalize()))
+    Ok(hex::encode(writer.0.finalize()))
 }
 
 impl Snapshot {

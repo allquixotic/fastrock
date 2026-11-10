@@ -5,13 +5,13 @@
 //! `UserMessage.client_id`; the wait then remembers the turn id and collects
 //! the target's agent messages until `turn/completed` for that turn.
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::time::Duration;
 
 use codex_app_server_protocol::RequestId;
 use codex_app_server_protocol::ServerNotification;
-use codex_app_server_protocol::ThreadItem;
 use codex_app_server_protocol::TurnStatus;
 use codex_protocol::models::MessagePhase;
 
@@ -219,7 +219,11 @@ impl WaitTracker {
                         continue;
                     }
                     for item in &turn.items {
-                        if let ThreadItem::AgentMessage { text, phase, .. } = item {
+                        if let ThreadItem {
+                            payload: ThreadItemPayload::AgentMessage { text, phase, .. },
+                            ..
+                        } = item
+                        {
                             wait.note_agent_message(text, phase.as_ref());
                         }
                     }
@@ -259,15 +263,18 @@ impl WaitTracker {
                 continue;
             }
             match item {
-                ThreadItem::UserMessage { .. }
-                    if wait.target_turn_id.is_none()
-                        && is_user_message_with(item, &wait.client_id) =>
+                ThreadItem {
+                    payload: ThreadItemPayload::UserMessage { .. },
+                    ..
+                } if wait.target_turn_id.is_none()
+                    && is_user_message_with(item, &wait.client_id) =>
                 {
                     wait.target_turn_id = Some(turn_id.to_string());
                 }
-                ThreadItem::AgentMessage { text, phase, .. }
-                    if wait.target_turn_id.as_deref() == Some(turn_id) =>
-                {
+                ThreadItem {
+                    payload: ThreadItemPayload::AgentMessage { text, phase, .. },
+                    ..
+                } if wait.target_turn_id.as_deref() == Some(turn_id) => {
                     wait.note_agent_message(text, phase.as_ref());
                 }
                 _ => {}
@@ -278,7 +285,7 @@ impl WaitTracker {
 
 /// Whether `item` is the user message the GUI submitted as `client_id`.
 pub(crate) fn is_user_message_with(item: &ThreadItem, client_id: &str) -> bool {
-    matches!(item, ThreadItem::UserMessage { client_id: Some(id), .. } if id == client_id)
+    matches!(item, ThreadItem { payload: ThreadItemPayload::UserMessage { client_id: Some(id), .. }, .. } if id == client_id)
 }
 
 /// The reply in a list of items: the last final answer, else the last
@@ -289,7 +296,10 @@ pub(crate) fn reply_from_items<'a>(
     let mut final_answer = None;
     let mut last_message = None;
     for item in items {
-        if let ThreadItem::AgentMessage { text, phase, .. } = item
+        if let ThreadItem {
+            payload: ThreadItemPayload::AgentMessage { text, phase, .. },
+            ..
+        } = item
             && !text.trim().is_empty()
         {
             if !matches!(phase, Some(MessagePhase::Commentary)) {
@@ -327,22 +337,22 @@ mod tests {
     }
 
     fn user_message(client_id: Option<&str>) -> ThreadItem {
-        ThreadItem::UserMessage {
+        ThreadItem::untimed(ThreadItemPayload::UserMessage {
             id: "u1".to_string(),
             client_id: client_id.map(str::to_string),
             content: Vec::new(),
-        }
+        })
     }
 
     fn agent_message(text: &str, phase: Option<MessagePhase>) -> ThreadItem {
-        ThreadItem::AgentMessage {
+        ThreadItem::untimed(ThreadItemPayload::AgentMessage {
             id: format!("a-{text}"),
             text: text.to_string(),
             phase,
             memory_citation: None,
             delivery: None,
             questions: None,
-        }
+        })
     }
 
     fn started(thread: &str, turn: &str, item: ThreadItem) -> ServerNotification {

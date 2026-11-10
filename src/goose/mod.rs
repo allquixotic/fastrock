@@ -6,11 +6,14 @@ mod cheap_profile;
 mod checkpoint_storage;
 mod checkpoints;
 mod config_guard;
+mod context_controls;
+mod context_report;
 mod controls;
 mod delegation;
 mod delegation_tools;
 mod deletion;
 mod embedded;
+mod embedded_router;
 mod history;
 mod hooks;
 mod id_reservation;
@@ -639,6 +642,7 @@ impl Adapter {
             }
             "thread/turns/list" | "thread/items/list" => self.history(params, method).await,
             "fastrock/history/window" => self.history_window(params).await,
+            "fastrock/context/report" => self.context_report(params).await,
             "turn/start" => self.start_turn(params).await,
             "thread/shellCommand" => self.shell_command(params).await,
             "review/start" => self.review_request(params, "start").await,

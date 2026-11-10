@@ -2,6 +2,7 @@
 use crate::backend::Backend;
 use crate::threads::recap::{self, TemporaryThreadOptions};
 use codex_app_server_protocol::*;
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use codex_protocol::openai_models::ReasoningEffort;
 use serde_json::{Value, json};
 use std::time::Duration;
@@ -52,7 +53,11 @@ pub(super) fn requests_in_turn(turn: &Turn) -> Vec<(String, String)> {
     turn.items
         .iter()
         .filter_map(|item| {
-            let ThreadItem::UserMessage { id, content, .. } = item else {
+            let ThreadItem {
+                payload: ThreadItemPayload::UserMessage { id, content, .. },
+                ..
+            } = item
+            else {
                 return None;
             };
             let text = user_text(content);
@@ -348,11 +353,11 @@ mod tests {
         let mut turn = Turn {
             root_turn_id: None,
             id: "t".into(),
-            items: vec![ThreadItem::UserMessage {
+            items: vec![ThreadItem::untimed(ThreadItemPayload::UserMessage {
                 id: "u".into(),
                 content: vec![crate::session::text_input("User request")],
                 client_id: None,
-            }],
+            })],
             items_view: TurnItemsView::Full,
             status: TurnStatus::InProgress,
             error: None,

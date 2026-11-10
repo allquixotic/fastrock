@@ -53,6 +53,35 @@ async fn new(client: &AppServerClient, cwd: &std::path::Path) -> String {
         .unwrap()
         .to_owned()
 }
+
+#[tokio::test]
+async fn v104_context_report_uses_public_rpc_and_refuses_active_turns() {
+    let (client, temp) = fixture().await;
+    assert!(
+        call(
+            &client,
+            "fastrock/context/report",
+            json!({"threadId":"goose:missing"})
+        )
+        .await
+        .is_err()
+    );
+    let id = new(&client, temp.path()).await;
+    let report = call(&client, "fastrock/context/report", json!({"threadId":id}))
+        .await
+        .unwrap();
+    assert_eq!(report["total"], 12);
+    assert_eq!(report["rows"][0]["preview"], "Fixture context");
+    send(&client, &id, "hold context report").await;
+    assert!(
+        call(&client, "fastrock/context/report", json!({"threadId":id}))
+            .await
+            .unwrap_err()
+            .message
+            .contains("running turn")
+    );
+    client.shutdown().await.unwrap();
+}
 #[tokio::test]
 async fn v72_typed_review_routes_and_busy_guards() {
     use codex_app_server_protocol::{

@@ -37,12 +37,12 @@ pub(crate) mod selection;
 mod store;
 mod streaming;
 
+use codex_app_server_protocol::{ThreadItem, ThreadItemPayload};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use codex_app_server_protocol::ServerNotification;
 use codex_app_server_protocol::ThreadHistoryMode;
-use codex_app_server_protocol::ThreadItem;
 use codex_app_server_protocol::ThreadStatus;
 use codex_app_server_protocol::Turn;
 use codex_app_server_protocol::UserInput;
@@ -248,6 +248,9 @@ impl AppController {
     }
 
     fn transcript_flags(&self) -> (bool, bool) {
+        if self.backend.is_goose() {
+            return (true, false);
+        }
         self.config.as_ref().map_or((false, false), |config| {
             (config.show_raw_agent_reasoning, config.hide_agent_reasoning)
         })
@@ -269,6 +272,7 @@ impl AppController {
     ) -> Option<R> {
         let (show_raw_reasoning, hide_reasoning) = self.transcript_flags();
         let open_threads = self.transcript_open_threads();
+        let collapse_thinking = self.prefs.collapse_thinking;
         let thread = self.thread_tab_mut(index)?;
         let ThreadTab {
             transcript,
@@ -280,9 +284,16 @@ impl AppController {
             cwd,
             show_raw_reasoning,
             hide_reasoning,
+            collapse_thinking,
             open_threads: &open_threads,
         };
         Some(f(transcript, ctx, reported_turn_error))
+    }
+
+    pub(crate) fn transcript_refresh_thinking(&mut self) {
+        for index in 0..self.tabs.len() {
+            self.with_transcript(index, |transcript, ctx, _| transcript.refresh_thinking(ctx));
+        }
     }
 
     /// Binds the active tab's transcript to the view.
@@ -706,7 +717,10 @@ impl AppController {
             return None;
         }
         match &entry.item {
-            ThreadItem::UserMessage { content, .. } => Some(content.clone()),
+            ThreadItem {
+                payload: ThreadItemPayload::UserMessage { content, .. },
+                ..
+            } => Some(content.clone()),
             _ => None,
         }
     }
@@ -936,7 +950,10 @@ impl AppController {
                     item.completed
                         && matches!(
                             item.item,
-                            codex_app_server_protocol::ThreadItem::AgentMessage { .. }
+                            ThreadItem {
+                                payload: ThreadItemPayload::AgentMessage { .. },
+                                ..
+                            }
                         )
                 })
             })
@@ -1292,7 +1309,10 @@ impl AppController {
             "open-diff" => {
                 let change = match (entry.item().map(|item| &item.item), block.toggle) {
                     (
-                        Some(codex_app_server_protocol::ThreadItem::FileChange { changes, .. }),
+                        Some(ThreadItem {
+                            payload: ThreadItemPayload::FileChange { changes, .. },
+                            ..
+                        }),
                         Some(file),
                     ) if block.kind == BlockKind::PatchFile => changes.get(file).cloned(),
                     _ => None,

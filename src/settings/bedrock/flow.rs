@@ -968,6 +968,7 @@ pub(crate) fn provider_label(provider_id: &str, custom_name: Option<&str>) -> St
 /// configured for a Bedrock provider, if any.
 pub(crate) fn account_label(response: &GetAccountResponse, aws_profile: Option<&str>) -> String {
     match &response.account {
+        Some(Account::Gcp {}) => "Google Cloud credentials".to_string(),
         Some(Account::ApiKey {}) => "OpenAI API key".to_string(),
         Some(Account::Chatgpt { email, .. }) => match non_empty(email.as_deref()) {
             Some(email) => format!("ChatGPT · {email}"),
