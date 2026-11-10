@@ -1,4 +1,4 @@
-# Fastrock 0.5.0
+# Fastrock 0.5.0 stable
 
 Explicitly authorized 2026-11-09. This release updates the direct Rust dependencies,
 including unmodified Goose 1.58.0, stable Codex support crates 0.167.0 and the latest
@@ -11,9 +11,16 @@ are retained. The default cheap model uses `us.openai.gpt-6-luna` on Bedrock Run
 Goose now routes bare closed-weight GPT IDs to Mantle. Explicit saved model choices
 remain intact. See [dependency details](DEPENDENCIES-050.md).
 
-Windows x64 ZIP publication requires the complete signed CI acceptance pipeline.
-macOS is compiled only. Use **Quit** in an older version's tray menu before starting
-0.5.0. [Release page](https://github.com/allquixotic/fastrock/releases/tag/v0.5.0).
+[Fastrock 0.5.0](https://github.com/allquixotic/fastrock/releases/tag/v0.5.0) is the
+latest stable Windows x64 ZIP. [Signed release CI](https://github.com/allquixotic/fastrock/actions/runs/42726340065)
+passed 868 Rust tests, all 42 native cases, migration, catalog and scrolling checks
+on the signed executable. Windows and Mac compiled; Mac publication was skipped.
+The downloaded ZIP's checksum, online and bundled provenance, expected Windows
+publisher and secure timestamp were independently verified. See the
+[release receipt](benchmarks/050-release-ci-2026-11-09.json) and
+[guarded games comparison](benchmarks/050-games-2026-11-09.json).
+
+Use **Quit** in an older version's tray menu before starting 0.5.0.
 
 # Fastrock 0.4.3 stable
 

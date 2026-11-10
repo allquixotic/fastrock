@@ -1,0 +1,569 @@
+{
+  "result": "PASS",
+  "version": "0.5.0",
+  "verified_at": "2026-11-10T01:00:33.533183+00:00",
+  "source_commit": "4bd1482b0a9140d036b6e21d09da6816af399692",
+  "release": {
+    "url": "https://github.com/allquixotic/fastrock/releases/tag/v0.5.0",
+    "tag": "v0.5.0",
+    "published_at": "2026-11-10T00:58:13Z",
+    "prerelease": false,
+    "latest": true,
+    "windows_x64_zip": "fastrock-0.5.0-windows-x64.zip",
+    "zip_sha256": "ba252291e365b94d8c6c3d0c4541e5323dc88b4ed436f67e9bbbe58902f9ef53",
+    "zip_bytes": 142725905,
+    "binary_sha256": "07373e6090e443d55f1684a876d40c0fd1b8fca119e6e574524776e088586939",
+    "macos_assets": false
+  },
+  "ci": {
+    "url": "https://github.com/allquixotic/fastrock/actions/runs/42726340065",
+    "run_id": 42726340065,
+    "conclusion": "success",
+    "evidence_artifact_id": 13725232129,
+    "evidence_artifact_sha256": "sha256:f64589e41798ba8d92dd61af81fe70113d52492a5a0229cd5a74e5d15e26069a",
+    "build": "PASS: Windows and macOS compile",
+    "macos_release_job": "skipped; no Mac app or tests executed",
+    "registered_temporary_runners_afterward": 0
+  },
+  "windows_rust": {
+    "total": 868,
+    "application_tests": 816,
+    "renderer_tests": 1,
+    "workspace_tests": 47,
+    "accesskit_tests": 4
+  },
+  "native_matrix": {
+    "binary_sha256": "07373e6090e443d55f1684a876d40c0fd1b8fca119e6e574524776e088586939",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 49.5,
+        "peak_tree_bytes": 157966336
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 3.81,
+        "peak_tree_bytes": 156614656
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 35.47,
+        "peak_tree_bytes": 161681408
+      },
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 23.67,
+        "peak_tree_bytes": 162799616
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 63.52,
+        "peak_tree_bytes": 160354304
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 82.97,
+        "peak_tree_bytes": 158769152
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.84,
+        "peak_tree_bytes": 157474816
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 27.06,
+        "peak_tree_bytes": 158113792
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.22,
+        "peak_tree_bytes": 156930048
+      },
+      {
+        "name": "model-options",
+        "result": "PASS",
+        "error": null,
+        "seconds": 9.22,
+        "peak_tree_bytes": 157011968
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 34.08,
+        "peak_tree_bytes": 157200384
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.88,
+        "peak_tree_bytes": 158633984
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.23,
+        "peak_tree_bytes": 156880896
+      },
+      {
+        "name": "commands",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.44,
+        "peak_tree_bytes": 157028352
+      },
+      {
+        "name": "palette",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.03,
+        "peak_tree_bytes": 157003776
+      },
+      {
+        "name": "terminal",
+        "result": "PASS",
+        "error": null,
+        "seconds": 32.86,
+        "peak_tree_bytes": 157483008
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 30.86,
+        "peak_tree_bytes": 159862784
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.03,
+        "peak_tree_bytes": 157810688
+      },
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.44,
+        "peak_tree_bytes": 157003776
+      },
+      {
+        "name": "organization",
+        "result": "PASS",
+        "error": null,
+        "seconds": 43.69,
+        "peak_tree_bytes": 158810112
+      },
+      {
+        "name": "sidebar-drag",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.48,
+        "peak_tree_bytes": 157061120
+      },
+      {
+        "name": "sidebar-policy",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.44,
+        "peak_tree_bytes": 157106176
+      },
+      {
+        "name": "titles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.69,
+        "peak_tree_bytes": 157679616
+      },
+      {
+        "name": "queue",
+        "result": "PASS",
+        "error": null,
+        "seconds": 17.44,
+        "peak_tree_bytes": 157057024
+      },
+      {
+        "name": "mentions",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.44,
+        "peak_tree_bytes": 156975104
+      },
+      {
+        "name": "review",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.25,
+        "peak_tree_bytes": 158212096
+      },
+      {
+        "name": "shell",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.23,
+        "peak_tree_bytes": 157888512
+      },
+      {
+        "name": "console",
+        "result": "PASS",
+        "error": null,
+        "seconds": 5.22,
+        "peak_tree_bytes": 157179904
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.66,
+        "peak_tree_bytes": 158715904
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.28,
+        "peak_tree_bytes": 159711232
+      },
+      {
+        "name": "relaunch",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.66,
+        "peak_tree_bytes": 157249536
+      },
+      {
+        "name": "delete",
+        "result": "PASS",
+        "error": null,
+        "seconds": 42.91,
+        "peak_tree_bytes": 159768576
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.23,
+        "peak_tree_bytes": 159637504
+      },
+      {
+        "name": "history-startup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 115.23,
+        "peak_tree_bytes": 159739904
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.05,
+        "peak_tree_bytes": 117506048
+      },
+      {
+        "name": "accessibility",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.86,
+        "peak_tree_bytes": 168828928
+      },
+      {
+        "name": "context",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.81,
+        "peak_tree_bytes": 157241344
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 35.08,
+        "peak_tree_bytes": 160845824
+      },
+      {
+        "name": "summary-priority",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.03,
+        "peak_tree_bytes": 157085696
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 40.31,
+        "peak_tree_bytes": 158568448
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.44,
+        "peak_tree_bytes": 158916608
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 18.64,
+        "peak_tree_bytes": 158760960
+      }
+    ]
+  },
+  "context": {
+    "result": "PASS",
+    "binary_sha256": "07373e6090e443d55f1684a876d40c0fd1b8fca119e6e574524776e088586939",
+    "peak_process_bytes": 156536832,
+    "native_report": true,
+    "previews": true,
+    "no_inference": true,
+    "thinking_opt_in": true,
+    "manual_expansion": true,
+    "export_preserved": true,
+    "persisted_restart": true,
+    "restored_resume_guard": true,
+    "conversation_switch_clears_report": true
+  },
+  "hooks": {
+    "result": "PASS",
+    "binary_sha256": "07373e6090e443d55f1684a876d40c0fd1b8fca119e6e574524776e088586939",
+    "peak_process_bytes": 154284032,
+    "native_extensions": true,
+    "custom_workspace_alias_protected": true,
+    "code_mode_tool_executed": true,
+    "tool_permissions_persisted": true,
+    "idle_mutation_guard": true,
+    "defaults_only_affect_new_chats": true,
+    "hook_validation_backup_execution": true,
+    "project_hooks_isolated": true,
+    "credentials_preserved": true,
+    "restart_no_replay": true
+  },
+  "migration": {
+    "passed": true,
+    "peakBytes": 279343104,
+    "sha256": "07373e6090e443d55f1684a876d40c0fd1b8fca119e6e574524776e088586939",
+    "sourceSha256": "5309ddafd296f99dd388531979711c81cff12d4027740e2e6fe93f0586a13389",
+    "checks": [
+      "manual native progress",
+      "native Pause and Resume",
+      "registry discovery",
+      "automatic detection",
+      "first thread handoff",
+      "byte-exact source preservation",
+      "clean reopen without redb"
+    ]
+  },
+  "organization_catalog": {
+    "result": "PASS",
+    "binary_sha256": "07373e6090e443d55f1684a876d40c0fd1b8fca119e6e574524776e088586939",
+    "peak_process_bytes": 70434816,
+    "stored_conversations": 100,
+    "first_page": 50,
+    "pinned_outside_first_page": "goose:benchmark-0000",
+    "provider_activation": false
+  },
+  "scroll": {
+    "backend": "embedded-goose",
+    "peak_process_bytes": 168796160,
+    "binary_sha256": "07373e6090e443d55f1684a876d40c0fd1b8fca119e6e574524776e088586939",
+    "host": "runnervmm7ud1",
+    "os": "Windows-2025Server-10.0.26100-SP0",
+    "requested_frames": 120,
+    "input": "Slint native wheel events, 16.667 ms timer; tick latency includes event-loop work",
+    "scenarios": {
+      "prose": {
+        "frames": 119,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 7.165,
+          "p95_ms": 7.99,
+          "p99_ms": 8.374
+        },
+        "present": {
+          "p50_ms": 0.505,
+          "p95_ms": 0.577,
+          "p99_ms": 0.675
+        },
+        "frame": {
+          "p50_ms": 7.674,
+          "p95_ms": 8.543,
+          "p99_ms": 8.889
+        },
+        "event_loop": {
+          "p50_ms": 16.217,
+          "p95_ms": 23.126,
+          "p99_ms": 23.322
+        },
+        "dirty_fraction": 0.4759
+      },
+      "table": {
+        "frames": 110,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.53,
+          "p95_ms": 5.464,
+          "p99_ms": 5.866
+        },
+        "present": {
+          "p50_ms": 0.501,
+          "p95_ms": 0.621,
+          "p99_ms": 0.917
+        },
+        "frame": {
+          "p50_ms": 5.02,
+          "p95_ms": 6.058,
+          "p99_ms": 6.371
+        },
+        "event_loop": {
+          "p50_ms": 16.286,
+          "p95_ms": 16.99,
+          "p99_ms": 17.204
+        },
+        "dirty_fraction": 0.5194
+      },
+      "code": {
+        "frames": 119,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.489,
+          "p95_ms": 5.062,
+          "p99_ms": 5.587
+        },
+        "present": {
+          "p50_ms": 0.518,
+          "p95_ms": 0.61,
+          "p99_ms": 0.695
+        },
+        "frame": {
+          "p50_ms": 5.034,
+          "p95_ms": 5.788,
+          "p99_ms": 6.125
+        },
+        "event_loop": {
+          "p50_ms": 16.326,
+          "p95_ms": 19.587,
+          "p99_ms": 20.643
+        },
+        "dirty_fraction": 0.4712
+      },
+      "tools": {
+        "frames": 113,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 5.324,
+          "p95_ms": 6.525,
+          "p99_ms": 7.395
+        },
+        "present": {
+          "p50_ms": 0.514,
+          "p95_ms": 0.57,
+          "p99_ms": 0.605
+        },
+        "frame": {
+          "p50_ms": 5.853,
+          "p95_ms": 7.046,
+          "p99_ms": 7.953
+        },
+        "event_loop": {
+          "p50_ms": 16.295,
+          "p95_ms": 17.102,
+          "p99_ms": 17.286
+        },
+        "dirty_fraction": 0.5056
+      },
+      "streaming": {
+        "frames": 122,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 7.333,
+          "p95_ms": 8.208,
+          "p99_ms": 8.681
+        },
+        "present": {
+          "p50_ms": 0.509,
+          "p95_ms": 0.588,
+          "p99_ms": 0.722
+        },
+        "frame": {
+          "p50_ms": 7.87,
+          "p95_ms": 8.748,
+          "p99_ms": 9.19
+        },
+        "event_loop": {
+          "p50_ms": 16.452,
+          "p95_ms": 21.197,
+          "p99_ms": 22.428
+        },
+        "dirty_fraction": 0.4683
+      }
+    }
+  },
+  "independent_download_verification": {
+    "checksum": "PASS",
+    "package_metadata_and_licenses": "PASS",
+    "online_and_bundled_attestation": "PASS",
+    "signer_workflow": "allquixotic/fastrock/.github/workflows/release.yml",
+    "source_ref": "refs/tags/v0.5.0",
+    "source_digest": "4bd1482b0a9140d036b6e21d09da6816af399692",
+    "windows_authenticode_on_games": {
+      "certificate_sha1": "80095953F61EA13DBF101BB47CA3733DEBC23236",
+      "publisher": "CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US",
+      "timestamp_publisher": "CN=Microsoft Public RSA Time Stamping Authority, OU=nShield TSS ESN:A500-05E0-D947, OU=Microsoft America Operations, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+      "binary_sha256": "07373e6090e443d55f1684a876d40c0fd1b8fca119e6e574524776e088586939",
+      "workflow_run": "42726340065",
+      "source_commit": "4bd1482b0a9140d036b6e21d09da6816af399692",
+      "status": "Valid"
+    },
+    "application_launched": false
+  },
+  "notes": [
+    "Direct dependency audit: 050-dependencies-2026-11-09.json; Goose 1.58.0 remains unmodified.",
+    "Full games native acceptance and guarded 1,000/eight/10,000 benchmark against 0.3.4: 050-games-2026-11-09.json.",
+    "Context reports are read-only; collapse thinking is opt-in. Project hook snapshots use public per-conversation services with shared permissions and storage.",
+    "All model/Rally/tool acceptance used isolated local fixtures; private live-profile feedback remains user-owned.",
+    "Packaged license and dependency-receipt text matches source after normalizing Windows checkout CRLF line endings."
+  ]
+}

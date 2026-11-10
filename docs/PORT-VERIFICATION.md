@@ -2857,8 +2857,8 @@ Mac compilation passed without running the application or tests.
 passed both platform builds, 861 Rust tests, all 41 native cases, migration,
 catalog and scrolling checks on the exact signed executable. The accessibility
 case completed 334 focus requests across eight distinct controls. Stable
-[v0.4.3](https://github.com/allquixotic/fastrock/releases/tag/v0.4.3) is the latest
-Windows x64 ZIP. Downloaded checksum, online/bundled provenance, publisher and
+[v0.4.3](https://github.com/allquixotic/fastrock/releases/tag/v0.4.3) was published
+as a stable Windows x64 ZIP. Downloaded checksum, online/bundled provenance, publisher and
 secure timestamp were independently verified; no Mac assets were published,
 and no temporary runners remain. Evidence: [local tests](benchmarks/043-games-2026-11-09.json),
 [release](benchmarks/043-release-ci-2026-11-09.json), [analysis](ACCESSIBILITY-043.md).
@@ -2905,5 +2905,18 @@ The original migration fixture bytes were preserved. All model, tool and Rally
 requests used isolated local fixtures; private live-profile feedback remains
 user-owned.
 
-Signed release CI and independent published-download verification are recorded
-below after publication.
+[Release CI 42726340065](https://github.com/allquixotic/fastrock/actions/runs/42726340065)
+passed both platform builds, 868 Rust tests, all 42 native cases, migration,
+organization catalog and scrolling checks on the exact signed executable.
+Stable [v0.5.0](https://github.com/allquixotic/fastrock/releases/tag/v0.5.0) is the
+latest Windows x64 ZIP. The public download's checksum, source/build/license
+metadata, online and bundled provenance, expected Windows publisher and secure
+timestamp were independently verified. License/receipt text differs only in
+Windows checkout line endings. No Mac release assets were published, the
+downloaded application was not launched, and no temporary runners remain.
+Evidence: [release receipt](benchmarks/050-release-ci-2026-11-09.json).
+
+Published ZIP SHA-256:
+`ba252291e365b94d8c6c3d0c4541e5323dc88b4ed436f67e9bbbe58902f9ef53`.
+Signed executable SHA-256:
+`07373e6090e443d55f1684a876d40c0fd1b8fca119e6e574524776e088586939`.
