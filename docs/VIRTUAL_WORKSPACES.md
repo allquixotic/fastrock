@@ -318,3 +318,10 @@ registration. Fetch updates stored refs and keeps current workspaces pinned;
 create a workspace from the updated branch to start on newer source.
 See [fetch performance](PERFORMANCE-FETCH.md) for what the operation does,
 phase timings, the post-0.5.1 optimizations and guarded Windows measurements.
+
+Terminals and filesystem tools on a virtual workspace use a temporary copy. From
+0.5.2 a copy shares the repository's Git history by hard link, reuses the source
+tree of a previously released copy and rewrites only files that differ. The first
+copy of each repository exports history once. See
+[temporary copy performance](PERFORMANCE-TEMPORARY.md) for what a copy costs, the
+`timings_ms`/`work` receipt in the tool result, disk use and limits.

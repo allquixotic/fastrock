@@ -80,3 +80,10 @@ opt-in collapse-thinking setting. Windows x64 ZIP via signed CI after verificati
 recovery review/Resume; settle interrupted tools as failed without replay. Persist
 composer drafts and undo/redo across crashes. Signed Windows x64 ZIP through CI
 after full verification; Mac compile-only and games memory guards retained.
+
+2026-11-13: user explicitly authorizes stable Fastrock 0.5.2 for the vwork
+temporary-copy fix: shared history packs, single-file refs, recorded file
+metadata, pooled trees and rename release. Commit to main, micro version bump,
+signed Windows x64 ZIP through CI. Games VMs were stopped: no games benchmark
+or native acceptance is claimed for this release; Windows evidence is upstream
+vwork CI and the signed-release Windows test job. Mac compile-only retained.

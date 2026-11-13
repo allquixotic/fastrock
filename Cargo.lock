@@ -5152,7 +5152,7 @@ dependencies = [
 
 [[package]]
 name = "fastrock"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "accesskit 0.25.2",
  "accesskit_consumer 0.39.2",
@@ -13321,6 +13321,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha1_smol"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
+
+[[package]]
 name = "sha1dc"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15948,8 +15954,8 @@ dependencies = [
 
 [[package]]
 name = "vwork"
-version = "0.4.1"
-source = "git+https://github.com/allquixotic/vwork?rev=649ace65c89eafd8b401be7d34355071293f0d73#649ace65c89eafd8b401be7d34355071293f0d73"
+version = "0.4.2"
+source = "git+https://github.com/allquixotic/vwork?rev=afec4b21646c0dd818d54909101fb211d90f5978#afec4b21646c0dd818d54909101fb211d90f5978"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -15958,6 +15964,7 @@ dependencies = [
  "ctrlc",
  "dirs 6.0.0",
  "fjall",
+ "flate2",
  "fs2",
  "git2",
  "globset",
@@ -15969,6 +15976,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha1_smol",
  "shlex 2.0.1",
  "similar 2.7.0",
  "system-idle-time",

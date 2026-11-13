@@ -6,8 +6,8 @@ rebuilt using Slint buttons, editors, lists, layouts and dialogs. Rally document
 occupy their own horizontal tabs under the permanent Rally sidebar project.
 Conversations use the sidebar and a separate title/action header.
 
-Fastrock 0.5.1 embeds unmodified Goose **1.58.0** and vwork
-**0.4.1**. No separate Goose or vwork installation is required. Goose runs on
+Fastrock 0.5.2 embeds unmodified Goose **1.58.0** and vwork
+**0.4.2**. No separate Goose or vwork installation is required. Goose runs on
 Fastrock's Tokio runtime through bounded memory streams. Existing Goose
 configuration, credentials, extensions and sessions remain separate from Fastrock
 UI settings. Configured extensions, hooks, credential helpers and user tools may
