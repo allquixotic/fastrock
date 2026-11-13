@@ -1,0 +1,274 @@
+{
+  "result": "PASS",
+  "version": "0.5.2",
+  "verified_at": "2026-11-13T19:33:23.177849+00:00",
+  "source_commit": "07d43204f6133686e0ecdf35b4b6ec432e410310",
+  "release": {
+    "url": "https://github.com/allquixotic/fastrock/releases/tag/v0.5.2",
+    "tag": "v0.5.2",
+    "published_at": "2026-11-13T19:09:15Z",
+    "prerelease": false,
+    "draft": false,
+    "assets": [
+      {
+        "name": "fastrock-0.5.2-windows-x64.zip",
+        "size": 142880493,
+        "digest": "sha256:e26907e84a61945fa0aab1ef09005432f4814f53812ab67a4b6e18367d340163"
+      },
+      {
+        "name": "fastrock-0.5.2-windows-x64.zip.sha256",
+        "size": 98,
+        "digest": "sha256:cf1318e1f3b00cfd4ed9a1e08d13cb87fae9c5551e0d0373173eaa4ed4838194"
+      },
+      {
+        "name": "windows-attestation.sigstore.json",
+        "size": 11198,
+        "digest": "sha256:65007054a08ccaee6656baea7951929044dac4de568631a5d7b1289566661e2d"
+      }
+    ]
+  },
+  "ci": {
+    "url": "https://github.com/allquixotic/fastrock/actions/runs/43482169620",
+    "run_id": 43482169620,
+    "conclusion": "cancelled",
+    "jobs": [
+      {
+        "name": "build",
+        "conclusion": "success",
+        "runner": "fastrock-build-3085",
+        "started_at": "2026-11-13T18:23:41Z",
+        "completed_at": "2026-11-13T18:46:05Z"
+      },
+      {
+        "name": "windows",
+        "conclusion": "success",
+        "runner": "GitHub Actions 1000002035",
+        "started_at": "2026-11-13T18:46:12Z",
+        "completed_at": "2026-11-13T19:09:24Z"
+      },
+      {
+        "name": "macos",
+        "conclusion": "cancelled",
+        "runner": "",
+        "started_at": "2026-11-13T19:09:25Z",
+        "completed_at": "2026-11-13T19:32:12Z"
+      }
+    ],
+    "windows_steps": [
+      {
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/setup-python@v5",
+        "conclusion": "success"
+      },
+      {
+        "name": "Verify unsigned build provenance and policy",
+        "conclusion": "success"
+      },
+      {
+        "name": "Rust and release policy tests on Windows",
+        "conclusion": "success"
+      },
+      {
+        "name": "Azure login for Artifact Signing (OIDC)",
+        "conclusion": "success"
+      },
+      {
+        "name": "Ensure Azure signing module repository exists",
+        "conclusion": "success"
+      },
+      {
+        "name": "Sign Windows executable",
+        "conclusion": "success"
+      },
+      {
+        "name": "Require expected publisher and secure timestamp",
+        "conclusion": "success"
+      },
+      {
+        "name": "Fixture tests on the exact signed executable",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f",
+        "conclusion": "success"
+      },
+      {
+        "name": "Package signed binary and matching symbols",
+        "conclusion": "success"
+      },
+      {
+        "name": "Attest final signed Windows package",
+        "conclusion": "success"
+      },
+      {
+        "name": "Publish Windows release immediately",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Sign Windows executable",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Azure login for Artifact Signing (OIDC)",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/setup-python@v5",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "signed-windows-release",
+        "id": 14069156984,
+        "size": 142892287
+      },
+      {
+        "name": "windows-signing-and-rally-evidence",
+        "id": 14068318025,
+        "size": 221075606
+      },
+      {
+        "name": "release-inputs",
+        "id": 14067655804,
+        "size": 764003669
+      }
+    ],
+    "note": "Run conclusion is cancelled, not success: build and windows jobs succeeded and published; the macos job was queued because v0.5.2 was missing from the workflow Mac-skip condition, and was cancelled before any signing runner existed. No Mac asset was built for publication or published."
+  },
+  "windows_rust": {
+    "total": 869,
+    "failed": 0,
+    "ignored": 0,
+    "result_lines": [
+      3,
+      0,
+      1,
+      0,
+      817,
+      1,
+      7,
+      0,
+      2,
+      0,
+      7,
+      0,
+      7,
+      0,
+      20,
+      0,
+      4,
+      0,
+      0,
+      0
+    ]
+  },
+  "native_matrix": {
+    "result": "PASS",
+    "binary_sha256": "41b27b9323e1cfda78891fef72f36db7dc08c35f4efe7d8532ca919bef196544",
+    "cases": [
+      "rally",
+      "goose",
+      "vwork",
+      "delegation",
+      "schedules",
+      "webhook",
+      "provider-setup",
+      "profiles",
+      "effort",
+      "model-options",
+      "capabilities",
+      "recipes",
+      "projects",
+      "commands",
+      "palette",
+      "terminal",
+      "checkpoints",
+      "compaction",
+      "sidebar",
+      "organization",
+      "sidebar-drag",
+      "sidebar-policy",
+      "titles",
+      "queue",
+      "mentions",
+      "review",
+      "shell",
+      "console",
+      "side",
+      "window-recovery",
+      "draft-history",
+      "relaunch",
+      "delete",
+      "history",
+      "history-startup",
+      "selection",
+      "accessibility",
+      "context",
+      "summary",
+      "summary-priority",
+      "memory",
+      "queue-recovery",
+      "process-recovery"
+    ],
+    "case_count": 43,
+    "source": "Fixture tests on the exact signed executable, hosted windows-latest"
+  },
+  "migration": {
+    "passed": true,
+    "peakBytes": 383467520,
+    "sha256": "41b27b9323e1cfda78891fef72f36db7dc08c35f4efe7d8532ca919bef196544",
+    "sourceSha256": "7af8f412817b4af870b9871d80ee15bf117bbe7537d8c474202f2e6ebedb1150",
+    "checks": [
+      "manual native progress",
+      "native Pause and Resume",
+      "registry discovery",
+      "automatic detection",
+      "first thread handoff",
+      "byte-exact source preservation",
+      "clean reopen without redb"
+    ]
+  },
+  "signature": "Verified timestamped Authenticode signature: CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US",
+  "attestation": {
+    "subject_digest": "sha256:e26907e84a61945fa0aab1ef09005432f4814f53812ab67a4b6e18367d340163",
+    "github_attestations_listed": 1
+  },
+  "embedded_engine": {
+    "vwork_revision": "afec4b21646c0dd818d54909101fb211d90f5978",
+    "vwork_version": "0.4.2",
+    "ci": "https://github.com/allquixotic/vwork/actions/runs/43480552510",
+    "windows_tests": 109,
+    "macos_tests": 109
+  },
+  "independent_download_verification": "NOT PERFORMED: the published ZIP was not downloaded; digests are those GitHub reports for the assets, and signature/timestamp verification is the CI step above.",
+  "notes": [
+    "Games VMs were stopped on 2026-11-13: no guarded 1,000/eight/10,000 comparison and no games native acceptance for this release.",
+    "Mac: compile only, in the build job and in a local workspace check. No Fastrock tests or GUI were run on the Mac.",
+    "Temporary copy measurements are from a Mac without security software; see docs/PERFORMANCE-TEMPORARY.md.",
+    "No temporary runners remain registered."
+  ]
+}

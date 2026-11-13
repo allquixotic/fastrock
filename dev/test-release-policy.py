@@ -2,6 +2,7 @@
 """V25: exercise policy rejection and actual compiler-generated symbol pairs."""
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -128,6 +129,19 @@ class ReleasePolicy(unittest.TestCase):
             subprocess.run(['xcrun', 'dsymutil', str(empty / 'fastrock')], check=True, capture_output=True)
             with self.assertRaisesRegex(AssertionError, 'lacks usable'):
                 verify_macos(empty / 'fastrock', empty / 'fastrock.dSYM')
+
+    def test_v112_windows_only_versions_skip_mac_publication(self):
+        # Every authorized stable version since 0.3.0 publishes Windows only.
+        # A version missing here leaves a Mac signing job queued for a runner
+        # that must not be started.
+        source = (ROOT / 'scripts/release_config.py').read_text()
+        authorized = re.search(r"version in \(([^)]*)\), 'Stable release needs", source).group(1)
+        versions = [v for v in re.findall(r"'(\d+\.\d+\.\d+)'", authorized) if v != '0.2.0']
+        self.assertIn('0.5.2', versions)
+        workflow = (ROOT / '.github/workflows/release.yml').read_text()
+        condition = re.search(r'^  macos:\n    if: "([^"]*)"', workflow, re.MULTILINE).group(1)
+        for version in versions:
+            self.assertIn(f"!startsWith(github.ref, 'refs/tags/v{version}')", condition, version)
 
 
 if __name__ == '__main__':

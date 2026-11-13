@@ -2968,3 +2968,25 @@ Published ZIP SHA-256:
 `4f100ea45975b36a5fd275fe5b7217b8af6dddc43b531e62291680ca4f217032`.
 Signed executable SHA-256:
 `dc28ae75cad820f4f1496e99ac70ee9101f92c66c326271340b39526ea1de878`.
+
+## Shared temporary copies — 0.5.2 (2026-11-13)
+
+Fastrock pins vwork `afec4b21646c0dd818d54909101fb211d90f5978` (0.4.2). Cause,
+design, measurements and limits: [temporary copy performance](PERFORMANCE-TEMPORARY.md).
+
+| Evidence | Result |
+|---|---|
+| Upstream [CI 43480552510](https://github.com/allquixotic/vwork/actions/runs/43480552510) | Windows and macOS: formatting, strict lint, 109 tests each including shared history, metadata reuse and pooled trees on NTFS, repeated lifecycle races |
+| Fastrock Mac | Whole-workspace compile and release policy checks; no tests or GUI run |
+| [Release CI 43482169620](https://github.com/allquixotic/fastrock/actions/runs/43482169620) build job | Both platform builds and Windows test executables |
+| Release CI Windows job | 869 Rust tests; 43 native cases, migration, catalog and scrolling on the signed executable; expected publisher and secure timestamp; attestation; publication |
+| Release CI Mac job | Cancelled while queued; 0.5.2 was missing from the Mac-skip condition. No signing runner was started and no Mac asset published |
+| Games | Not run: VMs stopped. No guarded comparison or native acceptance on games |
+| Independent download verification | Not performed |
+
+Stable [v0.5.2](https://github.com/allquixotic/fastrock/releases/tag/v0.5.2) was published as a Windows x64 ZIP. No temporary
+runners remain. Evidence: [release receipt](benchmarks/052-release-ci-2026-11-13.json).
+Published ZIP SHA-256, as reported by GitHub:
+`e26907e84a61945fa0aab1ef09005432f4814f53812ab67a4b6e18367d340163`.
+Signed executable SHA-256:
+`41b27b9323e1cfda78891fef72f36db7dc08c35f4efe7d8532ca919bef196544`.

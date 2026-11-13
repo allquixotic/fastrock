@@ -1,3 +1,32 @@
+# Fastrock 0.5.2 stable
+
+Explicitly authorized 2026-11-13. Opening a terminal or running a filesystem tool
+on a virtual workspace no longer re-encodes the repository's Git history, creates
+a file per ref, or reads and deletes every source file on close. Embedded vwork
+0.4.2 exports history once into shared packs that each temporary copy hard-links,
+writes refs as one file and an index that carries file metadata, reuses the
+source tree of a released copy, and releases by rename. See
+[temporary copy performance](PERFORMANCE-TEMPORARY.md).
+
+[Fastrock 0.5.2](https://github.com/allquixotic/fastrock/releases/tag/v0.5.2) is the latest stable Windows x64 ZIP.
+In [release CI](https://github.com/allquixotic/fastrock/actions/runs/43482169620) the build and Windows jobs passed: 869 Rust
+tests, then all 43 native cases (including `vwork` and `terminal`), migration,
+catalog and scrolling checks on the signed executable, with the expected
+publisher and secure timestamp. The run itself is recorded as cancelled: 0.5.2
+was missing from the workflow's Mac-skip condition, so a Mac signing job queued
+after publication and was cancelled before any signing runner existed. No Mac
+asset was published and no temporary runners remain; a policy test now ties that
+condition to the authorized versions.
+
+Not done for this release: the games VMs were stopped, so there is no guarded
+games comparison or games native acceptance, and the published ZIP was not
+independently downloaded and re-verified. The embedded engine passed its own
+[Windows and macOS CI](https://github.com/allquixotic/vwork/actions/runs/43480552510), 109 tests on each. Temporary-copy timings were
+measured on a Mac without security software and do not establish work-machine
+latency. See the [release receipt](benchmarks/052-release-ci-2026-11-13.json).
+
+Use **Quit** in the previous version's tray menu before launching 0.5.2.
+
 # Fastrock 0.5.1 stable
 
 Explicitly authorized 2026-11-10. Saved conversations accept normal Send without
@@ -6,7 +35,7 @@ messages and retained checkpoint backups remain available. The composer saves ea
 chat's text, cursor and bounded undo/redo history to disk, including Undo after
 Send. Ctrl+Z undoes; Ctrl+Y or Ctrl+Shift+Z redoes. See the [usage guide](gui.md).
 
-[Fastrock 0.5.1](https://github.com/allquixotic/fastrock/releases/tag/v0.5.1) is the latest stable Windows x64 ZIP.
+[Fastrock 0.5.1](https://github.com/allquixotic/fastrock/releases/tag/v0.5.1) is a preceding stable Windows x64 ZIP.
 [Signed release CI](https://github.com/allquixotic/fastrock/actions/runs/42883853934) passed 869 Rust tests, all 43 native cases,
 migration, catalog and scrolling checks on the signed executable. Windows and
 Mac compiled; Mac publication was skipped. The downloaded ZIP's checksum, online
