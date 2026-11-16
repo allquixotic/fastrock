@@ -1,3 +1,19 @@
+# Fastrock 0.5.3 stable
+
+Explicitly authorized 2026-11-16: 0.5.2 with embedded, unmodified
+[Goose 1.59.2](https://github.com/aaif-goose/goose/releases/tag/v1.59.2), pinned to
+`9da692fde8ac69ec385b5e7d68b92cc7101a509a`. Embedded vwork 0.4.2 and Fastrock's
+existing behavior are retained. Existing provider configuration, credentials,
+conversations, workspace history and drafts are preserved.
+
+Publication requires the signed Windows x64 CI pipeline: both platform builds,
+Windows Rust tests, fixture acceptance on the exact signed executable, publisher
+and timestamp verification, package checksums and provenance attestation. macOS
+is compile-only. Games remains stopped; no games native acceptance or guarded
+benchmark is claimed, matching 0.5.2's verification scope.
+
+Use **Quit** in the previous version's tray menu before launching 0.5.3.
+
 # Fastrock 0.5.2 stable
 
 Explicitly authorized 2026-11-13. Opening a terminal or running a filesystem tool
@@ -8,7 +24,7 @@ writes refs as one file and an index that carries file metadata, reuses the
 source tree of a released copy, and releases by rename. See
 [temporary copy performance](PERFORMANCE-TEMPORARY.md).
 
-[Fastrock 0.5.2](https://github.com/allquixotic/fastrock/releases/tag/v0.5.2) is the latest stable Windows x64 ZIP.
+[Fastrock 0.5.2](https://github.com/allquixotic/fastrock/releases/tag/v0.5.2) is a preceding stable Windows x64 ZIP.
 In [release CI](https://github.com/allquixotic/fastrock/actions/runs/43482169620) the build and Windows jobs passed: 869 Rust
 tests, then all 43 native cases (including `vwork` and `terminal`), migration,
 catalog and scrolling checks on the signed executable, with the expected

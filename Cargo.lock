@@ -5152,7 +5152,7 @@ dependencies = [
 
 [[package]]
 name = "fastrock"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "accesskit 0.25.2",
  "accesskit_consumer 0.39.2",
@@ -6669,8 +6669,8 @@ dependencies = [
 
 [[package]]
 name = "goose"
-version = "1.58.0"
-source = "git+https://github.com/aaif-goose/goose?rev=7c039ac9f90f5d61cf2953d32baf26e7ad1219ae#7c039ac9f90f5d61cf2953d32baf26e7ad1219ae"
+version = "1.59.2"
+source = "git+https://github.com/aaif-goose/goose?rev=9da692fde8ac69ec385b5e7d68b92cc7101a509a#9da692fde8ac69ec385b5e7d68b92cc7101a509a"
 dependencies = [
  "agent-client-protocol",
  "agent-client-protocol-schema",
@@ -6764,8 +6764,8 @@ dependencies = [
 
 [[package]]
 name = "goose-acp-macros"
-version = "1.58.0"
-source = "git+https://github.com/aaif-goose/goose?rev=7c039ac9f90f5d61cf2953d32baf26e7ad1219ae#7c039ac9f90f5d61cf2953d32baf26e7ad1219ae"
+version = "1.59.2"
+source = "git+https://github.com/aaif-goose/goose?rev=9da692fde8ac69ec385b5e7d68b92cc7101a509a#9da692fde8ac69ec385b5e7d68b92cc7101a509a"
 dependencies = [
  "quote",
  "syn 3.0.10",
@@ -6774,7 +6774,7 @@ dependencies = [
 [[package]]
 name = "goose-agent"
 version = "0.1.0-alpha.13"
-source = "git+https://github.com/aaif-goose/goose?rev=7c039ac9f90f5d61cf2953d32baf26e7ad1219ae#7c039ac9f90f5d61cf2953d32baf26e7ad1219ae"
+source = "git+https://github.com/aaif-goose/goose?rev=9da692fde8ac69ec385b5e7d68b92cc7101a509a#9da692fde8ac69ec385b5e7d68b92cc7101a509a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6796,7 +6796,7 @@ dependencies = [
 [[package]]
 name = "goose-context-management"
 version = "0.1.0-alpha.13"
-source = "git+https://github.com/aaif-goose/goose?rev=7c039ac9f90f5d61cf2953d32baf26e7ad1219ae#7c039ac9f90f5d61cf2953d32baf26e7ad1219ae"
+source = "git+https://github.com/aaif-goose/goose?rev=9da692fde8ac69ec385b5e7d68b92cc7101a509a#9da692fde8ac69ec385b5e7d68b92cc7101a509a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6812,7 +6812,7 @@ dependencies = [
 [[package]]
 name = "goose-download-manager"
 version = "0.1.0-alpha.13"
-source = "git+https://github.com/aaif-goose/goose?rev=7c039ac9f90f5d61cf2953d32baf26e7ad1219ae#7c039ac9f90f5d61cf2953d32baf26e7ad1219ae"
+source = "git+https://github.com/aaif-goose/goose?rev=9da692fde8ac69ec385b5e7d68b92cc7101a509a#9da692fde8ac69ec385b5e7d68b92cc7101a509a"
 dependencies = [
  "anyhow",
  "once_cell",
@@ -6824,8 +6824,8 @@ dependencies = [
 
 [[package]]
 name = "goose-mcp"
-version = "1.58.0"
-source = "git+https://github.com/aaif-goose/goose?rev=7c039ac9f90f5d61cf2953d32baf26e7ad1219ae#7c039ac9f90f5d61cf2953d32baf26e7ad1219ae"
+version = "1.59.2"
+source = "git+https://github.com/aaif-goose/goose?rev=9da692fde8ac69ec385b5e7d68b92cc7101a509a#9da692fde8ac69ec385b5e7d68b92cc7101a509a"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -6854,7 +6854,7 @@ dependencies = [
 [[package]]
 name = "goose-provider-types"
 version = "0.1.0-alpha.13"
-source = "git+https://github.com/aaif-goose/goose?rev=7c039ac9f90f5d61cf2953d32baf26e7ad1219ae#7c039ac9f90f5d61cf2953d32baf26e7ad1219ae"
+source = "git+https://github.com/aaif-goose/goose?rev=9da692fde8ac69ec385b5e7d68b92cc7101a509a#9da692fde8ac69ec385b5e7d68b92cc7101a509a"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -6883,7 +6883,7 @@ dependencies = [
 [[package]]
 name = "goose-providers"
 version = "0.1.0-alpha.13"
-source = "git+https://github.com/aaif-goose/goose?rev=7c039ac9f90f5d61cf2953d32baf26e7ad1219ae#7c039ac9f90f5d61cf2953d32baf26e7ad1219ae"
+source = "git+https://github.com/aaif-goose/goose?rev=9da692fde8ac69ec385b5e7d68b92cc7101a509a#9da692fde8ac69ec385b5e7d68b92cc7101a509a"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -6909,7 +6909,7 @@ dependencies = [
 [[package]]
 name = "goose-sdk-types"
 version = "0.1.0-alpha.13"
-source = "git+https://github.com/aaif-goose/goose?rev=7c039ac9f90f5d61cf2953d32baf26e7ad1219ae#7c039ac9f90f5d61cf2953d32baf26e7ad1219ae"
+source = "git+https://github.com/aaif-goose/goose?rev=9da692fde8ac69ec385b5e7d68b92cc7101a509a#9da692fde8ac69ec385b5e7d68b92cc7101a509a"
 dependencies = [
  "agent-client-protocol",
  "agent-client-protocol-schema",

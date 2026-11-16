@@ -1,6 +1,6 @@
 [package]
 name = "fastrock"
-version = "0.5.2"
+version = "0.5.3"
 edition = "2024"
 rust-version = "1.94.1"
 license = "Apache-2.0"
@@ -56,10 +56,10 @@ dunce = { workspace = true }
 futures = { workspace = true }
 # Goose's optional source-symbol parser conflicts with the retained UI protocol's
 # native tree-sitter ABI. Tools and code mode do not require that feature.
-goose-runtime = { package = "goose", git = "https://github.com/aaif-goose/goose", rev = "7c039ac9f90f5d61cf2953d32baf26e7ad1219ae", default-features = false, features = ["aws-providers", "rustls-tls", "system-keyring", "code-mode"] }
-goose-mcp = { git = "https://github.com/aaif-goose/goose", rev = "7c039ac9f90f5d61cf2953d32baf26e7ad1219ae", default-features = false, features = ["bundled-mcp", "rustls-tls"] }
-goose-context-management = { git = "https://github.com/aaif-goose/goose", rev = "7c039ac9f90f5d61cf2953d32baf26e7ad1219ae" }
-goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "7c039ac9f90f5d61cf2953d32baf26e7ad1219ae" }
+goose-runtime = { package = "goose", git = "https://github.com/aaif-goose/goose", rev = "9da692fde8ac69ec385b5e7d68b92cc7101a509a", default-features = false, features = ["aws-providers", "rustls-tls", "system-keyring", "code-mode"] }
+goose-mcp = { git = "https://github.com/aaif-goose/goose", rev = "9da692fde8ac69ec385b5e7d68b92cc7101a509a", default-features = false, features = ["bundled-mcp", "rustls-tls"] }
+goose-context-management = { git = "https://github.com/aaif-goose/goose", rev = "9da692fde8ac69ec385b5e7d68b92cc7101a509a" }
+goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "9da692fde8ac69ec385b5e7d68b92cc7101a509a" }
 sha2 = "0.11.1"
 hex = "0.4.3"
 regex = "1.13.1"

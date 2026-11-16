@@ -87,3 +87,8 @@ metadata, pooled trees and rename release. Commit to main, micro version bump,
 signed Windows x64 ZIP through CI. Games VMs were stopped: no games benchmark
 or native acceptance is claimed for this release; Windows evidence is upstream
 vwork CI and the signed-release Windows test job. Mac compile-only retained.
+
+2026-11-16: user explicitly authorizes stable Fastrock 0.5.3: same as 0.5.2,
+with unmodified upstream Goose 1.59.2. Commit to main and release the signed
+Windows x64 ZIP through CI after verification. Retain 0.5.2's verification scope
+while games is stopped; Mac compile-only.

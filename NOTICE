@@ -17,7 +17,7 @@ This project includes code derived from [Ratatui](https://github.com/ratatui/rat
 Copyright (c) 2016-2022 Florian Dehau
 Copyright (c) 2023-2025 The Ratatui Developers
 
-Embedded Goose 1.58.0
+Embedded Goose 1.59.2
 Copyright Block, Inc. and Goose contributors
 Licensed under Apache-2.0. Unmodified dependency pinned in Cargo.lock.
 https://github.com/aaif-goose/goose

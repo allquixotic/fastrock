@@ -1,6 +1,6 @@
-# Embedded Goose in Fastrock 0.5.0
+# Embedded Goose in Fastrock 0.5.3
 
-Goose 1.58.0 is pinned at `7c039ac9f90f5d61cf2953d32baf26e7ad1219ae`.
+Goose 1.59.2 is pinned at `9da692fde8ac69ec385b5e7d68b92cc7101a509a`.
 Its source is unchanged. Fastrock calls the public `StateMachineServices`, `AcpConnection` and `serve`
 APIs on its own Tokio runtime, connected to the UI adapter by a bounded memory
 stream. There is no Goose process or HTTP/stdio hop to an external Goose service.
