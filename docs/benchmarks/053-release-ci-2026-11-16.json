@@ -1,0 +1,740 @@
+{
+  "result": "PASS",
+  "version": "0.5.3",
+  "verified_at": "2026-11-16T15:58:50.676003+00:00",
+  "source_commit": "6be49bff83788c4086e9434eb3417cea25ef0336",
+  "release": {
+    "url": "https://github.com/allquixotic/fastrock/releases/tag/v0.5.3",
+    "tag": "v0.5.3",
+    "published_at": "2026-11-16T15:54:33Z",
+    "prerelease": false,
+    "draft": false,
+    "latest": true,
+    "assets": [
+      {
+        "name": "fastrock-0.5.3-windows-x64.zip",
+        "size": 143156286,
+        "digest": "sha256:136f8efc7a567ae3595adab0a53da596f0d81c74df43477081f30bd79c3eb6b4"
+      },
+      {
+        "name": "fastrock-0.5.3-windows-x64.zip.sha256",
+        "size": 98,
+        "digest": "sha256:48aa551eddb8ef449b7245e331e736ec80e5c05d0a0d438cb155b3a62fee5a36"
+      },
+      {
+        "name": "windows-attestation.sigstore.json",
+        "size": 10916,
+        "digest": "sha256:4d4177e872df1090d8a629ad494cb25c63979b9fcf726c7b701ea7de6a4800ec"
+      }
+    ]
+  },
+  "ci": {
+    "url": "https://github.com/allquixotic/fastrock/actions/runs/43895021538",
+    "run_id": 43895021538,
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "build",
+        "conclusion": "success",
+        "runner": "fastrock-build-93935",
+        "started_at": "2026-11-16T15:19:13Z",
+        "completed_at": "2026-11-16T15:31:47Z"
+      },
+      {
+        "name": "windows",
+        "conclusion": "success",
+        "runner": "GitHub Actions 1000002058",
+        "started_at": "2026-11-16T15:31:52Z",
+        "completed_at": "2026-11-16T15:54:40Z"
+      },
+      {
+        "name": "macos",
+        "conclusion": "skipped",
+        "runner": null,
+        "started_at": "2026-11-16T15:54:41Z",
+        "completed_at": "2026-11-16T15:54:41Z"
+      }
+    ],
+    "windows_steps": [
+      {
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/setup-python@v5",
+        "conclusion": "success"
+      },
+      {
+        "name": "Verify unsigned build provenance and policy",
+        "conclusion": "success"
+      },
+      {
+        "name": "Rust and release policy tests on Windows",
+        "conclusion": "success"
+      },
+      {
+        "name": "Azure login for Artifact Signing (OIDC)",
+        "conclusion": "success"
+      },
+      {
+        "name": "Ensure Azure signing module repository exists",
+        "conclusion": "success"
+      },
+      {
+        "name": "Sign Windows executable",
+        "conclusion": "success"
+      },
+      {
+        "name": "Require expected publisher and secure timestamp",
+        "conclusion": "success"
+      },
+      {
+        "name": "Fixture tests on the exact signed executable",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f",
+        "conclusion": "success"
+      },
+      {
+        "name": "Package signed binary and matching symbols",
+        "conclusion": "success"
+      },
+      {
+        "name": "Attest final signed Windows package",
+        "conclusion": "success"
+      },
+      {
+        "name": "Publish Windows release immediately",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Sign Windows executable",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Azure login for Artifact Signing (OIDC)",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/setup-python@v5",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "signed-windows-release",
+        "id": 14241447261,
+        "size": 143167798,
+        "digest": "sha256:ba80dd18b76e9440987edcd1abef6630dcf393f1a58d6034d4d846678e0a9c23"
+      },
+      {
+        "name": "windows-signing-and-rally-evidence",
+        "id": 14241293184,
+        "size": 202991440,
+        "digest": "sha256:b0ef52a9673087e0eb0d3a3a237d773fe61b093fa6b2ab17641108c6526aab9f"
+      },
+      {
+        "name": "release-inputs",
+        "id": 14239492461,
+        "size": 765083685,
+        "digest": "sha256:731d146194d3fc367d160f9f7e58160d7940df4935aadc2eee4af9a9cd0ba95a"
+      }
+    ],
+    "registered_temporary_runners_afterward": 0
+  },
+  "embedded": {
+    "goose_version": "1.59.2",
+    "goose_revision": "9da692fde8ac69ec385b5e7d68b92cc7101a509a",
+    "goose_source": "unmodified upstream v1.59.2",
+    "vwork_version": "0.4.2",
+    "vwork_revision": "afec4b21646c0dd818d54909101fb211d90f5978",
+    "non_goose_locked_dependencies": "unchanged from 0.5.2"
+  },
+  "windows_rust": {
+    "total": 872,
+    "application_tests": 820,
+    "renderer_tests": 1,
+    "workspace_tests": 47,
+    "accesskit_tests": 4,
+    "failed": 0,
+    "ignored": 0,
+    "result_lines": [
+      7,
+      0,
+      3,
+      0,
+      820,
+      1,
+      7,
+      0,
+      7,
+      0,
+      2,
+      0,
+      1,
+      0,
+      20,
+      0,
+      4,
+      0,
+      0,
+      0
+    ],
+    "draft_save_regressions": [
+      "v113_windows_atomic_save_waits_for_temporary_reader",
+      "v113_windows_atomic_save_preserves_drafts_on_persistent_denial",
+      "v113_windows_atomic_save_reports_real_readonly_target"
+    ]
+  },
+  "native_matrix": {
+    "binary_sha256": "13b06a3aca2433f958641ea44281092ddd94debc6e0b270a7d262f6b4a9e6028",
+    "result": "PASS",
+    "cases": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 49.7,
+        "peak_tree_bytes": 158547968
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 3.81,
+        "peak_tree_bytes": 157089792
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.45,
+        "peak_tree_bytes": 162185216
+      },
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.86,
+        "peak_tree_bytes": 163098624
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 63.53,
+        "peak_tree_bytes": 160813056
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 82.95,
+        "peak_tree_bytes": 159248384
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.64,
+        "peak_tree_bytes": 157868032
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 27.67,
+        "peak_tree_bytes": 158449664
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.22,
+        "peak_tree_bytes": 157380608
+      },
+      {
+        "name": "model-options",
+        "result": "PASS",
+        "error": null,
+        "seconds": 9.01,
+        "peak_tree_bytes": 70844416
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.88,
+        "peak_tree_bytes": 157614080
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.3,
+        "peak_tree_bytes": 159014912
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.83,
+        "peak_tree_bytes": 157069312
+      },
+      {
+        "name": "commands",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.02,
+        "peak_tree_bytes": 157184000
+      },
+      {
+        "name": "palette",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.03,
+        "peak_tree_bytes": 157532160
+      },
+      {
+        "name": "terminal",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.48,
+        "peak_tree_bytes": 157782016
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.66,
+        "peak_tree_bytes": 159920128
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 9.83,
+        "peak_tree_bytes": 158179328
+      },
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.44,
+        "peak_tree_bytes": 157331456
+      },
+      {
+        "name": "organization",
+        "result": "PASS",
+        "error": null,
+        "seconds": 44.09,
+        "peak_tree_bytes": 159072256
+      },
+      {
+        "name": "sidebar-drag",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.47,
+        "peak_tree_bytes": 157511680
+      },
+      {
+        "name": "sidebar-policy",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.25,
+        "peak_tree_bytes": 157454336
+      },
+      {
+        "name": "titles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.5,
+        "peak_tree_bytes": 159096832
+      },
+      {
+        "name": "queue",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.64,
+        "peak_tree_bytes": 157470720
+      },
+      {
+        "name": "mentions",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.45,
+        "peak_tree_bytes": 157286400
+      },
+      {
+        "name": "review",
+        "result": "PASS",
+        "error": null,
+        "seconds": 14.83,
+        "peak_tree_bytes": 158593024
+      },
+      {
+        "name": "shell",
+        "result": "PASS",
+        "error": null,
+        "seconds": 19.64,
+        "peak_tree_bytes": 158330880
+      },
+      {
+        "name": "console",
+        "result": "PASS",
+        "error": null,
+        "seconds": 5.02,
+        "peak_tree_bytes": 157401088
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.47,
+        "peak_tree_bytes": 159092736
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.67,
+        "peak_tree_bytes": 159854592
+      },
+      {
+        "name": "draft-history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.42,
+        "peak_tree_bytes": 157478912
+      },
+      {
+        "name": "relaunch",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.64,
+        "peak_tree_bytes": 157593600
+      },
+      {
+        "name": "delete",
+        "result": "PASS",
+        "error": null,
+        "seconds": 42.7,
+        "peak_tree_bytes": 160280576
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.42,
+        "peak_tree_bytes": 160059392
+      },
+      {
+        "name": "history-startup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 114.02,
+        "peak_tree_bytes": 159801344
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.05,
+        "peak_tree_bytes": 115650560
+      },
+      {
+        "name": "accessibility",
+        "result": "PASS",
+        "error": null,
+        "seconds": 25.47,
+        "peak_tree_bytes": 168062976
+      },
+      {
+        "name": "context",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.61,
+        "peak_tree_bytes": 157855744
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 34.88,
+        "peak_tree_bytes": 137723904
+      },
+      {
+        "name": "summary-priority",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.02,
+        "peak_tree_bytes": 157806592
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 40.28,
+        "peak_tree_bytes": 158654464
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.03,
+        "peak_tree_bytes": 159027200
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 17.86,
+        "peak_tree_bytes": 159567872
+      }
+    ]
+  },
+  "migration": {
+    "passed": true,
+    "peakBytes": 417103872,
+    "sha256": "13b06a3aca2433f958641ea44281092ddd94debc6e0b270a7d262f6b4a9e6028",
+    "sourceSha256": "d70763f1e319efdff652a5c77a6fb05b562e5734a2b24b3b7328d50476fd78ee",
+    "checks": [
+      "manual native progress",
+      "native Pause and Resume",
+      "registry discovery",
+      "automatic detection",
+      "first thread handoff",
+      "byte-exact source preservation",
+      "clean reopen without redb"
+    ]
+  },
+  "catalog": {
+    "result": "PASS",
+    "binary_sha256": "13b06a3aca2433f958641ea44281092ddd94debc6e0b270a7d262f6b4a9e6028",
+    "peak_process_bytes": 70639616,
+    "stored_conversations": 100,
+    "first_page": 50,
+    "pinned_outside_first_page": "goose:benchmark-0000",
+    "provider_activation": false
+  },
+  "scroll": {
+    "backend": "embedded-goose",
+    "peak_process_bytes": 168886272,
+    "binary_sha256": "13b06a3aca2433f958641ea44281092ddd94debc6e0b270a7d262f6b4a9e6028",
+    "host": "runnervmm7ud1",
+    "os": "Windows-2025Server-10.0.26100-SP0",
+    "requested_frames": 120,
+    "input": "Slint native wheel events, 16.667 ms timer; tick latency includes event-loop work",
+    "scenarios": {
+      "prose": {
+        "frames": 119,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 6.375,
+          "p95_ms": 7.052,
+          "p99_ms": 7.14
+        },
+        "present": {
+          "p50_ms": 0.573,
+          "p95_ms": 0.648,
+          "p99_ms": 1.001
+        },
+        "frame": {
+          "p50_ms": 7.011,
+          "p95_ms": 7.68,
+          "p99_ms": 7.738
+        },
+        "event_loop": {
+          "p50_ms": 16.121,
+          "p95_ms": 22.314,
+          "p99_ms": 22.924
+        },
+        "dirty_fraction": 0.4628
+      },
+      "table": {
+        "frames": 111,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.226,
+          "p95_ms": 5.623,
+          "p99_ms": 9.62
+        },
+        "present": {
+          "p50_ms": 0.591,
+          "p95_ms": 1.428,
+          "p99_ms": 1.943
+        },
+        "frame": {
+          "p50_ms": 4.827,
+          "p95_ms": 6.55,
+          "p99_ms": 11.05
+        },
+        "event_loop": {
+          "p50_ms": 16.28,
+          "p95_ms": 17.22,
+          "p99_ms": 19.624
+        },
+        "dirty_fraction": 0.5147
+      },
+      "code": {
+        "frames": 117,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 3.882,
+          "p95_ms": 4.565,
+          "p99_ms": 4.83
+        },
+        "present": {
+          "p50_ms": 0.585,
+          "p95_ms": 0.745,
+          "p99_ms": 0.962
+        },
+        "frame": {
+          "p50_ms": 4.495,
+          "p95_ms": 5.176,
+          "p99_ms": 5.425
+        },
+        "event_loop": {
+          "p50_ms": 16.2,
+          "p95_ms": 18.037,
+          "p99_ms": 19.699
+        },
+        "dirty_fraction": 0.4792
+      },
+      "tools": {
+        "frames": 113,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 4.629,
+          "p95_ms": 5.274,
+          "p99_ms": 5.551
+        },
+        "present": {
+          "p50_ms": 0.581,
+          "p95_ms": 0.691,
+          "p99_ms": 0.775
+        },
+        "frame": {
+          "p50_ms": 5.217,
+          "p95_ms": 5.889,
+          "p99_ms": 6.14
+        },
+        "event_loop": {
+          "p50_ms": 16.147,
+          "p95_ms": 17.003,
+          "p99_ms": 18.14
+        },
+        "dirty_fraction": 0.5056
+      },
+      "streaming": {
+        "frames": 121,
+        "scale": 1.0,
+        "size": [
+          1440,
+          1000
+        ],
+        "render": {
+          "p50_ms": 6.626,
+          "p95_ms": 7.426,
+          "p99_ms": 7.486
+        },
+        "present": {
+          "p50_ms": 0.59,
+          "p95_ms": 0.734,
+          "p99_ms": 0.933
+        },
+        "frame": {
+          "p50_ms": 7.234,
+          "p95_ms": 8.079,
+          "p99_ms": 8.178
+        },
+        "event_loop": {
+          "p50_ms": 16.391,
+          "p95_ms": 20.303,
+          "p99_ms": 21.577
+        },
+        "dirty_fraction": 0.4723
+      }
+    }
+  },
+  "signature": {
+    "workflow_run": "43895021538",
+    "status": "Valid",
+    "source_commit": "6be49bff83788c4086e9434eb3417cea25ef0336",
+    "timestamp_publisher": "CN=Microsoft Public RSA Time Stamping Authority, OU=nShield TSS ESN:7A00-05E0-D947, OU=Microsoft America Operations, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+    "publisher": "CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US",
+    "certificate_sha1": "50ADB63D91BAC58F3D37BC4CD465EEB07DAB529D",
+    "binary_sha256": "13b06a3aca2433f958641ea44281092ddd94debc6e0b270a7d262f6b4a9e6028"
+  },
+  "independent_download_verification": {
+    "zip_sha256": "136f8efc7a567ae3595adab0a53da596f0d81c74df43477081f30bd79c3eb6b4",
+    "zip_bytes": 143156286,
+    "binary_sha256": "13b06a3aca2433f958641ea44281092ddd94debc6e0b270a7d262f6b4a9e6028",
+    "published_asset_digests": "PASS",
+    "checksum_file": "PASS",
+    "package_metadata": "PASS",
+    "signing_receipt_matches_downloaded_binary": "PASS",
+    "publisher": "CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US"
+  },
+  "attestation": {
+    "result": "PASS",
+    "online": true,
+    "bundled": true,
+    "source_ref": "refs/tags/v0.5.3",
+    "source_digest": "6be49bff83788c4086e9434eb3417cea25ef0336",
+    "signer_workflow": "allquixotic/fastrock/.github/workflows/release.yml"
+  },
+  "preflight": {
+    "mac_workspace_check": "PASS",
+    "windows_all_targets_check": "PASS",
+    "release_policy_tests": 6,
+    "workflow_lint": "PASS",
+    "formatting": "PASS",
+    "unrelated_locked_dependencies": "UNCHANGED",
+    "games": "NOT RUN: stopped, disk key unavailable; retain 0.5.2 scope"
+  },
+  "notes": [
+    "Games remains stopped with its disk key unavailable; no games native acceptance or guarded 1,000/eight/10,000 comparison is claimed, retaining the authorized 0.5.2 scope.",
+    "Mac application compatibility compile only; no Fastrock tests or GUI executed on the Mac. Local policy/static checks and Windows cross-compilation passed.",
+    "Authenticode publisher and RFC3161 timestamp were verified by Windows CI on the exact downloaded executable hash; verification was not independently rerun on a separate Windows host.",
+    "The precise cause on the user's AVD profile remains unconfirmed. Transient target sharing locks, persistent locks, cleanup/recovery and readonly-file diagnostics passed real Windows regression tests.",
+    "The public ZIP and all published asset digests, checksum, build metadata and online/bundled source-tag-workflow provenance were independently verified without executing the downloaded application."
+  ]
+}

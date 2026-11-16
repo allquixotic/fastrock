@@ -2990,3 +2990,33 @@ Published ZIP SHA-256, as reported by GitHub:
 `e26907e84a61945fa0aab1ef09005432f4814f53812ab67a4b6e18367d340163`.
 Signed executable SHA-256:
 `41b27b9323e1cfda78891fef72f36db7dc08c35f4efe7d8532ca919bef196544`.
+
+## Goose 1.59.2 and Windows draft saves — 0.5.3 (2026-11-16)
+
+Fastrock pins unmodified Goose 1.59.2 at
+`9da692fde8ac69ec385b5e7d68b92cc7101a509a`. Every non-Goose locked dependency,
+including vwork 0.4.2, is unchanged from 0.5.2. The additional Windows/AVD draft
+report prompted a local atomic-save repair: close the synced temporary handle
+before replacement, retry transient Windows access/sharing/lock denials on the
+blocking save worker, and retain save stage/path/OS diagnostics on failure.
+Persistent denial preserves the previous saved file. No ACL changes, target
+deletion or in-place truncation fallback was added. The exact cause on the
+reported AVD profile remains unconfirmed.
+
+| Evidence | Result |
+|---|---|
+| Local preflight | Mac workspace check, Windows all-targets cross-check, six release policy checks, formatting, build policy and workflow lint passed; no Fastrock tests or GUI executed on the Mac |
+| [Release CI 43895021538](https://github.com/allquixotic/fastrock/actions/runs/43895021538) | Both platform builds, 872 Windows Rust tests, all 43 signed native cases, migration, catalog and scrolling checks passed; overall success, Mac publication skipped |
+| Windows draft regressions | Temporary reader releases and save succeeds; persistent reader preserves original, cleans temporary output and saves after unlock; genuine read-only target preserves bytes and exposes path/OS error |
+| Signature and timestamp | Expected publisher and RFC3161 timestamp verified by Windows CI; signing receipt, signed acceptance and downloaded executable hashes match |
+| Public download | All asset digests, ZIP checksum, build metadata and online/bundled exact source/tag/workflow attestations independently verified |
+| Games / work AVD profile | Not tested; games remains stopped with disk key unavailable. No games benchmark or claim of reproducing the exact work-profile cause |
+
+Stable [v0.5.3](https://github.com/allquixotic/fastrock/releases/tag/v0.5.3)
+is published as the latest Windows x64 ZIP. No temporary runners remain.
+Evidence: [release receipt](benchmarks/053-release-ci-2026-11-16.json).
+
+Published ZIP SHA-256:
+`136f8efc7a567ae3595adab0a53da596f0d81c74df43477081f30bd79c3eb6b4`.
+Signed executable SHA-256:
+`13b06a3aca2433f958641ea44281092ddd94debc6e0b270a7d262f6b4a9e6028`.

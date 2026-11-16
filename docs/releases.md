@@ -14,11 +14,23 @@ Embedded vwork 0.4.2 and other Fastrock behavior are retained. Provider
 configuration, credentials, conversations, workspace history and drafts are
 preserved.
 
-Publication requires the signed Windows x64 CI pipeline: both platform builds,
-Windows Rust tests, fixture acceptance on the exact signed executable, publisher
-and timestamp verification, package checksums and provenance attestation. macOS
-is compile-only. Games remains stopped; no games native acceptance or guarded
-benchmark is claimed, matching 0.5.2's verification scope.
+[Fastrock 0.5.3](https://github.com/allquixotic/fastrock/releases/tag/v0.5.3) is
+the latest stable signed Windows x64 ZIP.
+[Release CI](https://github.com/allquixotic/fastrock/actions/runs/43895021538)
+passed both platform builds, 872 Windows Rust tests (including all three draft
+save regressions), all 43 native cases, migration, catalog and scrolling checks
+on the exact signed executable. The expected publisher and secure timestamp
+passed Windows verification. Mac publication was skipped and the temporary
+build runner was removed.
+
+The public download's checksum, all asset digests, embedded build/signing
+metadata and online/bundled source-tag-workflow provenance were independently
+verified. Its executable hash matches the signed CI acceptance receipts;
+Authenticode verification was performed by CI rather than repeated on a separate
+Windows host. See the [release receipt](benchmarks/053-release-ci-2026-11-16.json).
+
+macOS is compile-only. Games remains stopped; no games native acceptance or
+guarded benchmark is claimed, matching 0.5.2's verification scope.
 
 Use **Quit** in the previous version's tray menu before launching 0.5.3.
 
