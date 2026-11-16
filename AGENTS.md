@@ -92,3 +92,5 @@ vwork CI and the signed-release Windows test job. Mac compile-only retained.
 with unmodified upstream Goose 1.59.2. Commit to main and release the signed
 Windows x64 ZIP through CI after verification. Retain 0.5.2's verification scope
 while games is stopped; Mac compile-only.
+User's same-session Windows/AVD draft-save error report also authorizes repairing
+atomic draft persistence in 0.5.3, with Windows lock/readonly regressions.

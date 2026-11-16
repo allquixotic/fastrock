@@ -129,42 +129,68 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(&temporary)?;
-        file.write_all(bytes)?;
-        file.sync_all()?;
-        #[cfg(windows)]
-        {
-            use std::os::windows::ffi::OsStrExt;
-            let from = temporary
-                .as_os_str()
-                .encode_wide()
-                .chain(Some(0))
-                .collect::<Vec<_>>();
-            let to = path
-                .as_os_str()
-                .encode_wide()
-                .chain(Some(0))
-                .collect::<Vec<_>>();
-            if unsafe {
-                windows_sys::Win32::Storage::FileSystem::MoveFileExW(
-                    from.as_ptr(),
-                    to.as_ptr(),
-                    windows_sys::Win32::Storage::FileSystem::MOVEFILE_REPLACE_EXISTING
-                        | windows_sys::Win32::Storage::FileSystem::MOVEFILE_WRITE_THROUGH,
-                )
-            } == 0
-            {
-                return Err(std::io::Error::last_os_error().into());
-            }
-        }
-        #[cfg(not(windows))]
-        std::fs::rename(&temporary, path)?;
-        Ok(())
+            .open(&temporary)
+            .with_context(|| format!("Could not create save file in {}", directory.display()))?;
+        file.write_all(bytes)
+            .with_context(|| format!("Could not write save for {}", path.display()))?;
+        file.sync_all()
+            .with_context(|| format!("Could not sync save for {}", path.display()))?;
+        // Close our own handle before a Windows profile or scanner filter sees
+        // the rename. Retry replacement only; never rewrite or delete the target.
+        drop(file);
+        replace_file(&temporary, path)
+            .with_context(|| format!("Could not replace saved file {}", path.display()))
     })();
     if result.is_err() {
         let _ = std::fs::remove_file(temporary);
     }
     result
+}
+
+#[cfg(not(windows))]
+fn replace_file(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::rename(from, to)
+}
+
+#[cfg(windows)]
+fn replace_file(from: &Path, to: &Path) -> std::io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::{
+        MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH, MoveFileExW,
+    };
+    let from = from
+        .as_os_str()
+        .encode_wide()
+        .chain(Some(0))
+        .collect::<Vec<_>>();
+    let to = to
+        .as_os_str()
+        .encode_wide()
+        .chain(Some(0))
+        .collect::<Vec<_>>();
+    let mut attempt = 0;
+    loop {
+        if unsafe {
+            MoveFileExW(
+                from.as_ptr(),
+                to.as_ptr(),
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+            )
+        } != 0
+        {
+            return Ok(());
+        }
+        let error = std::io::Error::last_os_error();
+        if attempt == 8 || !matches!(error.raw_os_error(), Some(5 | 32 | 33)) {
+            return Err(error);
+        }
+        // Up to 1.35 seconds of backoff on the blocking save worker. Persistent
+        // ACL/readonly failures remain errors, with the previous file intact.
+        std::thread::sleep(std::time::Duration::from_millis(
+            (50_u64 << attempt).min(200),
+        ));
+        attempt += 1;
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -188,6 +214,74 @@ mod tests {
         let mut copy = original.clone();
         copy.columns.push("Owner".into());
         assert_eq!(original.columns.len(), 1);
+    }
+
+    #[cfg(windows)]
+    fn locked_save_target() -> (tempfile::TempDir, PathBuf, std::fs::File) {
+        use std::os::windows::fs::OpenOptionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("drafts.json");
+        std::fs::write(&path, b"previous drafts").unwrap();
+        // Windows readers such as scanners may omit FILE_SHARE_DELETE.
+        let reader = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(1 | 2)
+            .open(&path)
+            .unwrap();
+        (directory, path, reader)
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn v113_windows_atomic_save_waits_for_temporary_reader() {
+        let (directory, path, reader) = locked_save_target();
+        let release = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            drop(reader);
+        });
+        let result = atomic_write(&path, b"latest drafts");
+        release.join().unwrap();
+        result.unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"latest drafts");
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+        atomic_write(&path, b"next drafts").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"next drafts");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn v113_windows_atomic_save_preserves_drafts_on_persistent_denial() {
+        let (directory, path, reader) = locked_save_target();
+        let error = atomic_write(&path, b"latest drafts").unwrap_err();
+        assert!(error.chain().any(|cause| {
+            cause
+                .downcast_ref::<std::io::Error>()
+                .is_some_and(|error| matches!(error.raw_os_error(), Some(5 | 32 | 33)))
+        }));
+        assert_eq!(std::fs::read(&path).unwrap(), b"previous drafts");
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+        drop(reader);
+        atomic_write(&path, b"recovered drafts").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"recovered drafts");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn v113_windows_atomic_save_reports_real_readonly_target() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("drafts.json");
+        std::fs::write(&path, b"previous drafts").unwrap();
+        let original = std::fs::metadata(&path).unwrap().permissions();
+        let mut readonly = original.clone();
+        readonly.set_readonly(true);
+        std::fs::set_permissions(&path, readonly).unwrap();
+        let result = atomic_write(&path, b"latest drafts");
+        std::fs::set_permissions(&path, original).unwrap();
+        let error = result.unwrap_err();
+        assert!(format!("{error:#}").contains("drafts.json"));
+        assert!(format!("{error:#}").contains("os error 5"));
+        assert_eq!(std::fs::read(&path).unwrap(), b"previous drafts");
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
     }
 }
 

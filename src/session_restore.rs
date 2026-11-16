@@ -269,8 +269,9 @@ fn write(home: &Path, snapshot: &Snapshot) -> Result<(), String> {
     if bytes.len() as u64 > MAX_BYTES {
         return Err("Open-chat snapshot exceeds the recovery size limit".into());
     }
-    std::fs::create_dir_all(home).map_err(|e| e.to_string())?;
-    crate::rally::store::atomic_write(&home.join(FILE), &bytes).map_err(|e| e.to_string())
+    std::fs::create_dir_all(home)
+        .map_err(|e| format!("Could not prepare draft folder {}: {e}", home.display()))?;
+    crate::rally::store::atomic_write(&home.join(FILE), &bytes).map_err(|e| format!("{e:#}"))
 }
 #[derive(Clone, Default)]
 struct Update {

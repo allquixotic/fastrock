@@ -2,9 +2,17 @@
 
 Explicitly authorized 2026-11-16: 0.5.2 with embedded, unmodified
 [Goose 1.59.2](https://github.com/aaif-goose/goose/releases/tag/v1.59.2), pinned to
-`9da692fde8ac69ec385b5e7d68b92cc7101a509a`. Embedded vwork 0.4.2 and Fastrock's
-existing behavior are retained. Existing provider configuration, credentials,
-conversations, workspace history and drafts are preserved.
+`9da692fde8ac69ec385b5e7d68b92cc7101a509a`. A same-session Windows/AVD bug report
+adds a draft-persistence repair: close the synced temporary file before atomic
+replacement, retry transient Windows access/sharing denials on the save worker,
+and report the affected path/stage/OS error for persistent failures. Prior saved
+bytes survive failed replacement. Windows regressions exercise temporary and
+persistent file locks, recovery after unlocking and a read-only destination.
+The exact cause on the user's AVD profile remains unconfirmed.
+
+Embedded vwork 0.4.2 and other Fastrock behavior are retained. Provider
+configuration, credentials, conversations, workspace history and drafts are
+preserved.
 
 Publication requires the signed Windows x64 CI pipeline: both platform builds,
 Windows Rust tests, fixture acceptance on the exact signed executable, publisher
