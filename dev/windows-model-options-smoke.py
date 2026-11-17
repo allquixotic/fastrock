@@ -18,6 +18,7 @@ env = fixture.environment(out)
 env.update(FASTROCK_WEBHOOK_BIND='127.0.0.1:0', HTTPS_PROXY=fixture.endpoint, HTTP_PROXY=fixture.endpoint,
            https_proxy=fixture.endpoint, http_proxy=fixture.endpoint, FASTROCK_V89_KEY='fixture', FASTROCK_V89_BLANK='   ')
 SOL, LUNA = 'us.openai.gpt-6.1-sol', 'us.openai.gpt-6-luna'
+SOL_62, ASTRA_62 = 'us.openai.gpt-6.2-sol', 'us.openai.gpt-6.2-astra'
 custom = out/'goose/config/custom_providers'
 custom.mkdir()
 marker = out/'helper-must-not-run.txt'
@@ -66,7 +67,9 @@ try:
         *choose('thinking_effort','high'),*dump('effort'),{'snapshot':str(out/'compact-model-controls.png')},
         {'sidebar':['dump',str(out/'tabs.json')]},
         {'resize':[900,850]},{'wait':250},*dump('narrow'),
-        *new(),*dump('second'),{'select_tab':0},{'wait':400},*dump('isolated'),{'quit':True}])
+        *new(),*dump('second'),*choose('model',SOL_62),*dump('sol-62'),
+        *choose('model',ASTRA_62),*dump('astra-62'),
+        {'select_tab':0},{'wait':400},*dump('isolated'),{'quit':True}])
     expected={'aws_bedrock','custom_bedrock_sol','custom_helper'}
     assert set(option('initial','provider')['values'])==expected,read('initial')
     assert option('initial','speed')['values']==['default']
@@ -74,6 +77,8 @@ try:
     assert option('ultra','speed')['current']=='ultrafast',read('ultra')
     assert option('effort','speed')['current']=='ultrafast' and option('effort','thinking_effort')['current']=='high',read('effort')
     assert option('second','speed')['current']=='default'
+    assert option('sol-62','model')['current']==SOL_62,read('sol-62')
+    assert option('astra-62','model')['current']==ASTRA_62,read('astra-62')
     assert option('isolated','speed')['current']=='ultrafast'
     assert [o['id'] for o in read('ultra')['sessionOptions']]==['provider','mode','model','thinking_effort','speed']
     for name,width in [('effort',1440),('narrow',900)]:
@@ -105,7 +110,8 @@ try:
     assert not fixture.requests and not fixture.errors,(fixture.requests,fixture.errors)
     receipt=dict(result='PASS',binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_process_bytes=peak,
         configured_only=True,no_helper_probe=True,native_speed_click=True,per_session=True,restart=True,
-        model_switch_reset=True,unsupported_rejected=True,compact_bounds=True,branding_removed=True)
+        model_switch_reset=True,unsupported_rejected=True,compact_bounds=True,branding_removed=True,
+        exact_bedrock_gpt_62_ids=True)
     (out/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n')
     print('PASS: configured providers, compact native controls and persisted speed',flush=True)
 finally:

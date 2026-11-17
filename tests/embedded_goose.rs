@@ -337,6 +337,7 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
     );
     drop(restarted);
     speed_fixture(captured.clone()).await?;
+    gpt_62_bedrock_fixture(&provider, captured.clone()).await?;
     http.abort();
     println!(
         "V38/V39/V40/V44: embedded Goose routes and sessions; cheap-model backfill, replacement, source preservation and restart passed (fixtures only)."
@@ -344,6 +345,9 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
+#[path = "../src/goose/foundry.rs"]
+mod foundry;
 #[path = "../src/goose/provider_policy.rs"]
 mod provider_policy;
 #[path = "../src/goose/setup.rs"]
@@ -440,5 +444,53 @@ async fn speed_fixture(
         );
     }
     println!("V90: public session settings reached actual Responses HTTP payloads");
+    Ok(())
+}
+
+async fn gpt_62_bedrock_fixture(
+    bedrock: &BedrockProvider,
+    captured: std::sync::Arc<tokio::sync::Mutex<Vec<(String, Value)>>>,
+) -> Result<()> {
+    let models = ["openai.gpt-6.2-sol", "openai.gpt-6.2-astra"];
+    let endpoint = std::env::var("AWS_ENDPOINT_URL_BEDROCK_RUNTIME")?;
+    let responses = goose_runtime::providers::openai_def::from_custom_config(
+        serde_json::from_value(json!({
+            "name":"custom_bedrock_62_fixture", "display_name":"Bedrock GPT-6.2 fixture",
+            "engine":"openai", "base_url":endpoint, "base_path":"openai/v1/responses",
+            "requires_auth":false, "supports_streaming":false, "models":[],
+        }))?,
+        None,
+    )?;
+    for model in models {
+        let runtime_profile = format!("us.{model}");
+        let before = captured.lock().await.len();
+        let input = [Message::user().with_text("GPT-6.2 route fixture")];
+        let (converse, _) = bedrock
+            .complete(&ModelConfig::new(&runtime_profile), "fixture", &input, &[])
+            .await?;
+        ensure!(converse.as_concat_text().contains("fixture reply"));
+        for id in [runtime_profile.as_str(), model] {
+            let (reply, _) = responses
+                .complete(&ModelConfig::new(id), "fixture", &input, &[])
+                .await?;
+            ensure!(reply.as_concat_text().contains("speed fixture reply"));
+        }
+        let rows = captured.lock().await;
+        ensure!(
+            rows.len() == before + 3
+                && rows[before].0 == format!("/model/{runtime_profile}/converse"),
+            "Bedrock native profile ID changed before dispatch"
+        );
+        for ((path, body), id) in rows[before + 1..]
+            .iter()
+            .zip([runtime_profile.as_str(), model])
+        {
+            ensure!(
+                path == "/openai/v1/responses" && body["model"] == id,
+                "Exact GPT-6.2 ID did not reach Bedrock Responses"
+            );
+        }
+    }
+    println!("V115: GPT-6.2 Sol and Astra reached Bedrock Converse and Responses with exact IDs");
     Ok(())
 }

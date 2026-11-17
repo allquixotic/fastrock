@@ -89,6 +89,15 @@ pub(super) fn custom(config: &Config, p: &api::DeclarativeProviderConfig) -> boo
         return nonblank(crate::vault::get("provider", id).ok());
     }
     if let Some(auth) = &p.auth {
+        if auth
+            .args
+            .first()
+            .is_some_and(|arg| arg == super::foundry::HELPER)
+        {
+            return super::foundry::profile_args(p).is_some()
+                && command_exists(&auth.command, auth.cwd.as_deref())
+                && super::foundry::cli_path().is_some();
+        }
         return command_exists(&auth.command, auth.cwd.as_deref());
     }
     !p.requires_auth || (!p.api_key_env.trim().is_empty() && secret(config, &p.api_key_env))

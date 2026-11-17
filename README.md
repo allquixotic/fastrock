@@ -6,7 +6,7 @@ rebuilt using Slint buttons, editors, lists, layouts and dialogs. Rally document
 occupy their own horizontal tabs under the permanent Rally sidebar project.
 Conversations use the sidebar and a separate title/action header.
 
-Fastrock 0.5.3 embeds unmodified Goose **1.59.2** and vwork
+Fastrock 0.5.4 embeds unmodified Goose **1.59.2** and vwork
 **0.4.2**. No separate Goose or vwork installation is required. Goose runs on
 Fastrock's Tokio runtime through bounded memory streams. Existing Goose
 configuration, credentials, extensions and sessions remain separate from Fastrock
@@ -21,7 +21,8 @@ Saved conversations accept new messages without a recovery review or Resume step
 Interrupted tools fail without replay. The composer saves each chat's draft and
 undo/redo history to disk; Ctrl+Z can also restore text after Send.
 
-Only Goose's Bedrock, direct OpenAI and direct Anthropic providers are enabled.
+Fastrock supports Bedrock, direct OpenAI, direct Anthropic, and MAI Code 2 Flash
+through a [Microsoft Foundry project with Azure CLI sign-in](docs/goose-acp.md#microsoft-foundry-and-azure-cli).
 Expand **Goose options** above Send for the session's model, mode and supported
 reasoning choices. External Codex and remote agent connections are removed;
 Codex files remain untouched. [Embedded runtime status and limitations](docs/goose-acp.md)
@@ -43,7 +44,7 @@ available, without selecting a more expensive model.
 
 ## Releases
 
-[Fastrock **0.5.3**](https://github.com/allquixotic/fastrock/releases/tag/v0.5.3)
+[Fastrock **0.5.4**](https://github.com/allquixotic/fastrock/releases/tag/v0.5.4)
 is distributed as a signed Windows x64 ZIP. Extract it and run `fastrock.exe`;
 no separate Goose or vwork installation is needed. Use **Quit** in an older
 version's tray menu before launching the new version. See

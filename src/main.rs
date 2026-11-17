@@ -18,6 +18,18 @@ fn main() -> anyhow::Result<()> {
         );
         return codex_gui::credential_helper(&id);
     }
+    if std::env::args_os().nth(1).as_deref()
+        == Some(std::ffi::OsStr::new("--fastrock-foundry-credential"))
+    {
+        let args = std::env::args_os().skip(2).collect::<Vec<_>>();
+        let [profile, subscription] = args.as_slice() else {
+            anyhow::bail!("Foundry credential helper requires a profile and subscription ID");
+        };
+        return codex_gui::foundry_credential_helper(
+            profile.to_str().unwrap_or_default(),
+            subscription.to_str().unwrap_or_default(),
+        );
+    }
     codex_gui::prepare_process_env();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

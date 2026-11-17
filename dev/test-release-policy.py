@@ -29,6 +29,7 @@ class ReleasePolicy(unittest.TestCase):
         assert_publishable('0.5.1', live_pending)
         assert_publishable('0.5.2', live_pending)
         assert_publishable('0.5.3', live_pending)
+        assert_publishable('0.5.4', live_pending + '\nT86|x|Foundry acceptance\nT87|x|Bedrock acceptance')
         for version, spec in [('0.4.0-alpha.4', complete), ('0.4.0-beta.1', complete),
                               ('0.4.0', live_pending), ('0.4.0-rc.1', ''),
                               ('0.4.0-rc.1', complete.replace('T39|x|', 'T39|~|')),
@@ -40,6 +41,9 @@ class ReleasePolicy(unittest.TestCase):
                               ('0.5.1', complete + '\nT81|~|0.5.1 acceptance'),
                               ('0.5.2', complete + '\nT84|~|0.5.2 acceptance'),
                               ('0.5.3', complete + '\nT85|~|0.5.3 acceptance'),
+                              ('0.5.4', complete),
+                              ('0.5.4', complete + '\nT86|x|Foundry acceptance'),
+                              ('0.5.4', complete + '\nT86|x|Foundry acceptance\nT87|~|Bedrock acceptance'),
                               ('0.4.0-rc.1', complete + '\nT39|x|duplicate')]:
             with self.assertRaises(AssertionError):
                 assert_publishable(version, spec)
@@ -57,7 +61,7 @@ class ReleasePolicy(unittest.TestCase):
         self.assertEqual(build_plan('0.3.2')['rendering_dependencies']['parley'], {'opt-level': 2})
         self.assertEqual(build_plan('0.3.3')['lto'], 'off')
         self.assertEqual(build_plan('0.3.4')['lto'], 'off')
-        for version in ('0.4.0-alpha.1', '0.4.0-beta.2', '0.4.0-rc.1', '0.4.0', '0.4.1', '0.4.2', '0.4.3', '0.5.0', '0.5.1', '0.5.2', '0.5.3'):
+        for version in ('0.4.0-alpha.1', '0.4.0-beta.2', '0.4.0-rc.1', '0.4.0', '0.4.1', '0.4.2', '0.4.3', '0.5.0', '0.5.1', '0.5.2', '0.5.3', '0.5.4'):
             plan = build_plan(version)
             self.assertEqual(plan['opt_level'], 2)
             self.assertEqual(plan['lto'], 'off')
@@ -141,6 +145,7 @@ class ReleasePolicy(unittest.TestCase):
         versions = [v for v in re.findall(r"'(\d+\.\d+\.\d+)'", authorized) if v != '0.2.0']
         self.assertIn('0.5.2', versions)
         self.assertIn('0.5.3', versions)
+        self.assertIn('0.5.4', versions)
         workflow = (ROOT / '.github/workflows/release.yml').read_text()
         condition = re.search(r'^  macos:\n    if: "([^"]*)"', workflow, re.MULTILINE).group(1)
         for version in versions:

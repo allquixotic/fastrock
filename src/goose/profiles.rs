@@ -1,5 +1,6 @@
-//! Named Goose declarative providers with a bundled, vault-only auth helper.
+//! Named Goose declarative providers with bundled auth helpers.
 //! We never call Goose's secret setters (which permit plaintext fallback).
+use super::foundry;
 use anyhow::{Result, bail, ensure};
 use goose_runtime::config::{Config, declarative_providers as api, providers};
 use goose_runtime::providers::base::ModelInfo;
@@ -19,12 +20,21 @@ pub(crate) struct Profile {
     pub model: String,
     #[serde(default)]
     pub base_path: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub azure_subscription: String,
 }
 impl Profile {
+    fn is_foundry(&self) -> bool {
+        self.engine == foundry::ENGINE
+    }
+
     pub fn validate(&self) -> Result<()> {
         ensure!(
-            matches!(self.engine.as_str(), "openai" | "anthropic"),
-            "Choose OpenAI or Anthropic"
+            matches!(
+                self.engine.as_str(),
+                "openai" | "anthropic" | foundry::ENGINE
+            ),
+            "Choose OpenAI, Anthropic or Microsoft Foundry"
         );
         ensure!(
             !self.name.trim().is_empty()
@@ -32,6 +42,15 @@ impl Profile {
                 && !self.name.chars().any(char::is_control),
             "Enter a profile name of 1–128 bytes"
         );
+        if self.is_foundry() {
+            foundry::project_route(&self.url)?;
+            foundry::subscription(&self.azure_subscription)?;
+            ensure!(
+                self.model.len() <= 64 && foundry::azure_name(&self.model),
+                "Enter the MAI Code 2 Flash deployment name from Foundry"
+            );
+            return Ok(());
+        }
         ensure!(
             !self.model.trim().is_empty()
                 && self.model.len() <= 1024
@@ -49,6 +68,31 @@ impl Profile {
         ensure!(!self.url.is_empty(), "Enter the API base URL");
         Ok(())
     }
+
+    fn provider_engine(&self) -> String {
+        if self.is_foundry() {
+            "openai".into()
+        } else {
+            self.engine.clone()
+        }
+    }
+
+    fn request_path(&self) -> Result<Option<String>> {
+        if self.is_foundry() {
+            return foundry::project_route(&self.url).map(Some);
+        }
+        Ok((!self.base_path.is_empty()).then(|| self.base_path.clone()))
+    }
+
+    fn model_info(&self) -> ModelInfo {
+        let model = ModelInfo::new(&self.model);
+        if self.is_foundry() {
+            let mut model = model.with_context_limit(922_000).with_vision_support(true);
+            model.reasoning = true;
+            return model;
+        }
+        model
+    }
 }
 fn engine(config: &api::DeclarativeProviderConfig) -> Option<&'static str> {
     match config.engine {
@@ -57,8 +101,9 @@ fn engine(config: &api::DeclarativeProviderConfig) -> Option<&'static str> {
         _ => None,
     }
 }
-pub(super) fn owned(config: &api::DeclarativeProviderConfig) -> Option<&str> {
+fn owned(config: &api::DeclarativeProviderConfig) -> Option<&str> {
     super::provider_readiness::credential_id(config)
+        .or_else(|| foundry::profile_args(config).map(|(id, _)| id))
 }
 
 fn snapshot(config: &api::DeclarativeProviderConfig) -> Result<Profile> {
@@ -68,15 +113,26 @@ fn snapshot(config: &api::DeclarativeProviderConfig) -> Result<Profile> {
         config.models.len() == 1 && config.headers.is_none() && config.env_vars.is_none(),
         "This profile has custom settings; preserve it and create a new profile to use the simple editor"
     );
+    let foundry_subscription = foundry::profile_args(config).map(|(_, subscription)| subscription);
     let p = Profile {
         id: config.name.clone(),
         revision: fingerprint(serde_json::to_value(config)?)?,
         credential_id: credential_id.into(),
         name: config.display_name.clone(),
-        engine: engine(config).unwrap().into(),
+        engine: if foundry_subscription.is_some() {
+            foundry::ENGINE
+        } else {
+            engine(config).unwrap()
+        }
+        .into(),
         url: config.base_url.clone(),
         model: config.models[0].name.clone(),
-        base_path: config.base_path.clone().unwrap_or_default(),
+        base_path: if foundry_subscription.is_some() {
+            String::new()
+        } else {
+            config.base_path.clone().unwrap_or_default()
+        },
+        azure_subscription: foundry_subscription.unwrap_or_default().into(),
     };
     p.validate()?;
     Ok(p)
@@ -90,19 +146,25 @@ fn fingerprint(mut value: serde_json::Value) -> Result<String> {
         hex::encode(Sha256::digest(serde_json::to_vec(&value)?))
     ))
 }
-fn helper(id: &str) -> Result<api::AuthConfig> {
+fn helper(id: &str, azure_subscription: Option<&str>) -> Result<api::AuthConfig> {
     ensure!(
         uuid::Uuid::parse_str(id).is_ok(),
         "Invalid credential identity"
     );
+    let (args, timeout_seconds) = if let Some(subscription) = azure_subscription {
+        let subscription = foundry::subscription(subscription)?.to_string();
+        (vec![foundry::HELPER.into(), id.into(), subscription], 30)
+    } else {
+        (vec!["--fastrock-provider-credential".into(), id.into()], 10)
+    };
     Ok(api::AuthConfig {
         command: std::env::current_exe()?
             .to_str()
             .ok_or_else(|| anyhow::anyhow!("Fastrock path must be valid Unicode"))?
             .into(),
-        args: vec!["--fastrock-provider-credential".into(), id.into()],
+        args,
         refresh_interval: 300,
-        timeout_seconds: Some(10),
+        timeout_seconds: Some(timeout_seconds),
         cwd: None,
     })
 }
@@ -113,18 +175,18 @@ fn update(
 ) -> Result<()> {
     api::update_custom_provider(api::UpdateCustomProviderParams {
         id: config.name.clone(),
-        engine: desired.engine.clone(),
+        engine: desired.provider_engine(),
         display_name: desired.name.clone(),
         api_url: desired.url.clone(),
         api_key: None,
-        models: vec![ModelInfo::new(&desired.model)],
+        models: vec![desired.model_info()],
         supports_streaming: Some(true),
         headers: None,
         requires_auth: true,
         catalog_provider_id: config.catalog_provider_id.clone(),
-        base_path: (!desired.base_path.is_empty()).then(|| desired.base_path.clone()),
+        base_path: desired.request_path()?,
         toolshim: config.toolshim,
-        preserves_thinking: None,
+        preserves_thinking: desired.is_foundry().then_some(true),
         auth: Some(auth),
     })
 }
@@ -153,7 +215,8 @@ pub(super) async fn prepare() -> Result<()> {
             let Some(id) = owned(&config) else {
                 continue;
             };
-            let auth = helper(id)?;
+            let subscription = foundry::profile_args(&config).map(|(_, subscription)| subscription);
+            let auth = helper(id, subscription)?;
             if config
                 .auth
                 .as_ref()
@@ -200,6 +263,10 @@ pub(crate) async fn save(desired: Profile, create_id: String, secret: String) ->
             .lock()
             .map_err(|_| anyhow::anyhow!("Profile settings unavailable"))?;
         desired.validate()?;
+        ensure!(
+            !desired.is_foundry() || secret.is_empty(),
+            "Microsoft Foundry profiles use your Azure CLI sign-in"
+        );
         let existing = if desired.id.is_empty() {
             None
         } else {
@@ -208,6 +275,10 @@ pub(crate) async fn save(desired: Profile, create_id: String, secret: String) ->
             ensure!(
                 loaded.is_editable && snapshot(&loaded.config)?.revision == desired.revision,
                 "Profile changed; reload it before saving"
+            );
+            ensure!(
+                foundry::profile_args(&loaded.config).is_some() == desired.is_foundry(),
+                "Create a new profile to change between Azure CLI sign-in and API keys"
             );
             Some(loaded.config)
         };
@@ -219,26 +290,36 @@ pub(crate) async fn save(desired: Profile, create_id: String, secret: String) ->
                     old.name == desired.name
                         && old.engine == desired.engine
                         && old.url == desired.url
-                        && old.model == desired.model,
+                        && old.model == desired.model
+                        && old.base_path == desired.base_path
+                        && old.azure_subscription == desired.azure_subscription,
                     "This form already created a profile; reload it to edit"
                 );
                 return Ok(old);
             }
-            ensure!(!secret.is_empty(), "Enter an API key for the new profile");
+            ensure!(
+                desired.is_foundry() || !secret.is_empty(),
+                "Enter an API key for the new profile"
+            );
         }
         let new_key = !secret.is_empty();
-        let credential_id = if new_key {
-            create_id
+        let credential_id = if new_key || existing.is_none() {
+            create_id.as_str()
         } else {
-            existing.as_ref().and_then(owned).unwrap_or("").into()
+            existing.as_ref().and_then(owned).unwrap_or("")
         };
         ensure!(
-            !new_key || existing.as_ref().and_then(owned) != Some(credential_id.as_str()),
+            !new_key || existing.as_ref().and_then(owned) != Some(credential_id),
             "Credential replacement requires a fresh identity; reload the profile"
         );
-        let auth = helper(&credential_id)?;
+        let auth = helper(
+            credential_id,
+            desired
+                .is_foundry()
+                .then_some(desired.azure_subscription.as_str()),
+        )?;
         if new_key {
-            crate::vault::put("provider", &credential_id, &secret)?;
+            crate::vault::put("provider", credential_id, &secret)?;
         }
         let saved = (|| -> Result<String> {
             if let Some(config) = &existing {
@@ -247,19 +328,18 @@ pub(crate) async fn save(desired: Profile, create_id: String, secret: String) ->
             } else {
                 Ok(
                     api::create_custom_provider(api::CreateCustomProviderParams {
-                        engine: desired.engine.clone(),
+                        engine: desired.provider_engine(),
                         display_name: desired.name.clone(),
                         api_url: desired.url.clone(),
                         api_key: None,
-                        models: vec![ModelInfo::new(&desired.model)],
+                        models: vec![desired.model_info()],
                         supports_streaming: Some(true),
                         headers: None,
                         requires_auth: true,
                         catalog_provider_id: None,
-                        base_path: (!desired.base_path.is_empty())
-                            .then(|| desired.base_path.clone()),
+                        base_path: desired.request_path()?,
                         toolshim: false,
-                        preserves_thinking: None,
+                        preserves_thinking: desired.is_foundry().then_some(true),
                         auth: Some(auth),
                     })?
                     .name,
@@ -270,7 +350,7 @@ pub(crate) async fn save(desired: Profile, create_id: String, secret: String) ->
             Ok(id) => id,
             Err(_) => {
                 if new_key {
-                    let _ = crate::vault::remove("provider", &credential_id);
+                    let _ = crate::vault::remove("provider", credential_id);
                 }
                 bail!("Could not save provider profile; reload to inspect the configuration")
             }
@@ -313,6 +393,121 @@ pub(crate) async fn save(desired: Profile, create_id: String, secret: String) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn foundry_profile() -> Profile {
+        Profile {
+            name: "Work Foundry".into(),
+            engine: foundry::ENGINE.into(),
+            url: "https://work.services.ai.azure.com/api/projects/coding".into(),
+            model: "alias-for-flash".into(),
+            azure_subscription: "12345678-1234-1234-1234-123456789abc".into(),
+            ..Profile::default()
+        }
+    }
+
+    #[test]
+    fn v114_foundry_profile_round_trips_without_an_api_key() {
+        let profile = foundry_profile();
+        profile.validate().unwrap();
+        let identity = uuid::Uuid::new_v4().to_string();
+        let auth = helper(&identity, Some(&profile.azure_subscription)).unwrap();
+        let mut config: api::DeclarativeProviderConfig =
+            serde_json::from_value(serde_json::json!({
+                "name": "custom_work_foundry",
+                "display_name": profile.name,
+                "engine": profile.provider_engine(),
+                "base_url": profile.url,
+                "base_path": profile.request_path().unwrap(),
+                "models": [profile.model_info()],
+                "requires_auth": true,
+                "auth": auth,
+            }))
+            .unwrap();
+        let restored = snapshot(&config).unwrap();
+        assert_eq!(restored.engine, profile.engine);
+        assert_eq!(restored.url, profile.url);
+        assert_eq!(restored.model, profile.model);
+        assert_eq!(restored.azure_subscription, profile.azure_subscription);
+        assert_eq!(restored.credential_id, identity);
+        assert!(super::super::provider_readiness::credential_id(&config).is_none());
+        config.base_path = Some("openai/v1/chat/completions".into());
+        assert!(snapshot(&config).is_err());
+    }
+
+    #[tokio::test]
+    async fn v114_foundry_deployment_alias_streams_responses_with_cli_bearer() {
+        use goose_provider_types::{
+            base::Provider, conversation::message::Message, model::ModelConfig,
+        };
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{header, method, path},
+        };
+        let server = MockServer::start().await;
+        let profile = foundry_profile();
+        let response = [
+            serde_json::json!({"type":"response.output_text.delta","sequence_number":1,
+                "output_index":0,"content_index":0,"delta":"Foundry fixture reply","item_id":"msg-1"}),
+            serde_json::json!({"type":"response.completed","sequence_number":2,"response":{
+                "id":"resp-1","object":"response","status":"completed","model":profile.model,
+                "output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Foundry fixture reply"}]},
+                    {"type":"function_call","status":"completed","call_id":"call-1","name":"fixture_tool","arguments":"{}"}],
+                "usage":{"input_tokens":2,"output_tokens":3,"total_tokens":5}}}),
+        ].map(|event| format!("data: {event}\n\n")).join("");
+        Mock::given(method("POST"))
+            .and(path("/api/projects/coding/openai/v1/responses"))
+            .and(header("Authorization", "Bearer fixture-foundry-token"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_string(response)
+                    .insert_header("content-type", "text/event-stream"),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+        let python = std::env::var("FASTROCK_TEST_PYTHON").unwrap_or_else(|_| {
+            if cfg!(windows) {
+                "python".into()
+            } else {
+                "python3".into()
+            }
+        });
+        let provider = goose_runtime::providers::openai_def::from_custom_config(
+            serde_json::from_value(serde_json::json!({
+                "name": "custom_foundry_fixture",
+                "display_name": "Foundry fixture",
+                "engine": profile.provider_engine(),
+                "base_url": server.uri(),
+                "base_path": profile.request_path().unwrap(),
+                "models": [profile.model_info()],
+                "requires_auth": true,
+                "auth": {"command": python, "args": ["-c", "print('fixture-foundry-token')"], "refresh_interval": 300}
+            })).unwrap(), None
+        ).unwrap();
+        let tool = serde_json::from_value(serde_json::json!({
+            "name": "fixture_tool",
+            "inputSchema": {"type": "object", "properties": {}}
+        }))
+        .unwrap();
+        let (message, _) = provider
+            .complete(
+                &ModelConfig::new(&profile.model),
+                "fixture",
+                &[Message::user().with_text("hello")],
+                &[tool],
+            )
+            .await
+            .unwrap();
+        assert_eq!(message.as_concat_text(), "Foundry fixture reply");
+        assert!(message.get_tool_request_ids().contains("call-1"));
+        let captured = server.received_requests().await.unwrap();
+        let body: serde_json::Value = captured[0].body_json().unwrap();
+        assert_eq!(body["model"], profile.model);
+        assert_eq!(body["stream"], true);
+        assert_eq!(body["store"], false);
+        assert_eq!(body["input"][1]["content"][0]["text"], "hello");
+        assert_eq!(body["tools"][0]["name"], "fixture_tool");
+    }
     #[test]
     fn v59_revision_ignores_object_order_but_detects_changes() {
         let a = serde_json::from_str(r#"{"models":[{"request_params":{"x":1,"y":2}}],"name":"a"}"#)

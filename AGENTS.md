@@ -94,3 +94,9 @@ Windows x64 ZIP through CI after verification. Retain 0.5.2's verification scope
 while games is stopped; Mac compile-only.
 User's same-session Windows/AVD draft-save error report also authorizes repairing
 atomic draft persistence in 0.5.3, with Windows lock/readonly regressions.
+
+2026-11-17: user explicitly authorizes stable Fastrock 0.5.4 with MAI Code 2
+Flash through a Microsoft Foundry project using Azure CLI SSO. Microsoft
+documents only Flash for Foundry API access at launch. Signed Windows x64 ZIP
+through CI after verification, Mac compile-only.
+Same-session follow-up adds GPT-6.2 Sol and GPT-6.2 Astra via Amazon Bedrock.

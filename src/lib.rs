@@ -43,6 +43,9 @@ mod vault;
 pub fn credential_helper(id: &str) -> anyhow::Result<()> {
     vault::credential_helper(id)
 }
+pub fn foundry_credential_helper(profile_id: &str, subscription_id: &str) -> anyhow::Result<()> {
+    goose::foundry::credential_helper(profile_id, subscription_id)
+}
 mod storage_migration;
 mod virtual_workspaces;
 mod window_runtime;

@@ -36,6 +36,7 @@ mod stored_history;
 pub(crate) use queue::Recovery;
 mod effort_controls;
 mod effort_defaults;
+pub(crate) mod foundry;
 mod memory;
 mod memory_context;
 mod memory_controls;

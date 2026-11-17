@@ -1,24 +1,18 @@
-# Fastrock 0.5.3
+# Fastrock 0.5.4
 
-Updates embedded, unmodified Goose from 1.58.0 to
-[1.59.2](https://github.com/aaif-goose/goose/releases/tag/v1.59.2).
-All Goose crates are pinned to upstream release commit
-`9da692fde8ac69ec385b5e7d68b92cc7101a509a`.
+- Use **MAI Code 2 Flash** through Microsoft Foundry with your work Azure CLI sign-in.
+  In **Settings → Goose → Named provider profiles**, choose **Microsoft Foundry
+  (Azure CLI SSO)** and enter the project endpoint, deployment name, and Azure
+  subscription ID. Fastrock obtains short-lived credentials on demand.
+- Microsoft offers Flash in a limited-access Foundry preview. The full MAI Code 2
+  is available in GitHub Copilot. Ask your Azure team to confirm preview access,
+  project permissions, and where the deployment processes inference.
+- Use **GPT-6.2 Sol** and **GPT-6.2 Astra** on Amazon Bedrock with your existing
+  Bedrock profile. Enter the model or inference profile ID from the Bedrock
+  console in **Goose options → Use model ID**.
 
-Fixes transient Windows file-lock failures when saving open-chat drafts: close
-the completed save file before replacement and retry brief access/sharing denials
-on the background save worker. Persistent failures preserve the previous file
-and now identify the save stage, affected path and OS error. This addresses
-temporary file locking; the reported AVD profile's exact cause is unconfirmed.
+[Foundry setup guide](https://github.com/allquixotic/fastrock/blob/v0.5.4/docs/goose-acp.md#microsoft-foundry-and-azure-cli)
+[Bedrock setup guide](https://github.com/allquixotic/fastrock/blob/v0.5.4/docs/goose-acp.md#gpt-62-on-amazon-bedrock)
 
-Fastrock otherwise retains 0.5.2's behavior and embedded vwork 0.4.2, including
-shared temporary-copy history, pooled source trees and release by rename.
-Provider configuration, credentials, conversations, workspace history,
-checkpoints and composer drafts are preserved.
-
-Windows x64 ZIP only, signed, timestamped and verified through GitHub Actions;
-macOS receives a compatibility compile. The games VM remains stopped, so this
-release uses the same CI verification scope as 0.5.2. No games benchmark or
-games native acceptance is claimed.
-
-Use **Quit** in the previous version's tray menu before launching 0.5.3.
+This release ships as a signed Windows x64 ZIP. Use **Quit** in the previous
+version's tray menu before launching 0.5.4.

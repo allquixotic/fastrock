@@ -1,4 +1,4 @@
-# Embedded Goose in Fastrock 0.5.3
+# Embedded Goose in Fastrock 0.5.4
 
 Goose 1.59.2 is pinned at `9da692fde8ac69ec385b5e7d68b92cc7101a509a`.
 Its source is unchanged. Fastrock calls the public `StateMachineServices`, `AcpConnection` and `serve`
@@ -34,7 +34,8 @@ without executing login-shell scripts. Configure extension executable paths when
 they are outside that inherited PATH. Renderer failures report an error in the
 current process instead of launching a replacement Fastrock instance.
 
-Fastrock permits `aws_bedrock`, `openai` and `anthropic`. It checks creation,
+Fastrock permits `aws_bedrock`, `openai`, `anthropic`, and supported named
+profiles, including Microsoft Foundry. It checks creation,
 restoration and switching before dispatch because Goose's ACP provider factory
 does not cover every internal session path. Native provider choices follow the
 same scope; model and reasoning choices still come from Goose. Rejected provider
@@ -85,6 +86,65 @@ appear in conversation options, provider defaults and cheap-model selection.
 Editing an endpoint/key creates a new credential identity before updating the
 profile; conflicting edits require Reload. Existing Goose credential entries are
 preserved. AWS profile/region defaults remain shared, as described below.
+
+## Microsoft Foundry and Azure CLI
+
+MAI Code 2 Flash is a limited-access preview in Microsoft Foundry. The
+project is the Azure workspace your team gives you access to. A deployment is
+the named instance of the model you send requests to. Ask your Azure team for
+preview access and a Flash deployment, the **project endpoint**, the exact
+**deployment name**, and the **subscription ID**. Ask them to grant your work
+identity the **Foundry User** role or equivalent inference access. Microsoft
+lists the full MAI Code 2 in GitHub Copilot and documents Foundry inference for
+Flash at launch. [Microsoft model announcement](https://microsoft.ai/news/introducing-mai-code-2-and-mai-code-2-flash/),
+[Foundry roles and project endpoints](https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/sdk-overview).
+
+If inference must stay within the continental US, ask your Azure team to
+confirm a supported deployment type and processing region in the preview.
+**US Data Zone Standard** limits inference to the US where that SKU is available.
+Have the team confirm it meets your specific geographic requirement. A project
+in a US region can still use a **Global Standard** deployment that processes
+requests outside the US. Fastrock uses the deployment you provide.
+[Foundry deployment types and processing locations](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/deployment-types).
+
+1. Install [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
+   on the Windows computer running Fastrock. In PowerShell, run
+   `az login --tenant <work-tenant-id>` with your work account. Run
+   `az account list --output table` to check the subscription ID. If you use a
+   separate CLI configuration directory, launch Fastrock with the same
+   `AZURE_CONFIG_DIR`.
+2. Open **Settings → Goose → Named provider profiles → New profile**. Select
+   **Microsoft Foundry (Azure CLI SSO)**. Enter a profile name, the project
+   endpoint (`https://<resource>.services.ai.azure.com/api/projects/<project>`),
+   the deployment name, and the subscription ID. Save the profile.
+3. Select the profile in the conversation's **Goose options**, or use it in
+   **Provider defaults**. Fastrock gets a short-lived token from Azure CLI on
+   demand. If the CLI session expires, sign in again. If Azure returns access
+   denied after login, ask your team to check preview access and project
+   permissions. [Microsoft Foundry CLI sign-in](https://learn.microsoft.com/en-us/azure/foundry/quickstarts/get-started-code).
+
+## GPT-6.2 on Amazon Bedrock
+
+GPT-6.2 Sol and Astra are available on Amazon Bedrock. Copy each model's
+inference profile ID from the Bedrock console for your AWS source region.
+For deployments that support Converse, keep your existing AWS profile in
+**Settings → Goose → Provider defaults**. With **Bedrock** selected, paste
+the ID into **Exact model or inference profile ID** in the conversation's
+**Goose options**, then choose **Use model ID**. This uses Goose's native
+Bedrock Runtime path even if the model is absent from the bundled list.
+[AWS launch announcement](https://aws.amazon.com/about-aws/whats-new/2026/11/openai-gpt-6-2-astra-sol-amazon-bedrock/),
+[AWS model and inference profile discovery](https://docs.aws.amazon.com/bedrock/latest/userguide/models-get-info.html).
+
+For an existing Bedrock **Responses API** profile, use the AWS endpoint and
+model ID listed for that route. For Runtime, use the system inference profile
+ID. For Mantle, use the Mantle model ID and supported source region. To set up
+a Responses profile from scratch, create a named **OpenAI** profile with an
+AWS Bedrock API key, the AWS endpoint as the base URL, and
+`openai/v1/responses` as the request path when AWS lists the models under
+`/openai/v1`. Fastrock 0.5.4 uses the existing speed policy.
+[AWS Responses API endpoint and model selection](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-responses-api.html).
+
+## Tools, hooks and recipes
 
 Settings → Tools & hooks and Settings → Recipes provide native editors using
 Goose's public extension/plugin/recipe APIs. Project plugin discovery uses the

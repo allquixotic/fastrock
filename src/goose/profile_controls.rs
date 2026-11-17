@@ -1,4 +1,7 @@
-use super::profiles::{self, Profile};
+use super::{
+    foundry,
+    profiles::{self, Profile},
+};
 use crate::{
     app::AppController,
     ui::{ProfileRow, ProfileState},
@@ -17,6 +20,9 @@ impl AppController {
         }));
         state.on_save(crate::ui_thread::scoped_callback!(|| {
             crate::ui_thread::with_app(AppController::profiles_save)
+        }));
+        state.on_engine_selected(crate::ui_thread::scoped_callback!(|| {
+            crate::ui_thread::with_app(AppController::profiles_engine_selected)
         }));
         self.profiles_select("");
     }
@@ -43,8 +49,13 @@ impl AppController {
                                 .map(|p| ProfileRow {
                                     id: p.id.as_str().into(),
                                     name: p.name.as_str().into(),
-                                    detail: format!("{} · {} · {}", p.engine, p.model, p.url)
-                                        .into(),
+                                    detail: format!(
+                                        "{} · {} · {}",
+                                        engine_label(&p.engine),
+                                        p.model,
+                                        p.url
+                                    )
+                                    .into(),
                                 })
                                 .collect::<Vec<_>>(),
                         )));
@@ -74,13 +85,25 @@ impl AppController {
         state.set_revision(profile.revision.into());
         state.set_create_id(uuid::Uuid::new_v4().to_string().into());
         state.set_name(profile.name.into());
-        state.set_engine(if profile.engine == "anthropic" { 1 } else { 0 });
+        state.set_engine(engine_index(&profile.engine));
+        state.set_edit_foundry(profile.engine == foundry::ENGINE);
         state.set_url(profile.url.into());
         state.set_model(profile.model.into());
         state.set_base_path(profile.base_path.into());
+        state.set_azure_subscription(profile.azure_subscription.into());
         state.set_secret("".into());
         state.set_status("".into());
     }
+    fn profiles_engine_selected(&mut self) {
+        let state = self.window.global::<ProfileState>();
+        if engine_id(state.get_engine()) == foundry::ENGINE {
+            state.set_secret("".into());
+            if state.get_model().is_empty() {
+                state.set_model(foundry::FLASH.into());
+            }
+        }
+    }
+
     fn profiles_save(&mut self) {
         let state = self.window.global::<ProfileState>();
         if state.get_busy() {
@@ -90,15 +113,19 @@ impl AppController {
             id: state.get_edit_id().to_string(),
             revision: state.get_revision().to_string(),
             name: state.get_name().trim().to_owned(),
-            engine: if state.get_engine() == 1 {
-                "anthropic"
-            } else {
-                "openai"
-            }
-            .into(),
+            engine: engine_id(state.get_engine()).into(),
             url: state.get_url().trim().to_owned(),
             model: state.get_model().trim().to_owned(),
-            base_path: state.get_base_path().trim().to_owned(),
+            base_path: if engine_id(state.get_engine()) == foundry::ENGINE {
+                String::new()
+            } else {
+                state.get_base_path().trim().to_owned()
+            },
+            azure_subscription: if engine_id(state.get_engine()) == foundry::ENGINE {
+                state.get_azure_subscription().trim().to_owned()
+            } else {
+                String::new()
+            },
             credential_id: String::new(),
         };
         if let Err(e) = profile.validate() {
@@ -116,10 +143,19 @@ impl AppController {
                 state.set_busy(false);
                 match result {
                     Ok(p) => {
+                        let foundry = p.engine == foundry::ENGINE;
                         state.set_edit_id(p.id.into());
+                        state.set_edit_foundry(foundry);
                         state.set_revision(p.revision.into());
                         state.set_create_id(uuid::Uuid::new_v4().to_string().into());
-                        state.set_status("Profile saved; credential stored in the OS vault".into());
+                        state.set_status(
+                            if foundry {
+                                "Profile saved. Fastrock will use your Azure CLI sign-in."
+                            } else {
+                                "Profile saved. API keys are stored in the OS vault."
+                            }
+                            .into(),
+                        );
                     }
                     Err(e) => state.set_status(e.to_string().into()),
                 }
@@ -143,10 +179,14 @@ impl AppController {
                 state.invoke_select(id.into());
             }
             "name" => state.set_name(arg(1).into()),
-            "engine" => state.set_engine(if arg(1) == "anthropic" { 1 } else { 0 }),
+            "engine" => {
+                state.set_engine(engine_index(arg(1)));
+                state.invoke_engine_selected();
+            }
             "url" => state.set_url(arg(1).into()),
             "base-path" => state.set_base_path(arg(1).into()),
             "model" => state.set_model(arg(1).into()),
+            "azure-subscription" => state.set_azure_subscription(arg(1).into()),
             // Automation logs step arguments. Pass only an environment name,
             // never a credential value in the fixture script or diagnostics.
             "secret-env" => state.set_secret(std::env::var(arg(1)).unwrap_or_default().into()),
@@ -176,5 +216,29 @@ impl AppController {
             }
             _ => {}
         }
+    }
+}
+
+fn engine_id(index: i32) -> &'static str {
+    match index {
+        1 => "anthropic",
+        2 => foundry::ENGINE,
+        _ => "openai",
+    }
+}
+
+fn engine_index(engine: &str) -> i32 {
+    match engine {
+        "anthropic" => 1,
+        foundry::ENGINE => 2,
+        _ => 0,
+    }
+}
+
+fn engine_label(engine: &str) -> &'static str {
+    match engine {
+        "anthropic" => "Anthropic",
+        foundry::ENGINE => "Microsoft Foundry",
+        _ => "OpenAI",
     }
 }

@@ -1,0 +1,196 @@
+{
+  "result": "PASS",
+  "version": "0.5.4",
+  "verified_at": "2026-11-17T21:12:23.508916+00:00",
+  "baseline_version": "0.3.4",
+  "baseline": {
+    "binary_sha256": "dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9",
+    "seed_sha256": "dbe0969f2dc70295be34bce56656785a1db46588a987d792132796c3c3dd8f08",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "external Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1026562048,
+            "peak_app_bytes": 106504192,
+            "peak_tree_commit_bytes": 101699584
+          },
+          "app": {
+            "cap_bytes": 1043634176,
+            "peak_app_bytes": 194891776,
+            "peak_tree_commit_bytes": 227581952
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 1203.5,
+        "switch_dispatch_ms": [
+          0.9,
+          0.9,
+          0.9,
+          1.0,
+          0.8
+        ],
+        "frame": {
+          "p50_ms": 6.843,
+          "p95_ms": 7.918,
+          "p99_ms": 11.753
+        },
+        "render": {
+          "p50_ms": 5.827,
+          "p95_ms": 6.869,
+          "p99_ms": 10.55
+        },
+        "event_loop": {
+          "p50_ms": 16.743,
+          "p95_ms": 25.882,
+          "p99_ms": 32.649
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ],
+    "goose_sha256": "89d5849587586765fa335f664fac0a9ed0e466d0f3717dd609ca04ebdffa64e2"
+  },
+  "candidate": {
+    "binary_sha256": "924b5328bec1e2f71d1fb434b61617ebd5b1d2ad5e16d1a24259c86aab08e859",
+    "seed_sha256": "dbe0969f2dc70295be34bce56656785a1db46588a987d792132796c3c3dd8f08",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose 1.59.2",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1109198848,
+            "peak_app_bytes": 106557440,
+            "peak_tree_commit_bytes": 101777408
+          },
+          "app": {
+            "cap_bytes": 1115338752,
+            "peak_app_bytes": 249626624,
+            "peak_tree_commit_bytes": 195051520
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 201.2,
+        "switch_dispatch_ms": [
+          0.2,
+          0.4,
+          0.4,
+          0.2,
+          0.4
+        ],
+        "frame": {
+          "p50_ms": 4.815,
+          "p95_ms": 9.785,
+          "p99_ms": 10.579
+        },
+        "render": {
+          "p50_ms": 3.771,
+          "p95_ms": 8.463,
+          "p99_ms": 9.421
+        },
+        "event_loop": {
+          "p50_ms": 16.511,
+          "p95_ms": 18.809,
+          "p99_ms": 24.128
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true,
+        "history_navigation": {
+          "first": {
+            "browsing": true,
+            "loading": false,
+            "start": 0,
+            "end": 100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 4.8663,
+            "rows": 100,
+            "bytes": 285990
+          },
+          "middle": {
+            "browsing": true,
+            "loading": false,
+            "start": 5000,
+            "end": 5100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 4.487,
+            "rows": 100,
+            "bytes": 292500
+          },
+          "last": {
+            "browsing": true,
+            "loading": false,
+            "start": 9900,
+            "end": 10000,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 7.7591,
+            "rows": 100,
+            "bytes": 292569
+          },
+          "middle_frame": {
+            "p50_ms": 4.79,
+            "p95_ms": 6.646,
+            "p99_ms": 8.453
+          }
+        }
+      }
+    ]
+  },
+  "native_acceptance": [
+    {
+      "binary_sha256": "924b5328bec1e2f71d1fb434b61617ebd5b1d2ad5e16d1a24259c86aab08e859",
+      "result": "PASS",
+      "cases": [
+        {
+          "name": "profiles",
+          "result": "PASS",
+          "error": null,
+          "seconds": 28.69,
+          "peak_tree_bytes": 162480128
+        },
+        {
+          "name": "foundry",
+          "result": "PASS",
+          "error": null,
+          "seconds": 5.42,
+          "peak_tree_bytes": 66244608
+        }
+      ]
+    },
+    {
+      "binary_sha256": "924b5328bec1e2f71d1fb434b61617ebd5b1d2ad5e16d1a24259c86aab08e859",
+      "result": "PASS",
+      "cases": [
+        {
+          "name": "model-options",
+          "result": "PASS",
+          "error": null,
+          "seconds": 10.43,
+          "peak_tree_bytes": 161206272
+        }
+      ]
+    }
+  ],
+  "foundry_rust_regressions": 4,
+  "embedded_goose_fixture": "PASS",
+  "macos_workspace_compile": "PASS",
+  "cloud_inference": "Local fixtures only"
+}
