@@ -1,3 +1,23 @@
+# Fastrock 0.5.4 stable
+
+Fastrock 0.5.4 adds MAI Code 2 Flash through a Microsoft Foundry project with
+Azure CLI SSO. It also supports GPT-6.2 Sol and GPT-6.2 Astra on Bedrock using
+the model or inference profile ID for the configured route. See the
+[Foundry setup guide](goose-acp.md#microsoft-foundry-and-azure-cli) and
+[Bedrock setup guide](goose-acp.md#gpt-62-on-amazon-bedrock).
+
+The signed Windows x64 ZIP is built for
+[`v0.5.4+build.1`](https://github.com/allquixotic/fastrock/releases/tag/v0.5.4%2Bbuild.1).
+The original tag stopped in the Foundry UI fixture before publication. The
+fixture now waits for the new-profile form to reset before entering values.
+Both tags use application version 0.5.4.
+
+On games, Fastrock passed the guarded comparison with 0.3.4 at 1,000 chats,
+eight streams, and 10,000 messages, plus the native Foundry, named profiles,
+and model-options fixtures. Cloud routes were exercised with local fixtures.
+macOS was compiled for compatibility.
+[Games verification](https://github.com/allquixotic/fastrock/blob/v0.5.4%2Bbuild.1/docs/benchmarks/054-games-2026-11-17.json).
+
 # Fastrock 0.5.3 stable
 
 Explicitly authorized 2026-11-16: 0.5.2 with embedded, unmodified
@@ -14,8 +34,8 @@ Embedded vwork 0.4.2 and other Fastrock behavior are retained. Provider
 configuration, credentials, conversations, workspace history and drafts are
 preserved.
 
-[Fastrock 0.5.3](https://github.com/allquixotic/fastrock/releases/tag/v0.5.3) is
-the latest stable signed Windows x64 ZIP.
+[Fastrock 0.5.3](https://github.com/allquixotic/fastrock/releases/tag/v0.5.3)
+was published as a stable signed Windows x64 ZIP.
 [Release CI](https://github.com/allquixotic/fastrock/actions/runs/43895021538)
 passed both platform builds, 872 Windows Rust tests (including all three draft
 save regressions), all 43 native cases, migration, catalog and scrolling checks

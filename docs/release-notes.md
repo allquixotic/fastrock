@@ -11,8 +11,8 @@
   Bedrock profile. Enter the model or inference profile ID from the Bedrock
   console in **Goose options → Use model ID**.
 
-[Foundry setup guide](https://github.com/allquixotic/fastrock/blob/v0.5.4/docs/goose-acp.md#microsoft-foundry-and-azure-cli)
-[Bedrock setup guide](https://github.com/allquixotic/fastrock/blob/v0.5.4/docs/goose-acp.md#gpt-62-on-amazon-bedrock)
+[Foundry setup guide](https://github.com/allquixotic/fastrock/blob/v0.5.4%2Bbuild.1/docs/goose-acp.md#microsoft-foundry-and-azure-cli) ·
+[Bedrock setup guide](https://github.com/allquixotic/fastrock/blob/v0.5.4%2Bbuild.1/docs/goose-acp.md#gpt-62-on-amazon-bedrock)
 
 This release ships as a signed Windows x64 ZIP. Use **Quit** in the previous
 version's tray menu before launching 0.5.4.

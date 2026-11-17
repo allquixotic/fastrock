@@ -53,7 +53,8 @@ try:
     env['PATH'] = str(cli) + os.pathsep + env['PATH']
     env['FASTROCK_FIXTURE_CLI_TRACE'] = str(trace)
     created = launch(env, 'created', [
-        profile('new'), profile('name', 'Work Foundry'), profile('engine', 'azure-foundry'),
+        # Let the queued Slint selection callback finish clearing the editor.
+        profile('new'), {'wait': 100}, profile('name', 'Work Foundry'), profile('engine', 'azure-foundry'),
         profile('url', endpoint), profile('model', deployment),
         profile('azure-subscription', subscription), profile('save'), {'wait': 1200},
     ])
