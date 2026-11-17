@@ -1,0 +1,390 @@
+{
+  "result": "PASS",
+  "version": "0.5.4",
+  "verified_at": "2026-11-17T22:00:31.511286+00:00",
+  "source_commit": "65739f2ec523ef257a0ad70b6ac11d0f87a9989f",
+  "release": {
+    "url": "https://github.com/allquixotic/fastrock/releases/tag/v0.5.4%2Bbuild.1",
+    "tag": "v0.5.4+build.1",
+    "published_at": "2026-11-17T21:59:08Z",
+    "latest": true,
+    "assets": [
+      {
+        "name": "fastrock-0.5.4-windows-x64.zip",
+        "size": 143241505,
+        "digest": "sha256:2491221924431695cd2cf9909b29b0c7e5e0da7c901a2354331ecb52e03865b5"
+      },
+      {
+        "name": "fastrock-0.5.4-windows-x64.zip.sha256",
+        "size": 98,
+        "digest": "sha256:ad75f18490376f181741f9e73f44a5273a3b0b14f444729ee93affb1ef9ab28f"
+      },
+      {
+        "name": "windows-attestation.sigstore.json",
+        "size": 11092,
+        "digest": "sha256:c827fa97b3907e38f82365e811c558dc783d62112baf53b24e2c98fd1f6e4eb3"
+      }
+    ]
+  },
+  "ci": {
+    "url": "https://github.com/allquixotic/fastrock/actions/runs/44181235729",
+    "run_id": 44181235729,
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "build",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T21:34:35Z",
+        "completedAt": "2026-11-17T21:35:03Z"
+      },
+      {
+        "name": "windows",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T21:35:08Z",
+        "completedAt": "2026-11-17T21:59:17Z"
+      },
+      {
+        "name": "macos",
+        "conclusion": "skipped",
+        "startedAt": "2026-11-17T21:59:17Z",
+        "completedAt": "2026-11-17T21:59:17Z"
+      }
+    ],
+    "rust_tests": 876,
+    "native_cases": 44,
+    "native_results": [
+      {
+        "name": "rally",
+        "result": "PASS",
+        "error": null,
+        "seconds": 49.08,
+        "peak_tree_bytes": 158416896
+      },
+      {
+        "name": "goose",
+        "result": "PASS",
+        "error": null,
+        "seconds": 3.81,
+        "peak_tree_bytes": 157286400
+      },
+      {
+        "name": "vwork",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.47,
+        "peak_tree_bytes": 162299904
+      },
+      {
+        "name": "delegation",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.86,
+        "peak_tree_bytes": 163487744
+      },
+      {
+        "name": "schedules",
+        "result": "PASS",
+        "error": null,
+        "seconds": 63.31,
+        "peak_tree_bytes": 160522240
+      },
+      {
+        "name": "webhook",
+        "result": "PASS",
+        "error": null,
+        "seconds": 82.95,
+        "peak_tree_bytes": 159383552
+      },
+      {
+        "name": "provider-setup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.83,
+        "peak_tree_bytes": 157933568
+      },
+      {
+        "name": "profiles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 28.06,
+        "peak_tree_bytes": 158633984
+      },
+      {
+        "name": "foundry",
+        "result": "PASS",
+        "error": null,
+        "seconds": 5.83,
+        "peak_tree_bytes": 62099456
+      },
+      {
+        "name": "effort",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.22,
+        "peak_tree_bytes": 157409280
+      },
+      {
+        "name": "model-options",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.22,
+        "peak_tree_bytes": 157708288
+      },
+      {
+        "name": "capabilities",
+        "result": "PASS",
+        "error": null,
+        "seconds": 34.47,
+        "peak_tree_bytes": 157806592
+      },
+      {
+        "name": "recipes",
+        "result": "PASS",
+        "error": null,
+        "seconds": 39.3,
+        "peak_tree_bytes": 159113216
+      },
+      {
+        "name": "projects",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.83,
+        "peak_tree_bytes": 157184000
+      },
+      {
+        "name": "commands",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.42,
+        "peak_tree_bytes": 157429760
+      },
+      {
+        "name": "palette",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.03,
+        "peak_tree_bytes": 157487104
+      },
+      {
+        "name": "terminal",
+        "result": "PASS",
+        "error": null,
+        "seconds": 32.86,
+        "peak_tree_bytes": 157908992
+      },
+      {
+        "name": "checkpoints",
+        "result": "PASS",
+        "error": null,
+        "seconds": 31.88,
+        "peak_tree_bytes": 159961088
+      },
+      {
+        "name": "compaction",
+        "result": "PASS",
+        "error": null,
+        "seconds": 10.42,
+        "peak_tree_bytes": 157933568
+      },
+      {
+        "name": "sidebar",
+        "result": "PASS",
+        "error": null,
+        "seconds": 12.64,
+        "peak_tree_bytes": 157216768
+      },
+      {
+        "name": "organization",
+        "result": "PASS",
+        "error": null,
+        "seconds": 44.89,
+        "peak_tree_bytes": 159002624
+      },
+      {
+        "name": "sidebar-drag",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.08,
+        "peak_tree_bytes": 157679616
+      },
+      {
+        "name": "sidebar-policy",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.64,
+        "peak_tree_bytes": 157425664
+      },
+      {
+        "name": "titles",
+        "result": "PASS",
+        "error": null,
+        "seconds": 38.67,
+        "peak_tree_bytes": 159313920
+      },
+      {
+        "name": "queue",
+        "result": "PASS",
+        "error": null,
+        "seconds": 16.44,
+        "peak_tree_bytes": 157650944
+      },
+      {
+        "name": "mentions",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.86,
+        "peak_tree_bytes": 157499392
+      },
+      {
+        "name": "review",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.25,
+        "peak_tree_bytes": 158846976
+      },
+      {
+        "name": "shell",
+        "result": "PASS",
+        "error": null,
+        "seconds": 20.06,
+        "peak_tree_bytes": 158355456
+      },
+      {
+        "name": "console",
+        "result": "PASS",
+        "error": null,
+        "seconds": 5.22,
+        "peak_tree_bytes": 157519872
+      },
+      {
+        "name": "side",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.64,
+        "peak_tree_bytes": 159367168
+      },
+      {
+        "name": "window-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 33.67,
+        "peak_tree_bytes": 160407552
+      },
+      {
+        "name": "draft-history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 11.84,
+        "peak_tree_bytes": 157302784
+      },
+      {
+        "name": "relaunch",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.64,
+        "peak_tree_bytes": 157466624
+      },
+      {
+        "name": "delete",
+        "result": "PASS",
+        "error": null,
+        "seconds": 43.3,
+        "peak_tree_bytes": 160260096
+      },
+      {
+        "name": "history",
+        "result": "PASS",
+        "error": null,
+        "seconds": 13.62,
+        "peak_tree_bytes": 160874496
+      },
+      {
+        "name": "history-startup",
+        "result": "PASS",
+        "error": null,
+        "seconds": 114.22,
+        "peak_tree_bytes": 160256000
+      },
+      {
+        "name": "selection",
+        "result": "PASS",
+        "error": null,
+        "seconds": 22.05,
+        "peak_tree_bytes": 159903744
+      },
+      {
+        "name": "accessibility",
+        "result": "PASS",
+        "error": null,
+        "seconds": 24.84,
+        "peak_tree_bytes": 220299264
+      },
+      {
+        "name": "context",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.83,
+        "peak_tree_bytes": 157831168
+      },
+      {
+        "name": "summary",
+        "result": "PASS",
+        "error": null,
+        "seconds": 35.27,
+        "peak_tree_bytes": 161402880
+      },
+      {
+        "name": "summary-priority",
+        "result": "PASS",
+        "error": null,
+        "seconds": 8.03,
+        "peak_tree_bytes": 157798400
+      },
+      {
+        "name": "memory",
+        "result": "PASS",
+        "error": null,
+        "seconds": 40.08,
+        "peak_tree_bytes": 158961664
+      },
+      {
+        "name": "queue-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 15.03,
+        "peak_tree_bytes": 159371264
+      },
+      {
+        "name": "process-recovery",
+        "result": "PASS",
+        "error": null,
+        "seconds": 18.03,
+        "peak_tree_bytes": 109297664
+      }
+    ]
+  },
+  "signature": {
+    "binary_sha256": "3f09a817e8d3b291c96ad8286b1a6dac557a0842314b1717f6341f7ae64b438a",
+    "workflow_run": "44181235729",
+    "source_commit": "65739f2ec523ef257a0ad70b6ac11d0f87a9989f",
+    "publisher": "CN=Sean McNamara, O=Sean McNamara, L=Pasadena, S=MD, C=US",
+    "certificate_sha1": "C74425B65EB9F8E61E135C978E115A1F47FD6119",
+    "timestamp_publisher": "CN=Microsoft Public RSA Time Stamping Authority, OU=nShield TSS ESN:7800-05E0-D947, OU=Microsoft America Operations, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+    "status": "Valid"
+  },
+  "download": {
+    "zip_sha256": "2491221924431695cd2cf9909b29b0c7e5e0da7c901a2354331ecb52e03865b5",
+    "binary_sha256": "3f09a817e8d3b291c96ad8286b1a6dac557a0842314b1717f6341f7ae64b438a",
+    "checksums_and_build_metadata": "PASS",
+    "signing_and_native_evidence_match": "PASS"
+  },
+  "attestation": {
+    "online": "PASS",
+    "bundled": "PASS",
+    "source_ref": "refs/tags/v0.5.4+build.1",
+    "source_digest": "65739f2ec523ef257a0ad70b6ac11d0f87a9989f",
+    "signer_workflow": "allquixotic/fastrock/.github/workflows/release.yml"
+  },
+  "games_receipt": "docs/benchmarks/054-games-2026-11-17.json",
+  "cloud_inference": "Local fixtures only"
+}

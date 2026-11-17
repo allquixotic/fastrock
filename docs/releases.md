@@ -12,6 +12,13 @@ The original tag stopped in the Foundry UI fixture before publication. The
 fixture now waits for the new-profile form to reset before entering values.
 Both tags use application version 0.5.4.
 
+The [release workflow](https://github.com/allquixotic/fastrock/actions/runs/44181235729)
+passed 876 Windows Rust tests, 44 native cases, and migration, catalog, and
+scrolling checks. CI verified the publisher and secure timestamp. The public
+download matched the CI signing and native acceptance receipts, published
+checksums, and online and bundled provenance.
+[Release verification](benchmarks/054-release-ci-2026-11-17.json).
+
 On games, Fastrock passed the guarded comparison with 0.3.4 at 1,000 chats,
 eight streams, and 10,000 messages, plus the native Foundry, named profiles,
 and model-options fixtures. Cloud routes were exercised with local fixtures.
