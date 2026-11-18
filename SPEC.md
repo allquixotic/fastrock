@@ -382,6 +382,8 @@ T88|x|Add manual Bedrock effort entry, validation, per-profile defaults, and req
 
 0.5.5 development acceptance: Windows reproduced the off-only profile in 0.5.4. Candidate passed native effort and model-options fixtures and the exact Responses payload regression. Guarded games comparison against 0.3.4 passed at 1,000 chats, eight streams and 10,000 messages. Mac compiled. docs/benchmarks/055-games-2026-11-18.json.
 
+0.5.5 release acceptance: signed CI 44348660614 passed 877 Windows Rust tests, 44 signed native cases, migration, catalog and scroll. Public ZIP, signature and secure timestamp receipts, exact binary match, digests and online/bundled provenance verified. docs/benchmarks/055-release-ci-2026-11-18.json.
+
 0.5.4 release acceptance: signed CI 44181235729 for `v0.5.4+build.1` passed 876 Rust tests, 44 native cases, migration, catalog and scroll. Windows publisher/timestamp, published ZIP and asset digests, binary match and online/bundled provenance verified. Mac compile-only. Foundry and Bedrock inference verified with local fixtures. docs/benchmarks/054-release-ci-2026-11-17.json.
 
 Sidebar drag verification, 2026-10-30: 752 application tests, isolated renderer and native pointer fixture passed on games; native organization regression passed. Atomic group/order, snooze wake, Escape without agent interruption, outside cancellation and restart verified. Mac compile/static policy checks passed. SHA-256 `101d411f6a43af4395010357713448ded6aa812ed7e15720041c83b7e1c57bdf`, peak 151,629,824 bytes; receipt `docs/benchmarks/sidebar-drag-games-2026-10-30.json`. T52 audit/recovery/deletion/full acceptance remain open. No release tag.

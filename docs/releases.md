@@ -1,3 +1,23 @@
+# Fastrock 0.5.5 stable
+
+Fastrock 0.5.5 offers manual thinking effort for Bedrock profiles when Goose
+reports no usable choices. The setting survives restart and can be saved for
+the exact provider and model ID. Named Bedrock Responses profiles send the
+typed value. Goose's built-in Converse formatter still omits effort for GPT
+and opaque application inference profiles.
+
+[Fastrock 0.5.5](https://github.com/allquixotic/fastrock/releases/tag/v0.5.5)
+is available as a signed Windows x64 ZIP. CI built both platforms, passed
+877 Windows Rust tests, and ran 44 native acceptance cases against the signed
+executable. The downloaded ZIP, publisher, secure timestamp, checksums, and
+online and bundled provenance were verified.
+[Release verification](benchmarks/055-release-ci-2026-11-18.json).
+
+Games passed the guarded comparison with 0.3.4 at 1,000 conversations, eight
+streams, and 10,000 messages. Both Bedrock UI regressions passed using local
+fixtures. macOS was compiled for compatibility.
+[Games verification](benchmarks/055-games-2026-11-18.json).
+
 # Fastrock 0.5.4 stable
 
 Fastrock 0.5.4 adds MAI Code 2 Flash through a Microsoft Foundry project with
