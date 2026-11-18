@@ -1,6 +1,7 @@
-//! Per-provider/model defaults; choices remain authoritative from unchanged Goose.
+//! Per-provider/model defaults and manual effort for Bedrock profiles.
 use super::*;
 use anyhow::{Context, Result, ensure};
+use goose_provider_types::{model::ModelConfig, thinking::ThinkingEffort};
 use goose_runtime::config::{Config, ConfigError};
 use goose_runtime::session::SessionManager;
 use std::{collections::BTreeMap, sync::Mutex};
@@ -59,15 +60,107 @@ async fn identity(id: &str) -> Result<(String, String)> {
     ))
 }
 
-fn offered(options: &[Value], value: &str) -> bool {
+fn effort_option(options: &[Value]) -> Option<&Value> {
     options
         .iter()
         .find(|option| option["id"] == "thinking_effort")
-        .is_some_and(|option| {
-            sessions::option_values(option)
-                .iter()
-                .any(|v| v["value"] == value)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ManualEffort {
+    Goose,
+    Responses,
+}
+
+impl ManualEffort {
+    pub(super) fn for_session(session: &Session) -> Option<Self> {
+        let provider = session.config_value("provider");
+        if session.config_value("model").is_empty()
+            || effort_option(&session.config)
+                .is_some_and(|option| sessions::option_values(option).len() > 1)
+        {
+            return None;
+        }
+        if provider == "aws_bedrock" {
+            Some(Self::Goose)
+        } else if super::provider_policy::bedrock_responses(provider) {
+            Some(Self::Responses)
+        } else {
+            None
+        }
+    }
+
+    fn parameter(self) -> &'static str {
+        match self {
+            Self::Goose => "thinking_effort",
+            Self::Responses => "reasoning_effort",
+        }
+    }
+
+    pub(super) fn accepts(self, value: &Value) -> bool {
+        match self {
+            Self::Goose => value
+                .as_str()
+                .is_some_and(|value| value.parse::<ThinkingEffort>().is_ok()),
+            Self::Responses => sessions::valid_model_id(value),
+        }
+    }
+
+    pub(super) fn saved(self, model: &ModelConfig) -> Option<String> {
+        if self == Self::Responses
+            && let Some(reasoning) = model.request_param::<Value>("reasoning")
+            && let Some(effort) = reasoning["effort"].as_str()
+        {
+            return Some(effort.to_owned());
+        }
+        model.request_param::<String>(self.parameter())
+    }
+
+    pub(super) fn visible(self, session: &Session) -> Value {
+        json!({
+            "id":"thinking_effort", "name":"Thinking effort", "type":"select",
+            "currentValue":current_manual(session), "options":[],
+            "manual":true, "gooseEffort":self == Self::Goose
         })
+    }
+}
+
+fn current_manual(session: &Session) -> &str {
+    session
+        .manual_effort
+        .as_ref()
+        .filter(|(provider, model, _)| {
+            provider == session.config_value("provider") && model == session.config_value("model")
+        })
+        .map_or("", |(_, _, value)| value.as_str())
+}
+
+fn accepts(session: &Session, manual: Option<ManualEffort>, value: &str) -> bool {
+    if let Some(manual) = manual {
+        return manual.accepts(&json!(value));
+    }
+    effort_option(&session.config).is_some_and(|option| {
+        sessions::option_values(option)
+            .iter()
+            .any(|v| v["value"] == value)
+    })
+}
+
+fn current(session: &Session, manual: Option<ManualEffort>) -> &str {
+    if manual.is_some() {
+        current_manual(session)
+    } else {
+        session.config_value("thinking_effort")
+    }
+}
+
+pub(super) fn set_responses_effort(model: &mut ModelConfig, value: &Value) {
+    let params = model.request_params.get_or_insert_with(Default::default);
+    if let Some(reasoning) = params.get_mut("reasoning").and_then(Value::as_object_mut) {
+        reasoning.insert("effort".into(), value.clone());
+    } else {
+        params.insert(ManualEffort::Responses.parameter().into(), value.clone());
+    }
 }
 
 impl Adapter {
@@ -101,7 +194,8 @@ impl Adapter {
             return Ok(None);
         };
         let supported = self.sessions.lock().await.get(id).is_some_and(|s| {
-            offered(&s.config, &desired) && s.config_value("thinking_effort") != desired
+            let manual = ManualEffort::for_session(s);
+            accepts(s, manual, &desired) && current(s, manual) != desired
         });
         if !supported {
             return Ok(None);
@@ -129,11 +223,11 @@ impl Adapter {
             if session.active.is_some() {
                 return Err(error("Wait for the current turn before saving defaults"));
             }
+            let manual = ManualEffort::for_session(session);
             if session.config_value("model") != text(params, "model")
                 || session.config_value("provider") != text(params, "provider")
                 || (!clear
-                    && (session.config_value("thinking_effort") != value
-                        || !offered(&session.config, &value)))
+                    && (current(session, manual) != value || !accepts(session, manual, &value)))
             {
                 return Err(error(
                     "Model options changed. Review the current options before saving",
@@ -164,6 +258,34 @@ impl Adapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn v117_manual_bedrock_effort_preserves_exact_responses_payload() {
+        use goose_provider_types::formats::openai_responses::create_responses_request;
+
+        let model = "us.openai.gpt-future-fixture";
+        for params in [
+            BTreeMap::new(),
+            BTreeMap::from([("reasoning".into(), json!({"effort":"low","summary":"auto"}))]),
+        ] {
+            let mut config =
+                ModelConfig::new(model).with_merged_request_params(params.into_iter().collect());
+            let effort = json!("xhigh");
+            assert!(ManualEffort::Responses.accepts(&effort));
+            set_responses_effort(&mut config, &effort);
+            let request = create_responses_request(&config, "fixture", &[], &[]).unwrap();
+            assert_eq!(request["model"], model);
+            assert_eq!(request["reasoning"]["effort"], effort);
+            assert_eq!(request["reasoning"]["summary"], "auto");
+            assert_eq!(
+                ManualEffort::Responses.saved(&config).as_deref(),
+                Some("xhigh")
+            );
+        }
+        assert!(!ManualEffort::Responses.accepts(&json!("high\n")));
+        assert!(ManualEffort::Goose.accepts(&json!("high")));
+        assert!(!ManualEffort::Goose.accepts(&json!("unknown")));
+    }
     #[test]
     fn v83_clearing_flow_default_preserves_other_colon_model_ids() {
         let directory = tempfile::tempdir().unwrap();
@@ -230,11 +352,15 @@ mod tests {
     }
     #[test]
     fn v39_effort_defaults_require_values_advertised_by_this_session() {
-        let options =
-            vec![json!({"id":"thinking_effort", "options":[{"value":"low"},{"value":"high"}]})];
-        assert!(offered(&options, "high"));
-        assert!(!offered(&options, "arbitrary"));
-        assert!(!offered(&[], "high"));
+        let session = Session {
+            config: vec![
+                json!({"id":"thinking_effort", "options":[{"value":"low"},{"value":"high"}]}),
+            ],
+            ..Session::default()
+        };
+        assert!(accepts(&session, None, "high"));
+        assert!(!accepts(&session, None, "arbitrary"));
+        assert!(!accepts(&Session::default(), None, "high"));
     }
 
     #[test]

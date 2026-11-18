@@ -8,6 +8,9 @@ export struct GooseOption {
     names: [string],
     values: [string],
     selected: int,
+    current: string,
+    manual: bool,
+    goose-effort: bool,
 }
 export struct GooseSetupField {
     key: string,
@@ -27,6 +30,8 @@ export global GooseState {
     in property <bool> effort-available;
     in property <string> effort-context;
     in property <string> effort-status;
+    in property <string> applied-effort;
+    in-out property <string> custom-effort;
     callback save-effort-default(clear: bool);
     in-out property <string> custom-model;
     in-out property <string> cheap-name: "Bedrock Luna";
@@ -79,13 +84,32 @@ export component GooseControls inherits Rectangle {
                         visible: false;
                         for name in option.names: Text { text: name; font-size: Theme.font-size; }
                     }
-                    ComboBox {
+                    if !option.manual: ComboBox {
                         x: 118px; y: 0px;
                         width: min(max(0px, parent.width - 118px), option-size.preferred-width + 48px);
                         model: option.names;
                         current-index: option.selected;
                         enabled: !GooseState.busy && !GooseState.changing && (option.values.length > 1 || option.selected < 0);
                         selected(value) => { GooseState.choose(option.id, option.values[self.current-index]); }
+                    }
+                    if option.manual: HorizontalLayout {
+                        x: 118px; y: 0px;
+                        width: min(max(0px, parent.width - 118px), 360px);
+                        spacing: Theme.pad-s;
+                        LineEdit {
+                            text <=> GooseState.custom-effort;
+                            placeholder-text: option.goose-effort ? "Enter effort (e.g. high)" : "Enter provider effort";
+                            enabled: !GooseState.busy && !GooseState.changing;
+                            accepted => {
+                                if self.text != "" { GooseState.choose(option.id, self.text); }
+                            }
+                        }
+                        FlatButton {
+                            horizontal-stretch: 0;
+                            text: "Use effort";
+                            enabled: !GooseState.busy && !GooseState.changing && GooseState.custom-effort != "";
+                            clicked => { GooseState.choose(option.id, GooseState.custom-effort); }
+                        }
                     }
                 }
                 HorizontalLayout {

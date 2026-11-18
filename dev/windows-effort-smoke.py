@@ -17,6 +17,8 @@ env = provider.environment(out)
 env['FASTROCK_WEBHOOK_BIND'] = '127.0.0.1:0'
 OPUS = 'us.anthropic.claude-opus-5-5-v1:0'
 SONNET = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'
+PROFILE = 'arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/abc123def456'
+PROFILE_DRAFT = 'Custom Bedrock profile restart fixture'
 config = out/'goose/config/config.yaml'
 value = json.loads(config.read_text(encoding='utf-8'))
 value.update(GOOSE_MODEL=OPUS, CUSTOM_SETTING='preserved')
@@ -34,6 +36,8 @@ def effort(name):
     state = read(name)
     assert not state['sessionChanging'], state
     return next(o['current'] for o in state['sessionOptions'] if o['id']=='thinking_effort')
+def manual(name):
+    return next(o['manual'] for o in read(name)['sessionOptions'] if o['id']=='thinking_effort')
 def new(): return [{'new_thread':str(out/'project')}, {'wait_idle':30000}, *settled()]
 def run(name, steps):
     script = out/(name+'-steps.json')
@@ -72,6 +76,23 @@ try:
     assert 'cleared' in read('cleared')['effortStatus'],read('cleared')
     assert effort('after-clear')==effort('initial'),read('after-clear')
     assert effort('other-default-retained')=='medium',read('other-default-retained')
+    peak = max(peak, run('custom-profile', [{'wait_ready':30000}, {'resize':[1440,1100]}, *new(),
+        {'click_text':f'{OPUS}  ▾'}, *settled(), *choose('model',PROFILE), *dump('profile-entry'),
+        control('custom-effort','high'), {'click_text':'Use effort'}, {'wait':100}, *settled(),
+        {'click_text':'Save effort default'}, {'wait':100}, *dump('profile-saved'),
+        *choose('thinking_effort','invalid-level'), *dump('profile-rejected'),
+        {'composer':['type',PROFILE_DRAFT]}, {'wait':400},
+        {'sidebar':['dump',str(out/'profile-tabs.json')]}, {'quit':True}]))
+    assert manual('profile-entry') and not manual('initial'),read('profile-entry')
+    assert effort('profile-saved')=='high' and 'saved for this provider/model' in read('profile-saved')['effortStatus'],read('profile-saved')
+    assert effort('profile-rejected')=='high' and read('profile-rejected')['sessionError'],read('profile-rejected')
+    profile_id, = (chat['id'] for chat in read('profile-tabs')['navigation']['openChats']
+                   if chat['draft']==PROFILE_DRAFT)
+    peak = max(peak, run('profile-restart', [{'wait_ready':30000}, {'wait':1000}, {'resume':profile_id},
+        {'wait_idle':30000}, {'wait':400}, {'click_text':'Model options  ▾'}, *settled(), *dump('profile-restored'),
+        *new(), *choose('model',PROFILE), *dump('profile-new-default'), {'quit':True}]))
+    assert manual('profile-restored') and effort('profile-restored')=='high',read('profile-restored')
+    assert effort('profile-new-default')=='high',read('profile-new-default')
     assert 'preserved' in config.read_text(encoding='utf-8')
     assert secrets.read_bytes()==original_secrets
     ordinary = [r for r in provider.requests if not r['summary']]
@@ -81,7 +102,7 @@ try:
     receipt=dict(result='PASS',binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_process_bytes=peak,
                  native_save_control=True,per_model_defaults=True,new_session_and_switch=True,
                  restored_effort_preserved=True,unsupported_choice_rejected=True,clear_is_scoped=True,
-                 original_credentials_preserved=True)
+                 original_credentials_preserved=True, manual_bedrock_profile=True)
     (out/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8')
     print('PASS: saved Goose effort defaults, model switching, restart and scoped clear',flush=True)
 finally:

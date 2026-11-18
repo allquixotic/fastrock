@@ -68,6 +68,14 @@ pub(super) fn ultrafast(provider: &str, model: &str) -> bool {
         .read()
         .is_ok_and(|s| s.routes.get(provider).is_some_and(|r| r.ultrafast(model)))
 }
+pub(super) fn bedrock_responses(provider: &str) -> bool {
+    SNAPSHOT.read().is_ok_and(|snapshot| {
+        snapshot
+            .routes
+            .get(provider)
+            .is_some_and(super::speed::Route::bedrock_responses)
+    })
+}
 pub(super) fn choices() -> Vec<(String, String)> {
     let mut choices = vec![
         ("aws_bedrock".into(), "Bedrock".into()),

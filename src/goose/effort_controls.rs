@@ -28,7 +28,7 @@ impl AppController {
             options
                 .iter()
                 .find(|o| o.id == name)
-                .and_then(|o| o.values.row_data(o.selected as usize))
+                .map(|o| o.current)
                 .unwrap_or_default()
                 .to_string()
         };

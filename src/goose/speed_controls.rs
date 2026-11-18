@@ -1,3 +1,4 @@
+use super::effort_defaults::ManualEffort;
 use super::speed::{change, option, tier};
 use super::{Adapter, Reply, Session, error};
 use serde_json::{Value, json};
@@ -12,6 +13,10 @@ impl Adapter {
         }
         let mut options = super::provider_policy::visible_options(session.config.clone());
         options.retain(|o| o["id"] != "speed");
+        if let Some(manual) = ManualEffort::for_session(session) {
+            options.retain(|o| o["id"] != "thinking_effort");
+            options.push(manual.visible(session));
+        }
         options.push(option(
             session.config_value("provider"),
             session.config_value("model"),
@@ -27,7 +32,7 @@ impl Adapter {
         });
         options
     }
-    pub(super) async fn refresh_speed(
+    pub(super) async fn refresh_model_settings(
         &self,
         id: &str,
     ) -> Result<(), codex_app_server_protocol::JSONRPCErrorError> {
@@ -38,9 +43,15 @@ impl Adapter {
             .get_session(id, false)
             .await
             .map_err(|_| error("Could not read saved model settings"))?;
-        let value = persisted.model_config.as_ref().and_then(tier);
         if let Some(s) = self.sessions.lock().await.get_mut(id) {
-            s.service_tier = value;
+            s.service_tier = persisted.model_config.as_ref().and_then(tier);
+            s.manual_effort = persisted
+                .provider_name
+                .zip(persisted.model_config)
+                .and_then(|(provider, model)| {
+                    let value = ManualEffort::for_session(s)?.saved(&model)?;
+                    Some((provider, model.model_name, value))
+                });
             self.config_event(id, s)?;
         }
         Ok(())
@@ -64,7 +75,7 @@ impl Adapter {
             .apply()
             .await
             .map_err(|_| error("Could not save speed; previous setting retained"))?;
-        self.refresh_speed(id).await?;
+        self.refresh_model_settings(id).await?;
         let sessions = self.sessions.lock().await;
         let s = sessions
             .get(id)

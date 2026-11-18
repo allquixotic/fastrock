@@ -5,6 +5,7 @@ Fastrock 0.4.0: stable T3 UI/orchestration in native Slint/Rust, unmodified embe
 Broader GUI contract: repository `GUI.md`.
 
 ## §C CONSTRAINTS
+- 2026-11-18 explicit stable 0.5.5 authorized: restore editable Bedrock effort for inference profiles, signed Windows x64 CI release, guarded games benchmark, and Mac compile-only.
 - 2026-11-17 explicit stable 0.5.4 authorized: MAI Code 2 Flash through Foundry project with Azure CLI SSO plus GPT-6.2 Sol and GPT-6.2 Astra through Bedrock; signed Windows x64 CI release and Mac compile-only.
 - 2026-11-16 explicit stable 0.5.3 authorized: same as 0.5.2, unmodified upstream Goose 1.59.2 at `9da692fde8ac69ec385b5e7d68b92cc7101a509a`; retain vwork 0.4.2. Follow-up Windows/AVD open-draft save failure repair included. Commit/push main, signed Windows x64 ZIP through CI after verification; Mac compile-only. Games stopped; retain 0.5.2 verification scope without claiming games acceptance or benchmark.
 - 2026-11-13 explicit stable 0.5.2 authorized: embedded vwork 0.4.2 prices temporary copies by change (shared history packs by hard link, packed refs, metadata-filled index, pooled trees, rename release). Commit to main, micro bump, signed Windows x64 ZIP through CI; Mac compile-only. Games VMs stopped: no games benchmark or native acceptance claimed; Windows evidence is upstream Windows CI plus the signed-release Windows test job.
@@ -273,6 +274,8 @@ V115: Explicit Bedrock GPT-6.2 IDs ! accepted independent of pinned catalog. Run
 
 V116: Native profile fixtures ! allow queued form reset after New or Edit to finish before entering values. Verify Foundry and direct profiles against signed Windows executable.
 
+V117: Bedrock effort with multiple Goose choices ! retain picker. No usable choices ! offer native text entry and preserve committed effort across restart and per-profile defaults. Built-in Bedrock ! validate through Goose vocabulary; named Bedrock Responses ! forward exact typed effort. Preserve exact model ID and route. Verify `v117_*`, signed effort and model-options fixtures.
+
 ## §T TASKS
 id|status|task|cites
 T77|x|Update direct dependencies to latest stable; adapt unchanged Goose 1.58.0 public services, preserve credentials/storage/provider routes and Slint patches|V38,V39,V95,V103,V104,V106,I.goose,I.vwork
@@ -375,6 +378,9 @@ T84|x|Pin upstream afec4b2 (vwork 0.4.2): shared temporary history, metadata reu
 T85|x|Release 0.5.3 with unmodified Goose 1.59.2 and Windows atomic draft-save retry/diagnostics; vwork and all other locked dependencies unchanged. Mac compile and Windows all-targets check passed; signed CI 43895021538 passed 872 Rust tests including three real lock/readonly regressions, 43 native cases plus migration/catalog/scroll. Latest stable ZIP published; public checksums, exact binary/signing receipts and online/bundled provenance verified. Games stopped and work AVD cause unconfirmed; docs/benchmarks/053-release-ci-2026-11-16.json|V113,V112,V23,V39,V45,V46,I.goose,I.lifecycle,I.distribution
 T86|x|Native MAI Code 2 Flash profile uses Foundry project Responses and Azure CLI SSO. Four Rust regressions plus native profile save/restart, fake CLI and direct-provider compatibility passed on games; corrected Foundry reset ordering passed again after CI caught race. Mac compiled. Document preview and US compute setup|V38,V39,V59,V89,V114,V116,I.goose
 T87|x|GPT-6.2 Astra/Sol exact IDs passed native model-options and embedded Bedrock Runtime/Responses HTTP fixtures on games. Full guarded 1,000/eight/10,000 comparison against 0.3.4 passed. docs/benchmarks/054-games-2026-11-17.json|V38,V39,V45,V115,I.goose,I.distribution
+T88|x|Add manual Bedrock effort entry, validation, per-profile defaults, and request-format coverage. Built-in Converse still depends on Goose's serializer for model-specific effort fields|V39,V117,I.goose
+
+0.5.5 development acceptance: Windows reproduced the off-only profile in 0.5.4. Candidate passed native effort and model-options fixtures and the exact Responses payload regression. Guarded games comparison against 0.3.4 passed at 1,000 chats, eight streams and 10,000 messages. Mac compiled. docs/benchmarks/055-games-2026-11-18.json.
 
 0.5.4 release acceptance: signed CI 44181235729 for `v0.5.4+build.1` passed 876 Rust tests, 44 native cases, migration, catalog and scroll. Windows publisher/timestamp, published ZIP and asset digests, binary match and online/bundled provenance verified. Mac compile-only. Foundry and Bedrock inference verified with local fixtures. docs/benchmarks/054-release-ci-2026-11-17.json.
 
@@ -987,3 +993,5 @@ B320|2026-11-13|Each temporary copy re-encoded all Git history through libgit2 P
 B321|2026-11-13|0.5.2 release commit extended the version allowlist but not the workflow's Mac-skip condition; after Windows publication a Mac signing job queued for a runner that must not be started|V112; cancelled the queued job before any signing runner existed, added 0.5.2 to the condition, policy test binds the condition to authorized versions
 B322|2026-11-16|Windows/AVD user reports open-chat draft saves denied at startup/runtime; shared atomic writer kept temporary handle open and failed on first denied replacement, without file/stage context. Exact work-profile cause remains unconfirmed|V113; close handle, bounded retry for OS 5/32/33, preserve previous drafts on persistent denial; path/stage/OS diagnostics and real Windows locked/readonly-file regressions
 B323|2026-11-17|Foundry native fixture entered profile fields before queued New callback cleared the form on signed CI 44177408438; save saw empty name|V116; settle queued reset as in direct-profile fixture, verify fresh stable build tag
+B324|2026-11-18|Unknown Bedrock profile ID yields off-only Goose capability; Fastrock disables single-choice dropdown and rejects unlisted effort|V117; use manual entry and persist through Goose public APIs, retain provider dropdown when choices exist
+B325|2026-11-18|Bedrock effort regression fixture picked last open tab after restore reordered tabs, resumed a different conversation|V117; identify exact profile conversation by fixture draft marker

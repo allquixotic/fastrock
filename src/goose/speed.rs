@@ -9,10 +9,8 @@ pub(super) struct Route {
     pub path: String,
 }
 impl Route {
-    pub fn ultrafast(&self, model: &str) -> bool {
-        let Ok(url) = url::Url::parse(&self.url) else {
-            return false;
-        };
+    fn responses_url(&self) -> Option<url::Url> {
+        let url = url::Url::parse(&self.url).ok()?;
         if url.scheme() != "https"
             || !url.username().is_empty()
             || url.password().is_some()
@@ -21,8 +19,29 @@ impl Route {
             || url.fragment().is_some()
             || self.path.trim_matches('/') != "openai/v1/responses"
         {
-            return false;
+            return None;
         }
+        Some(url)
+    }
+    pub fn bedrock_responses(&self) -> bool {
+        self.responses_url().is_some_and(|url| {
+            let host = url.host_str().unwrap_or_default();
+            [
+                ("bedrock-runtime.", ".amazonaws.com"),
+                ("bedrock-mantle.", ".api.aws"),
+            ]
+            .iter()
+            .any(|(prefix, suffix)| {
+                host.strip_prefix(prefix)
+                    .and_then(|host| host.strip_suffix(suffix))
+                    .is_some_and(|region| !region.is_empty() && !region.contains('.'))
+            })
+        })
+    }
+    pub fn ultrafast(&self, model: &str) -> bool {
+        let Some(url) = self.responses_url() else {
+            return false;
+        };
         let host = url.host_str().unwrap_or_default();
         let supported = |m: &str| matches!(m, "openai.gpt-6.1-sol" | "openai.gpt-6-astra");
         if host == "bedrock-mantle.us-east-1.api.aws" {

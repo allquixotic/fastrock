@@ -160,6 +160,7 @@ impl AppController {
             "choose" => state.invoke_choose(arg(1).into(), arg(2).into()),
             "save-effort" => state.invoke_save_effort_default(false),
             "custom-model" => state.set_custom_model(arg(1).into()),
+            "custom-effort" => state.set_custom_effort(arg(1).into()),
             "clear-effort" => state.invoke_save_effort_default(true),
             "dump" => {
                 let value = serde_json::json!({"loaded":state.get_setup_loaded(), "busy":state.get_setup_loading(),
@@ -172,7 +173,7 @@ impl AppController {
                     "threadError":self.active_thread_index().and_then(|i|self.thread_tab(i)).and_then(|t|t.last_error.as_deref()),
                     "controlGeometry":self.model_controls_geometry_for_test(),
                     "sessionOptions":state.get_options().iter().map(|option| serde_json::json!({"id":option.id.as_str(),
-                        "current":option.values.row_data(option.selected as usize).map(|v|v.to_string()),
+                        "current":option.current.as_str(), "manual":option.manual,
                         "values":option.values.iter().map(|v|v.to_string()).collect::<Vec<_>>()})).collect::<Vec<_>>()});
                 let path = std::path::PathBuf::from(arg(1));
                 self.backend.spawn(async move {

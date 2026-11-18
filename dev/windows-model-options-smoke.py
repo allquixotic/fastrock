@@ -19,6 +19,7 @@ env.update(FASTROCK_WEBHOOK_BIND='127.0.0.1:0', HTTPS_PROXY=fixture.endpoint, HT
            https_proxy=fixture.endpoint, http_proxy=fixture.endpoint, FASTROCK_V89_KEY='fixture', FASTROCK_V89_BLANK='   ')
 SOL, LUNA = 'us.openai.gpt-6.1-sol', 'us.openai.gpt-6-luna'
 SOL_62, ASTRA_62 = 'us.openai.gpt-6.2-sol', 'us.openai.gpt-6.2-astra'
+FUTURE = 'us.openai.gpt-future-fixture'
 custom = out/'goose/config/custom_providers'
 custom.mkdir()
 marker = out/'helper-must-not-run.txt'
@@ -105,13 +106,22 @@ try:
     assert option('luna','speed')['values']==['default'] and option('luna','speed')['current']=='default',read('luna')
     assert 'not supported' in read('rejected')['sessionError'],read('rejected')
     assert option('reset','speed')['current']=='default'
+    peak=max(peak,run('manual',[{'wait_ready':30000},{'resize':[1440,1100]},*new(),
+        {'click_text':SOL+'  ▾'},*settled(),*choose('provider','custom_bedrock_sol'),
+        *choose('model',FUTURE),*dump('manual-entry'),
+        ctl('custom-effort','xhigh'),{'click_text':'Use effort'},{'wait':100},*dump('manual-applied'),
+        *choose('model',SOL),*dump('manual-reset'),{'quit':True}]))
+    assert option('manual-entry','thinking_effort')['manual'], read('manual-entry')
+    assert option('manual-applied','thinking_effort')['current']=='xhigh', read('manual-applied')
+    assert option('manual-applied','model')['current']==FUTURE, read('manual-applied')
+    assert not option('manual-reset','thinking_effort')['manual'], read('manual-reset')
     assert not marker.exists(),'Opening provider options ran a credential helper'
     assert all(path.read_bytes()==data for path,data in original.items()),'Existing provider configuration changed'
     assert not fixture.requests and not fixture.errors,(fixture.requests,fixture.errors)
     receipt=dict(result='PASS',binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),peak_process_bytes=peak,
         configured_only=True,no_helper_probe=True,native_speed_click=True,per_session=True,restart=True,
         model_switch_reset=True,unsupported_rejected=True,compact_bounds=True,branding_removed=True,
-        exact_bedrock_gpt_62_ids=True)
+        exact_bedrock_gpt_62_ids=True, manual_bedrock_responses_effort=True)
     (out/'acceptance.json').write_text(json.dumps(receipt,indent=2)+'\n')
     print('PASS: configured providers, compact native controls and persisted speed',flush=True)
 finally:

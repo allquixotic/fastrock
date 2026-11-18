@@ -33,6 +33,7 @@ pub(super) struct Session {
     pub info: Value,
     pub config: Vec<Value>,
     pub service_tier: Option<String>,
+    pub manual_effort: Option<(String, String, String)>,
     pub turns: fastrock_workspaces::scrollback::History,
     pub active: Option<String>,
     pub compacting: bool,

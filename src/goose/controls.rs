@@ -72,6 +72,9 @@ impl AppController {
                 GooseOption {
                     id: super::text(o, "id").into(),
                     title: super::text(o, "name").into(),
+                    current: super::text(o, "currentValue").into(),
+                    manual: o["manual"] == true,
+                    goose_effort: o["gooseEffort"] == true,
                     selected: values
                         .iter()
                         .position(|v| v["value"] == o["currentValue"])
@@ -113,14 +116,20 @@ impl AppController {
             "{}\n{provider}\n{model}",
             thread.and_then(|t| t.thread_id.as_deref()).unwrap_or("")
         );
-        if state.get_effort_context() != context {
+        let context_changed = state.get_effort_context() != context;
+        if context_changed {
             state.set_effort_context(context.into());
             state.set_effort_status("".into());
             state.set_custom_model(model.into());
         }
+        let effort = rows.iter().find(|row| row.id == "thinking_effort");
+        let applied = effort.map(|row| row.current.clone()).unwrap_or_default();
+        if context_changed || state.get_applied_effort() != applied {
+            state.set_applied_effort(applied.clone());
+            state.set_custom_effort(applied);
+        }
         state.set_effort_available(
-            rows.iter()
-                .any(|r| r.id == "thinking_effort" && r.selected >= 0),
+            effort.is_some_and(|row| row.selected >= 0 || (row.manual && !row.current.is_empty())),
         );
         state.set_options(ModelRc::new(VecModel::from(rows)));
     }

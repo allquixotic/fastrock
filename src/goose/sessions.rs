@@ -200,8 +200,8 @@ impl Adapter {
                 self.set_config(id, "model", &json!(model)).await?;
             }
         }
+        self.refresh_model_settings(id).await?;
         self.apply_effort_default(id).await?;
-        self.refresh_speed(id).await?;
         let result = self
             .sessions
             .lock()
@@ -449,7 +449,7 @@ impl Adapter {
             s.config = config_options(&response);
             drop(sessions);
             step(Phase::RestoreSettings, self.restrict_native_delegation(id)).await?;
-            step(Phase::RestoreSettings, self.refresh_speed(id)).await?;
+            step(Phase::RestoreSettings, self.refresh_model_settings(id)).await?;
             let mut sessions = self.sessions.lock().await;
             let s = sessions
                 .get_mut(id)
@@ -542,33 +542,77 @@ impl Adapter {
     }
 
     pub(super) async fn set_config_raw(&self, id: &str, config_id: &str, value: &Value) -> Reply {
+        use super::effort_defaults::{ManualEffort, set_responses_effort};
         if self.embedded_runtime && config_id == "provider" {
             let requested = value.as_str().ok_or_else(|| error("Choose a provider"))?;
             super::provider_policy::selected(Some(requested.to_owned()))
                 .await
                 .map_err(|e| error(e.to_string()))?;
         }
-        {
+        let manual = {
             let sessions = self.sessions.lock().await;
             let s = sessions
                 .get(id)
                 .ok_or_else(|| error("Session unavailable"))?;
-            let option = s
-                .config
-                .iter()
-                .find(|o| o["id"] == config_id)
-                .ok_or_else(|| unsupported(config_id))?;
-            if self.embedded_runtime && config_id == "model" {
+            let manual = if self.embedded_runtime && config_id == "thinking_effort" {
+                ManualEffort::for_session(s)
+            } else {
+                None
+            };
+            if let Some(manual) = manual {
+                if !manual.accepts(value) {
+                    return Err(error(match manual {
+                        ManualEffort::Goose => {
+                            "Enter a Goose effort value: off, low, medium, high, or max"
+                        }
+                        ManualEffort::Responses => {
+                            "Enter a reasoning effort of at most 1024 bytes without control characters"
+                        }
+                    }));
+                }
+            } else if self.embedded_runtime && config_id == "model" {
                 if !valid_model_id(value) {
                     return Err(error(
                         "Enter a model ID of at most 1024 bytes without control characters",
                     ));
                 }
-            } else if !option_values(option).iter().any(|o| o["value"] == *value) {
-                return Err(error(format!(
-                    "The provider has not offered this {config_id} value for this session"
-                )));
+            } else {
+                let option = s
+                    .config
+                    .iter()
+                    .find(|o| o["id"] == config_id)
+                    .ok_or_else(|| unsupported(config_id))?;
+                if !option_values(option).iter().any(|o| o["value"] == *value) {
+                    return Err(error(format!(
+                        "The provider has not offered this {config_id} value for this session"
+                    )));
+                }
             }
+            manual
+        };
+        if manual == Some(ManualEffort::Responses) {
+            // Goose's Responses formatter supports an exact effort string via
+            // the public per-session ModelConfig used for the next turn.
+            let manager = goose_runtime::session::SessionManager::instance();
+            let mut model = manager
+                .get_session(id, false)
+                .await
+                .map_err(|_| error("Could not read saved model settings"))?
+                .model_config
+                .ok_or_else(|| error("Select a model before changing effort"))?;
+            set_responses_effort(&mut model, value);
+            manager
+                .update(id)
+                .model_config(model)
+                .apply()
+                .await
+                .map_err(|_| error("Could not save reasoning effort"))?;
+            self.refresh_model_settings(id).await?;
+            let sessions = self.sessions.lock().await;
+            let session = sessions
+                .get(id)
+                .ok_or_else(|| error("Session unavailable"))?;
+            return Ok(json!({"configOptions":self.visible_config(session)}));
         }
         let mut result = self
             .rpc
@@ -582,7 +626,7 @@ impl Adapter {
             self.config_event(id, s)?;
         }
         if self.embedded_runtime {
-            self.refresh_speed(id).await?;
+            self.refresh_model_settings(id).await?;
             if let Some(s) = self.sessions.lock().await.get(id) {
                 result["configOptions"] = json!(self.visible_config(s));
             }

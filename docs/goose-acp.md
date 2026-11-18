@@ -1,4 +1,4 @@
-# Embedded Goose in Fastrock 0.5.4
+# Embedded Goose in Fastrock 0.5.5
 
 Goose 1.59.2 is pinned at `9da692fde8ac69ec385b5e7d68b92cc7101a509a`.
 Its source is unchanged. Fastrock calls the public `StateMachineServices`, `AcpConnection` and `serve`
@@ -38,7 +38,8 @@ Fastrock permits `aws_bedrock`, `openai`, `anthropic`, and supported named
 profiles, including Microsoft Foundry. It checks creation,
 restoration and switching before dispatch because Goose's ACP provider factory
 does not cover every internal session path. Native provider choices follow the
-same scope; model and reasoning choices still come from Goose. Rejected provider
+same scope. Model and reasoning choices come from Goose, with manual Bedrock
+effort entry when the model has no usable choices. Rejected provider
 selections preserve existing settings and history. The default alias retains the
 user's saved model, rather than substituting the provider registry's default.
 Existing Goose configuration and credential entries remain authoritative. Codex and remote
@@ -53,6 +54,14 @@ configuration, and rejects a stale form if another window changed these values.
 Blank optional fields remove the saved override. Quit and restart Fastrock after
 saving; environment overrides still apply and existing conversations retain their
 session configuration. AWS settings are shared across the embedded runtime.
+
+In **Model options → Thinking effort**, enter a value and select **Use effort**
+when Fastrock shows a text field. **Save effort default** remembers the applied
+value for new conversations on that exact provider and model ID. Named Bedrock
+Responses profiles send the exact value. Built-in Bedrock uses Goose's effort
+values and its model-specific request formatter. Goose 1.59.2 serializes
+Converse effort for recognized Claude IDs. Its Converse formatter has no
+effort field for GPT profiles or opaque application inference profile IDs.
 
 Settings → Schedules creates interval, local weekday/time, and one-time tasks
 from a workspace-bound conversation. Each occurrence uses that conversation's
@@ -168,8 +177,9 @@ Unchanged Goose currently has these integration limits:
   concurrent AWS credential/region profiles cannot be implemented by changing
   environment variables around requests; doing that would race. A supported
   per-provider construction API is needed for that degree of profile isolation.
-- ACP reasoning configuration accepts Goose's supported effort values. Arbitrary
-  custom reasoning strings are rejected by upstream and must not be advertised.
+- ACP reasoning configuration accepts Goose's effort vocabulary. Named Bedrock
+  Responses profiles can also use exact effort strings through Goose's public
+  model request parameters.
 - Public Goose secret setters can fall back to plaintext storage when the OS
   credential vault is unavailable. They expose no vault-only option. The new
   defaults form leaves existing credentials untouched. Named direct-provider

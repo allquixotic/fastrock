@@ -100,3 +100,8 @@ Flash through a Microsoft Foundry project using Azure CLI SSO. Microsoft
 documents only Flash for Foundry API access at launch. Signed Windows x64 ZIP
 through CI after verification, Mac compile-only.
 Same-session follow-up adds GPT-6.2 Sol and GPT-6.2 Astra via Amazon Bedrock.
+
+2026-11-18: user explicitly authorizes stable Fastrock 0.5.5 for manual
+reasoning effort when a Bedrock profile has no usable choices. Preserve
+profile IDs and use unmodified Goose. Signed Windows x64 ZIP through CI
+after verification, Mac compile-only, games benchmark and memory guards retained.
