@@ -5,6 +5,7 @@ Fastrock 0.4.0: stable T3 UI/orchestration in native Slint/Rust, unmodified embe
 Broader GUI contract: repository `GUI.md`.
 
 ## §C CONSTRAINTS
+- 2026-11-20 stable 0.5.6 authorized with unmodified Goose 1.60.2 and GPT-6.2 model tuning. Signed Windows x64 ZIP through CI, Mac compile-only, guarded games verification.
 - 2026-11-18 explicit stable 0.5.5 authorized: restore editable Bedrock effort for inference profiles, signed Windows x64 CI release, guarded games benchmark, and Mac compile-only.
 - 2026-11-17 explicit stable 0.5.4 authorized: MAI Code 2 Flash through Foundry project with Azure CLI SSO plus GPT-6.2 Sol and GPT-6.2 Astra through Bedrock; signed Windows x64 CI release and Mac compile-only.
 - 2026-11-16 explicit stable 0.5.3 authorized: same as 0.5.2, unmodified upstream Goose 1.59.2 at `9da692fde8ac69ec385b5e7d68b92cc7101a509a`; retain vwork 0.4.2. Follow-up Windows/AVD open-draft save failure repair included. Commit/push main, signed Windows x64 ZIP through CI after verification; Mac compile-only. Games stopped; retain 0.5.2 verification scope without claiming games acceptance or benchmark.
@@ -276,6 +277,8 @@ V116: Native profile fixtures ! allow queued form reset after New or Edit to fin
 
 V117: Bedrock effort with multiple Goose choices ! retain picker. No usable choices ! offer native text entry and preserve committed effort across restart and per-profile defaults. Built-in Bedrock ! validate through Goose vocabulary; named Bedrock Responses ! forward exact typed effort. Preserve exact model ID and route. Verify `v117_*`, signed effort and model-options fixtures.
 
+V118: GPT-6.2 Sol/Astra working defaults ! exact recognized IDs and OpenAI/Bedrock engines only; one stable named Goose prompt extra reconciled before foreground dispatch, including restored/forked sessions and model switches. Preserve base/user/recipe prompts, model parameters, effort defaults, permission and stop behavior; no automatic continuation or background-summary tuning. Verify `v118_*` and embedded Converse/Responses prompt fixture. Integration evidence does not establish live-model behavioral improvement.
+
 ## §T TASKS
 id|status|task|cites
 T77|x|Update direct dependencies to latest stable; adapt unchanged Goose 1.58.0 public services, preserve credentials/storage/provider routes and Slint patches|V38,V39,V95,V103,V104,V106,I.goose,I.vwork
@@ -379,6 +382,9 @@ T85|x|Release 0.5.3 with unmodified Goose 1.59.2 and Windows atomic draft-save r
 T86|x|Native MAI Code 2 Flash profile uses Foundry project Responses and Azure CLI SSO. Four Rust regressions plus native profile save/restart, fake CLI and direct-provider compatibility passed on games; corrected Foundry reset ordering passed again after CI caught race. Mac compiled. Document preview and US compute setup|V38,V39,V59,V89,V114,V116,I.goose
 T87|x|GPT-6.2 Astra/Sol exact IDs passed native model-options and embedded Bedrock Runtime/Responses HTTP fixtures on games. Full guarded 1,000/eight/10,000 comparison against 0.3.4 passed. docs/benchmarks/054-games-2026-11-17.json|V38,V39,V45,V115,I.goose,I.distribution
 T88|x|Add manual Bedrock effort entry, validation, per-profile defaults, and request-format coverage. Built-in Converse still depends on Goose's serializer for model-specific effort fields|V39,V117,I.goose
+T89|x|Release 0.5.6 with unmodified Goose 1.60.2 and model-specific GPT-6.2 working defaults. Windows identity and embedded Converse/Responses fixtures passed on games across model switches, restore and fork|V118,I.goose,I.distribution
+
+0.5.6 development acceptance: Mac compiled. Native model options, tools and hooks, context viewer, and guarded full-scale comparison against 0.3.4 passed on games. docs/benchmarks/056-games-2026-11-20.json.
 
 0.5.5 development acceptance: Windows reproduced the off-only profile in 0.5.4. Candidate passed native effort and model-options fixtures and the exact Responses payload regression. Guarded games comparison against 0.3.4 passed at 1,000 chats, eight streams and 10,000 messages. Mac compiled. docs/benchmarks/055-games-2026-11-18.json.
 

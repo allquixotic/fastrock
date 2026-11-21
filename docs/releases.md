@@ -1,3 +1,9 @@
+# Fastrock 0.5.6 stable
+
+Fastrock 0.5.6 embeds Goose 1.60.2. GPT-6.2 Sol and Astra receive working instructions for task completion, verification, progress updates, and final reporting on supported OpenAI and Bedrock profiles. Fastrock removes its instructions when the conversation switches to another model. Goose now opens legacy Chat sessions in Approve mode.
+
+[Windows x64 release](https://github.com/allquixotic/fastrock/releases/tag/v0.5.6) · [Model tuning and supported IDs](goose-acp.md#gpt-62-task-completion-defaults-056)
+
 # Fastrock 0.5.5 stable
 
 Fastrock 0.5.5 offers manual thinking effort for Bedrock profiles when Goose

@@ -13,6 +13,10 @@ mod embedded_router;
 mod memory;
 #[path = "../src/goose/memory_tool.rs"]
 mod memory_tool;
+#[path = "../src/goose/model_tuning.rs"]
+mod model_tuning;
+#[path = "fixtures/model_tuning.rs"]
+mod model_tuning_fixture;
 #[path = "../src/goose/summary_service.rs"]
 mod summary_service;
 #[path = "../src/goose/summary_worker.rs"]
@@ -326,6 +330,12 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
             body.get("toolConfig").is_none(),
             "Summary request exposed agent tools"
         );
+        ensure!(
+            !body
+                .to_string()
+                .contains("# Fastrock GPT-6.2 working defaults"),
+            "Agent tuning leaked into a background summary"
+        );
     }
     drop(requests);
     drop(worker);
@@ -338,6 +348,7 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
     drop(restarted);
     speed_fixture(captured.clone()).await?;
     gpt_62_bedrock_fixture(&provider, captured.clone()).await?;
+    model_tuning_fixture::run(captured.clone()).await?;
     http.abort();
     println!(
         "V38/V39/V40/V44: embedded Goose routes and sessions; cheap-model backfill, replacement, source preservation and restart passed (fixtures only)."

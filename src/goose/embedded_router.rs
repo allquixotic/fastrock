@@ -192,6 +192,17 @@ async fn run(stream: DuplexStream, state: Shared) -> Result<()> {
             .as_str()
             .unwrap_or_default()
             .to_owned();
+        if method == "session/prompt"
+            && super::model_tuning::sync(
+                &goose_runtime::session::SessionManager::instance(),
+                &session,
+            )
+            .await
+            .is_err()
+        {
+            send(&client, &json!({"jsonrpc":"2.0","id":value["id"],"error":{"code":-32603,"message":"Could not prepare model working instructions. No prompt was sent."}})).await?;
+            continue;
+        }
         let connection = if method.is_empty() {
             let answer = state
                 .lock()

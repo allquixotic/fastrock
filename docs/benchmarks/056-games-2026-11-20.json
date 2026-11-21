@@ -1,0 +1,265 @@
+{
+  "result": "PASS",
+  "version": "0.5.6",
+  "verified_at": "2026-11-21T04:50:01.650650+00:00",
+  "goose_version": "1.60.2",
+  "goose_commit": "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1",
+  "baseline_version": "0.3.4",
+  "baseline": {
+    "binary_sha256": "dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9",
+    "seed_sha256": "dbe0969f2dc70295be34bce56656785a1db46588a987d792132796c3c3dd8f08",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "external Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 2066036736,
+            "peak_app_bytes": 105979904,
+            "peak_tree_commit_bytes": 101138432
+          },
+          "app": {
+            "cap_bytes": 2047748096,
+            "peak_app_bytes": 207978496,
+            "peak_tree_commit_bytes": 245833728
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 1104.2,
+        "switch_dispatch_ms": [
+          0.9,
+          0.9,
+          0.8,
+          0.9,
+          0.9
+        ],
+        "frame": {
+          "p50_ms": 8.208,
+          "p95_ms": 11.288,
+          "p99_ms": 16.126
+        },
+        "render": {
+          "p50_ms": 6.636,
+          "p95_ms": 7.739,
+          "p99_ms": 14.473
+        },
+        "event_loop": {
+          "p50_ms": 16.866,
+          "p95_ms": 28.084,
+          "p99_ms": 33.102
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ],
+    "goose_sha256": "89d5849587586765fa335f664fac0a9ed0e466d0f3717dd609ca04ebdffa64e2"
+  },
+  "candidate": {
+    "binary_sha256": "601f4240c41e60a9345f3c49fe8568933041b65fbe3704d3d4b263b21325f033",
+    "seed_sha256": "dbe0969f2dc70295be34bce56656785a1db46588a987d792132796c3c3dd8f08",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 2028390400,
+            "peak_app_bytes": 111394816,
+            "peak_tree_commit_bytes": 106852352
+          },
+          "app": {
+            "cap_bytes": 1950414848,
+            "peak_app_bytes": 263958528,
+            "peak_tree_commit_bytes": 202608640
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 200.5,
+        "switch_dispatch_ms": [
+          0.4,
+          0.4,
+          0.4,
+          0.4,
+          0.4
+        ],
+        "frame": {
+          "p50_ms": 6.104,
+          "p95_ms": 10.848,
+          "p99_ms": 12.572
+        },
+        "render": {
+          "p50_ms": 4.507,
+          "p95_ms": 8.889,
+          "p99_ms": 10.377
+        },
+        "event_loop": {
+          "p50_ms": 16.482,
+          "p95_ms": 19.038,
+          "p99_ms": 26.505
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true,
+        "history_navigation": {
+          "first": {
+            "browsing": true,
+            "loading": false,
+            "start": 0,
+            "end": 100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 6.629099999999999,
+            "rows": 100,
+            "bytes": 285990
+          },
+          "middle": {
+            "browsing": true,
+            "loading": false,
+            "start": 5000,
+            "end": 5100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 5.254,
+            "rows": 100,
+            "bytes": 292500
+          },
+          "last": {
+            "browsing": true,
+            "loading": false,
+            "start": 9900,
+            "end": 10000,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 7.7741,
+            "rows": 100,
+            "bytes": 292569
+          },
+          "middle_frame": {
+            "p50_ms": 6.011,
+            "p95_ms": 8.803,
+            "p99_ms": 11.748
+          }
+        }
+      }
+    ]
+  },
+  "native": {
+    "model-options": {
+      "result": "PASS",
+      "binary_sha256": "601f4240c41e60a9345f3c49fe8568933041b65fbe3704d3d4b263b21325f033",
+      "peak_process_bytes": 118919168,
+      "configured_only": true,
+      "no_helper_probe": true,
+      "native_speed_click": true,
+      "per_session": true,
+      "restart": true,
+      "model_switch_reset": true,
+      "unsupported_rejected": true,
+      "compact_bounds": true,
+      "branding_removed": true,
+      "exact_bedrock_gpt_62_ids": true,
+      "manual_bedrock_responses_effort": true
+    },
+    "capabilities": {
+      "result": "PASS",
+      "binary_sha256": "601f4240c41e60a9345f3c49fe8568933041b65fbe3704d3d4b263b21325f033",
+      "peak_process_bytes": 159543296,
+      "native_extensions": true,
+      "custom_workspace_alias_protected": true,
+      "code_mode_tool_executed": true,
+      "tool_permissions_persisted": true,
+      "idle_mutation_guard": true,
+      "defaults_only_affect_new_chats": true,
+      "hook_validation_backup_execution": true,
+      "project_hooks_isolated": true,
+      "credentials_preserved": true,
+      "restart_no_replay": true
+    },
+    "context": {
+      "result": "PASS",
+      "binary_sha256": "601f4240c41e60a9345f3c49fe8568933041b65fbe3704d3d4b263b21325f033",
+      "peak_process_bytes": 165089280,
+      "native_report": true,
+      "previews": true,
+      "no_inference": true,
+      "thinking_opt_in": true,
+      "manual_expansion": true,
+      "export_preserved": true,
+      "persisted_restart": true,
+      "restored_lazy_activation": true,
+      "conversation_switch_clears_report": true
+    }
+  },
+  "tuning": {
+    "identity": "PASS",
+    "embedded_fixture": [
+      "V90: public session settings reached actual Responses HTTP payloads",
+      "V115: GPT-6.2 Sol and Astra reached Bedrock Converse and Responses with exact IDs",
+      "V118: GPT-6.2 prompts reached actual Converse/Responses requests; repeated turns, model switches, restore and fork preserved settings and did not continue completed turns",
+      "V38/V39/V40/V44: embedded Goose routes and sessions; cheap-model backfill, replacement, source preservation and restart passed (fixtures only)."
+    ],
+    "fixture_sha256": {
+      "embedded_goose.exe": "145837360e4f23f9cf64791ef62e83a0d47af1bc3fe1ae85c169940adb3488d0",
+      "codex_gui.exe": "5d3cf32cb8f19e6a695896907cf2cc5a416977254dd932c326f7309894679eb2"
+    }
+  },
+  "guards": {
+    "baseline": {
+      "cap_bytes": 2055501824,
+      "peak_tree_bytes": 275853312,
+      "elapsed_seconds": 40.38101369998185,
+      "exit_code": 0
+    },
+    "candidate": {
+      "cap_bytes": 2044717056,
+      "peak_tree_bytes": 233078784,
+      "elapsed_seconds": 45.80705800000578,
+      "exit_code": 0
+    },
+    "model-options": {
+      "cap_bytes": 1961121792,
+      "peak_tree_bytes": 170360832,
+      "elapsed_seconds": 13.886751300015021,
+      "exit_code": 0
+    },
+    "capabilities": {
+      "cap_bytes": 1962170368,
+      "peak_tree_bytes": 170192896,
+      "elapsed_seconds": 34.56278530001873,
+      "exit_code": 0
+    },
+    "context": {
+      "cap_bytes": 1961695232,
+      "peak_tree_bytes": 170156032,
+      "elapsed_seconds": 9.433182800014038,
+      "exit_code": 0
+    },
+    "model-identity": {
+      "cap_bytes": 1870698496,
+      "peak_tree_bytes": 9469952,
+      "elapsed_seconds": 1.422588400018867,
+      "exit_code": 0
+    },
+    "embedded": {
+      "cap_bytes": 1818036224,
+      "peak_tree_bytes": 68386816,
+      "elapsed_seconds": 2.9520691000507213,
+      "exit_code": 0
+    }
+  },
+  "macos": "Compiled only",
+  "inference": "Local HTTP fixtures"
+}

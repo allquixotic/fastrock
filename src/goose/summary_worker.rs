@@ -295,7 +295,7 @@ mod tests {
                     dir.path().to_owned(),
                     "Fixture".into(),
                     kind,
-                    goose_runtime::config::GooseMode::Chat,
+                    goose_runtime::config::GooseMode::Approve,
                 )
                 .await
                 .unwrap();

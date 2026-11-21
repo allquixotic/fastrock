@@ -20,6 +20,7 @@ mod id_reservation;
 pub(crate) mod latency;
 mod mcp;
 mod model;
+mod model_tuning;
 mod profile_controls;
 pub(crate) mod profiles;
 mod queue;
