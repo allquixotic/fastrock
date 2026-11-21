@@ -4,6 +4,10 @@ Fastrock 0.5.6 embeds Goose 1.60.2. GPT-6.2 Sol and Astra receive working instru
 
 [Windows x64 release](https://github.com/allquixotic/fastrock/releases/tag/v0.5.6) · [Model tuning and supported IDs](goose-acp.md#gpt-62-task-completion-defaults-056)
 
+CI passed 878 Windows Rust tests and 44 native acceptance cases on the signed executable. Windows verified the downloaded executable’s Authenticode signature and timestamp on games. The package checksum and both provenance attestations matched the release. [Signed release evidence](benchmarks/056-release-ci-2026-11-21.json).
+
+On games, both 0.5.6 and 0.3.4 sustained eight concurrent streams across 1,000 conversations and exported all 10,000 history messages. The model-tuning fixture verified prompt delivery, model switching, restore, and fork against local Converse and Responses endpoints. [Games benchmark and tuning evidence](benchmarks/056-games-2026-11-20.json).
+
 # Fastrock 0.5.5 stable
 
 Fastrock 0.5.5 offers manual thinking effort for Bedrock profiles when Goose

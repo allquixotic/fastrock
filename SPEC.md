@@ -386,6 +386,8 @@ T89|x|Release 0.5.6 with unmodified Goose 1.60.2 and model-specific GPT-6.2 work
 
 0.5.6 development acceptance: Mac compiled. Native model options, tools and hooks, context viewer, and guarded full-scale comparison against 0.3.4 passed on games. docs/benchmarks/056-games-2026-11-20.json.
 
+0.5.6 release acceptance: CI 44868012018 passed 878 Windows Rust tests, 44 signed native cases, migration, catalog and scroll. Public ZIP checksums, online and bundled attestations, and downloaded executable signature on games matched the tagged CI evidence. docs/benchmarks/056-release-ci-2026-11-21.json.
+
 0.5.5 development acceptance: Windows reproduced the off-only profile in 0.5.4. Candidate passed native effort and model-options fixtures and the exact Responses payload regression. Guarded games comparison against 0.3.4 passed at 1,000 chats, eight streams and 10,000 messages. Mac compiled. docs/benchmarks/055-games-2026-11-18.json.
 
 0.5.5 release acceptance: signed CI 44348660614 passed 877 Windows Rust tests, 44 signed native cases, migration, catalog and scroll. Public ZIP, signature and secure timestamp receipts, exact binary match, digests and online/bundled provenance verified. docs/benchmarks/055-release-ci-2026-11-18.json.
