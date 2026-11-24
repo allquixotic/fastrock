@@ -178,6 +178,25 @@ pub(super) async fn serve(stream: DuplexStream) {
     // provider credentials. Closing the pipe reaches the adapter's recovery UI.
     let _ = run(stream, state).await;
 }
+async fn prepare_prompt(id: &str, prompt: &mut Value, steer: bool) -> Result<(), &'static str> {
+    let prompt = prompt
+        .as_array_mut()
+        .ok_or("Prompt input must be an array.")?;
+    if steer && !prompt.iter().any(|part| part["type"] == "image") {
+        return Ok(());
+    }
+    let manager = goose_runtime::session::SessionManager::instance();
+    let session = manager
+        .get_session(id, false)
+        .await
+        .map_err(|_| "Could not read conversation settings.")?;
+    if !steer {
+        super::model_tuning::sync(&manager, &session)
+            .await
+            .map_err(|_| "Could not prepare model working instructions. No prompt was sent.")?;
+    }
+    super::image_prompts::prepare(&manager, &session, prompt, steer).await
+}
 async fn run(stream: DuplexStream, state: Shared) -> Result<()> {
     let (reader, writer) = tokio::io::split(stream);
     let (mut input, client) = streams(reader, writer);
@@ -192,16 +211,20 @@ async fn run(stream: DuplexStream, state: Shared) -> Result<()> {
             .as_str()
             .unwrap_or_default()
             .to_owned();
-        if method == "session/prompt"
-            && super::model_tuning::sync(
-                &goose_runtime::session::SessionManager::instance(),
+        if matches!(
+            method.as_str(),
+            "session/prompt" | "_goose/unstable/session/steer"
+        ) {
+            let result = prepare_prompt(
                 &session,
+                &mut value["params"]["prompt"],
+                method != "session/prompt",
             )
-            .await
-            .is_err()
-        {
-            send(&client, &json!({"jsonrpc":"2.0","id":value["id"],"error":{"code":-32603,"message":"Could not prepare model working instructions. No prompt was sent."}})).await?;
-            continue;
+            .await;
+            if let Err(message) = result {
+                send(&client, &json!({"jsonrpc":"2.0","id":value["id"],"error":{"code":-32603,"message":message}})).await?;
+                continue;
+            }
         }
         let connection = if method.is_empty() {
             let answer = state

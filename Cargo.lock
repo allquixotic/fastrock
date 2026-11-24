@@ -5208,6 +5208,7 @@ dependencies = [
  "futures",
  "git2",
  "goose",
+ "goose-agent",
  "goose-context-management",
  "goose-mcp",
  "goose-provider-types",

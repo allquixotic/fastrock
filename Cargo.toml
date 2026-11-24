@@ -58,6 +58,7 @@ futures = { workspace = true }
 # native tree-sitter ABI. Tools and code mode do not require that feature.
 goose-runtime = { package = "goose", git = "https://github.com/aaif-goose/goose", rev = "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1", default-features = false, features = ["aws-providers", "rustls-tls", "system-keyring", "code-mode"] }
 goose-mcp = { git = "https://github.com/aaif-goose/goose", rev = "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1", default-features = false, features = ["bundled-mcp", "rustls-tls"] }
+goose-agent = { git = "https://github.com/aaif-goose/goose", rev = "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1" }
 goose-context-management = { git = "https://github.com/aaif-goose/goose", rev = "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1" }
 goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1" }
 sha2 = "0.11.1"

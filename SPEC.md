@@ -279,6 +279,8 @@ V117: Bedrock effort with multiple Goose choices ! retain picker. No usable choi
 
 V118: GPT-6.2 Sol/Astra working defaults ! exact recognized IDs and OpenAI/Bedrock engines only; one stable named Goose prompt extra reconciled before foreground dispatch, including restored/forked sessions and model switches. Preserve base/user/recipe prompts, model parameters, effort defaults, permission and stop behavior; no automatic continuation or background-summary tuning. Verify `v118_*` and embedded Converse/Responses prompt fixture. Integration evidence does not establish live-model behavioral improvement.
 
+V119: Pasted images ! retain ordered pixel data through normal, queued and steered model input and slash-skill expansion. Known text-only models ! explicit error. Unknown deployment ! submit image to selected provider. Original slash invocation ! visible in saved history. Verify generated PNGs on provider wire.
+
 ## §T TASKS
 id|status|task|cites
 T77|x|Update direct dependencies to latest stable; adapt unchanged Goose 1.58.0 public services, preserve credentials/storage/provider routes and Slint patches|V38,V39,V95,V103,V104,V106,I.goose,I.vwork
@@ -1005,3 +1007,4 @@ B322|2026-11-16|Windows/AVD user reports open-chat draft saves denied at startup
 B323|2026-11-17|Foundry native fixture entered profile fields before queued New callback cleared the form on signed CI 44177408438; save saw empty name|V116; settle queued reset as in direct-profile fixture, verify fresh stable build tag
 B324|2026-11-18|Unknown Bedrock profile ID yields off-only Goose capability; Fastrock disables single-choice dropdown and rejects unlisted effort|V117; use manual entry and persist through Goose public APIs, retain provider dropdown when choices exist
 B325|2026-11-18|Bedrock effort regression fixture picked last open tab after restore reordered tabs, resumed a different conversation|V117; identify exact profile conversation by fixture draft marker
+B326|2026-11-24|Goose slash-skill expansion hid the kickoff images and OpenAI-compatible formatters omitted images for unlisted deployments|V119

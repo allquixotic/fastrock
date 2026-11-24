@@ -17,6 +17,7 @@ mod embedded_router;
 mod history;
 mod hooks;
 mod id_reservation;
+mod image_prompts;
 pub(crate) mod latency;
 mod mcp;
 mod model;

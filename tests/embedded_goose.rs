@@ -1,4 +1,6 @@
 //! Standalone fixture process: environment isolation precedes any runtime threads.
+#[path = "fixtures/acp_client.rs"]
+mod acp_client;
 #[path = "fixtures/benchmark_seed.rs"]
 mod benchmark_seed;
 #[path = "../src/goose/cheap_profile.rs"]
@@ -9,6 +11,10 @@ mod config_guard;
 mod embedded;
 #[path = "../src/goose/embedded_router.rs"]
 mod embedded_router;
+#[path = "fixtures/image_prompts.rs"]
+mod image_fixture;
+#[path = "../src/goose/image_prompts.rs"]
+mod image_prompts;
 #[path = "../src/goose/memory.rs"]
 mod memory;
 #[path = "../src/goose/memory_tool.rs"]
@@ -88,27 +94,60 @@ fn main() -> Result<()> {
 }
 
 async fn fixture(listener: std::net::TcpListener) -> Result<()> {
-    use axum::{Json, Router, extract::State, routing::post};
+    use axum::{
+        Json, Router,
+        extract::State,
+        response::{IntoResponse, Response},
+        routing::post,
+    };
     use std::sync::Arc;
     let captured = Arc::new(tokio::sync::Mutex::new(Vec::<(String, Value)>::new()));
     async fn respond(
         State(captured): State<Arc<tokio::sync::Mutex<Vec<(String, Value)>>>>,
         uri: axum::http::Uri,
         Json(body): Json<Value>,
-    ) -> Json<Value> {
+    ) -> Response {
         let model = body["model"].clone();
         captured.lock().await.push((uri.to_string(), body));
+        if uri.path().ends_with("/chat/completions") {
+            return Json(
+                json!({"id":"fixture-chat","model":model,"object":"chat.completion",
+                "choices":[{"index":0,"message":{"role":"assistant","content":"fixture reply"},"finish_reason":"stop"}],
+                "usage":{"prompt_tokens":2,"completion_tokens":2,"total_tokens":4}}),
+            ).into_response();
+        }
+        if uri.path().ends_with("/messages") {
+            let events = [
+                json!({"type":"message_start","message":{"id":"fixture-msg","type":"message","role":"assistant",
+                    "model":model,"content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":2,"output_tokens":0}}}),
+                json!({"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}),
+                json!({"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"fixture reply"}}),
+                json!({"type":"content_block_stop","index":0}),
+                json!({"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":2}}),
+                json!({"type":"message_stop"}),
+            ];
+            let data = events
+                .iter()
+                .map(|event| {
+                    format!(
+                        "event: {}\ndata: {event}\n\n",
+                        event["type"].as_str().unwrap()
+                    )
+                })
+                .collect::<String>();
+            return ([("content-type", "text/event-stream")], data).into_response();
+        }
         if uri.path() == "/openai/v1/responses" {
             return Json(
                 json!({"id":"fixture-response","object":"response","created_at":0,
                 "status":"completed","model":model,"output":[{"id":"fixture-message","type":"message","role":"assistant","status":"completed",
                 "content":[{"type":"output_text","text":"speed fixture reply","annotations":[]}]}],
                 "usage":{"input_tokens":2,"output_tokens":3,"total_tokens":5}}),
-            );
+            ).into_response();
         }
         Json(
             json!({"output":{"message":{"role":"assistant","content":[{"text":"fixture reply"}]}},"stopReason":"end_turn","usage":{"inputTokens":2,"outputTokens":2,"totalTokens":4},"metrics":{"latencyMs":1}}),
-        )
+        ).into_response()
     }
     let router = Router::new()
         .route("/{*path}", post(respond))
@@ -349,6 +388,7 @@ async fn fixture(listener: std::net::TcpListener) -> Result<()> {
     speed_fixture(captured.clone()).await?;
     gpt_62_bedrock_fixture(&provider, captured.clone()).await?;
     model_tuning_fixture::run(captured.clone()).await?;
+    image_fixture::v119_image_prompts(captured.clone()).await?;
     http.abort();
     println!(
         "V38/V39/V40/V44: embedded Goose routes and sessions; cheap-model backfill, replacement, source preservation and restart passed (fixtures only)."

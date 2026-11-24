@@ -1,89 +1,14 @@
 //! Exercise Fastrock's actual in-memory dispatch and unchanged Goose rendering.
+use super::acp_client::Client;
 use anyhow::{Context, Result, ensure};
 use goose_runtime::session::SessionManager;
 use serde_json::{Value, json};
 use std::sync::Arc;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, DuplexStream, ReadHalf, WriteHalf};
 
 const KEY: &str = "fastrock-gpt-6.2-work-policy";
 const MARKER: &str = "# Fastrock GPT-6.2 working defaults";
 const USER_EXTRA: &str = "Fixture user instructions: preserve this exact text.";
 const BASE: &str = "Fixture custom base prompt.";
-
-struct Client {
-    reader: BufReader<ReadHalf<DuplexStream>>,
-    writer: WriteHalf<DuplexStream>,
-    task: tokio::task::JoinHandle<()>,
-    next: u64,
-}
-impl Drop for Client {
-    fn drop(&mut self) {
-        self.task.abort();
-    }
-}
-impl Client {
-    async fn connect() -> Result<Self> {
-        let connection = super::embedded::connect().await?;
-        let mut client = Self {
-            reader: BufReader::new(connection.reader),
-            writer: connection.writer,
-            task: connection.task,
-            next: 0,
-        };
-        client
-            .call(
-                "initialize",
-                json!({"protocolVersion":1,"clientCapabilities":{},
-            "clientInfo":{"name":"model-tuning-fixture","version":"1"}}),
-            )
-            .await?;
-        Ok(client)
-    }
-
-    async fn call(&mut self, method: &str, params: Value) -> Result<Value> {
-        self.next += 1;
-        self.writer
-            .write_all(
-                format!(
-                    "{}\n",
-                    json!({"jsonrpc":"2.0","id":self.next,
-            "method":method,"params":params})
-                )
-                .as_bytes(),
-            )
-            .await?;
-        loop {
-            let mut line = String::new();
-            ensure!(
-                self.reader.read_line(&mut line).await? > 0,
-                "Runtime closed during {method}"
-            );
-            let reply: Value = serde_json::from_str(&line)?;
-            if reply["id"] == self.next {
-                ensure!(
-                    reply.get("error").is_none(),
-                    "{method} failed: {}",
-                    reply["error"]
-                );
-                return Ok(reply["result"].clone());
-            }
-            ensure!(
-                reply.get("id").is_none(),
-                "Unexpected runtime request: {reply}"
-            );
-        }
-    }
-
-    async fn model(&mut self, session: &str, model: &str) -> Result<()> {
-        self.call(
-            "session/set_config_option",
-            json!({"sessionId":session,
-            "configId":"model","value":model}),
-        )
-        .await?;
-        Ok(())
-    }
-}
 
 fn system_text(body: &Value) -> String {
     if let Some(system) = body["system"].as_array() {
@@ -138,8 +63,17 @@ async fn turn(
     let saved = manager.get_session(id, false).await?;
     ensure!(saved.system_prompt_override == before.system_prompt_override);
     ensure!(saved.system_prompt_extras["fixture-user"] == USER_EXTRA);
+    let mut expected = before.model_config;
+    // Image-capability preparation may opt an unlisted deployment into receiving
+    // pixels. Every other setting must still survive the whole dispatch.
+    if let Some(model) = &mut expected
+        && model.supports_vision.is_none()
+        && saved.model_config.as_ref().and_then(|m| m.supports_vision) == Some(true)
+    {
+        model.supports_vision = Some(true);
+    }
     ensure!(
-        serde_json::to_value(&saved.model_config)? == serde_json::to_value(&before.model_config)?,
+        serde_json::to_value(&saved.model_config)? == serde_json::to_value(&expected)?,
         "Tuning changed model, reasoning, verbosity, token limit or other request settings"
     );
     ensure!(saved.system_prompt_extras.contains_key(KEY) == tuned);
@@ -200,7 +134,7 @@ pub async fn run(captured: Arc<tokio::sync::Mutex<Vec<(String, Value)>>>) -> Res
         let extras = manager.get_session(id, false).await?.system_prompt_extras;
         // Repeated preparation must preserve insertion order and every byte of
         // the prompt prefix; it must not accumulate instructions per turn.
-        super::model_tuning::sync(&manager, id).await?;
+        super::model_tuning::sync(&manager, &manager.get_session(id, false).await?).await?;
         ensure!(
             manager
                 .get_session(id, false)
@@ -284,7 +218,8 @@ pub async fn run(captured: Arc<tokio::sync::Mutex<Vec<(String, Value)>>>) -> Res
         manager
             .set_system_prompt_extra(&session.id, KEY, Some("Inherited policy".into()))
             .await?;
-        super::model_tuning::sync(&manager, &session.id).await?;
+        super::model_tuning::sync(&manager, &manager.get_session(&session.id, false).await?)
+            .await?;
         let saved = manager.get_session(&session.id, false).await?;
         ensure!(saved.system_prompt_extras.len() == 1);
         ensure!(saved.system_prompt_extras["fixture-user"] == USER_EXTRA);

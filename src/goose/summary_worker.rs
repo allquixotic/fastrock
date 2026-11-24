@@ -40,7 +40,18 @@ impl Snapshot {
             return Ok(None);
         };
         let messages = conversation.messages_mut();
-        messages.retain(Message::is_user_visible);
+        messages.retain_mut(|message| {
+            if !message.is_user_visible() {
+                return false;
+            }
+            // A visible image turn can also carry agent-only slash-skill text.
+            message.content = message
+                .content
+                .iter()
+                .filter_map(MessageContent::user_visible_content)
+                .collect();
+            !message.content.is_empty()
+        });
         let assistant_role = Message::assistant().role;
         // If a turn ends in a tool call/result or an unanswered prompt, discard
         // that whole unfinished turn. Intermediate assistant commentary before
@@ -299,8 +310,18 @@ mod tests {
                 )
                 .await
                 .unwrap();
+            let skill_context = serde_json::from_value(serde_json::json!({
+                "type":"text", "text":"Expanded fixture instructions",
+                "annotations":{"audience":["assistant"]}
+            }))
+            .unwrap();
             manager
-                .add_message(&session.id, &Message::user().with_text("first question"))
+                .add_message(
+                    &session.id,
+                    &Message::user()
+                        .with_text("first question")
+                        .with_content(skill_context),
+                )
                 .await
                 .unwrap();
             manager
@@ -320,6 +341,7 @@ mod tests {
             } else {
                 let loaded = loaded.unwrap();
                 assert_eq!(loaded.messages.len(), 2);
+                assert_eq!(loaded.messages[0].as_concat_text(), "first question");
                 assert!(
                     !loaded
                         .messages

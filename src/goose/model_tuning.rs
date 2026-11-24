@@ -1,7 +1,7 @@
 //! Model-specific working instructions, through Goose's public session API.
 //! Keep the prompt stable between turns; never retry a completed model turn.
 use anyhow::Result;
-use goose_runtime::session::SessionManager;
+use goose_runtime::session::{Session, SessionManager};
 
 const KEY: &str = "fastrock-gpt-6.2-work-policy";
 const INSTRUCTIONS: &str = r#"# Fastrock GPT-6.2 working defaults
@@ -65,14 +65,13 @@ fn targeted_provider(provider: &str) -> bool {
 /// Run immediately before dispatch, after model selection. This also reconciles
 /// restored sessions, recipe models and inherited fork prompts. Only our named
 /// extra is changed; Goose's base prompt, user extras and model settings survive.
-pub(super) async fn sync(manager: &SessionManager, id: &str) -> Result<()> {
-    let session = manager.get_session(id, false).await?;
+pub(super) async fn sync(manager: &SessionManager, session: &Session) -> Result<()> {
     let targeted = if session
         .model_config
         .as_ref()
         .is_some_and(|model| targeted_model(&model.model_name))
     {
-        let provider = session.provider_name.unwrap_or_default();
+        let provider = session.provider_name.clone().unwrap_or_default();
         tokio::task::spawn_blocking(move || targeted_provider(&provider)).await?
     } else {
         false
@@ -80,7 +79,7 @@ pub(super) async fn sync(manager: &SessionManager, id: &str) -> Result<()> {
     let desired = targeted.then_some(INSTRUCTIONS);
     if session.system_prompt_extras.get(KEY).map(String::as_str) != desired {
         manager
-            .set_system_prompt_extra(id, KEY, desired.map(str::to_owned))
+            .set_system_prompt_extra(&session.id, KEY, desired.map(str::to_owned))
             .await?;
     }
     Ok(())
