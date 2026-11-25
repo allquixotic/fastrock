@@ -2,6 +2,8 @@
 
 Fastrock delivers pasted images to vision-capable models in regular messages, slash skills, queued messages, and mid-response steering. Explicitly text-only models show an error before sending. [Windows x64 release](https://github.com/allquixotic/fastrock/releases/tag/v0.5.7).
 
+The signed build passed 878 Windows Rust tests and 44 native acceptance cases. On Windows, Ctrl+V delivered the exact generated PNG from the downloaded executable to a local GPT-6.2 Sol endpoint. The ZIP checksum, both provenance attestations, and the executable’s publisher and timestamp matched the CI evidence. [Release verification](benchmarks/057-release-ci-2026-11-25.json) · [Guarded performance comparison](benchmarks/057-games-2026-11-25.json).
+
 # Fastrock 0.5.6 stable
 
 Fastrock 0.5.6 embeds Goose 1.60.2. GPT-6.2 Sol and Astra receive working instructions for task completion, verification, progress updates, and final reporting on supported OpenAI and Bedrock profiles. Fastrock removes its instructions when the conversation switches to another model. Goose now opens legacy Chat sessions in Approve mode.

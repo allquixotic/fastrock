@@ -390,6 +390,8 @@ T90|x|Preserve pasted images through ordinary prompts, slash skills, queues and 
 
 0.5.7 development acceptance: guarded games comparison against 0.3.4 passed at 1,000 conversations, eight streams and 10,000 messages. Native Ctrl+V delivered exact PNG bytes on direct, queued and steered slash-skill turns. docs/benchmarks/057-games-2026-11-25.json.
 
+0.5.7 release acceptance: CI 45573068158 attempt 2 passed 878 Windows Rust tests, 44 signed native cases, migration, catalog and scroll. Public ZIP digests, online and bundled provenance, downloaded signature, timestamp and native clipboard verified. docs/benchmarks/057-release-ci-2026-11-25.json.
+
 0.5.6 development acceptance: Mac compiled. Native model options, tools and hooks, context viewer, and guarded full-scale comparison against 0.3.4 passed on games. docs/benchmarks/056-games-2026-11-20.json.
 
 0.5.6 release acceptance: CI 44868012018 passed 878 Windows Rust tests, 44 signed native cases, migration, catalog and scroll. Public ZIP checksums, online and bundled attestations, and downloaded executable signature on games matched the tagged CI evidence. docs/benchmarks/056-release-ci-2026-11-21.json.
