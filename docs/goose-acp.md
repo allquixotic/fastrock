@@ -1,6 +1,6 @@
-# Embedded Goose in Fastrock 0.5.7
+# Embedded Goose in Fastrock 0.5.8
 
-Goose 1.60.2 is pinned at `fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1`.
+Goose 1.61.0 is pinned at `043d1be6acfcf17c7efae8a5613497728b71de88`.
 Its source is unchanged. Fastrock calls the public `StateMachineServices`, `AcpConnection` and `serve`
 APIs on its own Tokio runtime, connected to the UI adapter by a bounded memory
 stream. There is no Goose process or HTTP/stdio hop to an external Goose service.
@@ -38,7 +38,7 @@ Fastrock permits `aws_bedrock`, `openai`, `anthropic`, and supported named
 profiles, including Microsoft Foundry. It checks creation,
 restoration and switching before dispatch because Goose's ACP provider factory
 does not cover every internal session path. Native provider choices follow the
-same scope. Goose 1.60.2 opens sessions saved in Chat mode in Approve mode,
+same scope. Goose 1.61.0 opens sessions saved in Chat mode in Approve mode,
 which asks before tool calls. Model and reasoning choices come from Goose, with manual Bedrock
 effort entry when the model has no usable choices. Rejected provider
 selections preserve existing settings and history. The default alias retains the
@@ -60,7 +60,7 @@ In **Model options → Thinking effort**, enter a value and select **Use effort*
 when Fastrock shows a text field. **Save effort default** remembers the applied
 value for new conversations on that exact provider and model ID. Named Bedrock
 Responses profiles send the exact value. Built-in Bedrock uses Goose's effort
-values and its model-specific request formatter. Goose 1.60.2 serializes
+values and its model-specific request formatter. Goose 1.61.0 serializes
 Converse effort for recognized Claude IDs. Its Converse formatter has no
 effort field for GPT profiles or opaque application inference profile IDs.
 

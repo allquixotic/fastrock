@@ -1,6 +1,6 @@
 [package]
 name = "fastrock"
-version = "0.5.7"
+version = "0.5.8"
 edition = "2024"
 rust-version = "1.95.0"
 license = "Apache-2.0"
@@ -56,11 +56,11 @@ dunce = { workspace = true }
 futures = { workspace = true }
 # Goose's optional source-symbol parser conflicts with the retained UI protocol's
 # native tree-sitter ABI. Tools and code mode do not require that feature.
-goose-runtime = { package = "goose", git = "https://github.com/aaif-goose/goose", rev = "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1", default-features = false, features = ["aws-providers", "rustls-tls", "system-keyring", "code-mode"] }
-goose-mcp = { git = "https://github.com/aaif-goose/goose", rev = "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1", default-features = false, features = ["bundled-mcp", "rustls-tls"] }
-goose-agent = { git = "https://github.com/aaif-goose/goose", rev = "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1" }
-goose-context-management = { git = "https://github.com/aaif-goose/goose", rev = "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1" }
-goose-provider-types = { git = "https://github.com/aaif-goose/goose", rev = "fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1" }
+goose-runtime = { package = "goose", git = "https://github.com/aaif-goose/goose", rev = "043d1be6acfcf17c7efae8a5613497728b71de88", default-features = false, features = ["aws-providers", "rustls-tls", "system-keyring", "code-mode"] }
+goose-mcp = { git = "https://github.com/aaif-goose/goose", rev = "043d1be6acfcf17c7efae8a5613497728b71de88", default-features = false, features = ["bundled-mcp", "rustls-tls"] }
+goose-agent = { package = "oi-kit-agent", git = "https://github.com/aaif-goose/goose", rev = "043d1be6acfcf17c7efae8a5613497728b71de88" }
+goose-context-management = { package = "oi-kit-context-management", git = "https://github.com/aaif-goose/goose", rev = "043d1be6acfcf17c7efae8a5613497728b71de88" }
+goose-provider-types = { package = "oi-kit-provider-types", git = "https://github.com/aaif-goose/goose", rev = "043d1be6acfcf17c7efae8a5613497728b71de88" }
 sha2 = "0.11.1"
 hex = "0.4.3"
 regex = "1.13.1"

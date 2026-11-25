@@ -5172,7 +5172,7 @@ dependencies = [
 
 [[package]]
 name = "fastrock"
-version = "0.5.7"
+version = "0.5.8"
 dependencies = [
  "accesskit 0.25.2",
  "accesskit_consumer 0.39.2",
@@ -5208,10 +5208,7 @@ dependencies = [
  "futures",
  "git2",
  "goose",
- "goose-agent",
- "goose-context-management",
  "goose-mcp",
- "goose-provider-types",
  "hex",
  "hmac 0.13.0",
  "i-slint-backend-winit",
@@ -5223,6 +5220,9 @@ dependencies = [
  "libc",
  "notify-rust",
  "objc2 0.6.5",
+ "oi-kit-agent",
+ "oi-kit-context-management",
+ "oi-kit-provider-types",
  "portable-pty",
  "pretty_assertions",
  "pulldown-cmark",
@@ -6690,8 +6690,8 @@ dependencies = [
 
 [[package]]
 name = "goose"
-version = "1.60.2"
-source = "git+https://github.com/aaif-goose/goose?rev=fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1#fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1"
+version = "1.61.0"
+source = "git+https://github.com/aaif-goose/goose?rev=043d1be6acfcf17c7efae8a5613497728b71de88#043d1be6acfcf17c7efae8a5613497728b71de88"
 dependencies = [
  "agent-client-protocol",
  "agent-client-protocol-schema",
@@ -6719,11 +6719,7 @@ dependencies = [
  "futures",
  "gethostname",
  "goose-acp-macros",
- "goose-agent",
- "goose-context-management",
- "goose-download-manager",
- "goose-providers",
- "goose-sdk-types",
+ "goose-acp-types",
  "ignore",
  "image 0.24.9",
  "include_dir",
@@ -6737,6 +6733,10 @@ dependencies = [
  "nanoid",
  "ntapi",
  "oauth2",
+ "oi-kit-agent",
+ "oi-kit-context-management",
+ "oi-kit-download-manager",
+ "oi-kit-providers",
  "once_cell",
  "pastey",
  "pem 4.0.0",
@@ -6785,71 +6785,29 @@ dependencies = [
 
 [[package]]
 name = "goose-acp-macros"
-version = "1.60.2"
-source = "git+https://github.com/aaif-goose/goose?rev=fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1#fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1"
+version = "1.61.0"
+source = "git+https://github.com/aaif-goose/goose?rev=043d1be6acfcf17c7efae8a5613497728b71de88#043d1be6acfcf17c7efae8a5613497728b71de88"
 dependencies = [
  "quote",
  "syn 3.0.10",
 ]
 
 [[package]]
-name = "goose-agent"
-version = "0.1.0-alpha.14"
-source = "git+https://github.com/aaif-goose/goose?rev=fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1#fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1"
+name = "goose-acp-types"
+version = "0.1.0-alpha.15"
+source = "git+https://github.com/aaif-goose/goose?rev=043d1be6acfcf17c7efae8a5613497728b71de88#043d1be6acfcf17c7efae8a5613497728b71de88"
 dependencies = [
- "anyhow",
- "async-trait",
- "futures",
- "goose-provider-types",
- "goose-sdk-types",
- "libc",
- "once_cell",
- "regex",
- "rmcp 3.9.0",
+ "agent-client-protocol",
+ "agent-client-protocol-schema",
+ "schemars 1.2.3",
  "serde",
  "serde_json",
- "serde_yaml",
- "thiserror 2.0.21",
- "tokio",
- "tokio-util",
- "tracing",
- "tracing-futures",
- "uuid",
-]
-
-[[package]]
-name = "goose-context-management"
-version = "0.1.0-alpha.14"
-source = "git+https://github.com/aaif-goose/goose?rev=fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1#fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1"
-dependencies = [
- "anyhow",
- "async-trait",
- "goose-provider-types",
- "include_dir",
- "minijinja",
- "rmcp 3.9.0",
- "serde",
- "serde_json",
- "tracing",
-]
-
-[[package]]
-name = "goose-download-manager"
-version = "0.1.0-alpha.14"
-source = "git+https://github.com/aaif-goose/goose?rev=fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1#fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1"
-dependencies = [
- "anyhow",
- "once_cell",
- "reqwest 0.13.5",
- "serde",
- "tokio",
- "tracing",
 ]
 
 [[package]]
 name = "goose-mcp"
-version = "1.60.2"
-source = "git+https://github.com/aaif-goose/goose?rev=fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1#fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1"
+version = "1.61.0"
+source = "git+https://github.com/aaif-goose/goose?rev=043d1be6acfcf17c7efae8a5613497728b71de88#043d1be6acfcf17c7efae8a5613497728b71de88"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -6873,73 +6831,6 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "umya-spreadsheet",
-]
-
-[[package]]
-name = "goose-provider-types"
-version = "0.1.0-alpha.14"
-source = "git+https://github.com/aaif-goose/goose?rev=fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1#fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1"
-dependencies = [
- "anyhow",
- "async-stream",
- "async-trait",
- "base64 0.23.1",
- "chrono",
- "futures",
- "getrandom 0.4.3",
- "gloo-timers",
- "once_cell",
- "rand 0.10.3",
- "regex",
- "reqwest 0.13.5",
- "rmcp 3.9.0",
- "serde",
- "serde_json",
- "strum 0.28.0",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "unicode-normalization",
- "uuid",
- "zstd 0.14.3",
-]
-
-[[package]]
-name = "goose-providers"
-version = "0.1.0-alpha.14"
-source = "git+https://github.com/aaif-goose/goose?rev=fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1#fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1"
-dependencies = [
- "anyhow",
- "async-stream",
- "async-trait",
- "base64 0.23.1",
- "chrono",
- "futures",
- "goose-provider-types",
- "include_dir",
- "reqwest 0.13.5",
- "rmcp 3.9.0",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tracing",
- "url",
- "urlencoding",
- "uuid",
-]
-
-[[package]]
-name = "goose-sdk-types"
-version = "0.1.0-alpha.14"
-source = "git+https://github.com/aaif-goose/goose?rev=fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1#fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1"
-dependencies = [
- "agent-client-protocol",
- "agent-client-protocol-schema",
- "schemars 1.2.3",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -10250,6 +10141,123 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e5a6c098c7a3b6547378093f5cc30bc54fd361ce711e05293a5cc589562739b"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "oi-kit-agent"
+version = "0.1.0-alpha.15"
+source = "git+https://github.com/aaif-goose/goose?rev=043d1be6acfcf17c7efae8a5613497728b71de88#043d1be6acfcf17c7efae8a5613497728b71de88"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "blake3",
+ "futures",
+ "goose-acp-types",
+ "indexmap 2.14.2",
+ "indoc",
+ "jsonschema",
+ "libc",
+ "oi-kit-context-management",
+ "oi-kit-provider-types",
+ "once_cell",
+ "regex",
+ "reqwest 0.13.5",
+ "rmcp 3.9.0",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "tracing-futures",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "oi-kit-context-management"
+version = "0.1.0-alpha.15"
+source = "git+https://github.com/aaif-goose/goose?rev=043d1be6acfcf17c7efae8a5613497728b71de88#043d1be6acfcf17c7efae8a5613497728b71de88"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "include_dir",
+ "minijinja",
+ "oi-kit-provider-types",
+ "rmcp 3.9.0",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "oi-kit-download-manager"
+version = "0.1.0-alpha.15"
+source = "git+https://github.com/aaif-goose/goose?rev=043d1be6acfcf17c7efae8a5613497728b71de88#043d1be6acfcf17c7efae8a5613497728b71de88"
+dependencies = [
+ "anyhow",
+ "once_cell",
+ "reqwest 0.13.5",
+ "serde",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "oi-kit-provider-types"
+version = "0.1.0-alpha.15"
+source = "git+https://github.com/aaif-goose/goose?rev=043d1be6acfcf17c7efae8a5613497728b71de88#043d1be6acfcf17c7efae8a5613497728b71de88"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "async-trait",
+ "base64 0.23.1",
+ "chrono",
+ "futures",
+ "getrandom 0.4.3",
+ "gloo-timers",
+ "once_cell",
+ "rand 0.10.3",
+ "regex",
+ "reqwest 0.13.5",
+ "rmcp 3.9.0",
+ "serde",
+ "serde_json",
+ "strum 0.28.0",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "unicode-normalization",
+ "uuid",
+ "zstd 0.14.3",
+]
+
+[[package]]
+name = "oi-kit-providers"
+version = "0.1.0-alpha.15"
+source = "git+https://github.com/aaif-goose/goose?rev=043d1be6acfcf17c7efae8a5613497728b71de88#043d1be6acfcf17c7efae8a5613497728b71de88"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "async-trait",
+ "base64 0.23.1",
+ "chrono",
+ "futures",
+ "include_dir",
+ "oi-kit-provider-types",
+ "reqwest 0.13.5",
+ "rmcp 3.9.0",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "url",
+ "urlencoding",
+ "uuid",
 ]
 
 [[package]]

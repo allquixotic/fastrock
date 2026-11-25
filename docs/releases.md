@@ -1,3 +1,7 @@
+# Fastrock 0.5.8 stable
+
+Fastrock embeds unmodified Goose 1.61.0 and vwork 0.4.2. This update includes Goose’s catalog lookup for model image support and recovery from thinking-only provider responses. [Windows x64 release](https://github.com/allquixotic/fastrock/releases/tag/v0.5.8) · [Upstream Goose release](https://github.com/aaif-goose/goose/releases/tag/v1.61.0).
+
 # Fastrock 0.5.7 stable
 
 Fastrock delivers pasted images to vision-capable models in regular messages, slash skills, queued messages, and mid-response steering. Explicitly text-only models show an error before sending. [Windows x64 release](https://github.com/allquixotic/fastrock/releases/tag/v0.5.7).

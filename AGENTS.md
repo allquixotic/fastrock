@@ -113,3 +113,7 @@ memory guards, compile Mac, and publish the signed Windows x64 ZIP through CI.
 2026-11-25: user authorizes stable Fastrock 0.5.7 for pasted image delivery.
 Publish the signed Windows x64 ZIP through CI after guarded games verification.
 Mac compile-only.
+
+2026-11-25: user authorizes stable Fastrock 0.5.8 with unmodified Goose 1.61.0.
+Verify on games under the existing memory guards. Release the signed Windows x64
+ZIP through CI. Mac compile-only.

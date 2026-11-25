@@ -1,7 +1,5 @@
-# Fastrock 0.5.7
+# Fastrock 0.5.8
 
-Pasting an image with Ctrl+V now delivers the image to vision-capable models, including GPT-6.2 Sol. Images stay attached when you invoke a slash skill, queue a message, or steer an active response. You can also send multiple images in one message.
+Fastrock now includes Goose 1.61.0. This update improves how Goose looks up image support for a model and handles a provider response that contains thinking alone. [Goose 1.61.0 release notes](https://github.com/aaif-goose/goose/releases/tag/v1.61.0).
 
-Fastrock sends images to the selected deployment when its vision capability is unknown. If a model is explicitly marked text-only, Fastrock explains how to choose a vision-capable model or remove the attachments.
-
-To upgrade, choose **Quit** in the previous version’s tray menu, extract the Windows x64 ZIP, and launch `fastrock.exe`.
+To upgrade, choose **Quit** in the previous version’s tray menu, extract the Windows x64 ZIP, and launch `fastrock.exe`. Fastrock uses your existing Goose configuration and credentials.
