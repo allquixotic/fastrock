@@ -1,9 +1,7 @@
-# Fastrock 0.5.6
+# Fastrock 0.5.7
 
-Fastrock now embeds Goose 1.60.2. Existing Goose profiles and credentials carry over.
+Pasting an image with Ctrl+V now delivers the image to vision-capable models, including GPT-6.2 Sol. Images stay attached when you invoke a slash skill, queue a message, or steer an active response. You can also send multiple images in one message.
 
-GPT-6.2 Sol and Astra receive instructions to carry authorized tasks through verification, report progress during longer work, and explain the result and any blockers. Fastrock applies these instructions to recognized model IDs on OpenAI, Amazon Bedrock, and named OpenAI-compatible profiles. Switching to another model removes the instructions. Your saved reasoning effort, permissions, and custom prompts still apply.
+Fastrock sends images to the selected deployment when its vision capability is unknown. If a model is explicitly marked text-only, Fastrock explains how to choose a vision-capable model or remove the attachments.
 
-Goose now opens sessions saved in **Chat** mode in **Approve** mode. It asks for approval before tool calls.
-
-This release ships as a signed Windows x64 ZIP. Use **Quit** in the previous version’s tray menu before launching 0.5.6.
+To upgrade, choose **Quit** in the previous version’s tray menu, extract the Windows x64 ZIP, and launch `fastrock.exe`.

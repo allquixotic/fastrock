@@ -1,0 +1,166 @@
+{
+  "result": "PASS",
+  "version": "0.5.7",
+  "verified_at": "2026-11-25T08:03:38.108936+00:00",
+  "baseline_version": "0.3.4",
+  "baseline": {
+    "binary_sha256": "dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9",
+    "seed_sha256": "ee8c135251d7f1841ac1232d21b4acb8c85efc266352b00941f3ad2051b14c84",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "external Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1291560960,
+            "peak_app_bytes": 107106304,
+            "peak_tree_commit_bytes": 102084608
+          },
+          "app": {
+            "cap_bytes": 1234290688,
+            "peak_app_bytes": 209358848,
+            "peak_tree_commit_bytes": 247136256
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 1208.5,
+        "switch_dispatch_ms": [
+          0.8,
+          0.8,
+          0.9,
+          0.8,
+          1.0
+        ],
+        "frame": {
+          "p50_ms": 8.112,
+          "p95_ms": 11.015,
+          "p99_ms": 13.856
+        },
+        "render": {
+          "p50_ms": 6.568,
+          "p95_ms": 8.172,
+          "p99_ms": 9.065
+        },
+        "event_loop": {
+          "p50_ms": 16.865,
+          "p95_ms": 28.6,
+          "p99_ms": 37.446
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ],
+    "goose_sha256": "89d5849587586765fa335f664fac0a9ed0e466d0f3717dd609ca04ebdffa64e2"
+  },
+  "candidate": {
+    "binary_sha256": "adee68e633b5ea8c83b8aa1c2885dc42219eae7b2ea8a0509971089e3b3f7e12",
+    "seed_sha256": "ee8c135251d7f1841ac1232d21b4acb8c85efc266352b00941f3ad2051b14c84",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 1098414080,
+            "peak_app_bytes": 106729472,
+            "peak_tree_commit_bytes": 101785600
+          },
+          "app": {
+            "cap_bytes": 1047758848,
+            "peak_app_bytes": 254935040,
+            "peak_tree_commit_bytes": 203583488
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 201.4,
+        "switch_dispatch_ms": [
+          0.4,
+          0.3,
+          0.3,
+          0.3,
+          0.4
+        ],
+        "frame": {
+          "p50_ms": 5.949,
+          "p95_ms": 11.097,
+          "p99_ms": 12.41
+        },
+        "render": {
+          "p50_ms": 4.551,
+          "p95_ms": 9.508,
+          "p99_ms": 10.362
+        },
+        "event_loop": {
+          "p50_ms": 16.466,
+          "p95_ms": 18.554,
+          "p99_ms": 22.568
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true,
+        "history_navigation": {
+          "first": {
+            "browsing": true,
+            "loading": false,
+            "start": 0,
+            "end": 100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 4.7737,
+            "rows": 100,
+            "bytes": 285990
+          },
+          "middle": {
+            "browsing": true,
+            "loading": false,
+            "start": 5000,
+            "end": 5100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 4.4218,
+            "rows": 100,
+            "bytes": 292500
+          },
+          "last": {
+            "browsing": true,
+            "loading": false,
+            "start": 9900,
+            "end": 10000,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 12.945699999999999,
+            "rows": 100,
+            "bytes": 292569
+          },
+          "middle_frame": {
+            "p50_ms": 5.854,
+            "p95_ms": 8.316,
+            "p99_ms": 9.819
+          }
+        }
+      }
+    ]
+  },
+  "clipboard": {
+    "fixture": "Generated bitmap pasted with Ctrl+V in Windows",
+    "wire": "Exact saved PNG bytes and expanded skill text at a local GPT-6.2 Sol Bedrock Converse endpoint",
+    "passed": [
+      "direct",
+      "queue",
+      "steer"
+    ]
+  }
+}

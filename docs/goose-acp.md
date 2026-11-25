@@ -1,4 +1,4 @@
-# Embedded Goose in Fastrock 0.5.6
+# Embedded Goose in Fastrock 0.5.7
 
 Goose 1.60.2 is pinned at `fb55b5a6d7f5b5df96c8f817f1cde6a81880d9f1`.
 Its source is unchanged. Fastrock calls the public `StateMachineServices`, `AcpConnection` and `serve`
@@ -193,6 +193,12 @@ Verification: V118 identity coverage and the standalone embedded Goose fixture
 check actual Converse/Responses prompts, repeat sends, model switches, restore,
 forks, exact setting preservation and one request per completed fixture turn.
 Fixtures verify integration, not live model quality.
+
+## Pasting images
+
+Press **Ctrl+V** in the composer to attach a clipboard image. You can send images on their own, with text, or with a slash skill. Queued messages and mid-response steering keep the attachments in order.
+
+Fastrock sends the image bytes to the selected model. A profile marked text-only shows an error before sending. For a deployment with unknown image support, the provider decides whether it accepts the request.
 
 ## Tools, hooks and recipes
 

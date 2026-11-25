@@ -109,3 +109,7 @@ after verification, Mac compile-only, games benchmark and memory guards retained
 2026-11-20: user authorizes stable Fastrock 0.5.6 with unmodified Goose 1.60.2
 and the local GPT-6.2 Sol/Astra working instructions. Verify on games with
 memory guards, compile Mac, and publish the signed Windows x64 ZIP through CI.
+
+2026-11-25: user authorizes stable Fastrock 0.5.7 for pasted image delivery.
+Publish the signed Windows x64 ZIP through CI after guarded games verification.
+Mac compile-only.

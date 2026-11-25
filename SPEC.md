@@ -5,6 +5,7 @@ Fastrock 0.4.0: stable T3 UI/orchestration in native Slint/Rust, unmodified embe
 Broader GUI contract: repository `GUI.md`.
 
 ## §C CONSTRAINTS
+- 2026-11-25 stable 0.5.7 authorized for pasted images. Signed Windows x64 ZIP through CI, Mac compile-only, guarded games comparison.
 - 2026-11-20 stable 0.5.6 authorized with unmodified Goose 1.60.2 and GPT-6.2 model tuning. Signed Windows x64 ZIP through CI, Mac compile-only, guarded games verification.
 - 2026-11-18 explicit stable 0.5.5 authorized: restore editable Bedrock effort for inference profiles, signed Windows x64 CI release, guarded games benchmark, and Mac compile-only.
 - 2026-11-17 explicit stable 0.5.4 authorized: MAI Code 2 Flash through Foundry project with Azure CLI SSO plus GPT-6.2 Sol and GPT-6.2 Astra through Bedrock; signed Windows x64 CI release and Mac compile-only.
@@ -385,6 +386,9 @@ T86|x|Native MAI Code 2 Flash profile uses Foundry project Responses and Azure C
 T87|x|GPT-6.2 Astra/Sol exact IDs passed native model-options and embedded Bedrock Runtime/Responses HTTP fixtures on games. Full guarded 1,000/eight/10,000 comparison against 0.3.4 passed. docs/benchmarks/054-games-2026-11-17.json|V38,V39,V45,V115,I.goose,I.distribution
 T88|x|Add manual Bedrock effort entry, validation, per-profile defaults, and request-format coverage. Built-in Converse still depends on Goose's serializer for model-specific effort fields|V39,V117,I.goose
 T89|x|Release 0.5.6 with unmodified Goose 1.60.2 and model-specific GPT-6.2 working defaults. Windows identity and embedded Converse/Responses fixtures passed on games across model switches, restore and fork|V118,I.goose,I.distribution
+T90|x|Preserve pasted images through ordinary prompts, slash skills, queues and steers. Generated Windows clipboard and provider fixtures passed. Reject declared text-only models before sending|V119,V39,I.goose,I.distribution
+
+0.5.7 development acceptance: guarded games comparison against 0.3.4 passed at 1,000 conversations, eight streams and 10,000 messages. Native Ctrl+V delivered exact PNG bytes on direct, queued and steered slash-skill turns. docs/benchmarks/057-games-2026-11-25.json.
 
 0.5.6 development acceptance: Mac compiled. Native model options, tools and hooks, context viewer, and guarded full-scale comparison against 0.3.4 passed on games. docs/benchmarks/056-games-2026-11-20.json.
 
