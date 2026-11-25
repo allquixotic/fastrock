@@ -21,6 +21,7 @@ out.mkdir(parents=True, exist_ok=False)
 SEED = 'ORIGINAL_CONTEXT_ZIRCON ' + 'retained history detail ' * 150
 SUMMARY = 'COMPACTED_CONTEXT_QUARTZ: remember the original task and pending work.'
 MODEL = 'us.anthropic.claude-opus-5-5-v1:0'
+TOOL_ID = 'compaction-must-not-execute'
 
 
 class CompactionFixture(ProviderFixture):
@@ -31,20 +32,36 @@ class CompactionFixture(ProviderFixture):
         self.release = threading.Event()
 
     def respond(self, handler, body):
-        payload = json.dumps(body)
-        manual = ('Please summarize the conversation history provided in the system prompt.' in payload
-                  and 'search index sidecar' not in payload)
-        if not manual:
+        last = body['messages'][-1]
+        texts = [block['text'] for block in last['content'] if 'text' in block and last['role'] == 'user']
+        if any(text.startswith('This conversation is being compacted to free up context.') for text in texts):
+            phase = 'in-band'
+        elif ('Please summarize the conversation history provided in the system prompt.' in texts
+              and 'search index sidecar' not in json.dumps(body.get('system', []))):
+            phase = 'standalone'
+        else:
             return super().respond(handler, body)
-        self.compactions.append(dict(path=handler.path, body=body, mode=self.mode))
-        assert not body.get('toolConfig'), 'Compaction exposed agent tools'
+        self.compactions.append(dict(path=handler.path, body=body, mode=self.mode, phase=phase))
+        if phase == 'standalone':
+            assert not body.get('toolConfig'), 'Standalone compaction exposed agent tools'
         assert unquote(handler.path) == f'/model/{MODEL}/converse', 'Compaction lost the selected provider/model'
         if self.mode == 'failure':
             return self.json_response(handler, {'message': 'COMPACTION_FIXTURE_FAILURE', '__type': 'ValidationException'}, 400)
         if self.mode == 'cancel':
             self.release.wait(25)
-        return self.json_response(handler, dict(output={'message': {'role': 'assistant', 'content': [{'text': SUMMARY}]}},
-            stopReason='end_turn', usage={'inputTokens': 1000, 'outputTokens': 15, 'totalTokens': 1015}, metrics={'latencyMs': 1}))
+        content, reason = [{'text': SUMMARY}], 'end_turn'
+        if self.mode == 'fallback' and phase == 'in-band':
+            # Goose reuses the original tool schema for the in-band request.
+            # A tool reply must fall back to a separate summary without executing it.
+            name, = [t['toolSpec']['name'] for t in body['toolConfig']['tools']
+                     if t.get('toolSpec', {}).get('name', '').endswith('list_open_threads')]
+            content = [{'toolUse': {'toolUseId': TOOL_ID, 'name': name, 'input': {}}}]
+            reason = 'tool_use'
+        return self.json_response(handler, dict(output={'message': {'role': 'assistant', 'content': content}},
+            stopReason=reason, usage={'inputTokens': 1000, 'outputTokens': 15, 'totalTokens': 1015}, metrics={'latencyMs': 1}))
+
+    def phases(self, mode):
+        return [r['phase'] for r in self.compactions if r['mode'] == mode]
 
 
 provider = CompactionFixture()
@@ -89,7 +106,7 @@ try:
         {'wait': 150}, {'click_text': 'Compact conversation'}, {'wait': 150},
         {'wait_idle': 30000}, {'wait_summaries': 30000},
         *export('compacted'), {'snapshot': str(out / 'compacted.png')}, {'quit': True}])
-    assert len(provider.compactions) == 1, 'Native Compact never reached Goose compaction'
+    assert provider.phases('success') == ['in-band'], 'Native Compact never reached in-band compaction'
     assert 'Compaction complete' in text('compacted') and 'Could not compact' not in text('compacted')
     assert SEED in text('compacted'), 'Compaction lost visible source history'
     assert SUMMARY not in text('compacted'), 'Agent-only summary leaked into the transcript'
@@ -98,22 +115,30 @@ try:
     original = [row for row in before if 'ORIGINAL_CONTEXT_ZIRCON' in row[2]]
     assert original and all(metadata(row)['userVisible'] and not metadata(row)['agentVisible'] for row in original)
     compacted = [row for row in before if SUMMARY in row[2]]
-    assert compacted and all(not metadata(row)['userVisible'] and metadata(row)['agentVisible'] for row in compacted)
+    assert all(not metadata(row)['userVisible'] for row in compacted)
+    active = [row for row in compacted if metadata(row)['agentVisible']]
+    assert len(active) == 1 and metadata(active[0]).get('compactionSummary')
     sid = 'goose:' + original[0][1]
+    provider.mode = 'fallback'
     peak = max(peak, run('restart', [*open_session(), {'send': 'Continue after compact restart'}, {'wait_idle': 30000},
         {'wait_summaries': 30000}, {'composer': ['type', '/compact']}, {'composer': ['send']},
         {'wait_idle': 30000}, *export('restarted'), {'quit': True}]))
     continuation = next(r for r in provider.requests if not r['summary'] and r['prompt'] == 'Continue after compact restart')
     context = json.dumps(continuation['body']['messages'])
     assert SUMMARY in context and 'ORIGINAL_CONTEXT_ZIRCON' not in context, 'Restart did not use compacted model context'
-    assert len(provider.compactions) == 2 and text('restarted').count('Compaction complete') >= 2
+    assert provider.phases('fallback') == ['in-band', 'standalone']
+    assert text('restarted').count('Compaction complete') >= 2
+    for request in provider.requests + provider.compactions:
+        for message in request['body']['messages']:
+            assert not any(c.get('toolResult', {}).get('toolUseId') == TOOL_ID for c in message['content'])
+    assert not any(TOOL_ID in row[2] and '"toolResponse"' in row[2] for row in stored())
     assert SEED in text('restarted'), 'Restart lost original visible history'
 
     before_failure = {row[0]: row for row in stored()}
     provider.mode = 'failure'
     peak = max(peak, run('failure', [*open_session(), {'tab_action': 'compact'}, {'wait_idle': 30000},
         *export('failed'), {'quit': True}]))
-    assert len(provider.compactions) == 3 and 'COMPACTION_FIXTURE_FAILURE' in text('failed')
+    assert provider.phases('failure') == ['in-band'] and 'COMPACTION_FIXTURE_FAILURE' in text('failed')
     assert text('failed').count('Compaction complete') == 2, 'Failed compaction claimed success'
     after_failure = {row[0]: row for row in stored()}
     assert all(after_failure[mid] == row for mid, row in before_failure.items()), 'Failed compaction changed original context/history'
@@ -123,24 +148,26 @@ try:
     peak = max(peak, run('cancel', [*open_session(), {'tab_action': 'compact'}, {'wait': 1500},
         {'click_text': 'Stop'}, {'wait_idle': 10000}, *export('cancelled'), {'quit': True}]))
     provider.release.set()
-    assert len(provider.compactions) == 4, 'Cancellation did not exercise a stalled compaction'
+    assert provider.phases('cancel') == ['in-band'], 'Cancellation did not exercise a stalled compaction'
     assert text('cancelled').count('Compaction complete') == 2, 'Cancelled compaction claimed success'
     after_cancel = {row[0]: row for row in stored()}
     assert all(after_cancel[mid] == row for mid, row in before_cancel.items()), 'Cancelled compaction changed existing context/history'
 
+    count = len(provider.compactions)
     settings['GOOSE_SLASH_COMMANDS_ENABLED'] = False
     config.write_text(json.dumps(settings), encoding='utf-8')
     peak = max(peak, run('disabled', [{'wait_ready': 30000}, {'new_thread': str(out / 'project')},
         {'wait_idle': 30000}, {'tab_action': 'compact'}, {'wait_idle': 30000},
         {'transcript': 'export:' + str(out / 'disabled.md')}, {'wait': 400}, {'quit': True}]))
-    assert len(provider.compactions) == 4, 'Disabled command invoked compaction'
+    assert len(provider.compactions) == count, 'Disabled command invoked compaction'
     assert 'Manual compaction requires slash commands' in text('disabled')
     assert not any(not r['summary'] and r['prompt'] == '/compact' for r in provider.requests), 'Compaction fell through to ordinary inference'
     assert not provider.errors, provider.errors
     receipt = dict(result='PASS', binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(), peak_process_bytes=peak,
         native_palette_tab_action_and_slash=True, selected_model_preserved=True, model_context_replaced=True,
         visible_history_preserved=True, restart_preserves_context=True, no_search_summary_after_compact=True,
-        failed_compaction_preserves_history=True, stop_cancels_compaction=True, disabled_commands_refused=True)
+        ignored_tool_reply_uses_standalone_summary=True, failed_compaction_preserves_history=True,
+        stop_cancels_compaction=True, disabled_commands_refused=True)
     (out / 'acceptance.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     print('PASS: native compaction, retained history, restart, failure, Stop and disabled-command guard', flush=True)
 finally:
