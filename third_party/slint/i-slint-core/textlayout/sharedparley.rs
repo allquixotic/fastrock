@@ -216,14 +216,25 @@ pub fn draw_text(
                 let range = text.selection_range();
                 let spans = if range.is_empty() { SelectionSpans::default() }
                     else { layout.selection_geometry(range, &draw::visible_band(item_renderer)) };
-                let (background, foreground) = text.selection_colors();
-                for rect in spans.backgrounds() { item_renderer.fill_rectangle_with_color(rect, background); }
-                let selection = (!spans.is_empty()).then(|| item_renderer.platform_brush_for_color(&foreground)
-                    .map(|foreground| SelectionRendering { spans: &spans, foreground })).flatten();
-                if spans.is_empty() && let Some(offset) = text.selection_caret() {
-                    let rect = layout.cursor_rect_for_byte_offset(offset, crate::items::TextCursorAffinity::NextCharacter, PhysicalLength::new(1.0));
-                    item_renderer.fill_rectangle_with_color(rect, foreground);
-                }
+                let selection = if spans.is_empty() {
+                    if let Some(offset) = text.selection_caret() {
+                        let rect = layout.cursor_rect_for_byte_offset(
+                            offset,
+                            crate::items::TextCursorAffinity::NextCharacter,
+                            PhysicalLength::new(1.0),
+                        );
+                        item_renderer.fill_rectangle_with_color(rect, text.selection_colors().1);
+                    }
+                    None
+                } else {
+                    let (background, foreground) = item_renderer.window().text_selection_colors(true)
+                        .unwrap_or_else(|| text.selection_colors());
+                    for rect in spans.backgrounds() {
+                        item_renderer.fill_rectangle_with_color(rect, background);
+                    }
+                    item_renderer.platform_brush_for_color(&foreground)
+                        .map(|foreground| SelectionRendering { spans: &spans, foreground })
+                };
                 layout.draw(
                     item_renderer,
                     platform_fill_brush,
@@ -402,26 +413,24 @@ pub fn draw_text_input(
                 };
                 // Inside the clip, like the glyphs it sits under: a line box taller than the item
                 // would otherwise paint the highlight over whatever follows the input.
-                for background in selection_spans.backgrounds() {
-                    item_renderer.fill_rectangle_with_color(
-                        background,
-                        text_input.selection_background_color(),
-                    );
-                }
-
                 // Selected glyphs are recolored by clipping, not by restyling the layout, so that
                 // a boundary landing inside a ligature cuts the glyph instead of recoloring all
                 // of it.
-                let selection = (!selection_spans.is_empty())
-                    .then(|| {
-                        item_renderer
-                            .platform_brush_for_color(&text_input.selection_foreground_color())
-                            .map(|foreground| SelectionRendering {
-                                spans: &selection_spans,
-                                foreground,
-                            })
-                    })
-                    .flatten();
+                let selection = if selection_spans.is_empty() {
+                    None
+                } else {
+                    let (background, foreground) = item_renderer.window()
+                        .text_selection_colors(text_input.read_only())
+                        .unwrap_or_else(|| (
+                            text_input.selection_background_color(),
+                            text_input.selection_foreground_color(),
+                        ));
+                    for rect in selection_spans.backgrounds() {
+                        item_renderer.fill_rectangle_with_color(rect, background);
+                    }
+                    item_renderer.platform_brush_for_color(&foreground)
+                        .map(|foreground| SelectionRendering { spans: &selection_spans, foreground })
+                };
 
                 layout.draw(
                     item_renderer,

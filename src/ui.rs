@@ -10,3 +10,22 @@
 )]
 
 slint::include_modules!();
+
+pub(crate) fn bind_text_selection_colors<W>(component: &W)
+where
+    W: slint::ComponentHandle + 'static,
+    for<'a> Theme<'a>: slint::Global<'a, W>,
+{
+    use i_slint_core::window::{TextSelectionColors, WindowInner};
+
+    let weak = component.as_weak();
+    WindowInner::from_pub(component.window()).set_text_selection_colors_binding(move || {
+        let component = weak.upgrade()?;
+        let theme = component.global::<Theme>();
+        Some(TextSelectionColors {
+            read_only_background: theme.get_read_only_selection_background(),
+            editable_background: theme.get_editable_selection_background(),
+            foreground: theme.get_selection_foreground(),
+        })
+    });
+}

@@ -483,8 +483,6 @@ component SelectableText inherits Rectangle {
                 font-family: root.mono ? Theme.mono-font : Theme.ui-font;
                 font-size: root.text-size;
                 color: root.text-color;
-                selection-background-color: Theme.selected;
-                selection-foreground-color: Theme.text;
             }
             pointer-event(event) => {
                 if event.button == PointerEventButton.right && event.kind == PointerEventKind.down {

@@ -433,8 +433,11 @@ impl AppController {
     }
     fn selection_apply(&mut self, scene: Vec<TextNode>) {
         let theme = self.window.global::<Theme>();
-        self.transcript_selection
-            .apply(scene, theme.get_selected(), theme.get_text());
+        self.transcript_selection.apply(
+            scene,
+            theme.get_read_only_selection_background(),
+            theme.get_text(),
+        );
         self.window
             .global::<TranscriptState>()
             .set_selection_active(!self.transcript_selection.text.is_empty());

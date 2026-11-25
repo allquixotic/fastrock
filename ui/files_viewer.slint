@@ -361,8 +361,6 @@ component TextBody inherits Rectangle {
             font-family: Theme.mono-font;
             font-size: Theme.font-size;
             color: Theme.text;
-            selection-background-color: Theme.accent.with-alpha(Theme.dark ? 0.45 : 0.3);
-            selection-foreground-color: Theme.text;
             page-height: scroll.visible-height;
             cursor-position-changed(cpos) => {
                 FilesState.cursor-moved(self.cursor-position-byte-offset);

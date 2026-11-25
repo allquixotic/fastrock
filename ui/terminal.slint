@@ -82,9 +82,13 @@ export component TerminalPane inherits Rectangle {
                     x: mod(index, TerminalState.cols) * parent.cell-width;
                     y: floor(index / TerminalState.cols) * parent.cell-height;
                     width: cell.span * parent.cell-width; height: parent.cell-height;
-                    background: TerminalState.selection-start >= 0 && index >= min(TerminalState.selection-start, TerminalState.selection-end) && index <= max(TerminalState.selection-start, TerminalState.selection-end) ? #36557b : cell.background;
-                    Text { text: cell.text; color: cell.foreground; font-family: Theme.mono-font; font-size: 13px; font-weight: cell.bold ? 700 : 400; font-italic: cell.italic; vertical-alignment: center; }
-                    if cell.underline: Rectangle { y: parent.height - 2px; height: 1px; background: cell.foreground; }
+                    property <bool> selected: TerminalState.selection-start >= 0
+                        && index >= min(TerminalState.selection-start, TerminalState.selection-end)
+                        && index <= max(TerminalState.selection-start, TerminalState.selection-end);
+                    property <color> foreground: selected ? Theme.selection-foreground : cell.foreground;
+                    background: selected ? Theme.read-only-selection-dark : cell.background;
+                    Text { text: cell.text; color: parent.foreground; font-family: Theme.mono-font; font-size: 13px; font-weight: cell.bold ? 700 : 400; font-italic: cell.italic; vertical-alignment: center; }
+                    if cell.underline: Rectangle { y: parent.height - 2px; height: 1px; background: parent.foreground; }
                 }
                 if TerminalState.cursor-row >= 0 && TerminalState.running: Rectangle {
                     x: TerminalState.cursor-col * parent.cell-width; y: TerminalState.cursor-row * parent.cell-height;

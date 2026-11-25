@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V37: native pointer/keyboard/clipboard selection with embedded Goose and local Bedrock/MCP fixtures."""
+"""V37/V120: Windows selection, clipboard, and rendered contrast in both themes."""
 import argparse
 import ast
 import ctypes
@@ -94,7 +94,110 @@ expected['tool-menu'] = line(0)
 steps += drag('tool-cross-chunk', line(12), 0, len(line(16).encode()),
               '\n'.join(line(i) for i in range(12, 17)), -8, line(16))
 steps += [{'snapshot': str(out / 'tools.png')}, {'click_text': 'Copy All'}, {'wait': 250},
-          {'selection': ['capture', str(out / 'tool-all.txt')]}, {'quit': True}]
+          {'selection': ['capture', str(out / 'tool-all.txt')]}]
+
+selection_colors = {
+    'dark': dict(read_only='#2871e5', editable='#00847c', surface='#2c2c2c'),
+    'light': dict(read_only='#164fae', editable='#006b61', surface='#ebebed'),
+}
+contrast_screenshots = {}
+
+
+def selection_snapshot(theme, control, role):
+    name = f'{theme}-{control}.png'
+    contrast_screenshots[name] = selection_colors[theme][role]
+    return [{'wait': 250}, {'snapshot': str(out / name)}]
+
+
+for theme in selection_colors:
+    steps += [{'theme': theme}, *new_thread()]
+    steps += [{'composer': ['type', 'Editable composer selection']},
+              {'click_text': 'Editable composer selection'}, {'key': 'Ctrl+A'}]
+    steps += selection_snapshot(theme, 'composer', 'editable')
+    steps += [{'key': 'Ctrl+Shift+P'}, {'wait': 250}, {'palette': ['query', 'provider profiles']},
+              {'key': 'Ctrl+A'}]
+    steps += selection_snapshot(theme, 'line-edit', 'editable')
+    steps += [{'key': 'escape'}, {'forward': 'Editable message selection'}, {'wait': 250},
+              {'click_text': 'Editable message selection'}, {'key': 'Ctrl+A'}]
+    steps += selection_snapshot(theme, 'text-edit', 'editable')
+    steps += [{'forward_submit': 'cancel'},
+              {'transcript': 'card:Color fixture|Rich **selection color** sample.\n\n```text\nPlain selection color sample.\n```'},
+              {'wait': 500}, {'selection': ['drag', 'Rich selection color', '0', '26', '-8']}]
+    steps += selection_snapshot(theme, 'rich-transcript', 'read_only')
+    steps += [{'wait': 500}, {'selection': ['drag', 'Plain selection color', '0', '27']}]
+    steps += selection_snapshot(theme, 'plain-transcript', 'read_only')
+    steps += [{'file_command': 'text:Color fixture|Selectable file viewer contents'},
+              {'wait': 500}, {'click_text': 'Selectable file viewer contents'}, {'key': 'Ctrl+A'}]
+    steps += selection_snapshot(theme, 'file-viewer', 'read_only')
+steps += [{'quit': True}]
+
+
+def verify_contrast():
+    def luminance(color):
+        channels = [int(color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        linear = [v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4 for v in channels]
+        return sum(v * w for v, w in zip(linear, (.2126, .7152, .0722)))
+
+    def contrast(first, second):
+        low, high = sorted(map(luminance, (first, second)))
+        return (high + .05) / (low + .05)
+
+    for colors in selection_colors.values():
+        for role in ('read_only', 'editable'):
+            assert contrast(colors[role], '#ffffff') >= 4.5, colors
+            assert contrast(colors[role], colors['surface']) >= 3, colors
+
+    # System.Drawing is available in Windows PowerShell on both the VM and the
+    # hosted runner. Count actual opaque highlight pixels from Slint's snapshots.
+    inputs = out / 'selection-colors.json'
+    inputs.write_text(json.dumps(contrast_screenshots), encoding='utf-8')
+    check = r"""
+$ErrorActionPreference = 'Stop'
+Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
+using System.Drawing;
+public static class SelectionPixels {
+    public static int[] Count(string path, string hex) {
+        using (var bitmap = new Bitmap(path)) {
+            int expected = ColorTranslator.FromHtml(hex).ToArgb();
+            int count = 0;
+            int left = bitmap.Width, top = bitmap.Height, right = -1, bottom = -1;
+            for (int y = 0; y < bitmap.Height; y++)
+                for (int x = 0; x < bitmap.Width; x++)
+                    if (bitmap.GetPixel(x, y).ToArgb() == expected) {
+                        count++;
+                        left = System.Math.Min(left, x);
+                        top = System.Math.Min(top, y);
+                        right = System.Math.Max(right, x);
+                        bottom = System.Math.Max(bottom, y);
+                    }
+            int lightGlyphPixels = 0;
+            for (int y = top; y <= bottom; y++)
+                for (int x = left; x <= right; x++) {
+                    Color pixel = bitmap.GetPixel(x, y);
+                    if (pixel.R >= 235 && pixel.G >= 235 && pixel.B >= 235)
+                        lightGlyphPixels++;
+                }
+            return new[] { count, lightGlyphPixels };
+        }
+    }
+}
+'@
+$inputs = Get-Content -Raw $env:FASTROCK_SELECTION_COLOR_FIXTURE | ConvertFrom-Json
+$results = @{}
+foreach ($image in $inputs.PSObject.Properties) {
+    $path = Join-Path (Split-Path $env:FASTROCK_SELECTION_COLOR_FIXTURE) $image.Name
+    $results[$image.Name] = [SelectionPixels]::Count($path, $image.Value)
+}
+$results | ConvertTo-Json -Compress
+"""
+    counts = json.loads(subprocess.check_output(
+        ['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', check],
+        env=dict(os.environ, FASTROCK_SELECTION_COLOR_FIXTURE=str(inputs)), timeout=60,
+    ))
+    for name, color in contrast_screenshots.items():
+        fill, glyphs = counts[name]
+        assert fill >= 100 and glyphs >= 10, (name, color, counts[name])
+    return {name: dict(fill=fill, light_glyphs=glyphs) for name, (fill, glyphs) in counts.items()}
 
 script = out / 'steps.json'
 script.write_text(json.dumps(steps), encoding='utf-8')
@@ -130,6 +233,7 @@ assert [call['name'] for call in provider.tool_calls] == ['selection_tool'], pro
 assert all(line(i) in complete for i in range(24)), complete
 receipt = dict(result='PASS', binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest(),
                backend='embedded-goose', peak_process_bytes=peak, scale=args.scale, clipboard_cases=list(expected), native_menus=evidence,
-               complete_tool_copy=True, cross_virtual_row_selection=True)
+               complete_tool_copy=True, cross_virtual_row_selection=True,
+               selection_contrast_pixels=verify_contrast())
 (out / 'acceptance.json').write_text(json.dumps(receipt, indent=2) + '\n')
 print(json.dumps(receipt, indent=2))

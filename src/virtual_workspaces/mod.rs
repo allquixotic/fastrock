@@ -133,6 +133,7 @@ impl AppController {
                     return;
                 }
             };
+            crate::ui::bind_text_selection_colors(&window);
             window.on_action(crate::ui_thread::scoped_callback!(|action| {
                 crate::ui_thread::with_app(move |app| app.virtual_workspaces_action(&action));
             }));

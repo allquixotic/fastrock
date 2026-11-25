@@ -937,14 +937,16 @@ impl AppController {
 
     pub(crate) fn rendered_text_center(&self, needle: &str) -> Option<(f32, f32)> {
         use i_slint_core::item_tree::ItemRc;
-        use i_slint_core::items::{ComplexText, SimpleText, StyledTextItem};
+        use i_slint_core::items::{ComplexText, SimpleText, StyledTextItem, TextInput};
         use i_slint_core::window::WindowInner;
         use std::ops::ControlFlow;
         let inner = WindowInner::from_pub(self.window.window());
         let component = inner.try_component()?;
         let mut found = None;
+        let mut input_found = None;
         ItemRc::new_root(component).visit_descendants::<()>(|item| {
             if item.is_visible() {
+                let input = item.downcast::<TextInput>();
                 let raw = if let Some(text) = item.downcast::<StyledTextItem>() {
                     Some(
                         i_slint_core::styled_text::get_raw_text(&text.as_pin_ref().text())
@@ -952,6 +954,8 @@ impl AppController {
                     )
                 } else if let Some(text) = item.downcast::<ComplexText>() {
                     Some(text.as_pin_ref().text().to_string())
+                } else if let Some(input) = &input {
+                    Some(input.as_pin_ref().text().to_string())
                 } else {
                     item.downcast::<SimpleText>()
                         .map(|text| text.as_pin_ref().text().to_string())
@@ -962,16 +966,21 @@ impl AppController {
                 if raw == needle {
                     let geometry = item.geometry();
                     let point = item.map_to_window(geometry.origin);
-                    found = Some((
+                    let center = Some((
                         point.x + geometry.size.width / 2.0,
                         point.y + geometry.size.height / 2.0,
                     ));
-                    // Prefer the newest visible pending bubble.
+                    if input.is_some() {
+                        input_found = center;
+                    } else {
+                        // Prefer the newest visible pending bubble.
+                        found = center;
+                    }
                 }
             }
             ControlFlow::Continue(())
         });
-        found
+        found.or(input_found)
     }
 
     pub(crate) fn model_controls_geometry_for_test(&self) -> Vec<serde_json::Value> {

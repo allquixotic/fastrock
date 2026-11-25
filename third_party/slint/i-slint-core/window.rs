@@ -556,6 +556,17 @@ impl Drop for PopupWindow {
     }
 }
 
+/// Optional application colors for selected text in a window.
+#[derive(Clone, Copy)]
+pub struct TextSelectionColors {
+    /// Background for a selection in read-only text.
+    pub read_only_background: crate::Color,
+    /// Background for a selection in editable text.
+    pub editable_background: crate::Color,
+    /// Foreground for selected glyphs in both modes.
+    pub foreground: crate::Color,
+}
+
 #[pin_project::pin_project]
 struct WindowPinnedFields {
     #[pin]
@@ -569,6 +580,8 @@ struct WindowPinnedFields {
     active: Property<bool>,
     #[pin]
     text_input_focused: Property<bool>,
+    #[pin]
+    text_selection_colors: Property<Option<TextSelectionColors>>,
     #[pin]
     menubar_shortcuts: Property<SharedVector<MenuEntry>>,
 }
@@ -724,6 +737,7 @@ impl WindowInner {
                     false,
                     "i_slint_core::Window::text_input_focused",
                 ),
+                text_selection_colors: Property::default(),
                 menubar_shortcuts: Property::new_named(
                     SharedVector::default(),
                     "i_slint_core::Window::menubar_shortcuts",
@@ -744,6 +758,24 @@ impl WindowInner {
             menubar: Default::default(),
             native_drag: Default::default(),
         }
+    }
+
+    /// Bind the shared text selection colors to the application's theme.
+    pub fn set_text_selection_colors_binding(
+        &self,
+        binding: impl Fn() -> Option<TextSelectionColors> + 'static,
+    ) {
+        self.pinned_fields.text_selection_colors.set_binding(binding);
+    }
+
+    pub(crate) fn text_selection_colors(
+        &self,
+        read_only: bool,
+    ) -> Option<(crate::Color, crate::Color)> {
+        let colors = self.pinned_fields.as_ref().project_ref().text_selection_colors.get()?;
+        let background =
+            if read_only { colors.read_only_background } else { colors.editable_background };
+        Some((background, colors.foreground))
     }
 
     /// Associates this window with the specified component. Further event handling and rendering, etc. will be

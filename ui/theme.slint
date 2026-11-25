@@ -37,6 +37,12 @@ export global Theme {
     out property <color> text-faint: dark ? #878787 : #71717a;
     out property <color> text-on-accent: #ffffff;
 
+    // Opaque text selection fills with at least 4.5:1 contrast against white.
+    out property <color> read-only-selection-dark: #2871e5;
+    out property <color> read-only-selection-background: dark ? read-only-selection-dark : #164fae;
+    out property <color> editable-selection-background: dark ? #00847c : #006b61;
+    out property <color> selection-foreground: #ffffff;
+
     // Accents and status
     out property <color> accent: dark ? #5b8def : #2f6fe0;
     out property <color> accent-soft: dark ? #26324a : #e3ecfc;

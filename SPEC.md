@@ -283,6 +283,8 @@ V118: GPT-6.2 Sol/Astra working defaults ! exact recognized IDs and OpenAI/Bedro
 
 V119: Pasted images ! retain ordered pixel data through normal, queued and steered model input and slash-skill expansion. Known text-only models ! explicit error. Unknown deployment ! submit image to selected provider. Original slash invocation ! visible in saved history. Verify generated PNGs on provider wire.
 
+V120: Text selection ! opaque blue for read-only content and teal for editable controls in both themes, including rich transcript and native widget inputs. Selected glyph contrast ! at least 4.5:1. Selection fill against text surface ! at least 3:1. Verify rendered Windows snapshots in dev/windows-selection-smoke.py.
+
 ## §T TASKS
 id|status|task|cites
 T77|x|Update direct dependencies to latest stable; adapt unchanged Goose 1.58.0 public services, preserve credentials/storage/provider routes and Slint patches|V38,V39,V95,V103,V104,V106,I.goose,I.vwork
@@ -389,6 +391,7 @@ T88|x|Add manual Bedrock effort entry, validation, per-profile defaults, and req
 T89|x|Release 0.5.6 with unmodified Goose 1.60.2 and model-specific GPT-6.2 working defaults. Windows identity and embedded Converse/Responses fixtures passed on games across model switches, restore and fork|V118,I.goose,I.distribution
 T90|x|Preserve pasted images through ordinary prompts, slash skills, queues and steers. Generated Windows clipboard and provider fixtures passed. Reject declared text-only models before sending|V119,V39,I.goose,I.distribution
 T91|x|Embed unmodified Goose 1.61.0 at 043d1be. Native model options, tools, hooks, context, saved sessions and clipboard passed on games. Guarded 1,000/eight/10,000 comparison passed against 0.3.4. docs/benchmarks/058-games-2026-11-25.json|V39,V45,V119,I.goose,I.distribution
+T92|~|High-contrast selection in both themes across transcript, editors, file viewer and terminal. Verify on games under memory guards, compile macOS and publish stable 0.5.9 through signed Windows CI|V37,V45,V120,I.distribution
 
 0.5.8 release acceptance passed in CI 45676605418 on v0.5.8+build.1 with 878 Windows Rust tests, 44 signed native cases, migration, catalog and scroll. Verified public package digest, online and bundled attestations, downloaded Authenticode signature and timestamp, and generated Windows clipboard input on the local GPT-6.2 Sol route. docs/benchmarks/058-release-ci-2026-11-25.json.
 
@@ -1019,3 +1022,4 @@ B324|2026-11-18|Unknown Bedrock profile ID yields off-only Goose capability; Fas
 B325|2026-11-18|Bedrock effort regression fixture picked last open tab after restore reordered tabs, resumed a different conversation|V117; identify exact profile conversation by fixture draft marker
 B326|2026-11-24|Goose slash-skill expansion hid the kickoff images and OpenAI-compatible formatters omitted images for unlisted deployments|V119
 B327|2026-11-25|Native compaction fixture recognized only standalone summarization. Goose 1.61.0 first requests a summary inside the conversation and archives the raw reply before storing the active summary|V85; verify active context, visibility and tool-free fallback on Windows.
+B328|2026-11-25|Rich and plain transcript selection reused the row-selection fill, almost invisible over the message surface. Other inputs mixed tinted surfaces and OS-dependent colors|V120

@@ -452,6 +452,7 @@ impl AppController {
         self.checkpoints_install();
         self.load_window_icon();
         self.apply_theme();
+        crate::ui::bind_text_selection_colors(&self.window);
         self.reload_keymap();
         self.transcript_bind();
         self.composer_bind();
