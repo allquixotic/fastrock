@@ -1,4 +1,4 @@
-# Embedded Goose in Fastrock 0.5.8
+# Embedded Goose in Fastrock 0.5.9
 
 Goose 1.61.0 is pinned at `043d1be6acfcf17c7efae8a5613497728b71de88`.
 Its source is unchanged. Fastrock calls the public `StateMachineServices`, `AcpConnection` and `serve`

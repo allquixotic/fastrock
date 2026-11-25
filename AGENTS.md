@@ -117,3 +117,8 @@ Mac compile-only.
 2026-11-25: user authorizes stable Fastrock 0.5.8 with unmodified Goose 1.61.0.
 Verify on games under the existing memory guards. Release the signed Windows x64
 ZIP through CI. Mac compile-only.
+
+2026-11-25: user authorizes stable Fastrock 0.5.9 for high-contrast text
+selection across conversations and text inputs. Verify on games under the
+existing memory guards. Release the signed Windows x64 ZIP through CI.
+Mac compile-only.

@@ -1,0 +1,267 @@
+{
+  "result": "PASS",
+  "version": "0.5.9",
+  "verified_at": "2026-11-25T23:24:18.072910+00:00",
+  "baseline_version": "0.3.4",
+  "baseline": {
+    "binary_sha256": "dd0b29630e62ade319575c48c7417013a356e79d3aff2ca350b5cae62526b7a9",
+    "seed_sha256": "ee8c135251d7f1841ac1232d21b4acb8c85efc266352b00941f3ad2051b14c84",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "external Goose 1.57.0",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 842532864,
+            "peak_app_bytes": 107196416,
+            "peak_tree_commit_bytes": 102174720
+          },
+          "app": {
+            "cap_bytes": 966653952,
+            "peak_app_bytes": 205914112,
+            "peak_tree_commit_bytes": 242335744
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 1307.2,
+        "switch_dispatch_ms": [
+          1.1,
+          1.1,
+          0.9,
+          0.9,
+          0.9
+        ],
+        "frame": {
+          "p50_ms": 8.141,
+          "p95_ms": 12.15,
+          "p99_ms": 19.442
+        },
+        "render": {
+          "p50_ms": 6.584,
+          "p95_ms": 8.249,
+          "p99_ms": 17.914
+        },
+        "event_loop": {
+          "p50_ms": 16.845,
+          "p95_ms": 27.617,
+          "p99_ms": 39.339
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true
+      }
+    ],
+    "goose_sha256": "89d5849587586765fa335f664fac0a9ed0e466d0f3717dd609ca04ebdffa64e2"
+  },
+  "candidate": {
+    "binary_sha256": "3f5a064b27ba761d7b43f5c6e85c77233604e893cfb262578eeb2842a2fa2ce1",
+    "seed_sha256": "ee8c135251d7f1841ac1232d21b4acb8c85efc266352b00941f3ad2051b14c84",
+    "host": "GAMES",
+    "os": "Windows-11-10.0.26100-SP0",
+    "backend": "embedded Goose",
+    "hard_cap_bytes": 32000000000,
+    "attempts": [
+      {
+        "divisor": 1,
+        "stored_conversations": 1000,
+        "history_messages": 10000,
+        "concurrent_streams": 8,
+        "phases": {
+          "seed": {
+            "cap_bytes": 873080832,
+            "peak_app_bytes": 106549248,
+            "peak_tree_commit_bytes": 101576704
+          },
+          "app": {
+            "cap_bytes": 930502656,
+            "peak_app_bytes": 263065600,
+            "peak_tree_commit_bytes": 200650752
+          }
+        },
+        "result": "PASS",
+        "peak_concurrent_streams": 8,
+        "history_open_observed_ms": 200.5,
+        "switch_dispatch_ms": [
+          0.3,
+          0.4,
+          0.2,
+          0.2,
+          0.3
+        ],
+        "frame": {
+          "p50_ms": 5.887,
+          "p95_ms": 10.86,
+          "p99_ms": 12.281
+        },
+        "render": {
+          "p50_ms": 4.485,
+          "p95_ms": 9.361,
+          "p99_ms": 10.335
+        },
+        "event_loop": {
+          "p50_ms": 16.449,
+          "p95_ms": 19.893,
+          "p99_ms": 24.28
+        },
+        "history_export_messages": 10000,
+        "current_summaries_preserved": true,
+        "history_navigation": {
+          "first": {
+            "browsing": true,
+            "loading": false,
+            "start": 0,
+            "end": 100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 5.7784,
+            "rows": 100,
+            "bytes": 285990
+          },
+          "middle": {
+            "browsing": true,
+            "loading": false,
+            "start": 5000,
+            "end": 5100,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 4.708,
+            "rows": 100,
+            "bytes": 292500
+          },
+          "last": {
+            "browsing": true,
+            "loading": false,
+            "start": 9900,
+            "end": 10000,
+            "total": 10000,
+            "activity": false,
+            "fetch_ms": 17.8603,
+            "rows": 100,
+            "bytes": 292569
+          },
+          "middle_frame": {
+            "p50_ms": 5.807,
+            "p95_ms": 8.321,
+            "p99_ms": 10.021
+          }
+        }
+      }
+    ]
+  },
+  "native_selection": {
+    "result": "PASS",
+    "binary_sha256": "3f5a064b27ba761d7b43f5c6e85c77233604e893cfb262578eeb2842a2fa2ce1",
+    "backend": "embedded-goose",
+    "peak_process_bytes": 178151424,
+    "scale": 1,
+    "clipboard_cases": [
+      "rich-gutter",
+      "rich-reverse",
+      "rich-keyboard",
+      "rich-menu",
+      "rich-unicode",
+      "link-drag",
+      "user-gutter",
+      "user-glyph",
+      "user-keyboard",
+      "user-menu",
+      "code-gutter",
+      "code-second-line",
+      "code-glyph",
+      "tool-arguments",
+      "tool-result",
+      "tool-menu",
+      "tool-cross-chunk"
+    ],
+    "native_menus": [
+      [
+        "Copy",
+        "Select All",
+        "Copy Message as Markdown",
+        "Copy Paragraph",
+        "View Message as Text",
+        "",
+        "Quote in Reply",
+        "Send to Tab\u2026"
+      ],
+      [
+        "Copy",
+        "Select All",
+        "",
+        "Copy Message",
+        "View Message as Text",
+        "Quote in Reply",
+        "Send to Tab\u2026"
+      ],
+      [
+        "Copy",
+        "Select All",
+        "Copy All",
+        "View as Text"
+      ]
+    ],
+    "complete_tool_copy": true,
+    "cross_virtual_row_selection": true,
+    "selection_contrast_pixels": {
+      "dark-composer.png": {
+        "fill": 1519,
+        "light_glyphs": 128
+      },
+      "light-rich-transcript.png": {
+        "fill": 1487,
+        "light_glyphs": 190
+      },
+      "light-text-edit.png": {
+        "fill": 1428,
+        "light_glyphs": 129
+      },
+      "light-file-viewer.png": {
+        "fill": 2379,
+        "light_glyphs": 98
+      },
+      "dark-line-edit.png": {
+        "fill": 769,
+        "light_glyphs": 55
+      },
+      "dark-plain-transcript.png": {
+        "fill": 1808,
+        "light_glyphs": 52
+      },
+      "light-plain-transcript.png": {
+        "fill": 1808,
+        "light_glyphs": 48
+      },
+      "dark-file-viewer.png": {
+        "fill": 2379,
+        "light_glyphs": 112
+      },
+      "light-composer.png": {
+        "fill": 1519,
+        "light_glyphs": 128
+      },
+      "light-line-edit.png": {
+        "fill": 769,
+        "light_glyphs": 55
+      },
+      "dark-rich-transcript.png": {
+        "fill": 1487,
+        "light_glyphs": 198
+      },
+      "dark-text-edit.png": {
+        "fill": 1428,
+        "light_glyphs": 129
+      }
+    }
+  },
+  "published_058_regression": {
+    "expected_dark_blue_fill_pixels": 0,
+    "result": "EXPECTED_FAIL"
+  },
+  "windows_release_policy": "PASS"
+}

@@ -117,8 +117,8 @@ for theme in selection_colors:
     steps += [{'key': 'Ctrl+Shift+P'}, {'wait': 250}, {'palette': ['query', 'provider profiles']},
               {'key': 'Ctrl+A'}]
     steps += selection_snapshot(theme, 'line-edit', 'editable')
-    steps += [{'key': 'escape'}, {'forward': 'Editable message selection'}, {'wait': 250},
-              {'click_text': 'Editable message selection'}, {'key': 'Ctrl+A'}]
+    steps += [{'key': 'escape'}, {'wait': 250}, {'forward': 'Editable message selection'},
+              {'wait': 500}, {'key': 'Ctrl+A'}]
     steps += selection_snapshot(theme, 'text-edit', 'editable')
     steps += [{'forward_submit': 'cancel'},
               {'transcript': 'card:Color fixture|Rich **selection color** sample.\n\n```text\nPlain selection color sample.\n```'},
