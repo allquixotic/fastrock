@@ -4,6 +4,8 @@ Text selection uses white lettering on blue for read-only content and white on t
 
 Games passed 12 contrast checks on rendered Windows screenshots and the full guarded comparison against 0.3.4 at 1,000 conversations, eight streams, and 10,000 history messages. [Games verification](benchmarks/059-games-2026-11-25.json).
 
+CI passed 878 Windows Rust tests and 44 native acceptance cases on the signed executable. The public ZIP passed checksum, Authenticode publisher, timestamp, and provenance checks. The downloaded executable passed all 12 contrast checks on games. macOS compiled for compatibility. [Signed release verification](benchmarks/059-release-ci-2026-11-26.json).
+
 # Fastrock 0.5.8 stable
 
 Fastrock embeds unmodified Goose 1.61.0 and vwork 0.4.2. This update includes Goose’s catalog lookup for model image support and recovery from thinking-only provider responses. [Windows x64 release](https://github.com/allquixotic/fastrock/releases/tag/v0.5.8%2Bbuild.1) · [Upstream Goose release](https://github.com/aaif-goose/goose/releases/tag/v1.61.0).

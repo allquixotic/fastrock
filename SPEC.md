@@ -393,6 +393,8 @@ T90|x|Preserve pasted images through ordinary prompts, slash skills, queues and 
 T91|x|Embed unmodified Goose 1.61.0 at 043d1be. Native model options, tools, hooks, context, saved sessions and clipboard passed on games. Guarded 1,000/eight/10,000 comparison passed against 0.3.4. docs/benchmarks/058-games-2026-11-25.json|V39,V45,V119,I.goose,I.distribution
 T92|x|High-contrast selection in both themes across transcript, editors, file viewer and terminal. Games passed all 12 rendered contrast checks and the guarded 1,000/eight/10,000 comparison with 0.3.4. docs/benchmarks/059-games-2026-11-25.json|V37,V45,V120,I.distribution
 
+0.5.9 release acceptance: CI 45721108874 attempt 3 compiled macOS and passed 878 Windows Rust tests, 44 signed native cases, migration, catalog and scroll. Verified public ZIP digest, Authenticode publisher and timestamp, online and bundled attestations, and 12 native contrast captures on the downloaded binary. docs/benchmarks/059-release-ci-2026-11-26.json.
+
 0.5.8 release acceptance passed in CI 45676605418 on v0.5.8+build.1 with 878 Windows Rust tests, 44 signed native cases, migration, catalog and scroll. Verified public package digest, online and bundled attestations, downloaded Authenticode signature and timestamp, and generated Windows clipboard input on the local GPT-6.2 Sol route. docs/benchmarks/058-release-ci-2026-11-25.json.
 
 0.5.7 development acceptance: guarded games comparison against 0.3.4 passed at 1,000 conversations, eight streams and 10,000 messages. Native Ctrl+V delivered exact PNG bytes on direct, queued and steered slash-skill turns. docs/benchmarks/057-games-2026-11-25.json.
